@@ -20,7 +20,14 @@ function normalizeApiKey(rawValue) {
     }
   }
 
-  return value.trim();
+  try {
+    value = decodeURIComponent(value);
+  } catch {
+    // Mantém o valor original quando não estiver codificado.
+  }
+
+  value = value.split('&')[0].split(/\s/)[0].trim();
+  return value;
 }
 
 function rowsFrom(payload) {
@@ -40,7 +47,13 @@ function belongsToGui(row) {
   return accountId === GUI_ACCOUNT_ID || username === GUI_USERNAME;
 }
 
-async function requestWindsor(connector, fields, datePreset) {
+function providerMessage(payload, text) {
+  const raw = payload?.error || payload?.message || payload?.detail || payload?.errors || text;
+  const message = typeof raw === 'string' ? raw : JSON.stringify(raw || '');
+  return message.slice(0, 220).replace(/api_key=[^&\s]+/gi, 'api_key=[oculta]');
+}
+
+async function requestWindsor(fields, datePreset) {
   const apiKey = normalizeApiKey(process.env.WINDSOR_API_KEY);
 
   if (!apiKey || apiKey.length < 16) {
@@ -49,11 +62,10 @@ async function requestWindsor(connector, fields, datePreset) {
     throw error;
   }
 
-  const url = new URL(`https://connectors.windsor.ai/${connector}`);
+  const url = new URL('https://connectors.windsor.ai/all');
   url.searchParams.set('api_key', apiKey);
   url.searchParams.set('fields', fields.join(','));
   if (datePreset) url.searchParams.set('date_preset', datePreset);
-  url.searchParams.set('filter', JSON.stringify([['account_id', 'eq', GUI_ACCOUNT_ID]]));
   url.searchParams.set('_max_rows', '500');
   url.searchParams.set('_renderer', 'json');
 
@@ -71,15 +83,13 @@ async function requestWindsor(connector, fields, datePreset) {
     payload = null;
   }
 
-  if (!response.ok) {
-    const error = new Error(`O Windsor respondeu com status ${response.status}.`);
-    error.code = response.status === 401 || response.status === 403 ? 'INVALID_KEY' : 'WINDSOR_ERROR';
-    throw error;
-  }
+  const detail = providerMessage(payload, text);
 
-  if (payload?.error || payload?.errors) {
-    const error = new Error('O Windsor recusou a consulta.');
-    error.code = 'WINDSOR_ERROR';
+  if (!response.ok || payload?.error || payload?.errors) {
+    const looksLikeKeyError = /api.?key|unauthor|forbidden|invalid key|authentication/i.test(detail);
+    const error = new Error(detail || `O Windsor respondeu com status ${response.status}.`);
+    error.code = looksLikeKeyError ? 'INVALID_KEY' : 'WINDSOR_ERROR';
+    error.providerDetail = detail;
     throw error;
   }
 
@@ -88,34 +98,32 @@ async function requestWindsor(connector, fields, datePreset) {
   return guiRows.length ? guiRows : rows;
 }
 
-async function fetchWindsor(fields, datePreset) {
-  try {
-    return await requestWindsor('instagram', fields, datePreset);
-  } catch (firstError) {
-    if (firstError?.code === 'INVALID_KEY') throw firstError;
-    return requestWindsor('all', fields, datePreset);
-  }
-}
-
 function highest(rows, field) {
   return Math.round(Math.max(0, ...rows.map((row) => Number(row?.[field] || 0))));
+}
+
+function sum(rows, field) {
+  return Math.round(rows.reduce((total, row) => total + Number(row?.[field] || 0), 0));
 }
 
 export async function GET() {
   try {
     const [profileRows, performanceRows] = await Promise.all([
-      fetchWindsor(['account_id', 'user_name', 'followers_count']),
-      fetchWindsor(
-        ['account_id', 'user_name', 'reach', 'views', 'total_interactions'],
+      requestWindsor(
+        ['date', 'datasource', 'account_name', 'source', 'account_id', 'user_name', 'followers_count'],
+        'last_7dT'
+      ),
+      requestWindsor(
+        ['date', 'datasource', 'account_name', 'source', 'account_id', 'user_name', 'reach', 'views', 'total_interactions'],
         'last_30dT'
       ),
     ]);
 
     const metrics = {
       seguidores: highest(profileRows, 'followers_count'),
-      alcance: highest(performanceRows, 'reach'),
-      visualizacoes: highest(performanceRows, 'views'),
-      interacoes: highest(performanceRows, 'total_interactions'),
+      alcance: sum(performanceRows, 'reach'),
+      visualizacoes: sum(performanceRows, 'views'),
+      interacoes: sum(performanceRows, 'total_interactions'),
     };
 
     if (!metrics.seguidores && !metrics.alcance && !metrics.visualizacoes) {
@@ -138,8 +146,15 @@ export async function GET() {
       ? 'A chave do Windsor está ausente, incompleta ou inválida.'
       : code === 'NO_DATA'
         ? 'O Windsor não retornou dados da conta do Gui.'
-        : 'O Windsor não respondeu corretamente agora.';
+        : 'O Windsor recusou a consulta.';
 
-    return Response.json({ error: message, code }, { status: 502 });
+    return Response.json(
+      {
+        error: message,
+        code,
+        detail: error?.providerDetail || undefined,
+      },
+      { status: 502 }
+    );
   }
 }

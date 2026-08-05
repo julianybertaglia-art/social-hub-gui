@@ -1,4 +1,5 @@
 import './globals.css';
+import CloudGate from './CloudGate';
 
 export const metadata = {
   title: 'Gui Social Hub',
@@ -8,7 +9,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>
+        <CloudGate>{children}</CloudGate>
+      </body>
     </html>
   );
 }

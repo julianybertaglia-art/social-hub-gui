@@ -124,10 +124,14 @@ export default function CloudGate({ children }) {
         } catch (parseError) {
           console.warn('Não foi possível ler o estado salvo:', parseError);
         }
+
+        lastSnapshotRef.current = serializeState(readLocalState());
+      } else {
+        rowIdRef.current = null;
+        lastSnapshotRef.current = '';
       }
 
-      lastSnapshotRef.current = serializeState(readLocalState());
-      setSyncStatus('Sincronizado');
+      setSyncStatus(data ? 'Sincronizado' : 'Preparando primeira sincronização...');
       setReady(true);
     }
 
@@ -193,9 +197,13 @@ export default function CloudGate({ children }) {
       saveInProgressRef.current = false;
     }
 
+    const firstSaveId = window.setTimeout(saveCloudState, 250);
     const intervalId = window.setInterval(saveCloudState, 1200);
 
-    return () => window.clearInterval(intervalId);
+    return () => {
+      window.clearTimeout(firstSaveId);
+      window.clearInterval(intervalId);
+    };
   }, [ready, session]);
 
   async function handleLogin(event) {

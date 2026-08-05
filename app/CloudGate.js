@@ -40,7 +40,39 @@ function writeLocalState(data) {
 }
 
 function serializeState(data) {
-  return JSON.stringify(data, Object.keys(data).sort());
+  return JSON.stringify(data);
+}
+
+async function refreshInstagramMetrics() {
+  try {
+    const response = await fetch('/api/instagram', { cache: 'no-store' });
+    const payload = await response.json();
+
+    if (!response.ok || !payload?.metrics) {
+      throw new Error(payload?.error || 'Resposta inválida do Instagram.');
+    }
+
+    let currentMetrics = {};
+
+    try {
+      currentMetrics = JSON.parse(window.localStorage.getItem('guihub-metrics') || '{}');
+    } catch {
+      currentMetrics = {};
+    }
+
+    const nextMetrics = {
+      ...currentMetrics,
+      ...payload.metrics,
+    };
+
+    window.localStorage.setItem('guihub-metrics', JSON.stringify(nextMetrics));
+    window.localStorage.setItem('guihub-instagram-updated-at', payload.updatedAt || new Date().toISOString());
+
+    return true;
+  } catch (error) {
+    console.warn('Não foi possível atualizar o Instagram:', error);
+    return false;
+  }
 }
 
 export default function CloudGate({ children }) {
@@ -124,14 +156,25 @@ export default function CloudGate({ children }) {
         } catch (parseError) {
           console.warn('Não foi possível ler o estado salvo:', parseError);
         }
-
-        lastSnapshotRef.current = serializeState(readLocalState());
       } else {
         rowIdRef.current = null;
-        lastSnapshotRef.current = '';
       }
 
-      setSyncStatus(data ? 'Sincronizado' : 'Preparando primeira sincronização...');
+      if (cancelled) return;
+
+      setSyncStatus('Atualizando Instagram...');
+      const instagramUpdated = await refreshInstagramMetrics();
+
+      if (cancelled) return;
+
+      lastSnapshotRef.current = data ? serializeState(readLocalState()) : '';
+      setSyncStatus(
+        instagramUpdated
+          ? 'Sincronizado · Instagram atualizado'
+          : data
+            ? 'Sincronizado'
+            : 'Preparando primeira sincronização...'
+      );
       setReady(true);
     }
 

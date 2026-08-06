@@ -13,8 +13,8 @@ export default function AutomationShortcut() {
       style={{
         position: 'fixed',
         right: 22,
-        bottom: 22,
-        zIndex: 60,
+        bottom: 78,
+        zIndex: 95,
         display: 'inline-flex',
         alignItems: 'center',
         gap: 8,

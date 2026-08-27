@@ -75,14 +75,16 @@ async function refreshInstagramMetrics() {
     };
 
     const changed = JSON.stringify(currentMetrics) !== JSON.stringify(nextMetrics);
+    const source = payload.source || 'Instagram';
 
     window.localStorage.setItem('guihub-metrics', JSON.stringify(nextMetrics));
     window.localStorage.setItem('guihub-instagram-updated-at', payload.updatedAt || new Date().toISOString());
+    window.localStorage.setItem('guihub-instagram-source', source);
 
-    return { ok: true, changed };
+    return { ok: true, changed, source };
   } catch (error) {
     console.warn('Não foi possível atualizar o Instagram:', error);
-    return { ok: false, changed: false };
+    return { ok: false, changed: false, source: null };
   }
 }
 
@@ -184,7 +186,7 @@ export default function CloudGate({ children }) {
       lastSnapshotRef.current = data ? serializeState(readLocalState()) : '';
       setSyncStatus(
         instagramResult.ok
-          ? 'Sincronizado · Instagram atualizado'
+          ? `Sincronizado · Instagram atualizado · ${instagramResult.source}`
           : data
             ? 'Sincronizado · Instagram indisponível'
             : 'Preparando primeira sincronização...'
@@ -222,7 +224,7 @@ export default function CloudGate({ children }) {
 
       setSyncStatus(
         result.ok
-          ? 'Sincronizado · Instagram atualizado automaticamente'
+          ? `Sincronizado · Instagram atualizado automaticamente · ${result.source}`
           : 'Sincronizado · não foi possível atualizar Instagram'
       );
 

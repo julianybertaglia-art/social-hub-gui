@@ -3,10 +3,15 @@ import crypto from 'node:crypto';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const API_VERSION = 'v26.0';
+const KEYWORD = 'MENTORIA';
+const PRIVATE_MESSAGE =
+  'Fala! Vi que você comentou MENTORIA no vídeo 👊\n\nHoje você já vende em marketplace?';
+const PUBLIC_REPLY = 'Te chamei no Direct 👊';
+
 function isValidSignature(rawBody, signatureHeader) {
   const appSecret = process.env.META_APP_SECRET;
 
-  // Enquanto o segredo ainda não foi configurado, não aceitamos eventos reais.
   if (!appSecret || !signatureHeader?.startsWith('sha256=')) return false;
 
   const received = signatureHeader.slice('sha256='.length);
@@ -20,6 +25,80 @@ function isValidSignature(rawBody, signatureHeader) {
 
   if (receivedBuffer.length !== expectedBuffer.length) return false;
   return crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
+}
+
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+}
+
+function isMentoriaComment(value) {
+  return normalizeText(value).includes(KEYWORD);
+}
+
+async function metaPost(path, body) {
+  const accessToken = process.env.META_INSTAGRAM_ACCESS_TOKEN;
+
+  if (!accessToken) {
+    throw new Error('META_INSTAGRAM_ACCESS_TOKEN não configurado.');
+  }
+
+  const response = await fetch(
+    `https://graph.instagram.com/${API_VERSION}/${path}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    }
+  );
+
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message = result?.error?.message || `Erro Meta HTTP ${response.status}`;
+    throw new Error(message);
+  }
+
+  return result;
+}
+
+async function sendPrivateReply(igUserId, commentId) {
+  return metaPost(`${igUserId}/messages`, {
+    recipient: { comment_id: commentId },
+    message: { text: PRIVATE_MESSAGE },
+  });
+}
+
+async function sendPublicReply(commentId) {
+  return metaPost(`${commentId}/replies`, {
+    message: PUBLIC_REPLY,
+  });
+}
+
+function extractCommentEvents(payload) {
+  if (!Array.isArray(payload?.entry)) return [];
+
+  return payload.entry.flatMap((entry) => {
+    // Instagram Login currently delivers comment webhooks in this shape.
+    if (entry?.field === 'comments' && entry?.value) {
+      return [{ igUserId: entry.id, value: entry.value }];
+    }
+
+    // Keep compatibility with payloads that wrap changes in an array.
+    if (Array.isArray(entry?.changes)) {
+      return entry.changes
+        .filter((change) => change?.field === 'comments' && change?.value)
+        .map((change) => ({ igUserId: entry.id, value: change.value }));
+    }
+
+    return [];
+  });
 }
 
 export async function GET(request) {
@@ -61,14 +140,54 @@ export async function POST(request) {
     return Response.json({ ok: false, error: 'JSON inválido.' }, { status: 400 });
   }
 
-  // Nesta primeira versão apenas recebemos o evento com segurança.
-  // O processamento da palavra-chave MENTORIA será adicionado depois
-  // que a conta e o token oficial estiverem conectados.
-  console.info('Instagram webhook recebido', {
-    object: payload?.object,
-    entries: Array.isArray(payload?.entry) ? payload.entry.length : 0,
-    receivedAt: new Date().toISOString(),
-  });
+  const commentEvents = extractCommentEvents(payload);
 
-  return Response.json({ ok: true, status: 'EVENT_RECEIVED' });
+  for (const event of commentEvents) {
+    const commentId = event?.value?.id;
+    const text = event?.value?.text;
+    const username = event?.value?.from?.username;
+
+    if (!commentId || !event.igUserId || !isMentoriaComment(text)) continue;
+
+    // Evita responder a um comentário feito pelo próprio perfil do Gui.
+    if (String(username || '').toLowerCase() === 'gui_nonato') continue;
+
+    try {
+      const privateResult = await sendPrivateReply(event.igUserId, commentId);
+
+      console.info('MENTORIA: Direct enviado', {
+        commentId,
+        username,
+        messageId: privateResult?.message_id || null,
+      });
+    } catch (error) {
+      console.error('MENTORIA: falha ao enviar Direct', {
+        commentId,
+        username,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    try {
+      const publicResult = await sendPublicReply(commentId);
+
+      console.info('MENTORIA: resposta pública enviada', {
+        commentId,
+        username,
+        replyId: publicResult?.id || null,
+      });
+    } catch (error) {
+      console.error('MENTORIA: falha na resposta pública', {
+        commentId,
+        username,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return Response.json({
+    ok: true,
+    status: 'EVENT_RECEIVED',
+    commentEvents: commentEvents.length,
+  });
 }

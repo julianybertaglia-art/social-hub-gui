@@ -13,6 +13,8 @@ const STORAGE_KEYS = [
   'guihub-automations',
 ];
 
+const INSTAGRAM_REFRESH_INTERVAL = 10 * 60 * 1000;
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const supabase = supabaseUrl && supabaseKey
@@ -44,6 +46,12 @@ function serializeState(data) {
   return JSON.stringify(data);
 }
 
+function isUserEditing() {
+  const element = document.activeElement;
+  if (!element) return false;
+  return ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName) || element.isContentEditable;
+}
+
 async function refreshInstagramMetrics() {
   try {
     const response = await fetch('/api/instagram', { cache: 'no-store' });
@@ -66,13 +74,15 @@ async function refreshInstagramMetrics() {
       ...payload.metrics,
     };
 
+    const changed = JSON.stringify(currentMetrics) !== JSON.stringify(nextMetrics);
+
     window.localStorage.setItem('guihub-metrics', JSON.stringify(nextMetrics));
     window.localStorage.setItem('guihub-instagram-updated-at', payload.updatedAt || new Date().toISOString());
 
-    return true;
+    return { ok: true, changed };
   } catch (error) {
     console.warn('Não foi possível atualizar o Instagram:', error);
-    return false;
+    return { ok: false, changed: false };
   }
 }
 
@@ -89,6 +99,8 @@ export default function CloudGate({ children }) {
   const rowIdRef = useRef(null);
   const lastSnapshotRef = useRef('');
   const saveInProgressRef = useRef(false);
+  const metricsRefreshInProgressRef = useRef(false);
+  const lastMetricsRefreshRef = useRef(0);
 
   useEffect(() => {
     if (!supabase) {
@@ -164,16 +176,17 @@ export default function CloudGate({ children }) {
       if (cancelled) return;
 
       setSyncStatus('Atualizando Instagram...');
-      const instagramUpdated = await refreshInstagramMetrics();
+      const instagramResult = await refreshInstagramMetrics();
+      lastMetricsRefreshRef.current = Date.now();
 
       if (cancelled) return;
 
       lastSnapshotRef.current = data ? serializeState(readLocalState()) : '';
       setSyncStatus(
-        instagramUpdated
+        instagramResult.ok
           ? 'Sincronizado · Instagram atualizado'
           : data
-            ? 'Sincronizado'
+            ? 'Sincronizado · Instagram indisponível'
             : 'Preparando primeira sincronização...'
       );
       setReady(true);
@@ -185,6 +198,67 @@ export default function CloudGate({ children }) {
       cancelled = true;
     };
   }, [session]);
+
+  useEffect(() => {
+    if (!supabase || !session || !ready) return undefined;
+
+    let cancelled = false;
+
+    async function updateInstagramAutomatically({ force = false } = {}) {
+      const now = Date.now();
+      const elapsed = now - lastMetricsRefreshRef.current;
+
+      if (!force && elapsed < 60 * 1000) return;
+      if (metricsRefreshInProgressRef.current) return;
+
+      metricsRefreshInProgressRef.current = true;
+      setSyncStatus('Atualizando Instagram...');
+
+      const result = await refreshInstagramMetrics();
+      lastMetricsRefreshRef.current = Date.now();
+      metricsRefreshInProgressRef.current = false;
+
+      if (cancelled) return;
+
+      setSyncStatus(
+        result.ok
+          ? 'Sincronizado · Instagram atualizado automaticamente'
+          : 'Sincronizado · não foi possível atualizar Instagram'
+      );
+
+      // A tela principal lê as métricas do armazenamento local ao montar.
+      // Só recarregamos quando os números realmente mudaram e a pessoa não está digitando.
+      if (result.ok && result.changed && !isUserEditing()) {
+        window.location.reload();
+      }
+    }
+
+    const intervalId = window.setInterval(
+      () => updateInstagramAutomatically({ force: true }),
+      INSTAGRAM_REFRESH_INTERVAL
+    );
+
+    function handleFocus() {
+      const elapsed = Date.now() - lastMetricsRefreshRef.current;
+      if (elapsed >= 2 * 60 * 1000) {
+        updateInstagramAutomatically();
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') handleFocus();
+    }
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [ready, session]);
 
   useEffect(() => {
     if (!supabase || !session || !ready) return undefined;

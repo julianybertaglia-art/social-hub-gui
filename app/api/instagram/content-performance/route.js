@@ -126,8 +126,11 @@ async function enrichMedia(media) {
   ];
 
   const isReel = String(media?.media_product_type || '').toUpperCase() === 'REELS';
-  const requested = isReel ? [...baseMetrics, ...reelMetrics] : baseMetrics;
-  const insights = await requestMetricsGroup(media.id, requested);
+  const baseInsights = await requestMetricsGroup(media.id, baseMetrics);
+  const reelInsights = isReel
+    ? await requestMetricsGroup(media.id, reelMetrics)
+    : {};
+  const insights = { ...baseInsights, ...reelInsights };
 
   const reach = Math.round(Number(insights.reach || 0));
   const views = Math.round(Number(insights.views || 0));

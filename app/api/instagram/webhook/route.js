@@ -4,9 +4,9 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const API_VERSION = 'v26.0';
-const KEYWORD = 'MENTORIA';
+const KEYWORD = 'IMERSAO';
 const PRIVATE_MESSAGE =
-  'Fala! Vi que você comentou MENTORIA no vídeo 👊\n\nHoje você já vende em marketplace?';
+  'Fala! Vi que você comentou IMERSÃO no vídeo 👊\n\nQuer que eu te mande as informações da Imersão Ecommerce?';
 const PUBLIC_REPLY = 'Te chamei no Direct 👊';
 
 function isValidSignature(rawBody, signatureHeader) {
@@ -34,7 +34,7 @@ function normalizeText(value) {
     .toUpperCase();
 }
 
-function isMentoriaComment(value) {
+function isKeywordComment(value) {
   return normalizeText(value).includes(KEYWORD);
 }
 
@@ -85,12 +85,10 @@ function extractCommentEvents(payload) {
   if (!Array.isArray(payload?.entry)) return [];
 
   return payload.entry.flatMap((entry) => {
-    // Instagram Login currently delivers comment webhooks in this shape.
     if (entry?.field === 'comments' && entry?.value) {
       return [{ igUserId: entry.id, value: entry.value }];
     }
 
-    // Keep compatibility with payloads that wrap changes in an array.
     if (Array.isArray(entry?.changes)) {
       return entry.changes
         .filter((change) => change?.field === 'comments' && change?.value)
@@ -147,21 +145,20 @@ export async function POST(request) {
     const text = event?.value?.text;
     const username = event?.value?.from?.username;
 
-    if (!commentId || !event.igUserId || !isMentoriaComment(text)) continue;
+    if (!commentId || !event.igUserId || !isKeywordComment(text)) continue;
 
-    // Evita responder a um comentário feito pelo próprio perfil do Gui.
     if (String(username || '').toLowerCase() === 'gui_nonato') continue;
 
     try {
       const privateResult = await sendPrivateReply(event.igUserId, commentId);
 
-      console.info('MENTORIA: Direct enviado', {
+      console.info('IMERSAO: Direct enviado', {
         commentId,
         username,
         messageId: privateResult?.message_id || null,
       });
     } catch (error) {
-      console.error('MENTORIA: falha ao enviar Direct', {
+      console.error('IMERSAO: falha ao enviar Direct', {
         commentId,
         username,
         error: error instanceof Error ? error.message : String(error),
@@ -171,13 +168,13 @@ export async function POST(request) {
     try {
       const publicResult = await sendPublicReply(commentId);
 
-      console.info('MENTORIA: resposta pública enviada', {
+      console.info('IMERSAO: resposta pública enviada', {
         commentId,
         username,
         replyId: publicResult?.id || null,
       });
     } catch (error) {
-      console.error('MENTORIA: falha na resposta pública', {
+      console.error('IMERSAO: falha na resposta pública', {
         commentId,
         username,
         error: error instanceof Error ? error.message : String(error),

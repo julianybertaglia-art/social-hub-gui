@@ -9,7 +9,7 @@ const initialRule = {
   name: 'Leads — Imersão',
   keyword: 'IMERSÃO',
   publicReply: 'Te chamei no Direct 👊',
-  privateMessage: 'Fala! Vi que você comentou IMERSÃO no vídeo 👊\n\nQuer que eu te mande as informações da Imersão Ecommerce?',
+  privateMessage: 'Fala! Vi que você comentou IMERSÃO no vídeo 👊\n\nA Imersão Ecommerce é um evento presencial para quem vende ou quer escalar sua operação nos marketplaces, com conteúdo prático sobre Mercado Livre, anúncios, operação, IA, importação e estratégias de crescimento.\n\n📅 26 de setembro de 2026\n⏰ 09h30 às 20h30\n📍 R. Airi, 227 — Tatuapé, São Paulo/SP\n\nPara mais informações, fale com a equipe pelo WhatsApp: (11) 92399-0244',
   tag: 'Interesse — Imersão',
   active: true,
 };
@@ -114,7 +114,7 @@ export default function AutomacoesPage() {
             <label className={styles.fullField}>
               Primeira mensagem no Direct
               <textarea
-                rows="6"
+                rows="10"
                 value={rule.privateMessage}
                 onChange={(event) => updateField('privateMessage', event.target.value)}
               />
@@ -138,7 +138,7 @@ export default function AutomacoesPage() {
             <ol>
               <li><b>1</b><div><strong>Comentário</strong><span>A pessoa comenta “IMERSÃO” no Reel.</span></div></li>
               <li><b>2</b><div><strong>Resposta pública</strong><span>O perfil avisa que chamou no Direct.</span></div></li>
-              <li><b>3</b><div><strong>Mensagem privada</strong><span>O Hub envia as informações iniciais da Imersão.</span></div></li>
+              <li><b>3</b><div><strong>Mensagem privada</strong><span>O Hub envia as informações iniciais da Imersão, data, horário, local e contato da equipe.</span></div></li>
               <li><b>4</b><div><strong>CRM</strong><span>O contato recebe a tag de interesse.</span></div></li>
             </ol>
           </article>

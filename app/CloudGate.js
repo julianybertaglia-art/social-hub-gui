@@ -11,9 +11,12 @@ const STORAGE_KEYS = [
   'guihub-tasks',
   'guihub-goals',
   'guihub-automations',
+  'guihub-media-performance',
+  'guihub-media-history',
 ];
 
 const INSTAGRAM_REFRESH_INTERVAL = 10 * 60 * 1000;
+const CONTENT_REFRESH_INTERVAL = 6 * 60 * 60 * 1000;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -88,6 +91,58 @@ async function refreshInstagramMetrics() {
   }
 }
 
+function mergeDailyMediaSnapshot(payload) {
+  let history = [];
+
+  try {
+    history = JSON.parse(window.localStorage.getItem('guihub-media-history') || '[]');
+    if (!Array.isArray(history)) history = [];
+  } catch {
+    history = [];
+  }
+
+  const capturedAt = payload.updatedAt || new Date().toISOString();
+  const date = capturedAt.slice(0, 10);
+  const snapshot = {
+    date,
+    capturedAt,
+    source: payload.source || 'Meta',
+    items: Array.isArray(payload.items) ? payload.items : [],
+  };
+
+  const nextHistory = [
+    ...history.filter((item) => item?.date !== date),
+    snapshot,
+  ]
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    .slice(-45);
+
+  window.localStorage.setItem('guihub-media-history', JSON.stringify(nextHistory));
+}
+
+async function refreshInstagramContentPerformance() {
+  try {
+    const response = await fetch('/api/instagram/content-performance', { cache: 'no-store' });
+    const payload = await response.json();
+
+    if (!response.ok || !Array.isArray(payload?.items)) {
+      throw new Error(payload?.error || 'Resposta inválida da performance dos conteúdos.');
+    }
+
+    window.localStorage.setItem('guihub-media-performance', JSON.stringify(payload));
+    window.localStorage.setItem(
+      'guihub-media-performance-updated-at',
+      payload.updatedAt || new Date().toISOString()
+    );
+    mergeDailyMediaSnapshot(payload);
+
+    return { ok: true, count: payload.items.length };
+  } catch (error) {
+    console.warn('Não foi possível atualizar a performance dos conteúdos:', error);
+    return { ok: false, count: 0 };
+  }
+}
+
 export default function CloudGate({ children }) {
   const [session, setSession] = useState(null);
   const [initializing, setInitializing] = useState(true);
@@ -103,6 +158,8 @@ export default function CloudGate({ children }) {
   const saveInProgressRef = useRef(false);
   const metricsRefreshInProgressRef = useRef(false);
   const lastMetricsRefreshRef = useRef(0);
+  const contentRefreshInProgressRef = useRef(false);
+  const lastContentRefreshRef = useRef(0);
 
   useEffect(() => {
     if (!supabase) {
@@ -183,6 +240,13 @@ export default function CloudGate({ children }) {
 
       if (cancelled) return;
 
+      const previousContentUpdate = Date.parse(
+        window.localStorage.getItem('guihub-media-performance-updated-at') || ''
+      );
+      lastContentRefreshRef.current = Number.isFinite(previousContentUpdate)
+        ? previousContentUpdate
+        : 0;
+
       lastSnapshotRef.current = data ? serializeState(readLocalState()) : '';
       setSyncStatus(
         instagramResult.ok
@@ -228,8 +292,6 @@ export default function CloudGate({ children }) {
           : 'Sincronizado · não foi possível atualizar Instagram'
       );
 
-      // A tela principal lê as métricas do armazenamento local ao montar.
-      // Só recarregamos quando os números realmente mudaram e a pessoa não está digitando.
       if (result.ok && result.changed && !isUserEditing()) {
         window.location.reload();
       }
@@ -259,6 +321,51 @@ export default function CloudGate({ children }) {
       window.clearInterval(intervalId);
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [ready, session]);
+
+  useEffect(() => {
+    if (!supabase || !session || !ready) return undefined;
+
+    let cancelled = false;
+
+    async function updateContentPerformance({ force = false } = {}) {
+      const elapsed = Date.now() - lastContentRefreshRef.current;
+
+      if (!force && elapsed < CONTENT_REFRESH_INTERVAL) return;
+      if (contentRefreshInProgressRef.current) return;
+
+      contentRefreshInProgressRef.current = true;
+      const result = await refreshInstagramContentPerformance();
+      lastContentRefreshRef.current = Date.now();
+      contentRefreshInProgressRef.current = false;
+
+      if (cancelled) return;
+
+      if (result.ok) {
+        console.info('Performance dos conteúdos atualizada.', { count: result.count });
+      }
+    }
+
+    const firstRunId = window.setTimeout(() => updateContentPerformance(), 1200);
+    const intervalId = window.setInterval(
+      () => updateContentPerformance({ force: true }),
+      CONTENT_REFRESH_INTERVAL
+    );
+
+    function handleFocus() {
+      if (Date.now() - lastContentRefreshRef.current >= CONTENT_REFRESH_INTERVAL) {
+        updateContentPerformance();
+      }
+    }
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(firstRunId);
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [ready, session]);
 

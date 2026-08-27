@@ -5,13 +5,13 @@ import { useEffect, useState } from 'react';
 import styles from './automacoes.module.css';
 
 const initialRule = {
-  id: 'mentoria-reel',
-  name: 'Leads — Mentoria',
-  keyword: 'MENTORIA',
+  id: 'imersao-reel',
+  name: 'Leads — Imersão',
+  keyword: 'IMERSÃO',
   publicReply: 'Te chamei no Direct 👊',
-  privateMessage: 'Fala! Vi que você comentou MENTORIA no vídeo 👊\n\nHoje você já vende em marketplace?',
-  tag: 'Interesse — Mentoria',
-  active: false,
+  privateMessage: 'Fala! Vi que você comentou IMERSÃO no vídeo 👊\n\nQuer que eu te mande as informações da Imersão Ecommerce?',
+  tag: 'Interesse — Imersão',
+  active: true,
 };
 
 export default function AutomacoesPage() {
@@ -20,7 +20,7 @@ export default function AutomacoesPage() {
 
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem('guihub-automation-mentoria');
+      const stored = window.localStorage.getItem('guihub-automation-imersao');
       if (stored) setRule(JSON.parse(stored));
     } catch (error) {
       console.warn('Não foi possível carregar a automação.', error);
@@ -33,7 +33,7 @@ export default function AutomacoesPage() {
   }
 
   function saveRule() {
-    window.localStorage.setItem('guihub-automation-mentoria', JSON.stringify(rule));
+    window.localStorage.setItem('guihub-automation-imersao', JSON.stringify(rule));
     setSaved(true);
     window.setTimeout(() => setSaved(false), 2500);
   }
@@ -57,13 +57,13 @@ export default function AutomacoesPage() {
         </article>
         <article className={styles.statusCard}>
           <span>Regra criada</span>
-          <strong>MENTORIA</strong>
+          <strong>IMERSÃO</strong>
           <small>Comentário → Direct</small>
         </article>
-        <article className={`${styles.statusCard} ${styles.pendingCard}`}>
+        <article className={styles.statusCard}>
           <span>Envio automático</span>
-          <strong>Aguardando Meta</strong>
-          <small>Webhook e permissões ainda serão configurados</small>
+          <strong>Conectado</strong>
+          <small>Webhook e permissões configurados</small>
         </article>
       </section>
 
@@ -86,7 +86,7 @@ export default function AutomacoesPage() {
           </div>
 
           <div className={styles.notice}>
-            O botão pode ser preparado agora, mas nenhuma mensagem será enviada até a integração oficial da Meta estar concluída.
+            Integração oficial da Meta conectada. A regra real está configurada para responder a comentários com IMERSÃO ou IMERSAO.
           </div>
 
           <div className={styles.formGrid}>
@@ -134,20 +134,20 @@ export default function AutomacoesPage() {
         <aside className={styles.sideColumn}>
           <article className={`${styles.panel} ${styles.flowPanel}`}>
             <span className={styles.eyebrow}>COMO VAI FUNCIONAR</span>
-            <h2>Fluxo da Mentoria</h2>
+            <h2>Fluxo da Imersão</h2>
             <ol>
-              <li><b>1</b><div><strong>Comentário</strong><span>A pessoa comenta “MENTORIA” no Reel.</span></div></li>
+              <li><b>1</b><div><strong>Comentário</strong><span>A pessoa comenta “IMERSÃO” no Reel.</span></div></li>
               <li><b>2</b><div><strong>Resposta pública</strong><span>O perfil avisa que chamou no Direct.</span></div></li>
-              <li><b>3</b><div><strong>Mensagem privada</strong><span>O Hub inicia a qualificação do lead.</span></div></li>
+              <li><b>3</b><div><strong>Mensagem privada</strong><span>O Hub envia as informações iniciais da Imersão.</span></div></li>
               <li><b>4</b><div><strong>CRM</strong><span>O contato recebe a tag de interesse.</span></div></li>
             </ol>
           </article>
 
           <article className={`${styles.panel} ${styles.nextPanel}`}>
-            <span className={styles.eyebrow}>PRÓXIMA ETAPA TÉCNICA</span>
-            <h2>Conectar comentários em tempo real</h2>
-            <p>Depois desta tela, configuraremos o aplicativo da Meta, o webhook e as permissões para responder pelo Instagram.</p>
-            <span className={styles.stepBadge}>Etapa 1 de 2</span>
+            <span className={styles.eyebrow}>PRÓXIMA ETAPA</span>
+            <h2>Fazer o primeiro teste real</h2>
+            <p>Use uma conta secundária para comentar IMERSÃO em um conteúdo do Gui e confirmar a resposta pública e o Direct.</p>
+            <span className={styles.stepBadge}>Pronto para testar</span>
           </article>
         </aside>
       </section>

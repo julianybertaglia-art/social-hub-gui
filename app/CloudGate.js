@@ -10,6 +10,7 @@ const STORAGE_KEYS = [
   'guihub-ideas',
   'guihub-tasks',
   'guihub-goals',
+  'guihub-automations',
 ];
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

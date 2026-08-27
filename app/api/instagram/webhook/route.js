@@ -63,12 +63,18 @@ function sanitizeRules(value) {
 
 async function loadAutomationRules() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const supabaseServerKey =
+    process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !supabaseKey) return FALLBACK_RULES;
+  if (!supabaseUrl || !supabaseServerKey) {
+    console.warn(
+      'Automações: chave secreta do Supabase não configurada no servidor; usando fallback de IMERSÃO.'
+    );
+    return FALLBACK_RULES;
+  }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseKey, {
+    const supabase = createClient(supabaseUrl, supabaseServerKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 

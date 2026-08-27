@@ -1,13 +1,22 @@
 import crypto from 'node:crypto';
+import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const API_VERSION = 'v26.0';
-const KEYWORD = 'IMERSAO';
-const PRIVATE_MESSAGE =
-  'Fala! Vi que você comentou IMERSÃO no vídeo 👊\n\nA Imersão Ecommerce Mercado Livre Pro é um evento presencial para quem quer escalar sua operação nos marketplaces, com conteúdo prático sobre Mercado Livre, anúncios, operação, IA, importação e estratégias de crescimento.\n\n📅 26 de setembro de 2026\n⏰ 09h30 às 20h30\n📍 R. Airi, 227 — Tatuapé, São Paulo/SP\n\nPara compra de ingressos ou mais informações, fale com a equipe pelo WhatsApp: (11) 92399-0244';
-const PUBLIC_REPLY = 'Te chamei no Direct 👊';
+const AUTOMATIONS_STORAGE_KEY = 'guihub-automations';
+const FALLBACK_RULES = [
+  {
+    id: 'imersao-reel',
+    name: 'Leads — Imersão',
+    keyword: 'IMERSÃO',
+    publicReply: 'Te chamei no Direct 👊',
+    privateMessage: 'Fala! Vi que você comentou IMERSÃO no vídeo 👊\n\nA Imersão Ecommerce Mercado Livre Pro é um evento presencial para quem quer escalar sua operação nos marketplaces, com conteúdo prático sobre Mercado Livre, anúncios, operação, IA, importação e estratégias de crescimento.\n\n📅 26 de setembro de 2026\n⏰ 09h30 às 20h30\n📍 R. Airi, 227 — Tatuapé, São Paulo/SP\n\nPara compra de ingressos ou mais informações, fale com a equipe pelo WhatsApp: (11) 92399-0244',
+    tag: 'Interesse — Imersão',
+    active: true,
+  },
+];
 
 function isValidSignature(rawBody, signatureHeader) {
   const appSecret = process.env.META_APP_SECRET;
@@ -31,11 +40,70 @@ function normalizeText(value) {
   return String(value || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase();
+    .toUpperCase()
+    .trim();
 }
 
-function isKeywordComment(value) {
-  return normalizeText(value).includes(KEYWORD);
+function sanitizeRules(value) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .slice(0, 3)
+    .map((rule, index) => ({
+      id: String(rule?.id || `automation-${index + 1}`),
+      name: String(rule?.name || `Automação ${index + 1}`),
+      keyword: String(rule?.keyword || '').trim(),
+      publicReply: String(rule?.publicReply || '').trim(),
+      privateMessage: String(rule?.privateMessage || '').trim(),
+      tag: String(rule?.tag || '').trim(),
+      active: Boolean(rule?.active),
+    }))
+    .filter((rule) => rule.active && rule.keyword && rule.privateMessage);
+}
+
+async function loadAutomationRules() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) return FALLBACK_RULES;
+
+  try {
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const { data, error } = await supabase
+      .from('content_items')
+      .select('description')
+      .eq('title', '__SOCIAL_HUB_STATE__')
+      .maybeSingle();
+
+    if (error || !data?.description) {
+      console.warn('Automações: não foi possível ler a configuração no Supabase.', error?.message || 'Estado vazio');
+      return FALLBACK_RULES;
+    }
+
+    const state = JSON.parse(data.description || '{}');
+    const serializedRules = state?.data?.[AUTOMATIONS_STORAGE_KEY];
+    const parsedRules = typeof serializedRules === 'string'
+      ? JSON.parse(serializedRules)
+      : serializedRules;
+    const rules = sanitizeRules(parsedRules);
+
+    return rules.length ? rules : FALLBACK_RULES;
+  } catch (error) {
+    console.warn('Automações: falha ao carregar regras; usando regra segura de IMERSÃO.', error instanceof Error ? error.message : String(error));
+    return FALLBACK_RULES;
+  }
+}
+
+function findMatchingRule(text, rules) {
+  const normalizedComment = normalizeText(text);
+
+  return rules.find((rule) => {
+    const normalizedKeyword = normalizeText(rule.keyword);
+    return normalizedKeyword && normalizedComment.includes(normalizedKeyword);
+  }) || null;
 }
 
 async function metaPost(path, body) {
@@ -68,16 +136,18 @@ async function metaPost(path, body) {
   return result;
 }
 
-async function sendPrivateReply(igUserId, commentId) {
+async function sendPrivateReply(igUserId, commentId, message) {
   return metaPost(`${igUserId}/messages`, {
     recipient: { comment_id: commentId },
-    message: { text: PRIVATE_MESSAGE },
+    message: { text: message },
   });
 }
 
-async function sendPublicReply(commentId) {
+async function sendPublicReply(commentId, message) {
+  if (!message) return null;
+
   return metaPost(`${commentId}/replies`, {
-    message: PUBLIC_REPLY,
+    message,
   });
 }
 
@@ -139,44 +209,57 @@ export async function POST(request) {
   }
 
   const commentEvents = extractCommentEvents(payload);
+  const rules = commentEvents.length ? await loadAutomationRules() : [];
 
   for (const event of commentEvents) {
     const commentId = event?.value?.id;
     const text = event?.value?.text;
     const username = event?.value?.from?.username;
+    const matchingRule = findMatchingRule(text, rules);
 
-    if (!commentId || !event.igUserId || !isKeywordComment(text)) continue;
-
+    if (!commentId || !event.igUserId || !matchingRule) continue;
     if (String(username || '').toLowerCase() === 'gui_nonato') continue;
 
-    try {
-      const privateResult = await sendPrivateReply(event.igUserId, commentId);
+    const logPrefix = `AUTOMACAO:${normalizeText(matchingRule.keyword)}`;
 
-      console.info('IMERSAO: Direct enviado', {
+    try {
+      const privateResult = await sendPrivateReply(
+        event.igUserId,
+        commentId,
+        matchingRule.privateMessage
+      );
+
+      console.info(`${logPrefix}: Direct enviado`, {
         commentId,
         username,
+        ruleId: matchingRule.id,
         messageId: privateResult?.message_id || null,
       });
     } catch (error) {
-      console.error('IMERSAO: falha ao enviar Direct', {
+      console.error(`${logPrefix}: falha ao enviar Direct`, {
         commentId,
         username,
+        ruleId: matchingRule.id,
         error: error instanceof Error ? error.message : String(error),
       });
     }
 
     try {
-      const publicResult = await sendPublicReply(commentId);
+      const publicResult = await sendPublicReply(commentId, matchingRule.publicReply);
 
-      console.info('IMERSAO: resposta pública enviada', {
-        commentId,
-        username,
-        replyId: publicResult?.id || null,
-      });
+      if (matchingRule.publicReply) {
+        console.info(`${logPrefix}: resposta pública enviada`, {
+          commentId,
+          username,
+          ruleId: matchingRule.id,
+          replyId: publicResult?.id || null,
+        });
+      }
     } catch (error) {
-      console.error('IMERSAO: falha na resposta pública', {
+      console.error(`${logPrefix}: falha na resposta pública`, {
         commentId,
         username,
+        ruleId: matchingRule.id,
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -186,5 +269,6 @@ export async function POST(request) {
     ok: true,
     status: 'EVENT_RECEIVED',
     commentEvents: commentEvents.length,
+    activeRules: rules.length,
   });
 }

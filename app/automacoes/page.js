@@ -1,39 +1,105 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import styles from './automacoes.module.css';
 
-const initialRule = {
-  id: 'imersao-reel',
-  name: 'Leads — Imersão',
-  keyword: 'IMERSÃO',
-  publicReply: 'Te chamei no Direct 👊',
-  privateMessage: 'Fala! Vi que você comentou IMERSÃO no vídeo 👊\n\nA Imersão Ecommerce Mercado Livre Pro é um evento presencial para quem quer escalar sua operação nos marketplaces, com conteúdo prático sobre Mercado Livre, anúncios, operação, IA, importação e estratégias de crescimento.\n\n📅 26 de setembro de 2026\n⏰ 09h30 às 20h30\n📍 R. Airi, 227 — Tatuapé, São Paulo/SP\n\nPara compra de ingressos ou mais informações, fale com a equipe pelo WhatsApp: (11) 92399-0244',
-  tag: 'Interesse — Imersão',
-  active: true,
-};
+const DEFAULT_IMERSAO_MESSAGE = 'Fala! Vi que você comentou IMERSÃO no vídeo 👊\n\nA Imersão Ecommerce Mercado Livre Pro é um evento presencial para quem quer escalar sua operação nos marketplaces, com conteúdo prático sobre Mercado Livre, anúncios, operação, IA, importação e estratégias de crescimento.\n\n📅 26 de setembro de 2026\n⏰ 09h30 às 20h30\n📍 R. Airi, 227 — Tatuapé, São Paulo/SP\n\nPara compra de ingressos ou mais informações, fale com a equipe pelo WhatsApp: (11) 92399-0244';
+
+const initialRules = [
+  {
+    id: 'imersao-reel',
+    name: 'Leads — Imersão',
+    keyword: 'IMERSÃO',
+    publicReply: 'Te chamei no Direct 👊',
+    privateMessage: DEFAULT_IMERSAO_MESSAGE,
+    tag: 'Interesse — Imersão',
+    active: true,
+  },
+  {
+    id: 'automacao-2',
+    name: 'Nova automação 2',
+    keyword: '',
+    publicReply: 'Te chamei no Direct 👊',
+    privateMessage: '',
+    tag: '',
+    active: false,
+  },
+  {
+    id: 'automacao-3',
+    name: 'Nova automação 3',
+    keyword: '',
+    publicReply: 'Te chamei no Direct 👊',
+    privateMessage: '',
+    tag: '',
+    active: false,
+  },
+];
+
+function ensureThreeRules(value) {
+  const parsed = Array.isArray(value) ? value.slice(0, 3) : [];
+  return initialRules.map((fallback, index) => ({
+    ...fallback,
+    ...(parsed[index] || {}),
+    id: parsed[index]?.id || fallback.id,
+  }));
+}
 
 export default function AutomacoesPage() {
-  const [rule, setRule] = useState(initialRule);
+  const [rules, setRules] = useState(initialRules);
   const [saved, setSaved] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem('guihub-automation-imersao');
-      if (stored) setRule(JSON.parse(stored));
+      const stored = window.localStorage.getItem('guihub-automations');
+      if (stored) {
+        setRules(ensureThreeRules(JSON.parse(stored)));
+      } else {
+        window.localStorage.setItem('guihub-automations', JSON.stringify(initialRules));
+        setRules(initialRules);
+      }
     } catch (error) {
-      console.warn('Não foi possível carregar a automação.', error);
+      console.warn('Não foi possível carregar as automações.', error);
+      setRules(initialRules);
+    } finally {
+      setHydrated(true);
     }
   }, []);
 
-  function updateField(field, value) {
-    setRule((current) => ({ ...current, [field]: value }));
+  const activeCount = useMemo(
+    () => rules.filter((rule) => rule.active && rule.keyword.trim()).length,
+    [rules]
+  );
+
+  function updateRule(index, field, value) {
+    setRules((current) => current.map((rule, ruleIndex) => (
+      ruleIndex === index ? { ...rule, [field]: value } : rule
+    )));
     setSaved(false);
   }
 
-  function saveRule() {
-    window.localStorage.setItem('guihub-automation-imersao', JSON.stringify(rule));
+  function resetRule(index) {
+    if (index === 0) return;
+    setRules((current) => current.map((rule, ruleIndex) => (
+      ruleIndex === index ? { ...initialRules[index] } : rule
+    )));
+    setSaved(false);
+  }
+
+  function saveRules() {
+    const cleaned = rules.map((rule) => ({
+      ...rule,
+      name: rule.name.trim() || 'Automação sem nome',
+      keyword: rule.keyword.trim().toUpperCase(),
+      publicReply: rule.publicReply.trim(),
+      privateMessage: rule.privateMessage.trim(),
+      tag: rule.tag.trim(),
+      active: Boolean(rule.active && rule.keyword.trim() && rule.privateMessage.trim()),
+    }));
+
+    window.localStorage.setItem('guihub-automations', JSON.stringify(cleaned));
+    setRules(cleaned);
     setSaved(true);
     window.setTimeout(() => setSaved(false), 2500);
   }
@@ -44,7 +110,7 @@ export default function AutomacoesPage() {
         <div>
           <span className={styles.eyebrow}>INSTAGRAM · @GUI_NONATO</span>
           <h1>Automações</h1>
-          <p>Configure como o Hub deverá agir quando alguém comentar uma palavra-chave.</p>
+          <p>Crie até três palavras-chave. O Hub identifica o comentário e envia a resposta e o Direct correspondentes.</p>
         </div>
         <Link className={styles.backButton} href="/">← Voltar ao Hub</Link>
       </header>
@@ -56,100 +122,107 @@ export default function AutomacoesPage() {
           <small>@gui_nonato</small>
         </article>
         <article className={styles.statusCard}>
-          <span>Regra criada</span>
-          <strong>IMERSÃO</strong>
-          <small>Comentário → Direct</small>
+          <span>Automações ativas</span>
+          <strong>{activeCount} de 3</strong>
+          <small>Você pode deixar até três regras prontas</small>
         </article>
         <article className={styles.statusCard}>
           <span>Envio automático</span>
           <strong>Conectado</strong>
-          <small>Webhook e permissões configurados</small>
+          <small>Webhook oficial da Meta ativo</small>
         </article>
       </section>
 
-      <section className={styles.layout}>
-        <article className={styles.panel}>
-          <div className={styles.panelHeading}>
-            <div>
-              <span className={styles.eyebrow}>PRIMEIRA AUTOMAÇÃO</span>
-              <h2>{rule.name}</h2>
+      <section className={styles.rulesWrap}>
+        {rules.map((rule, index) => (
+          <article className={styles.panel} key={rule.id}>
+            <div className={styles.panelHeading}>
+              <div>
+                <span className={styles.eyebrow}>AUTOMAÇÃO {index + 1}</span>
+                <h2>{rule.name || `Automação ${index + 1}`}</h2>
+              </div>
+              <label className={styles.switchRow}>
+                <span>{rule.active ? 'Ativa' : 'Pausada'}</span>
+                <input
+                  type="checkbox"
+                  checked={rule.active}
+                  onChange={(event) => updateRule(index, 'active', event.target.checked)}
+                />
+                <i aria-hidden="true" />
+              </label>
             </div>
-            <label className={styles.switchRow}>
-              <span>{rule.active ? 'Ativa' : 'Pausada'}</span>
-              <input
-                type="checkbox"
-                checked={rule.active}
-                onChange={(event) => updateField('active', event.target.checked)}
-              />
-              <i aria-hidden="true" />
-            </label>
-          </div>
 
-          <div className={styles.notice}>
-            Integração oficial da Meta conectada. A regra real está configurada para responder a comentários com IMERSÃO ou IMERSAO.
-          </div>
+            {index === 0 && (
+              <div className={styles.notice}>
+                Esta é a automação que já testamos com IMERSÃO. Você pode editar o texto e salvar normalmente.
+              </div>
+            )}
 
-          <div className={styles.formGrid}>
-            <label>
-              Nome da automação
-              <input value={rule.name} onChange={(event) => updateField('name', event.target.value)} />
-            </label>
+            <div className={styles.formGrid}>
+              <label>
+                Nome da automação
+                <input
+                  value={rule.name}
+                  onChange={(event) => updateRule(index, 'name', event.target.value)}
+                  placeholder="Ex.: Leads — Mentoria"
+                />
+              </label>
 
-            <label>
-              Palavra-chave
-              <input
-                value={rule.keyword}
-                onChange={(event) => updateField('keyword', event.target.value.toUpperCase())}
-              />
-            </label>
+              <label>
+                Palavra-chave
+                <input
+                  value={rule.keyword}
+                  onChange={(event) => updateRule(index, 'keyword', event.target.value.toUpperCase())}
+                  placeholder="Ex.: MENTORIA"
+                />
+              </label>
 
-            <label className={styles.fullField}>
-              Resposta pública no comentário
-              <input
-                value={rule.publicReply}
-                onChange={(event) => updateField('publicReply', event.target.value)}
-              />
-            </label>
+              <label className={styles.fullField}>
+                Resposta pública no comentário
+                <input
+                  value={rule.publicReply}
+                  onChange={(event) => updateRule(index, 'publicReply', event.target.value)}
+                  placeholder="Ex.: Te chamei no Direct 👊"
+                />
+              </label>
 
-            <label className={styles.fullField}>
-              Primeira mensagem no Direct
-              <textarea
-                rows="10"
-                value={rule.privateMessage}
-                onChange={(event) => updateField('privateMessage', event.target.value)}
-              />
-            </label>
+              <label className={styles.fullField}>
+                Mensagem enviada no Direct
+                <textarea
+                  rows="9"
+                  value={rule.privateMessage}
+                  onChange={(event) => updateRule(index, 'privateMessage', event.target.value)}
+                  placeholder="Escreva aqui a mensagem automática..."
+                />
+              </label>
 
-            <label className={styles.fullField}>
-              Tag criada no CRM
-              <input value={rule.tag} onChange={(event) => updateField('tag', event.target.value)} />
-            </label>
-          </div>
+              <label className={styles.fullField}>
+                Tag do lead
+                <input
+                  value={rule.tag}
+                  onChange={(event) => updateRule(index, 'tag', event.target.value)}
+                  placeholder="Ex.: Interesse — Mentoria"
+                />
+              </label>
+            </div>
 
-          <button className={styles.saveButton} onClick={saveRule}>
-            {saved ? 'Configuração salva ✓' : 'Salvar configuração'}
-          </button>
-        </article>
-
-        <aside className={styles.sideColumn}>
-          <article className={`${styles.panel} ${styles.flowPanel}`}>
-            <span className={styles.eyebrow}>COMO VAI FUNCIONAR</span>
-            <h2>Fluxo da Imersão</h2>
-            <ol>
-              <li><b>1</b><div><strong>Comentário</strong><span>A pessoa comenta “IMERSÃO” no Reel.</span></div></li>
-              <li><b>2</b><div><strong>Resposta pública</strong><span>O perfil avisa que chamou no Direct.</span></div></li>
-              <li><b>3</b><div><strong>Mensagem privada</strong><span>O Hub envia as informações iniciais da Imersão, data, horário, local e contato da equipe.</span></div></li>
-              <li><b>4</b><div><strong>CRM</strong><span>O contato recebe a tag de interesse.</span></div></li>
-            </ol>
+            {index > 0 && (
+              <button className={styles.clearButton} type="button" onClick={() => resetRule(index)}>
+                Limpar esta automação
+              </button>
+            )}
           </article>
+        ))}
+      </section>
 
-          <article className={`${styles.panel} ${styles.nextPanel}`}>
-            <span className={styles.eyebrow}>PRÓXIMA ETAPA</span>
-            <h2>Fazer o primeiro teste real</h2>
-            <p>Use uma conta secundária para comentar IMERSÃO em um conteúdo do Gui e confirmar a resposta pública e o Direct.</p>
-            <span className={styles.stepBadge}>Pronto para testar</span>
-          </article>
-        </aside>
+      <section className={styles.saveDock}>
+        <div>
+          <strong>{hydrated ? 'As alterações são sincronizadas com o Hub.' : 'Carregando configurações...'}</strong>
+          <span>Depois de salvar, aguarde alguns segundos antes de testar a nova palavra-chave.</span>
+        </div>
+        <button className={styles.saveButton} type="button" onClick={saveRules} disabled={!hydrated}>
+          {saved ? 'Configurações salvas ✓' : 'Salvar as 3 automações'}
+        </button>
       </section>
     </main>
   );

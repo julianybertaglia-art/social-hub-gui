@@ -313,6 +313,20 @@
 .audioRefresh { margin-top: 20px; padding: 10px 0; min-height: 44px; border: 0; background: transparent; color: #59564f; text-decoration: underline; text-underline-offset: 3px; font: inherit; font-size: 12px; cursor: pointer; }
 .audioPanel button:focus-visible { outline: 3px solid #b9924d; outline-offset: 3px; }
 .audioPanel button:disabled { opacity: .5; cursor: wait; }
+.argoPanel { max-width: 1180px; margin: 0 auto 20px; }
+.argoBadge { padding: 8px 12px; border-radius: 20px; background: #f3ece7; color: #8f5146; font-size: 12px; font-weight: 700; }
+.argoBadgeActive { background: #e8f0e8; color: #34573b; }
+.argoFlow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 20px 0; }
+.argoFlow span { min-height: 82px; padding: 14px; border: 1px solid #e4d6ba; border-radius: 10px; background: #fbf6ec; color: #59564f; font-size: 13px; line-height: 1.5; }
+.argoFlow b { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 5px; border-radius: 50%; background: #e7d1a6; color: #775a28; font-size: 11px; }
+.argoFlow strong { color: #171717; }
+.argoCopy { margin-top: 4px; padding: 14px 16px; border-radius: 10px; background: #f8f7f3; color: #59564f; font-size: 13px; line-height: 1.55; }
+.argoCopy strong { color: #171717; font-size: 12px; }
+.argoCopy p { margin: 6px 0 0; }
+.argoActions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-top: 20px; }
+.argoActions > span { color: #77746d; font-size: 12px; }
+.argoPauseButton { flex: 0 0 auto; min-height: 47px; padding: 0 18px; border: 1px solid #c9968f; border-radius: 9px; background: #fff6f4; color: #8f5146; font: inherit; font-weight: 700; cursor: pointer; }
+.argoActions button:disabled { opacity: .5; cursor: wait; }
 
 @media (max-width: 900px) {
   .statusGrid {
@@ -331,6 +345,10 @@
 
   .saveButton {
     width: 100%;
+  }
+
+  .argoFlow {
+    grid-template-columns: 1fr;
   }
 }
 

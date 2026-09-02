@@ -119,6 +119,7 @@ export async function prepareTest(db, userId, id) {
     const fields = new Set(subscriptions.data.flatMap((app) => app.subscribed_fields || []));
     fields.add('comments');
     fields.add('messages');
+    fields.add('messaging_postbacks');
     const subscription = await metaRequest(`${accountId}/subscribed_apps`, { subscribed_fields: [...fields].join(',') });
     if (subscription.success !== true) throw testError('O Instagram não confirmou o recebimento de mensagens.', 502);
     const path = await preparePrivateAudio(db, test);

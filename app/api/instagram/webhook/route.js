@@ -2,6 +2,13 @@ import crypto from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { after } from 'next/server';
 import { processAudioTests, extractTestMessages } from '../audio-test/service';
+import {
+  extractAudioSelectionEvents,
+  findAudioAutomationForComment,
+  loadActiveAudioAutomations,
+  processAudioSelections,
+  sendAudioPrompt,
+} from '../audio-automation/service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -178,6 +185,22 @@ function extractCommentEvents(payload) {
   });
 }
 
+async function loadAudioAutomationsByAccount(events) {
+  const byAccount = new Map();
+  const accountIds = [...new Set(events.map((event) => String(event.igUserId || '')).filter(Boolean))];
+
+  await Promise.all(accountIds.map(async (accountId) => {
+    try {
+      byAccount.set(accountId, await loadActiveAudioAutomations(accountId));
+    } catch {
+      byAccount.set(accountId, []);
+      console.error('Automação de áudio ARGO: não foi possível carregar a configuração.');
+    }
+  }));
+
+  return byAccount;
+}
+
 export async function GET(request) {
   const url = new URL(request.url);
   const mode = url.searchParams.get('hub.mode');
@@ -224,50 +247,66 @@ export async function POST(request) {
     });
   }
 
+  if (extractAudioSelectionEvents(payload).length) {
+    after(async () => {
+      try { await processAudioSelections(payload); }
+      catch { console.error('Automação de áudio ARGO: não foi possível processar a seleção.'); }
+    });
+  }
+
   const commentEvents = extractCommentEvents(payload);
   const rules = commentEvents.length ? await loadAutomationRules() : [];
+  const audioAutomationsByAccount = commentEvents.length
+    ? await loadAudioAutomationsByAccount(commentEvents)
+    : new Map();
 
   for (const event of commentEvents) {
     const commentId = event?.value?.id;
     const text = event?.value?.text;
     const username = event?.value?.from?.username;
-    const matchingRule = findMatchingRule(text, rules);
+    const audioAutomation = findAudioAutomationForComment(
+      text,
+      audioAutomationsByAccount.get(String(event.igUserId)) || []
+    );
+    const matchingRule = audioAutomation ? null : findMatchingRule(text, rules);
 
-    if (!commentId || !event.igUserId || !matchingRule) continue;
+    if (!commentId || !event.igUserId || (!audioAutomation && !matchingRule)) continue;
     if (String(username || '').toLowerCase() === 'gui_nonato') continue;
 
-    const logPrefix = `AUTOMACAO:${normalizeText(matchingRule.keyword)}`;
+    const logPrefix = audioAutomation
+      ? 'AUDIO:ARGO'
+      : `AUTOMACAO:${normalizeText(matchingRule.keyword)}`;
+    const ruleId = audioAutomation ? audioAutomation.id : matchingRule.id;
+    const publicReply = audioAutomation ? audioAutomation.public_reply : matchingRule.publicReply;
 
     try {
-      const privateResult = await sendPrivateReply(
-        event.igUserId,
-        commentId,
-        matchingRule.privateMessage
-      );
+      const privateResult = audioAutomation
+        ? await sendAudioPrompt(event.igUserId, commentId, audioAutomation)
+        : await sendPrivateReply(event.igUserId, commentId, matchingRule.privateMessage);
 
       console.info(`${logPrefix}: Direct enviado`, {
         commentId,
         username,
-        ruleId: matchingRule.id,
+        ruleId,
         messageId: privateResult?.message_id || null,
       });
     } catch (error) {
       console.error(`${logPrefix}: falha ao enviar Direct`, {
         commentId,
         username,
-        ruleId: matchingRule.id,
+        ruleId,
         error: error instanceof Error ? error.message : String(error),
       });
     }
 
     try {
-      const publicResult = await sendPublicReply(commentId, matchingRule.publicReply);
+      const publicResult = await sendPublicReply(commentId, publicReply);
 
-      if (matchingRule.publicReply) {
+      if (publicReply) {
         console.info(`${logPrefix}: resposta pública enviada`, {
           commentId,
           username,
-          ruleId: matchingRule.id,
+          ruleId,
           replyId: publicResult?.id || null,
         });
       }
@@ -286,5 +325,6 @@ export async function POST(request) {
     status: 'EVENT_RECEIVED',
     commentEvents: commentEvents.length,
     activeRules: rules.length,
+    activeAudioAutomations: [...audioAutomationsByAccount.values()].flat().length,
   });
 }

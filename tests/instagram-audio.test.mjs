@@ -150,7 +150,7 @@ test('preparation keeps subscriptions and stores audio privately, without sendin
   const db = fakeDb({ status: 'draft', audio_path: null, audio_base64: M4A_FIXTURE.toString('base64') });
   await prepareTest(db, 'owner', ID);
   const subscribed = JSON.parse(requests.find((r) => r.options.method === 'POST').options.body).subscribed_fields;
-  assert.deepEqual(new Set(subscribed.split(',')), new Set(['comments', 'messages', 'messaging_seen']));
+  assert.deepEqual(new Set(subscribed.split(',')), new Set(['comments', 'messages', 'messaging_postbacks', 'messaging_seen']));
   assert.equal(db.uploads.length, 1);
   assert.equal(db.uploads[0].options.contentType, 'audio/mp4');
   assert.equal(db.row.audio_base64, null);

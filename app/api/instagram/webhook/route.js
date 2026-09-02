@@ -5,6 +5,7 @@ import { processAudioTests, extractTestMessages } from '../audio-test/service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 const API_VERSION = 'v26.0';
 const AUTOMATIONS_STORAGE_KEY = 'guihub-automations';

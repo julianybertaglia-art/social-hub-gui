@@ -36,6 +36,17 @@ export async function latestTest(db, userId) {
   return data;
 }
 
+export function safeMetaDetail(error, token = '') {
+  let detail = String(error?.error_user_msg || error?.message || '');
+  if (token) detail = detail.split(token).join('[credencial]');
+  return detail
+    .replace(/https?:\/\/[^\s"<>]+/gi, '[endereço de mídia]')
+    .replace(/\b(?:access_token|token|apikey)\s*[=:]\s*[^\s&,]+/gi, '[credencial]')
+    .replace(/[A-Za-z0-9_+/=-]{60,}/g, '[identificador]')
+    .replace(/\b\d{12,}\b/g, '[identificador]')
+    .slice(0, 420);
+}
+
 async function metaRequest(path, body) {
   const token = process.env.META_INSTAGRAM_ACCESS_TOKEN;
   if (!token) throw testError('A conexão do Instagram precisa ser configurada no Hub.', 503);
@@ -48,32 +59,42 @@ async function metaRequest(path, body) {
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok || result?.error) {
-    // Provider messages can echo request data; expose only numeric diagnostics.
     const code = Number(result?.error?.code);
-    throw testError(`O Instagram recusou a solicitação${Number.isFinite(code) ? ` (código ${code})` : ''}. Verifique a conexão e a permissão de mensagens.`, 502);
+    const subcode = Number(result?.error?.error_subcode);
+    const detail = safeMetaDetail(result?.error, token);
+    const diagnostic = Number.isFinite(code) ? ` (código ${code}${Number.isFinite(subcode) ? `/${subcode}` : ''})` : '';
+    throw testError(`O Instagram recusou a solicitação${diagnostic}.${detail ? ` ${detail}` : ' Confira a conexão do Instagram no Hub.'}`, 502);
   }
   return result;
 }
 
 async function preparePrivateAudio(db, test) {
-  if (test.audio_path) return test.audio_path;
+  // Instagram Login's Send API lists AAC/M4A/WAV/MP4 for audio, not MP3.
+  // https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-instagram-login/messaging-api
+  if (test.audio_path?.endsWith('.m4a')) return test.audio_path;
   const bytes = Buffer.from(test.audio_base64 || '', 'base64');
-  const mp3 = bytes.subarray(0, 3).toString() === 'ID3' || (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0);
-  if (!mp3 || !bytes.length || bytes.length > MAX_AUDIO_BYTES) {
-    throw testError('O áudio do teste precisa estar em MP3 e ter até 2 MB.', 422);
+  const m4a = bytes.length >= 16 && bytes.subarray(4, 8).toString('ascii') === 'ftyp'
+    && ['M4A ', 'isom', 'mp42'].includes(bytes.subarray(8, 12).toString('ascii'));
+  if (!m4a || bytes.length > MAX_AUDIO_BYTES) {
+    throw testError('O áudio do teste precisa estar em M4A com áudio AAC e ter até 2 MB.', 422);
   }
   const { data: bucket, error: bucketError } = await db.storage.getBucket(BUCKET);
   if (bucketError) {
     if (!['400', '404'].includes(String(bucketError.statusCode))) throw testError('Não foi possível acessar o áudio privado.', 503);
     const { error } = await db.storage.createBucket(BUCKET, {
-      public: false, allowedMimeTypes: ['audio/mpeg'], fileSizeLimit: MAX_AUDIO_BYTES,
+      public: false, allowedMimeTypes: ['audio/mp4'], fileSizeLimit: MAX_AUDIO_BYTES,
     });
     if (error) throw testError('Não foi possível preparar o armazenamento do áudio.', 503);
   } else if (bucket?.public) {
     throw testError('O armazenamento do teste precisa ser privado.', 503);
+  } else if (!bucket?.allowed_mime_types?.includes('audio/mp4')) {
+    const { error } = await db.storage.updateBucket(BUCKET, {
+      public: false, allowedMimeTypes: ['audio/mp4'], fileSizeLimit: MAX_AUDIO_BYTES,
+    });
+    if (error) throw testError('Não foi possível preparar o armazenamento para M4A.', 503);
   }
-  const path = `${test.user_id}/${test.id}.mp3`;
-  const { error } = await db.storage.from(BUCKET).upload(path, bytes, { contentType: 'audio/mpeg', upsert: true });
+  const path = `${test.user_id}/${test.id}.m4a`;
+  const { error } = await db.storage.from(BUCKET).upload(path, bytes, { contentType: 'audio/mp4', upsert: true });
   if (error) throw testError('Não foi possível guardar o áudio. Tente novamente.', 503);
   return path;
 }
@@ -133,17 +154,25 @@ export function extractTestMessages(payload, now = Date.now()) {
 }
 
 export async function sendTestReply(db, event) {
+  if (!/^\d+$/.test(String(event?.senderId || ''))) return false;
   const now = new Date();
   // One atomic claim prevents repeated deliveries across webhook retries/workers.
   const { data: test, error } = await db.from(TABLE).update({
     status: 'sending', recipient_id: event.senderId, incoming_message_id: event.messageId, updated_at: now.toISOString(),
   }).eq('keyword', event.keyword).eq('ig_account_id', event.accountId).eq('status', 'ready')
+    .or(`recipient_id.is.null,recipient_id.eq.${event.senderId}`)
     .gt('expires_at', now.toISOString()).lte('prepared_at', new Date(event.timestamp).toISOString())
-    .select('id,audio_path').maybeSingle();
+    .select('id,user_id,audio_path,audio_base64').maybeSingle();
   if (error) throw testError('Não foi possível verificar o teste de áudio.', 503);
   if (!test) return false;
   try {
-    const { data: media, error: mediaError } = await db.storage.from(BUCKET).createSignedUrl(test.audio_path, 3600);
+    const path = await preparePrivateAudio(db, test);
+    if (path !== test.audio_path || test.audio_base64) {
+      const { error: audioError } = await db.from(TABLE).update({ audio_path: path, audio_base64: null })
+        .eq('id', test.id).eq('status', 'sending');
+      if (audioError) throw testError('Não foi possível registrar o áudio preparado.', 503);
+    }
+    const { data: media, error: mediaError } = await db.storage.from(BUCKET).createSignedUrl(path, 3600);
     if (mediaError || !media?.signedUrl) throw testError('Não foi possível preparar o áudio para o Instagram.', 503);
     const result = await metaRequest(`${event.accountId}/messages`, {
       recipient: { id: event.senderId },

@@ -20,7 +20,7 @@ const CONTENT_REFRESH_INTERVAL = 6 * 60 * 60 * 1000;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-const supabase = supabaseUrl && supabaseKey
+export const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 

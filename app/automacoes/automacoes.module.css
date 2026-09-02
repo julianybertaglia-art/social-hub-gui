@@ -289,6 +289,31 @@
   opacity: .5;
 }
 
+.audioPanel { max-width: 1180px; margin: 0 auto 20px; scroll-margin-top: 24px; }
+.audioBadge { padding: 8px 12px; border-radius: 20px; background: #f4f0e7; color: #775a28; font-size: 12px; }
+.audioIntro { color: #59564f; line-height: 1.6; font-size: 14px; }
+.audioFile { display: flex; align-items: center; gap: 14px; padding: 16px; margin: 18px 0; border-radius: 10px; background: #f8f7f3; font-size: 14px; }
+.audioFile > span:first-child { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: #e9deca; color: #775a28; font-size: 22px; }
+.audioFile > span:last-child { margin-left: auto; color: #77746d; }
+.audioActions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+.audioActions > span, .audioSteps > p { color: #77746d; font-size: 12px; line-height: 1.6; }
+.audioSteps ol { padding-left: 22px; line-height: 1.7; font-size: 14px; }
+.audioSteps li { margin-bottom: 8px; }
+.audioSteps a { color: #775a28; text-underline-offset: 3px; }
+.audioKeyword { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; border: 1px solid #e4d6ba; border-radius: 9px; background: #fbf6ec; padding: 14px; }
+.audioKeyword code { font-size: clamp(14px, 3vw, 19px); letter-spacing: .03em; overflow-wrap: anywhere; }
+.audioKeyword button, .audioResults button { padding: 11px 14px; min-height: 44px; border: 1px solid #ded8cc; border-radius: 8px; background: white; color: #171717; font: inherit; font-size: 13px; cursor: pointer; }
+.audioKeyword button { margin-left: auto; }
+.audioResults { border: 0; padding: 0; margin: 22px 0 0; }
+.audioResults legend { margin-bottom: 12px; font-weight: 700; font-size: 14px; }
+.audioResults button { margin: 0 8px 8px 0; }
+.audioResults button[aria-pressed="true"] { background: #e9f0e8; border-color: #557d62; color: #34573b; }
+.audioResults p { font-size: 13px; color: #34573b; }
+.audioError { color: #934339; font-size: 13px; line-height: 1.6; }
+.audioRefresh { margin-top: 20px; padding: 10px 0; min-height: 44px; border: 0; background: transparent; color: #59564f; text-decoration: underline; text-underline-offset: 3px; font: inherit; font-size: 12px; cursor: pointer; }
+.audioPanel button:focus-visible { outline: 3px solid #b9924d; outline-offset: 3px; }
+.audioPanel button:disabled { opacity: .5; cursor: wait; }
+
 @media (max-width: 900px) {
   .statusGrid {
     grid-template-columns: 1fr;

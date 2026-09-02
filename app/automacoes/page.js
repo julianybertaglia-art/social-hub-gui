@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import styles from './automacoes.module.css';
+import AudioTest from './AudioTest';
 
 const DEFAULT_IMERSAO_MESSAGE = 'Fala! Vi que você comentou IMERSÃO no vídeo 👊\n\nA Imersão Ecommerce Mercado Livre Pro é um evento presencial para quem quer escalar sua operação nos marketplaces, com conteúdo prático sobre Mercado Livre, anúncios, operação, IA, importação e estratégias de crescimento.\n\n📅 26 de setembro de 2026\n⏰ 09h30 às 20h30\n📍 R. Airi, 227 — Tatuapé, São Paulo/SP\n\nPara compra de ingressos ou mais informações, fale com a equipe pelo WhatsApp: (11) 92399-0244';
 
@@ -132,6 +133,8 @@ export default function AutomacoesPage() {
           <small>Webhook oficial da Meta ativo</small>
         </article>
       </section>
+
+      <AudioTest />
 
       <section className={styles.rulesWrap}>
         {rules.map((rule, index) => (

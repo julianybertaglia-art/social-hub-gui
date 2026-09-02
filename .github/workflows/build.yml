@@ -22,5 +22,8 @@ jobs:
       - name: Instalar dependências
         run: npm install
 
+      - name: Testar envio restrito de áudio
+        run: node --test tests/instagram-audio.test.mjs
+
       - name: Testar build
         run: npm run build

@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
+import { after } from 'next/server';
+import { processAudioTests, extractTestMessages } from '../audio-test/service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -212,6 +214,13 @@ export async function POST(request) {
     payload = JSON.parse(rawBody);
   } catch {
     return Response.json({ ok: false, error: 'JSON inválido.' }, { status: 400 });
+  }
+
+  if (extractTestMessages(payload).length) {
+    after(async () => {
+      try { await processAudioTests(payload); }
+      catch { console.error('Teste de áudio: não foi possível processar a mensagem.'); }
+    });
   }
 
   const commentEvents = extractCommentEvents(payload);

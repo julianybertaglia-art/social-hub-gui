@@ -1,10 +1,11 @@
 import {
   authorizedOwner,
   automationError,
+  buildAudioMenu,
   getOwnerAutomation,
   serverClient,
   setAutomationActive,
-} from './service';
+} from './service.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,13 +24,12 @@ function failure(error) {
 
 function clientAutomation(automation) {
   if (!automation) return null;
+  const menu = buildAudioMenu(automation).attachment.payload;
   return {
     name: automation.name,
-    commentKeyword: automation.comment_keyword,
-    publicReply: automation.public_reply,
-    promptMessage: automation.prompt_message,
-    quickReplyTitle: automation.quick_reply_title,
-    whatsappMessage: automation.whatsapp_message,
+    directKeyword: automation.direct_keyword,
+    menuMessage: menu.text,
+    menuButtons: menu.buttons,
     active: Boolean(automation.active),
     updatedAt: automation.updated_at,
   };

@@ -323,6 +323,22 @@
 .argoCopy { margin-top: 4px; padding: 14px 16px; border-radius: 10px; background: #f8f7f3; color: #59564f; font-size: 13px; line-height: 1.55; }
 .argoCopy strong { color: #171717; font-size: 12px; }
 .argoCopy p { margin: 6px 0 0; }
+.argoMenuMessage { white-space: pre-line; }
+.argoMenuButtons { display: grid; gap: 8px; margin-top: 16px; }
+.argoMenuButtons a { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 10px 14px; border: 1px solid #d7d6cf; border-radius: 8px; background: #fff; color: #32577c; font-weight: 700; text-decoration: none; }
+.argoMenuButtons a:hover { border-color: #a89670; background: #fffdf7; }
+.argoMenuButtons a:focus-visible, .argoContacts button:focus-visible { outline: 3px solid #b9924d; outline-offset: 3px; }
+.argoContacts { margin-top: 26px; padding-top: 22px; border-top: 1px solid #e4dfd5; font-size: 13px; color: #59564f; }
+.argoContactsHeading { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.argoContactsHeading strong { color: #171717; }
+.argoContactsHeading p { margin: 7px 0 0; line-height: 1.6; }
+.argoContacts button { min-height: 44px; padding: 10px 14px; border: 1px solid #d7d6cf; border-radius: 8px; background: white; color: #171717; font: inherit; cursor: pointer; }
+.argoContacts button:disabled { opacity: .5; cursor: wait; }
+.argoContactsTable { overflow-x: auto; margin: 16px 0; }
+.argoContactsTable table { width: 100%; border-collapse: collapse; text-align: left; }
+.argoContactsTable th, .argoContactsTable td { padding: 12px 10px; border-bottom: 1px solid #e4dfd5; }
+.argoContactsTable td:first-child { overflow-wrap: anywhere; }
+.argoContactsTable a { color: #32577c; white-space: nowrap; }
 .argoActions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-top: 20px; }
 .argoActions > span { color: #77746d; font-size: 12px; }
 .argoPauseButton { flex: 0 0 auto; min-height: 47px; padding: 0 18px; border: 1px solid #c9968f; border-radius: 9px; background: #fff6f4; color: #8f5146; font: inherit; font-weight: 700; cursor: pointer; }

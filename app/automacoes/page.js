@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import styles from './automacoes.module.css';
 import AudioTest from './AudioTest';
 import ArgoAudioAutomation from './ArgoAudioAutomation';
+import { isArgoKeyword } from '../lib/argo-flow';
 
 const DEFAULT_IMERSAO_MESSAGE = 'Fala! Vi que você comentou IMERSÃO no vídeo 👊\n\nA Imersão Ecommerce Mercado Livre Pro é um evento presencial para quem quer escalar sua operação nos marketplaces, com conteúdo prático sobre Mercado Livre, anúncios, operação, IA, importação e estratégias de crescimento.\n\n📅 26 de setembro de 2026\n⏰ 09h30 às 20h30\n📍 R. Airi, 227 — Tatuapé, São Paulo/SP\n\nPara compra de ingressos ou mais informações, fale com a equipe pelo WhatsApp: (11) 92399-0244';
 
@@ -44,6 +45,7 @@ function ensureThreeRules(value) {
     ...fallback,
     ...(parsed[index] || {}),
     id: parsed[index]?.id || fallback.id,
+    active: Boolean((parsed[index]?.active ?? fallback.active) && !isArgoKeyword(parsed[index]?.keyword || fallback.keyword)),
   }));
 }
 
@@ -70,13 +72,13 @@ export default function AutomacoesPage() {
   }, []);
 
   const activeCount = useMemo(
-    () => rules.filter((rule) => rule.active && rule.keyword.trim()).length,
+    () => rules.filter((rule) => rule.active && rule.keyword.trim() && !isArgoKeyword(rule.keyword)).length,
     [rules]
   );
 
   function updateRule(index, field, value) {
     setRules((current) => current.map((rule, ruleIndex) => (
-      ruleIndex === index ? { ...rule, [field]: value } : rule
+      ruleIndex === index ? { ...rule, [field]: value, ...(field === 'keyword' && isArgoKeyword(value) ? { active: false } : {}) } : rule
     )));
     setSaved(false);
   }
@@ -97,7 +99,7 @@ export default function AutomacoesPage() {
       publicReply: rule.publicReply.trim(),
       privateMessage: rule.privateMessage.trim(),
       tag: rule.tag.trim(),
-      active: Boolean(rule.active && rule.keyword.trim() && rule.privateMessage.trim()),
+      active: Boolean(rule.active && rule.keyword.trim() && rule.privateMessage.trim() && !isArgoKeyword(rule.keyword)),
     }));
 
     window.localStorage.setItem('guihub-automations', JSON.stringify(cleaned));
@@ -112,7 +114,7 @@ export default function AutomacoesPage() {
         <div>
           <span className={styles.eyebrow}>INSTAGRAM · @GUI_NONATO</span>
           <h1>Automações</h1>
-          <p>Crie até três palavras-chave. O Hub identifica o comentário e envia a resposta e o Direct correspondentes.</p>
+          <p>O Argo começa no Direct, com áudio e três opções. Abaixo, gerencie também as respostas automáticas por comentário.</p>
         </div>
         <Link className={styles.backButton} href="/">← Voltar ao Hub</Link>
       </header>
@@ -124,7 +126,7 @@ export default function AutomacoesPage() {
           <small>@gui_nonato</small>
         </article>
         <article className={styles.statusCard}>
-          <span>Automações ativas</span>
+          <span>Regras por comentário ativas</span>
           <strong>{activeCount} de 3</strong>
           <small>Você pode deixar até três regras prontas</small>
         </article>
@@ -152,6 +154,7 @@ export default function AutomacoesPage() {
                 <input
                   type="checkbox"
                   checked={rule.active}
+                  disabled={isArgoKeyword(rule.keyword)}
                   onChange={(event) => updateRule(index, 'active', event.target.checked)}
                 />
                 <i aria-hidden="true" />
@@ -162,6 +165,9 @@ export default function AutomacoesPage() {
               <div className={styles.notice}>
                 Esta é a automação que já testamos com IMERSÃO. Você pode editar o texto e salvar normalmente.
               </div>
+            )}
+            {isArgoKeyword(rule.keyword) && (
+              <div className={styles.notice}>ARGO agora funciona no Direct, pelo fluxo de áudio acima. Esta regra por comentário está desativada.</div>
             )}
 
             <div className={styles.formGrid}>

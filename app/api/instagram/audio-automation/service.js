@@ -4,12 +4,13 @@ export const AUTOMATION_TABLE = 'instagram_audio_automations';
 export const DELIVERY_TABLE = 'instagram_audio_deliveries';
 
 const API_VERSION = 'v26.0';
-const MAX_EVENT_AGE_MS = 8 * 24 * 60 * 60 * 1000;
+const MAX_EVENT_AGE_MS = 24 * 60 * 60 * 1000;
 const MAX_FUTURE_SKEW_MS = 5 * 60 * 1000;
 const CONFIG_FIELDS = [
   'id', 'user_id', 'name', 'slug', 'ig_account_id', 'comment_keyword', 'public_reply',
   'prompt_message', 'quick_reply_title', 'quick_reply_payload', 'audio_bucket', 'audio_path',
   'whatsapp_message', 'active', 'created_at', 'updated_at',
+  'direct_keyword', 'menu_message', 'menu_buttons', 'flow_version',
 ].join(',');
 
 export function automationError(message, status = 500) {
@@ -122,7 +123,7 @@ async function ensureSubscription(accountId) {
   });
 
   if (result.success !== true) {
-    throw automationError('O Instagram não confirmou o recebimento do botão de áudio.', 502);
+    throw automationError('O Instagram não confirmou o recebimento de mensagens do Direct.', 502);
   }
 }
 
@@ -144,6 +145,8 @@ export async function setAutomationActive(db, userId, active) {
   if (!automation.audio_path?.endsWith('.m4a') || !automation.audio_bucket) {
     throw automationError('O áudio oficial precisa estar em M4A/AAC antes de ativar.', 422);
   }
+
+  buildAudioMenu(automation);
 
   const { data: signedAudio, error: signedAudioError } = await db.storage
     .from(automation.audio_bucket)
@@ -170,39 +173,6 @@ export async function setAutomationActive(db, userId, active) {
   return data;
 }
 
-export async function loadActiveAudioAutomations(accountId) {
-  if (!/^\d+$/.test(String(accountId || ''))) return [];
-  const db = serverClient();
-  const { data, error } = await db.from(AUTOMATION_TABLE)
-    .select(CONFIG_FIELDS)
-    .eq('ig_account_id', String(accountId))
-    .eq('active', true);
-  if (error) throw automationError('Não foi possível carregar a automação de áudio.', 503);
-  return data || [];
-}
-
-export function findAudioAutomationForComment(text, automations) {
-  const comment = normalizeText(text);
-  return (automations || []).find((automation) => {
-    const keyword = normalizeText(automation.comment_keyword);
-    return keyword && comment.includes(keyword);
-  }) || null;
-}
-
-export async function sendAudioPrompt(igUserId, commentId, automation) {
-  return metaRequest(`${igUserId}/messages`, {
-    recipient: { comment_id: commentId },
-    message: {
-      text: automation.prompt_message,
-      quick_replies: [{
-        content_type: 'text',
-        title: automation.quick_reply_title,
-        payload: automation.quick_reply_payload,
-      }],
-    },
-  });
-}
-
 export function extractAudioSelectionEvents(payload, now = Date.now()) {
   if (payload?.object !== 'instagram' || !Array.isArray(payload.entry)) return [];
 
@@ -226,17 +196,43 @@ export function extractAudioSelectionEvents(payload, now = Date.now()) {
   }));
 }
 
-function selectionMatches(event, automation) {
+export function matchesAudioTrigger(event, automation) {
+  // Keep old, already-delivered buttons usable while the new CTA is ARGO in Direct.
   if (event.quickReplyPayload) return event.quickReplyPayload === automation.quick_reply_payload;
-  return normalizeText(event.text) === normalizeText(automation.quick_reply_title);
+  const text = normalizeText(event.text);
+  const keyword = normalizeText(automation.direct_keyword);
+  return Boolean(keyword && text.replace(/^[^A-Z0-9]+|[^A-Z0-9]+$/g, '') === keyword)
+    || Boolean(automation.quick_reply_title && text === normalizeText(automation.quick_reply_title));
+}
+
+export function buildAudioMenu(automation) {
+  const text = String(automation.menu_message || '').trim();
+  const buttons = automation.menu_buttons;
+  if (!text || [...text].length > 640 || !Array.isArray(buttons) || buttons.length !== 3) {
+    throw automationError('Configure a mensagem e os três destinos do menu do Argo.', 422);
+  }
+  const validated = buttons.map((button) => {
+    const title = String(button?.title || '').trim();
+    let url;
+    try { url = new URL(button?.url); } catch { /* Validated below. */ }
+    if (button?.type !== 'web_url' || !title || [...title].length > 20
+      || !url || url.protocol !== 'https:' || url.username || url.password) {
+      throw automationError('Os três botões precisam de títulos curtos e links HTTPS válidos.', 422);
+    }
+    return { type: 'web_url', title, url: url.href };
+  });
+  return { attachment: { type: 'template', payload: { template_type: 'button', text, buttons: validated } } };
 }
 
 export async function sendAudioDelivery(db, event, automation) {
+  if (event.timestamp < Date.now() - MAX_EVENT_AGE_MS) return false;
+  const menu = buildAudioMenu(automation);
   const now = new Date().toISOString();
   const { data: delivery, error: claimError } = await db.from(DELIVERY_TABLE)
     .insert({
       automation_id: automation.id,
       recipient_id: event.senderId,
+      flow_version: automation.flow_version,
       incoming_message_id: event.messageId,
       status: 'sending',
       created_at: now,
@@ -273,23 +269,23 @@ export async function sendAudioDelivery(db, event, automation) {
       .eq('status', 'sending');
     if (audioSaveError) throw automationError('O áudio foi enviado, mas não foi possível registrar o envio.', 503);
 
-    const whatsappResult = await metaRequest(`${event.accountId}/messages`, {
+    const menuResult = await metaRequest(`${event.accountId}/messages`, {
       recipient: { id: event.senderId },
-      message: { text: automation.whatsapp_message },
+      message: menu,
     });
-    const whatsappMessageId = String(whatsappResult?.message_id || '');
-    if (!whatsappMessageId) throw automationError('O Instagram não confirmou o envio do WhatsApp da equipe.', 502);
+    const menuMessageId = String(menuResult?.message_id || '');
+    if (!menuMessageId) throw automationError('O Instagram não confirmou o envio do menu de opções.', 502);
 
     const { error: completeError } = await db.from(DELIVERY_TABLE)
       .update({
         status: 'sent',
-        whatsapp_message_id: whatsappMessageId,
+        menu_message_id: menuMessageId,
         sent_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', delivery.id)
       .eq('status', 'audio_sent');
-    if (completeError) throw automationError('O áudio e o WhatsApp foram enviados, mas o registro não foi atualizado.', 503);
+    if (completeError) throw automationError('O áudio e o menu foram enviados, mas o registro não foi atualizado.', 503);
   } catch (error) {
     // An uncertain response from Meta must never trigger an automatic resend of the audio.
     const status = audioMessageId ? 'partial' : 'failed';
@@ -306,11 +302,11 @@ export async function sendAudioDelivery(db, event, automation) {
   return true;
 }
 
-export async function processAudioSelections(payload) {
+export async function processAudioSelections(payload, db = null) {
   const events = extractAudioSelectionEvents(payload);
   if (!events.length) return;
 
-  const db = serverClient();
+  db ||= serverClient();
   const cache = new Map();
   for (const event of events) {
     let automations = cache.get(event.accountId);
@@ -324,7 +320,7 @@ export async function processAudioSelections(payload) {
       cache.set(event.accountId, automations);
     }
 
-    const automation = automations.find((candidate) => selectionMatches(event, candidate));
+    const automation = automations.find((candidate) => matchesAudioTrigger(event, candidate));
     if (automation) await sendAudioDelivery(db, event, automation);
   }
 }

@@ -120,6 +120,14 @@ function findMatchingRule(text, rules) {
   }) || null;
 }
 
+function findAudioAutomationForComment(text, automations) {
+  const normalizedComment = normalizeText(text);
+  return (automations || []).find((automation) => {
+    const keyword = normalizeText(automation.comment_keyword);
+    return keyword && normalizedComment.includes(keyword);
+  }) || null;
+}
+
 async function metaPost(path, body) {
   const accessToken = process.env.META_INSTAGRAM_ACCESS_TOKEN;
 
@@ -157,6 +165,20 @@ async function sendPrivateReply(igUserId, commentId, message) {
   });
 }
 
+async function sendAudioPrompt(igUserId, commentId, automation) {
+  return metaPost(`${igUserId}/messages`, {
+    recipient: { comment_id: commentId },
+    message: {
+      text: automation.prompt_message,
+      quick_replies: [{
+        content_type: 'text',
+        title: automation.quick_reply_title,
+        payload: automation.quick_reply_payload,
+      }],
+    },
+  });
+}
+
 async function sendPublicReply(commentId, message) {
   if (!message) return null;
 
@@ -181,6 +203,37 @@ function extractCommentEvents(payload) {
 
     return [];
   });
+}
+
+async function loadAudioAutomationsByAccount(events) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServerKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+  const byAccount = new Map();
+  const accountIds = [...new Set(events.map((event) => String(event.igUserId || '')).filter((id) => /^\d+$/.test(id)))];
+
+  if (!supabaseUrl || !supabaseServerKey || !accountIds.length) return byAccount;
+
+  try {
+    const supabase = createClient(supabaseUrl, supabaseServerKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data, error } = await supabase
+      .from('instagram_audio_automations')
+      .select('id,ig_account_id,comment_keyword,public_reply,prompt_message,quick_reply_title,quick_reply_payload,active')
+      .in('ig_account_id', accountIds)
+      .eq('active', true);
+
+    if (error) throw error;
+    for (const accountId of accountIds) {
+      byAccount.set(accountId, (data || []).filter((automation) => String(automation.ig_account_id) === accountId));
+    }
+  } catch (error) {
+    console.error('Automação de áudio ARGO: não foi possível carregar a configuração do comentário.', error instanceof Error ? error.message : String(error));
+    for (const accountId of accountIds) byAccount.set(accountId, []);
+  }
+
+  return byAccount;
 }
 
 export async function GET(request) {
@@ -238,22 +291,33 @@ export async function POST(request) {
 
   const commentEvents = extractCommentEvents(payload);
   const rules = commentEvents.length ? await loadAutomationRules() : [];
+  const audioAutomationsByAccount = commentEvents.length
+    ? await loadAudioAutomationsByAccount(commentEvents)
+    : new Map();
 
   for (const event of commentEvents) {
     const commentId = event?.value?.id;
     const text = event?.value?.text;
     const username = event?.value?.from?.username;
-    const matchingRule = findMatchingRule(text, rules);
+    const audioAutomation = findAudioAutomationForComment(
+      text,
+      audioAutomationsByAccount.get(String(event.igUserId)) || []
+    );
+    const matchingRule = audioAutomation ? null : findMatchingRule(text, rules);
 
-    if (!commentId || !event.igUserId || !matchingRule) continue;
+    if (!commentId || !event.igUserId || (!audioAutomation && !matchingRule)) continue;
     if (String(username || '').toLowerCase() === 'gui_nonato') continue;
 
-    const logPrefix = `AUTOMACAO:${normalizeText(matchingRule.keyword)}`;
-    const ruleId = matchingRule.id;
-    const publicReply = matchingRule.publicReply;
+    const logPrefix = audioAutomation
+      ? 'AUDIO:ARGO'
+      : `AUTOMACAO:${normalizeText(matchingRule.keyword)}`;
+    const ruleId = audioAutomation ? audioAutomation.id : matchingRule.id;
+    const publicReply = audioAutomation ? audioAutomation.public_reply : matchingRule.publicReply;
 
     try {
-      const privateResult = await sendPrivateReply(event.igUserId, commentId, matchingRule.privateMessage);
+      const privateResult = audioAutomation
+        ? await sendAudioPrompt(event.igUserId, commentId, audioAutomation)
+        : await sendPrivateReply(event.igUserId, commentId, matchingRule.privateMessage);
 
       console.info(`${logPrefix}: Direct enviado`, {
         commentId,
@@ -285,7 +349,7 @@ export async function POST(request) {
       console.error(`${logPrefix}: falha na resposta pública`, {
         commentId,
         username,
-        ruleId: matchingRule.id,
+        ruleId,
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -296,6 +360,7 @@ export async function POST(request) {
     status: 'EVENT_RECEIVED',
     commentEvents: commentEvents.length,
     activeRules: rules.length,
-    audioTrigger: 'direct',
+    activeAudioAutomations: [...audioAutomationsByAccount.values()].flat().length,
+    audioTrigger: 'direct+comment-button',
   });
 }

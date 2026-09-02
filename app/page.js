@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import DetailDialog from './DetailDialog';
 
 const navItems = [
   { id: 'dashboard', label: 'Visão geral', icon: '◫' },
@@ -134,6 +135,22 @@ function EmptyState({ children }) {
   return <div className="empty-state">{children}</div>;
 }
 
+function TaskRow({ task, onToggle, onOpen }) {
+  return (
+    <div className={`task-row ${task.done ? 'done' : ''}`}>
+      <label className="task-check-control">
+        <input type="checkbox" checked={task.done} onChange={() => onToggle(task.id)} aria-label={`${task.done ? 'Reabrir' : 'Concluir'} tarefa: ${task.text}`} />
+        <span className="custom-check" aria-hidden="true">✓</span>
+      </label>
+      <button type="button" className="task-details-button" onClick={() => onOpen(task.id)} aria-haspopup="dialog">
+        <span className="task-copy">{task.text}</span>
+        <span className="task-open-hint">Ver detalhes →</span>
+      </button>
+      <span className={`priority priority-${task.priority.toLowerCase()}`}>{task.priority}</span>
+    </div>
+  );
+}
+
 export default function Home() {
   const [active, setActive] = useState('dashboard');
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -144,6 +161,13 @@ export default function Home() {
   const [goals, setGoals] = useStoredState('guihub-goals', defaultGoals);
   const [ideaDraft, setIdeaDraft] = useState({ title: '', audience: '', format: 'Reel', priority: 'Média' });
   const [postDraft, setPostDraft] = useState({ date: '', time: '', format: 'Reel', title: '', objective: 'Autoridade', status: 'Ideia' });
+  const [detailPath, setDetailPath] = useState([]);
+  const selectedDetail = detailPath[detailPath.length - 1];
+  const detailItem = selectedDetail && (selectedDetail.kind === 'task' ? tasks : posts).find((item) => item.id === selectedDetail.id);
+  const relatedPosts = (detailItem?.brief?.relatedPostIds || []).map((id) => posts.find((post) => post.id === id)).filter(Boolean);
+
+  function openTask(id) { setDetailPath([{ kind: 'task', id }]); }
+  function openPost(id) { setDetailPath([{ kind: 'post', id }]); }
 
   const completedTasks = tasks.filter((task) => task.done).length;
   const totalContent = posts.length;
@@ -225,12 +249,7 @@ export default function Home() {
             </div>
             <div className="task-list compact">
               {tasks.slice(0, 4).map((task) => (
-                <label className={`task-row ${task.done ? 'done' : ''}`} key={task.id}>
-                  <input type="checkbox" checked={task.done} onChange={() => toggleTask(task.id)} />
-                  <span className="custom-check">✓</span>
-                  <span className="task-copy">{task.text}</span>
-                  <span className={`priority priority-${task.priority.toLowerCase()}`}>{task.priority}</span>
-                </label>
+                <TaskRow key={task.id} task={task} onToggle={toggleTask} onOpen={openTask} />
               ))}
             </div>
             <button className="text-button" onClick={() => goTo('tasks')}>Ver todos os próximos passos →</button>
@@ -258,11 +277,11 @@ export default function Home() {
             </div>
             <div className="post-list">
               {posts.slice(0, 3).map((post) => (
-                <div className="post-row" key={post.id}>
-                  <div className="date-box"><strong>{post.date}</strong><span>{post.time || '—'}</span></div>
-                  <div className="post-copy"><span>{post.format} · {post.objective}</span><strong>{post.title}</strong></div>
+                <button type="button" className="post-row post-details-button" key={post.id} onClick={() => openPost(post.id)} aria-haspopup="dialog">
+                  <span className="date-box"><strong>{post.date}</strong><span>{post.time || '—'}</span></span>
+                  <span className="post-copy"><span>{post.format} · {post.objective}</span><strong>{post.title}</strong><span className="post-open-hint">Ver roteiro →</span></span>
                   <span className="status-badge">{post.status}</span>
-                </div>
+                </button>
               ))}
             </div>
           </article>
@@ -289,7 +308,7 @@ export default function Home() {
   function renderCalendar() {
     return (
       <>
-        <section className="page-heading"><div><span className="eyebrow">PLANEJAMENTO</span><h1>Calendário de conteúdo</h1><p className="subtitle">Organize o que será publicado, quando e com qual objetivo.</p></div></section>
+        <section className="page-heading"><div><span className="eyebrow">PLANEJAMENTO</span><h1>Calendário de conteúdo</h1><p className="subtitle">Clique em um conteúdo para abrir o formato, o roteiro e as orientações de produção.</p></div></section>
         <section className="two-column-form">
           <article className="panel form-panel">
             <h2>Novo conteúdo</h2>
@@ -305,7 +324,16 @@ export default function Home() {
           </article>
           <article className="panel mini-guide"><span className="eyebrow">REGRA DA SEMANA</span><h2>Conteúdo com função clara.</h2><p>Antes de publicar, escolha uma única intenção principal: atrair, provar autoridade, criar relacionamento ou converter.</p><ul><li>2 conteúdos de autoridade</li><li>1 conteúdo de alcance</li><li>1 sequência de conversão</li><li>Stories de relacionamento todos os dias</li></ul></article>
         </section>
-        <section className="panel list-panel"><div className="panel-heading"><div><span className="eyebrow">PROGRAMAÇÃO</span><h2>Conteúdos cadastrados</h2></div><span className="count-badge">{posts.length}</span></div>{posts.length === 0 ? <EmptyState>Nenhum conteúdo cadastrado.</EmptyState> : <div className="content-table">{posts.map((post) => <div className="content-card" key={post.id}><div className="content-date"><strong>{post.date}</strong><span>{post.time || 'Sem horário'}</span></div><div className="content-main"><div className="tag-row"><span>{post.format}</span><span>{post.objective}</span></div><h3>{post.title}</h3><small>{post.status}</small></div><button className="icon-button danger" onClick={() => removeItem(setPosts, post.id)} aria-label="Excluir conteúdo">×</button></div>)}</div>}</section>
+        <section className="panel list-panel">
+          <div className="panel-heading"><div><span className="eyebrow">PROGRAMAÇÃO</span><h2>Conteúdos cadastrados</h2></div><span className="count-badge">{posts.length}</span></div>
+          {posts.length === 0 ? <EmptyState>Nenhum conteúdo cadastrado.</EmptyState> : <div className="content-table">{posts.map((post) => <article className="content-card content-with-details" key={post.id}>
+            <button type="button" className="content-details-button" onClick={() => openPost(post.id)} aria-haspopup="dialog">
+              <span className="content-date"><strong>{post.date}</strong><span>{post.time || 'Sem horário'}</span></span>
+              <span className="content-main"><span className="tag-row"><span>{post.format}</span><span>{post.objective}</span></span><strong className="content-title">{post.title}</strong><small>{post.status} <span className="post-open-hint">· Ver roteiro →</span></small></span>
+            </button>
+            <button type="button" className="icon-button danger" onClick={() => removeItem(setPosts, post.id)} aria-label={`Excluir conteúdo: ${post.title}`}>×</button>
+          </article>)}</div>}
+        </section>
       </>
     );
   }
@@ -325,7 +353,7 @@ export default function Home() {
 
   function renderTasks() {
     return (
-      <><section className="page-heading"><div><span className="eyebrow">EXECUÇÃO</span><h1>Próximos passos</h1><p className="subtitle">Uma lista simples para saber exatamente o que fazer agora.</p></div></section><section className="panel task-page"><div className="panel-heading"><div><h2>Tarefas da semana</h2><p>{completedTasks} de {tasks.length} concluídas</p></div><span className="count-badge">{Math.round((completedTasks / Math.max(tasks.length, 1)) * 100)}%</span></div><Progress current={completedTasks} target={Math.max(tasks.length, 1)} /><div className="task-list page-list">{tasks.map((task) => <label className={`task-row ${task.done ? 'done' : ''}`} key={task.id}><input type="checkbox" checked={task.done} onChange={() => toggleTask(task.id)} /><span className="custom-check">✓</span><span className="task-copy">{task.text}</span><span className={`priority priority-${task.priority.toLowerCase()}`}>{task.priority}</span></label>)}</div></section></>
+      <><section className="page-heading"><div><span className="eyebrow">EXECUÇÃO</span><h1>Próximos passos</h1><p className="subtitle">Clique na tarefa para ver o passo a passo e abrir os roteiros dos posts.</p></div></section><section className="panel task-page"><div className="panel-heading"><div><h2>Tarefas da semana</h2><p>{completedTasks} de {tasks.length} concluídas</p></div><span className="count-badge">{Math.round((completedTasks / Math.max(tasks.length, 1)) * 100)}%</span></div><Progress current={completedTasks} target={Math.max(tasks.length, 1)} /><div className="task-list page-list">{tasks.map((task) => <TaskRow key={task.id} task={task} onToggle={toggleTask} onOpen={openTask} />)}</div></section></>
     );
   }
 
@@ -366,6 +394,15 @@ export default function Home() {
         <header className="topbar"><button className="menu-button" onClick={() => setMobileMenu(true)}>☰</button><div className="account-pill"><span className="instagram-dot">◎</span><div><strong>@gui_nonato</strong><span>Instagram</span></div></div><span className="demo-badge">MVP · DADOS MANUAIS</span></header>
         <div className="page-content">{content()}</div>
       </main>
+      {detailItem && <DetailDialog
+        item={detailItem}
+        kind={selectedDetail.kind}
+        relatedPosts={relatedPosts}
+        onOpenPost={(id) => setDetailPath((path) => [...path, { kind: 'post', id }])}
+        onClose={() => setDetailPath([])}
+        onBack={detailPath.length > 1 ? () => setDetailPath((path) => path.slice(0, -1)) : null}
+        onToggleTask={toggleTask}
+      />}
     </div>
   );
 }

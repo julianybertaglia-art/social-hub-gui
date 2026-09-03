@@ -23,12 +23,45 @@ async function requestTest(body) {
   return payload.test;
 }
 
+function readAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Não consegui ler o arquivo.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function readAudioDuration(file) {
+  return new Promise((resolve) => {
+    const audio = document.createElement('audio');
+    const url = URL.createObjectURL(file);
+    const clean = () => URL.revokeObjectURL(url);
+    audio.preload = 'metadata';
+    audio.onloadedmetadata = () => {
+      const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 1;
+      clean();
+      resolve(duration);
+    };
+    audio.onerror = () => {
+      clean();
+      resolve(1);
+    };
+    audio.src = url;
+  });
+}
+
 export default function AudioTest() {
   const [test, setTest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [mentoriaFile, setMentoriaFile] = useState(null);
+  const [mentoriaBusy, setMentoriaBusy] = useState(false);
+  const [mentoriaMessage, setMentoriaMessage] = useState('');
+  const [mentoriaError, setMentoriaError] = useState('');
+
   const refresh = useCallback(async () => {
     try { setTest(await requestTest()); setError(''); }
     catch (error) { setError(error.message); }
@@ -49,6 +82,48 @@ export default function AudioTest() {
     try { setTest(await requestTest({ id: test.id, action, ...(result ? { result } : {}) })); }
     catch (error) { await refresh(); setError(error.message); }
     finally { setBusy(false); }
+  }
+
+  async function saveMentoriaAudio() {
+    setMentoriaError('');
+    setMentoriaMessage('');
+    if (!mentoriaFile) {
+      setMentoriaError('Escolha o arquivo M4A da Mentoria primeiro.');
+      return;
+    }
+
+    const isM4a = mentoriaFile.name.toLowerCase().endsWith('.m4a') || mentoriaFile.type === 'audio/mp4';
+    if (!isM4a) {
+      setMentoriaError('Use o arquivo M4A da Mentoria. O Instagram não aceita esse áudio em OGG nessa automação.');
+      return;
+    }
+
+    if (mentoriaFile.size > 2 * 1024 * 1024) {
+      setMentoriaError('Esse áudio está maior que 2 MB. Use a versão M4A compactada.');
+      return;
+    }
+
+    setMentoriaBusy(true);
+    try {
+      const [audioBase64, durationSeconds] = await Promise.all([
+        readAsDataUrl(mentoriaFile),
+        readAudioDuration(mentoriaFile),
+      ]);
+      const saved = await requestTest({
+        action: 'save',
+        purpose: 'mentoria',
+        label: 'MENTORIA — áudio oficial',
+        durationSeconds,
+        audioBase64,
+      });
+      setTest(saved);
+      setMentoriaMessage('Áudio da Mentoria salvo. Agora clique em “Preparar teste”.');
+      setMentoriaFile(null);
+    } catch (error) {
+      setMentoriaError(error.message || 'Não consegui salvar o áudio da Mentoria.');
+    } finally {
+      setMentoriaBusy(false);
+    }
   }
 
   async function copyKeyword() {
@@ -72,6 +147,32 @@ export default function AudioTest() {
         </span>
       </div>
       <p className={styles.audioIntro}>Confira como a voz do Gui aparece na conversa do Instagram.</p>
+
+      <div className={styles.argoCopy} style={{ margin: '18px 0' }}>
+        <strong>Subir áudio da Mentoria</strong>
+        <p className={styles.audioIntro} style={{ marginTop: 8 }}>
+          Selecione o arquivo <strong>M4A</strong> da Mentoria. Depois ele vai aparecer aqui embaixo para você preparar o teste.
+        </p>
+        <input
+          type="file"
+          accept=".m4a,audio/mp4"
+          onChange={(event) => {
+            setMentoriaFile(event.target.files?.[0] || null);
+            setMentoriaError('');
+            setMentoriaMessage('');
+          }}
+          disabled={mentoriaBusy}
+        />
+        <div className={styles.audioActions} style={{ marginTop: 14 }}>
+          <button type="button" className={styles.saveButton} onClick={saveMentoriaAudio} disabled={mentoriaBusy}>
+            {mentoriaBusy ? 'Salvando áudio…' : 'Salvar áudio da Mentoria'}
+          </button>
+          <span>Use o M4A compactado para o Instagram.</span>
+        </div>
+        {mentoriaMessage && <p className={styles.audioIntro} role="status">{mentoriaMessage}</p>}
+        {mentoriaError && <p className={styles.audioError} role="alert">{mentoriaError}</p>}
+      </div>
+
       {test && <div className={styles.audioFile}><span aria-hidden="true">♫</span><strong>{test.label}</strong><span>{duration}</span></div>}
       {(error || test?.error_message) && <p className={styles.audioError} role="alert">{error || test.error_message}</p>}
       {!loading && !test && <p className={styles.audioIntro}>O áudio do teste ainda não está disponível. Atualize para conferir.</p>}

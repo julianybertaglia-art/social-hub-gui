@@ -4,6 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 export const TABLE = 'instagram_audio_tests';
 const BUCKET = 'instagram-audio-tests';
 const MAX_AUDIO_BYTES = 2 * 1024 * 1024;
+const MENTORIA_AUDIO_TEST_ID = '9edc7844-3f0a-4bb6-b71a-e2e7cb7d2331';
+const MENTORIA_AUTOMATION_SLUGS = ['mentoria-audio-comment', 'mentoria-audio-direct'];
 const STATUS_FIELDS = 'id,label,duration_seconds,keyword,status,prepared_at,expires_at,sent_at,error_message,visual_result';
 
 export function testError(message, status = 500) {
@@ -68,6 +70,56 @@ async function metaRequest(path, body) {
   return result;
 }
 
+function cleanBase64(value) {
+  return String(value || '')
+    .replace(/^data:[^;]+;base64,/i, '')
+    .replace(/\s/g, '');
+}
+
+function assertM4aBase64(audioBase64) {
+  const bytes = Buffer.from(cleanBase64(audioBase64), 'base64');
+  const m4a = bytes.length >= 16 && bytes.subarray(4, 8).toString('ascii') === 'ftyp'
+    && ['M4A ', 'isom', 'mp42'].includes(bytes.subarray(8, 12).toString('ascii'));
+  if (!m4a || bytes.length > MAX_AUDIO_BYTES) {
+    throw testError('O áudio precisa estar em M4A com áudio AAC e ter até 2 MB.', 422);
+  }
+  return bytes.toString('base64');
+}
+
+export async function saveAudioDraft(db, userId, body) {
+  const purpose = String(body?.purpose || '').trim().toLowerCase();
+  const isMentoria = purpose === 'mentoria';
+  const label = String(body?.label || (isMentoria ? 'MENTORIA — áudio oficial' : 'Áudio do Gui')).trim().slice(0, 90);
+  const audioBase64 = assertM4aBase64(body?.audioBase64 || body?.audio_base64);
+  const duration = Math.max(1, Number(body?.durationSeconds || body?.duration_seconds || 1));
+  const id = isMentoria ? MENTORIA_AUDIO_TEST_ID : crypto.randomUUID();
+
+  await db.from(TABLE).delete().eq('id', id).eq('user_id', userId);
+
+  const { data, error } = await db.from(TABLE).insert({
+    id,
+    user_id: userId,
+    label,
+    duration_seconds: duration,
+    audio_base64: audioBase64,
+    audio_path: null,
+    keyword: null,
+    status: 'draft',
+    error_message: null,
+    prepared_at: null,
+    expires_at: null,
+    sent_at: null,
+    sent_message_id: null,
+    recipient_id: null,
+    incoming_message_id: null,
+    visual_result: null,
+    updated_at: new Date().toISOString(),
+  }).select(STATUS_FIELDS).maybeSingle();
+
+  if (error || !data) throw testError('Não foi possível salvar o áudio no Hub.', 503);
+  return data;
+}
+
 async function preparePrivateAudio(db, test) {
   // Instagram Login's Send API lists AAC/M4A/WAV/MP4 for audio, not MP3.
   // https://developers.facebook.com/documentation/instagram-platform/instagram-api-with-instagram-login/messaging-api
@@ -97,6 +149,17 @@ async function preparePrivateAudio(db, test) {
   const { error } = await db.storage.from(BUCKET).upload(path, bytes, { contentType: 'audio/mp4', upsert: true });
   if (error) throw testError('Não foi possível guardar o áudio. Tente novamente.', 503);
   return path;
+}
+
+async function activateMentoriaAutomations(db, userId, accountId, audioPath, now) {
+  const { error } = await db.from('instagram_audio_automations').update({
+    active: true,
+    ig_account_id: accountId,
+    audio_path: audioPath,
+    updated_at: now.toISOString(),
+  }).eq('user_id', userId).in('slug', MENTORIA_AUTOMATION_SLUGS);
+
+  if (error) throw testError('O áudio foi preparado, mas não consegui ativar a automação da Mentoria.', 503);
 }
 
 export async function prepareTest(db, userId, id) {
@@ -131,6 +194,10 @@ export async function prepareTest(db, userId, id) {
       updated_at: now.toISOString(),
     }).eq('id', id).eq('user_id', userId).eq('status', 'preparing');
     if (saveError) throw testError('Não foi possível salvar o teste preparado.', 503);
+
+    if (String(test.id) === MENTORIA_AUDIO_TEST_ID || String(test.label || '').toUpperCase().includes('MENTORIA')) {
+      await activateMentoriaAutomations(db, userId, accountId, path, now);
+    }
   } catch (error) {
     await db.from(TABLE).update({ status: 'prepare_failed', error_message: error.status ? error.message : 'A preparação não terminou. Tente novamente.', updated_at: new Date().toISOString() })
       .eq('id', id).eq('user_id', userId).eq('status', 'preparing');

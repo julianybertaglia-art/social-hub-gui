@@ -208,8 +208,8 @@ export function matchesAudioTrigger(event, automation) {
 export function buildAudioMenu(automation) {
   const text = String(automation.menu_message || '').trim();
   const buttons = automation.menu_buttons;
-  if (!text || [...text].length > 640 || !Array.isArray(buttons) || buttons.length !== 3) {
-    throw automationError('Configure a mensagem e os três destinos do menu do Argo.', 422);
+  if (!text || [...text].length > 640 || !Array.isArray(buttons) || buttons.length < 2 || buttons.length > 3) {
+    throw automationError('Configure a mensagem e entre dois e três destinos do menu.', 422);
   }
   const validated = buttons.map((button) => {
     const title = String(button?.title || '').trim();
@@ -217,7 +217,7 @@ export function buildAudioMenu(automation) {
     try { url = new URL(button?.url); } catch { /* Validated below. */ }
     if (button?.type !== 'web_url' || !title || [...title].length > 20
       || !url || url.protocol !== 'https:' || url.username || url.password) {
-      throw automationError('Os três botões precisam de títulos curtos e links HTTPS válidos.', 422);
+      throw automationError('Os botões precisam de títulos curtos e links HTTPS válidos.', 422);
     }
     return { type: 'web_url', title, url: url.href };
   });

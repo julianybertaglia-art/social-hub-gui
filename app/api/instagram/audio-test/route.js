@@ -1,4 +1,4 @@
-import { TABLE, authorizedOwner, latestTest, prepareTest, serverClient, testError } from './service';
+import { TABLE, authorizedOwner, latestTest, prepareTest, saveAudioDraft, serverClient, testError } from './service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,7 +25,13 @@ export async function POST(request) {
     const db = serverClient();
     const userId = await authorizedOwner(request, db);
     const body = await request.json().catch(() => null);
-    if (!body || !/^[0-9a-f-]{36}$/i.test(String(body.id || ''))) throw testError('Teste inválido.', 400);
+    if (!body || !body.action) throw testError('Ação inválida.', 400);
+
+    if (body.action === 'save') {
+      return json({ test: await saveAudioDraft(db, userId, body) });
+    }
+
+    if (!/^[0-9a-f-]{36}$/i.test(String(body.id || ''))) throw testError('Teste inválido.', 400);
     if (body.action === 'prepare') {
       await prepareTest(db, userId, body.id);
     } else if (body.action === 'result' && ['voice_bubble', 'file', 'not_received'].includes(body.result)) {

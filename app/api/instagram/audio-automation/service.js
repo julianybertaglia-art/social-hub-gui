@@ -197,7 +197,6 @@ export function extractAudioSelectionEvents(payload, now = Date.now()) {
 }
 
 export function matchesAudioTrigger(event, automation) {
-  // Keep old, already-delivered buttons usable while the new CTA is ARGO in Direct.
   if (event.quickReplyPayload) return event.quickReplyPayload === automation.quick_reply_payload;
   const text = normalizeText(event.text);
   const keyword = normalizeText(automation.direct_keyword);
@@ -208,9 +207,10 @@ export function matchesAudioTrigger(event, automation) {
 export function buildAudioMenu(automation) {
   const text = String(automation.menu_message || '').trim();
   const buttons = automation.menu_buttons;
-  if (!text || [...text].length > 640 || !Array.isArray(buttons) || buttons.length < 2 || buttons.length > 3) {
-    throw automationError('Configure a mensagem e entre dois e três destinos do menu.', 422);
+  if (!text || [...text].length > 640 || !Array.isArray(buttons) || buttons.length < 1 || buttons.length > 3) {
+    throw automationError('Configure a mensagem e de um a três destinos do menu.', 422);
   }
+
   const validated = buttons.map((button) => {
     const title = String(button?.title || '').trim();
     let url;
@@ -221,6 +221,7 @@ export function buildAudioMenu(automation) {
     }
     return { type: 'web_url', title, url: url.href };
   });
+
   return { attachment: { type: 'template', payload: { template_type: 'button', text, buttons: validated } } };
 }
 
@@ -228,6 +229,7 @@ export async function sendAudioDelivery(db, event, automation) {
   if (event.timestamp < Date.now() - MAX_EVENT_AGE_MS) return false;
   const menu = buildAudioMenu(automation);
   const now = new Date().toISOString();
+
   const { data: delivery, error: claimError } = await db.from(DELIVERY_TABLE)
     .insert({
       automation_id: automation.id,
@@ -287,7 +289,6 @@ export async function sendAudioDelivery(db, event, automation) {
       .eq('status', 'audio_sent');
     if (completeError) throw automationError('O áudio e o menu foram enviados, mas o registro não foi atualizado.', 503);
   } catch (error) {
-    // An uncertain response from Meta must never trigger an automatic resend of the audio.
     const status = audioMessageId ? 'partial' : 'failed';
     await db.from(DELIVERY_TABLE)
       .update({
@@ -297,8 +298,9 @@ export async function sendAudioDelivery(db, event, automation) {
       })
       .eq('id', delivery.id)
       .in('status', ['sending', 'audio_sent']);
-    console.error('Automação de áudio ARGO: envio não confirmado.', { deliveryId: delivery.id, status });
+    console.error('Automação de áudio: envio não confirmado.', { deliveryId: delivery.id, status });
   }
+
   return true;
 }
 

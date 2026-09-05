@@ -1,6 +1,7 @@
 import './globals.css';
 import CloudGate from './CloudGate';
 import AutomationShortcut from './AutomationShortcut';
+import InstagramAccountEvidence from './InstagramAccountEvidence';
 
 export const metadata = {
   title: 'Gui Social Hub',
@@ -13,6 +14,7 @@ export default function RootLayout({ children }) {
       <body>
         <CloudGate>
           {children}
+          <InstagramAccountEvidence />
           <AutomationShortcut />
         </CloudGate>
       </body>

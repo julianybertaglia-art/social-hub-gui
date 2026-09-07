@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { applyWhatsAppAutomations } from '../automation/service';
 import { getSupabaseAdmin, messageBody, normalizeWaId, upsertWhatsAppContact } from '../lib';
 
 export const runtime = 'nodejs';
@@ -89,24 +90,42 @@ export async function POST(request) {
           source,
           lastMessageAt: timestamp,
         });
+        const body = messageBody(message);
 
-        const { error } = await supabase
+        const { data: storedMessage, error } = await supabase
           .from('whatsapp_messages')
           .upsert({
             meta_message_id: message?.id || null,
             contact_id: contact.id,
             direction: 'inbound',
             message_type: message?.type || 'unknown',
-            body: messageBody(message),
+            body,
             status: 'received',
             raw_payload: message,
             sent_at: timestamp,
           }, {
             onConflict: 'meta_message_id',
             ignoreDuplicates: true,
-          });
+          })
+          .select('id')
+          .maybeSingle();
 
         if (error) throw error;
+
+        // A Meta pode reenviar o mesmo webhook. Só dispara automação quando a
+        // mensagem realmente acabou de ser inserida, evitando respostas duplicadas.
+        if (storedMessage?.id) {
+          try {
+            await applyWhatsAppAutomations({
+              supabase,
+              contact,
+              inboundMessageId: storedMessage.id,
+              inboundBody: body,
+            });
+          } catch (automationError) {
+            console.error('WhatsApp automation:', automationError);
+          }
+        }
       }
 
       for (const status of value.statuses || []) {

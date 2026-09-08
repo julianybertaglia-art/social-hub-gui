@@ -4,14 +4,37 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 
-const MODULES = [
-  { href: '/', label: 'Estratégia & conteúdo', icon: '◫', group: 'PRINCIPAL' },
-  { href: '/whatsapp', label: 'WhatsApp CRM', icon: '◉', group: 'OPERAÇÃO' },
-  { href: '/automacoes', label: 'Automações', icon: '⚡', group: 'OPERAÇÃO' },
+const GROUPS = [
+  {
+    label: 'PRINCIPAL',
+    items: [{ href: '/', label: 'Visão geral', icon: '⌂' }],
+  },
+  {
+    label: 'PLANEJAMENTO',
+    items: [
+      { href: '/?section=calendar', label: 'Calendário', icon: '▦' },
+      { href: '/?section=tasks', label: 'Tarefas', icon: '✓' },
+      { href: '/?section=ideas', label: 'Ideias', icon: '✦' },
+    ],
+  },
+  {
+    label: 'AUDIÊNCIA',
+    items: [
+      { href: '/whatsapp', label: 'CRM', icon: '◉', match: '/whatsapp' },
+      { href: '/automacoes', label: 'Automações', icon: '⚡', match: '/automacoes' },
+    ],
+  },
+  {
+    label: 'ANALYTICS',
+    items: [
+      { href: '/?section=metrics', label: 'Métricas', icon: '↗' },
+      { href: '/?section=goals', label: 'Metas', icon: '◎' },
+    ],
+  },
 ];
 
 function pageLabel(pathname) {
-  if (pathname.startsWith('/whatsapp')) return 'Atendimento & CRM';
+  if (pathname.startsWith('/whatsapp')) return 'CRM';
   if (pathname.startsWith('/automacoes')) return 'Automações';
   return 'Central estratégica';
 }
@@ -19,14 +42,9 @@ function pageLabel(pathname) {
 export default function HubFrame({ children }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  // A home já possui a navegação interna de Conteúdo/Performance.
-  // O frame global entra apenas nos módulos operacionais para não duplicar a sidebar.
   const framed = pathname.startsWith('/whatsapp') || pathname.startsWith('/automacoes');
 
   if (!framed) return children;
-
-  let lastGroup = null;
 
   return (
     <div className="hub-frame">
@@ -40,33 +58,26 @@ export default function HubFrame({ children }) {
         </Link>
 
         <nav className="hub-nav" aria-label="Áreas do Hub">
-          {MODULES.map((item) => {
-            const active = item.href === '/'
-              ? pathname === '/'
-              : pathname.startsWith(item.href);
-            const showGroup = item.group !== lastGroup;
-            lastGroup = item.group;
-
-            return (
-              <div key={item.href} className="hub-nav-item-wrap">
-                {showGroup && <span className="hub-nav-group">{item.group}</span>}
-                <Link
-                  href={item.href}
-                  className={`hub-nav-link ${active ? 'active' : ''}`}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <span className="hub-nav-icon">{item.icon}</span>
-                  <span>{item.label}</span>
-                </Link>
-              </div>
-            );
-          })}
+          {GROUPS.map((group) => (
+            <div className="hub-nav-group-wrap" key={group.label}>
+              <span className="hub-nav-group">{group.label}</span>
+              {group.items.map((item) => {
+                const active = item.match ? pathname.startsWith(item.match) : false;
+                return (
+                  <Link
+                    href={item.href}
+                    key={item.href}
+                    className={`hub-nav-link ${active ? 'active' : ''}`}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <span className="hub-nav-icon">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
-
-        <div className="hub-sidebar-note">
-          <span>ORGANIZAÇÃO</span>
-          <p>Conteúdo e performance ficam juntos. Leads e automações ficam na operação.</p>
-        </div>
 
         <div className="hub-profile">
           <div className="hub-profile-dot">J</div>
@@ -98,10 +109,10 @@ export default function HubFrame({ children }) {
           </button>
 
           <div className="hub-account">
-            <span className="hub-instagram-dot">◎</span>
+            <span className="hub-instagram-dot">GN</span>
             <div>
-              <strong>@gui_nonato</strong>
-              <span>Instagram</span>
+              <strong>Gui Nonato</strong>
+              <span>@gui_nonato · Instagram</span>
             </div>
           </div>
 
@@ -172,17 +183,22 @@ export default function HubFrame({ children }) {
 
         .hub-nav {
           display: grid;
-          gap: 5px;
+          flex: 1;
+          min-height: 0;
+          align-content: start;
+          gap: 18px;
           margin-top: 24px;
+          overflow-y: auto;
+          padding-right: 3px;
         }
 
-        .hub-nav-item-wrap {
+        .hub-nav-group-wrap {
           display: grid;
-          gap: 5px;
+          gap: 4px;
         }
 
         .hub-nav-group {
-          margin: 12px 12px 2px;
+          margin: 0 12px 4px;
           color: rgba(255,255,255,.34);
           font-size: 9px;
           font-weight: 800;
@@ -218,33 +234,11 @@ export default function HubFrame({ children }) {
           color: var(--gold);
         }
 
-        .hub-sidebar-note {
-          margin: 24px 8px 0;
-          padding: 14px;
-          border: 1px solid rgba(255,255,255,.08);
-          border-radius: 10px;
-          background: rgba(255,255,255,.035);
-        }
-
-        .hub-sidebar-note span {
-          color: #d5b57a;
-          font-size: 9px;
-          font-weight: 800;
-          letter-spacing: .12em;
-        }
-
-        .hub-sidebar-note p {
-          margin: 7px 0 0;
-          color: rgba(255,255,255,.5);
-          font-size: 11px;
-          line-height: 1.5;
-        }
-
         .hub-profile {
           display: flex;
           align-items: center;
           gap: 11px;
-          margin-top: auto;
+          margin-top: 18px;
           padding: 18px 8px 0;
           border-top: 1px solid rgba(255,255,255,.1);
         }
@@ -309,7 +303,8 @@ export default function HubFrame({ children }) {
           border-radius: 50%;
           background: var(--surface);
           color: var(--gold-dark);
-          font-size: 18px;
+          font-size: 10px;
+          font-weight: 800;
         }
 
         .hub-page-context {

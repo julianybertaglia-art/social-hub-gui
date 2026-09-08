@@ -1,114 +1,323 @@
-/* Organização visual da home — mantém identidade e funcionalidades existentes. */
+/* Organização da home sem alterar a identidade visual atual. */
 
-/* A primeira tela deve mostrar execução, não todos os relatórios ao mesmo tempo. */
-.page-content > .metrics-grid {
-  display: none;
+/* Navegação: grupos claros, sem atalhos flutuando por cima do menu. */
+.sidebar-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+  gap: 18px !important;
+  padding-right: 3px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.12) transparent;
 }
 
-.page-content > .dashboard-grid:not(.lower-grid) {
-  grid-template-columns: minmax(0, 1fr);
-  max-width: 900px;
+.sidebar-group {
+  display: grid;
+  gap: 4px;
 }
 
-.page-content > .dashboard-grid:not(.lower-grid) > .insight-panel {
-  display: none;
+.sidebar-group-label {
+  margin: 0 14px 4px;
+  color: rgba(255,255,255,.34);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .14em;
 }
 
-.page-content > .lower-grid {
+.sidebar-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: rgba(255,255,255,.63);
+  text-decoration: none;
+  transition: .2s ease;
+}
+
+.sidebar-nav-link:hover {
+  background: rgba(185,146,77,.15);
+  color: white;
+}
+
+.sidebar-bottom {
+  margin-top: 18px;
+}
+
+/* Barra superior: conta atual + conexão, sem um card enorme cobrindo o conteúdo. */
+.workspace-current .instagram-dot {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.workspace-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  padding: 7px 10px;
+  border: 1px solid #dce9df;
+  border-radius: 999px;
+  background: #eef8f1;
+  color: #3f6d4c;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.workspace-status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #5f936d;
+}
+
+/* Visão geral: uma tela de comando curta e legível. */
+.page-content {
+  padding-top: 34px;
+}
+
+.dashboard-hero {
+  margin-bottom: 20px;
+}
+
+.dashboard-hero h1 {
+  font-size: clamp(34px, 4vw, 46px);
+}
+
+.quick-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.quick-stat {
   display: block;
-  max-width: 900px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  text-align: left;
+  text-decoration: none;
+  transition: .2s ease;
 }
 
-.page-content > .lower-grid > article:nth-child(2) {
-  display: none;
+.quick-stat:hover {
+  transform: translateY(-1px);
+  border-color: #d7c9ad;
 }
 
-.page-content > .hero-row {
-  max-width: 900px;
-  margin-bottom: 22px;
+.quick-stat span,
+.quick-stat strong,
+.quick-stat small {
+  display: block;
 }
 
-.page-content > .hero-row h1 {
-  font-size: clamp(34px, 4vw, 44px);
+.quick-stat span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
 }
 
-.page-content > .hero-row .subtitle {
-  max-width: 560px;
+.quick-stat strong {
+  margin: 10px 0 5px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 28px;
+  font-weight: 500;
 }
 
-/* Sidebar: organiza o que já existe em grupos, sem alterar rotas nem comportamento. */
-.sidebar nav {
-  gap: 6px;
+.quick-stat small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
 }
 
-.sidebar nav::before {
-  content: 'PRINCIPAL';
-  margin: 0 14px 2px;
-  color: rgba(255,255,255,.34);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: .14em;
+.home-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(300px, .75fr);
+  gap: 20px;
+  align-items: start;
 }
 
-.sidebar nav button:nth-child(2),
-.sidebar nav button:nth-child(5) {
-  position: relative;
-  margin-top: 24px;
+.home-primary,
+.home-secondary {
+  display: grid;
+  gap: 20px;
 }
 
-.sidebar nav button:nth-child(2)::before,
-.sidebar nav button:nth-child(5)::before {
-  position: absolute;
-  left: 14px;
-  top: -19px;
-  color: rgba(255,255,255,.34);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: .14em;
-  pointer-events: none;
+.focus-panel,
+.agenda-panel,
+.attention-panel,
+.performance-panel {
+  padding: 24px;
 }
 
-.sidebar nav button:nth-child(2)::before {
-  content: 'CONTEÚDO';
+.focus-panel .task-list.compact {
+  gap: 9px;
 }
 
-.sidebar nav button:nth-child(5)::before {
-  content: 'PERFORMANCE';
+.agenda-panel .post-list {
+  gap: 9px;
 }
 
-/* Menos ruído na barra superior. */
+.attention-list {
+  display: grid;
+  gap: 8px;
+}
+
+.attention-item {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) 18px;
+  align-items: start;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  text-decoration: none;
+}
+
+.attention-item:last-child {
+  border-bottom: 0;
+}
+
+.attention-item strong,
+.attention-item small {
+  display: block;
+}
+
+.attention-item strong {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.attention-item small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.attention-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: #aaa39a;
+}
+
+.attention-dot.warning {
+  background: #b47856;
+}
+
+.attention-dot.ok {
+  background: var(--success);
+}
+
+.attention-arrow {
+  color: var(--gold-dark);
+  font-size: 14px;
+}
+
+.performance-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.performance-mini-grid > div {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+}
+
+.performance-mini-grid span,
+.performance-mini-grid strong {
+  display: block;
+}
+
+.performance-mini-grid span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.performance-mini-grid strong {
+  margin-top: 7px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+/* Menos ruído visual no restante do app. */
 .demo-badge {
   display: none;
 }
 
-/* Prioridades e agenda ganham mais respiro e hierarquia. */
-.focus-panel,
-.lower-grid > .panel:first-child {
-  padding: 28px;
-}
+@media (max-width: 1120px) {
+  .quick-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 
-.focus-panel .task-list.compact {
-  gap: 10px;
-}
+  .home-layout {
+    grid-template-columns: 1fr;
+  }
 
-.lower-grid .post-list {
-  gap: 9px;
+  .home-secondary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 760px) {
-  .page-content > .dashboard-grid:not(.lower-grid),
-  .page-content > .lower-grid,
-  .page-content > .hero-row {
-    max-width: none;
+  .sidebar-nav {
+    overflow-y: auto;
   }
 
-  .sidebar nav button:nth-child(2),
-  .sidebar nav button:nth-child(5) {
-    margin-top: 22px;
+  .workspace-status {
+    margin-left: auto;
+  }
+
+  .page-content {
+    padding-top: 26px;
+  }
+
+  .quick-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-secondary {
+    grid-template-columns: 1fr;
   }
 
   .focus-panel,
-  .lower-grid > .panel:first-child {
+  .agenda-panel,
+  .attention-panel,
+  .performance-panel {
     padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .workspace-status {
+    display: none;
+  }
+
+  .quick-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .performance-mini-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }

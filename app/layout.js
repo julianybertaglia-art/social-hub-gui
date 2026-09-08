@@ -1,5 +1,6 @@
 import './globals.css';
 import CloudGate from './CloudGate';
+import HubFrame from './HubFrame';
 import AutomationShortcut from './AutomationShortcut';
 import InstagramAccountEvidence from './InstagramAccountEvidence';
 
@@ -13,7 +14,7 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR">
       <body>
         <CloudGate>
-          {children}
+          <HubFrame>{children}</HubFrame>
           <InstagramAccountEvidence />
           <AutomationShortcut />
         </CloudGate>

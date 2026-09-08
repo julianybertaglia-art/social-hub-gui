@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 export default function AutomationShortcut() {
   const pathname = usePathname();
 
-  // Nos módulos operacionais a navegação passa a ser feita pelo HubFrame.
   if (pathname !== '/') return null;
 
   return (
@@ -15,33 +14,29 @@ export default function AutomationShortcut() {
 
       <Link href="/whatsapp" className="shortcut-link">
         <span className="shortcut-icon">◉</span>
-        <span>
-          <strong>WhatsApp CRM</strong>
-          <small>Leads e conversas</small>
-        </span>
+        <strong>WhatsApp CRM</strong>
       </Link>
 
       <Link href="/automacoes" className="shortcut-link">
         <span className="shortcut-icon">⚡</span>
-        <span>
-          <strong>Automações</strong>
-          <small>Direct e palavras-chave</small>
-        </span>
+        <strong>Automações</strong>
       </Link>
 
       <style jsx>{`
         .home-operation-shortcuts {
           position: fixed;
           left: 18px;
-          bottom: 88px;
+          bottom: 82px;
           z-index: 60;
           display: grid;
           width: 214px;
-          gap: 7px;
+          gap: 6px;
+          padding-top: 15px;
+          border-top: 1px solid rgba(255,255,255,.08);
         }
 
         .shortcut-group-label {
-          margin: 0 12px 2px;
+          margin: 0 14px 2px;
           color: rgba(255,255,255,.34);
           font-size: 9px;
           font-weight: 800;
@@ -53,11 +48,11 @@ export default function AutomationShortcut() {
           grid-template-columns: 22px minmax(0, 1fr);
           align-items: center;
           gap: 12px;
-          min-height: 48px;
-          padding: 10px 14px;
+          min-height: 42px;
+          padding: 9px 14px;
           border-radius: 10px;
           background: transparent;
-          color: rgba(255,255,255,.68);
+          color: rgba(255,255,255,.63);
           text-decoration: none;
           transition: .2s ease;
         }
@@ -74,20 +69,9 @@ export default function AutomationShortcut() {
           color: var(--gold);
         }
 
-        .shortcut-link strong,
-        .shortcut-link small {
-          display: block;
-        }
-
         .shortcut-link strong {
           font-size: 12px;
-          font-weight: 700;
-        }
-
-        .shortcut-link small {
-          margin-top: 3px;
-          color: rgba(255,255,255,.4);
-          font-size: 10px;
+          font-weight: 600;
         }
 
         @media (max-width: 760px) {
@@ -113,10 +97,6 @@ export default function AutomationShortcut() {
           .shortcut-link {
             min-height: 46px;
             padding: 8px 10px;
-          }
-
-          .shortcut-link small {
-            display: none;
           }
         }
       `}</style>

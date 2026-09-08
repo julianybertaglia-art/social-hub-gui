@@ -1,4 +1,5 @@
 import './globals.css';
+import './home-cleanup.css';
 import CloudGate from './CloudGate';
 import HubFrame from './HubFrame';
 import AutomationShortcut from './AutomationShortcut';

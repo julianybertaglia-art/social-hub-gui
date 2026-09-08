@@ -92,7 +92,7 @@ export async function upsertWhatsAppContact(supabase, {
   return data;
 }
 
-export async function sendWhatsAppText({ to, text }) {
+function whatsappCredentials() {
   const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
 
@@ -102,6 +102,11 @@ export async function sendWhatsAppText({ to, text }) {
     throw error;
   }
 
+  return { accessToken, phoneNumberId };
+}
+
+async function postWhatsAppMessage(body) {
+  const { accessToken, phoneNumberId } = whatsappCredentials();
   const response = await fetch(
     `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${phoneNumberId}/messages`,
     {
@@ -110,21 +115,51 @@ export async function sendWhatsAppText({ to, text }) {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
-        to: normalizeWaId(to),
-        type: 'text',
-        text: { preview_url: false, body: text },
-      }),
+      body: JSON.stringify(body),
       cache: 'no-store',
+      signal: AbortSignal.timeout(15000),
     }
   );
 
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload?.error?.message || `Erro Meta HTTP ${response.status}`);
+  if (!response.ok || payload?.error) {
+    const error = new Error(payload?.error?.message || `Erro Meta HTTP ${response.status}`);
+    error.code = payload?.error?.code || response.status;
+    throw error;
+  }
+  return payload;
+}
+
+export async function sendWhatsAppText({ to, text }) {
+  return postWhatsAppMessage({
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: normalizeWaId(to),
+    type: 'text',
+    text: { preview_url: false, body: text },
+  });
+}
+
+export async function sendWhatsAppVoiceByUrl({ to, audioUrl }) {
+  let url;
+  try {
+    url = new URL(audioUrl);
+  } catch {
+    throw new Error('URL do áudio inválida.');
   }
 
-  return payload;
+  if (url.protocol !== 'https:' || !url.pathname.toLowerCase().endsWith('.ogg')) {
+    throw new Error('Para mensagem de voz, use um arquivo HTTPS .ogg codificado em Opus.');
+  }
+
+  return postWhatsAppMessage({
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: normalizeWaId(to),
+    type: 'audio',
+    audio: {
+      link: url.href,
+      voice: true,
+    },
+  });
 }

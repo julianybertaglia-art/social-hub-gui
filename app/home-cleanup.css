@@ -1,0 +1,114 @@
+/* Organização visual da home — mantém identidade e funcionalidades existentes. */
+
+/* A primeira tela deve mostrar execução, não todos os relatórios ao mesmo tempo. */
+.page-content > .metrics-grid {
+  display: none;
+}
+
+.page-content > .dashboard-grid:not(.lower-grid) {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 900px;
+}
+
+.page-content > .dashboard-grid:not(.lower-grid) > .insight-panel {
+  display: none;
+}
+
+.page-content > .lower-grid {
+  display: block;
+  max-width: 900px;
+}
+
+.page-content > .lower-grid > article:nth-child(2) {
+  display: none;
+}
+
+.page-content > .hero-row {
+  max-width: 900px;
+  margin-bottom: 22px;
+}
+
+.page-content > .hero-row h1 {
+  font-size: clamp(34px, 4vw, 44px);
+}
+
+.page-content > .hero-row .subtitle {
+  max-width: 560px;
+}
+
+/* Sidebar: organiza o que já existe em grupos, sem alterar rotas nem comportamento. */
+.sidebar nav {
+  gap: 6px;
+}
+
+.sidebar nav::before {
+  content: 'PRINCIPAL';
+  margin: 0 14px 2px;
+  color: rgba(255,255,255,.34);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+
+.sidebar nav button:nth-child(2),
+.sidebar nav button:nth-child(5) {
+  position: relative;
+  margin-top: 24px;
+}
+
+.sidebar nav button:nth-child(2)::before,
+.sidebar nav button:nth-child(5)::before {
+  position: absolute;
+  left: 14px;
+  top: -19px;
+  color: rgba(255,255,255,.34);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  pointer-events: none;
+}
+
+.sidebar nav button:nth-child(2)::before {
+  content: 'CONTEÚDO';
+}
+
+.sidebar nav button:nth-child(5)::before {
+  content: 'PERFORMANCE';
+}
+
+/* Menos ruído na barra superior. */
+.demo-badge {
+  display: none;
+}
+
+/* Prioridades e agenda ganham mais respiro e hierarquia. */
+.focus-panel,
+.lower-grid > .panel:first-child {
+  padding: 28px;
+}
+
+.focus-panel .task-list.compact {
+  gap: 10px;
+}
+
+.lower-grid .post-list {
+  gap: 9px;
+}
+
+@media (max-width: 760px) {
+  .page-content > .dashboard-grid:not(.lower-grid),
+  .page-content > .lower-grid,
+  .page-content > .hero-row {
+    max-width: none;
+  }
+
+  .sidebar nav button:nth-child(2),
+  .sidebar nav button:nth-child(5) {
+    margin-top: 22px;
+  }
+
+  .focus-panel,
+  .lower-grid > .panel:first-child {
+    padding: 20px;
+  }
+}

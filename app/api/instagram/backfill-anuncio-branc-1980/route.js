@@ -48,11 +48,11 @@ async function metaPost(path, body) {
 async function findTargetComment() {
   const mediaPayload = await metaGet(`${GUI_ACCOUNT_ID}/media`, { fields: 'id,caption,timestamp', limit: 12 });
   for (const media of mediaPayload?.data || []) {
-    const comments = await metaGet(`${media.id}/comments`, { fields: 'id,text,username,timestamp', limit: 100 });
-    const match = (comments?.data || []).find((comment) =>
-      String(comment?.username || '').toLowerCase() === TARGET_USERNAME
-      && normalizeText(comment?.text).includes('ANUNCIO')
-    );
+    const comments = await metaGet(`${media.id}/comments`, { fields: 'id,text,username,timestamp,from', limit: 100 });
+    const match = (comments?.data || []).find((comment) => {
+      const username = String(comment?.username || comment?.from?.username || '').toLowerCase();
+      return username === TARGET_USERNAME && normalizeText(comment?.text).includes('ANUNCIO');
+    });
     if (match) return match;
   }
   return null;

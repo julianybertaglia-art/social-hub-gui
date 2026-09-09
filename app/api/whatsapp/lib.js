@@ -162,7 +162,7 @@ export async function getWhatsAppBridgeStatus() {
 }
 
 export async function controlWhatsAppBridge(action) {
-  if (!['connect', 'disconnect'].includes(action)) {
+  if (!['connect', 'disconnect', 'relink'].includes(action)) {
     const error = new Error('Ação da ponte inválida.');
     error.code = 'INVALID_BRIDGE_ACTION';
     throw error;

@@ -5,7 +5,7 @@ const DELIVERY_TABLE = 'instagram_text_deliveries';
 const API_VERSION = 'v26.0';
 const MAX_EVENT_AGE_MS = 24 * 60 * 60 * 1000;
 const MAX_FUTURE_SKEW_MS = 5 * 60 * 1000;
-const CTA_DELAY_MS = 2 * 60 * 1000;
+const CTA_DELAY_MS = 30 * 1000;
 const CONFIG_FIELDS = [
   'id', 'ig_account_id', 'comment_keyword', 'public_reply', 'prompt_message',
   'quick_reply_title', 'quick_reply_payload', 'direct_keyword', 'followup_message',

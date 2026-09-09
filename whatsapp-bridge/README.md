@@ -12,9 +12,31 @@ Serviço separado do Next.js que mantém uma sessão persistente do WhatsApp Web
 - Entrega mensagens recebidas ao endpoint do Lynna.
 - Mantém cache TTL de mensagens recentes para getMessage.
 
-## Execução
+## Hospedagem no Railway
 
-Este processo precisa de um serviço Node/Docker persistente com volume durável montado em /data. O frontend Next.js/Vercel não deve hospedar o socket Baileys, porque funções serverless podem ser encerradas e perder a sessão.
+O repositório possui um `railway.json` na raiz. Crie um serviço a partir deste repositório, gere um domínio público e anexe um volume em `/data`.
+
+Configure no serviço:
+
+- `BRIDGE_API_TOKEN`: token longo e aleatório usado pelo Lynna.
+- `BRIDGE_WEBHOOK_URL`: `https://social-hub-gui.vercel.app/api/whatsapp/bridge/webhook`.
+- `BRIDGE_WEBHOOK_TOKEN`: o mesmo valor de `BRIDGE_API_TOKEN`.
+- `AUTH_DIR`: `/data/auth`.
+- `MESSAGE_CACHE_FILE`: `/data/message-cache.json`.
+- `SESSION_LOCK_FILE`: `/data/bridge.lock`.
+- `AUTO_CONNECT`: `true`.
+- `LOG_LEVEL`: `warn`.
+
+No projeto do Lynna na Vercel, configure:
+
+- `WHATSAPP_PROVIDER`: `baileys`.
+- `WHATSAPP_BRIDGE_URL`: domínio público HTTPS do serviço Railway.
+- `WHATSAPP_BRIDGE_TOKEN`: o mesmo valor de `BRIDGE_API_TOKEN`.
+- `WHATSAPP_BRIDGE_WEBHOOK_TOKEN`: o mesmo valor de `BRIDGE_API_TOKEN`.
+
+O frontend Next.js/Vercel não deve hospedar o socket Baileys, porque funções serverless podem ser encerradas e perder a sessão.
+
+## Execução local
 
 Copie .env.example para .env, preencha os tokens e execute:
 
@@ -32,6 +54,7 @@ Ou use Docker Compose:
 - BRIDGE_WEBHOOK_TOKEN: token aceito pelo webhook do Lynna.
 - AUTH_DIR: diretório persistente das credenciais.
 - MESSAGE_CACHE_FILE: arquivo persistente do cache recente.
+- SESSION_LOCK_FILE: lock persistente que impede duas instâncias na mesma sessão.
 - AUTO_CONNECT: reconecta automaticamente após reinício.
 - PORT: porta HTTP do serviço.
 

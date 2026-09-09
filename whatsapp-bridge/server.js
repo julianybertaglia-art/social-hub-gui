@@ -43,6 +43,12 @@ let reconnectTimer = null;
 let connectPromise = null;
 let sessionLockAcquired = false;
 
+const INSTANCE_ID = String(
+  process.env.RAILWAY_DEPLOYMENT_ID
+  || process.env.HOSTNAME
+  || 'local'
+);
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -86,6 +92,7 @@ async function acquireSessionLock() {
     const handle = await fs.open(SESSION_LOCK_FILE, 'wx');
     await handle.writeFile(JSON.stringify({
       pid: process.pid,
+      instanceId: INSTANCE_ID,
       startedAt: nowIso(),
     }));
     await handle.close();
@@ -97,11 +104,15 @@ async function acquireSessionLock() {
 
   const existing = await fs.readFile(SESSION_LOCK_FILE, 'utf8').catch(() => '');
   let pid = null;
+  let instanceId = null;
   try {
-    pid = Number(JSON.parse(existing).pid || 0);
+    const lock = JSON.parse(existing);
+    pid = Number(lock.pid || 0);
+    instanceId = String(lock.instanceId || '');
   } catch {}
 
-  if (pid && pid !== process.pid) {
+  const belongsToThisInstance = instanceId && instanceId === INSTANCE_ID;
+  if (belongsToThisInstance && pid && pid !== process.pid) {
     try {
       process.kill(pid, 0);
       throw errorWithCode(
@@ -117,6 +128,7 @@ async function acquireSessionLock() {
   const handle = await fs.open(SESSION_LOCK_FILE, 'wx');
   await handle.writeFile(JSON.stringify({
     pid: process.pid,
+    instanceId: INSTANCE_ID,
     startedAt: nowIso(),
   }));
   await handle.close();

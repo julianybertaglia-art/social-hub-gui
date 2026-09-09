@@ -2,10 +2,10 @@ FROM node:20-bookworm-slim
 
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install --omit=dev
+COPY whatsapp-bridge/package.json whatsapp-bridge/package-lock.json ./
+RUN npm ci --omit=dev
 
-COPY server.js ./
+COPY whatsapp-bridge/server.js ./
 
 ENV NODE_ENV=production
 ENV PORT=3000

@@ -1,4 +1,5 @@
 import {
+  getSupabaseAdmin,
   getWhatsAppBridgeGroups,
   getWhatsAppProvider,
 } from '../lib';
@@ -15,7 +16,28 @@ export async function GET() {
 
   try {
     const result = await getWhatsAppBridgeGroups();
-    return Response.json(result);
+    const groups = Array.isArray(result?.groups) ? result.groups : [];
+    const syncedAt = new Date().toISOString();
+
+    if (groups.length) {
+      const supabase = getSupabaseAdmin();
+      const { error } = await supabase.from('whatsapp_groups').upsert(
+        groups.map((group) => ({
+          jid: group.jid,
+          name: group.name || 'Grupo sem nome',
+          description: group.description || null,
+          participant_count: Number(group.participants || 0),
+          owner_jid: group.owner || null,
+          last_synced_at: syncedAt,
+          updated_at: syncedAt,
+        })),
+        { onConflict: 'jid' }
+      );
+
+      if (error) throw error;
+    }
+
+    return Response.json({ ok: true, groups, syncedAt });
   } catch (error) {
     return Response.json({
       ok: false,

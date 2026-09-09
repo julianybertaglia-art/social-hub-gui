@@ -6,6 +6,11 @@ import {
   extractAudioSelectionEvents,
   processAudioSelections,
 } from '../audio-automation/service.js';
+import {
+  extractTextSelectionEvents,
+  processTextSelections,
+  processTextCommentEvent,
+} from '../text-automation/service.js';
 import { isArgoKeyword } from '../../../lib/argo-flow.js';
 
 export const runtime = 'nodejs';
@@ -289,6 +294,13 @@ export async function POST(request) {
     });
   }
 
+  if (extractTextSelectionEvents(payload).length) {
+    after(async () => {
+      try { await processTextSelections(payload); }
+      catch { console.error('Automação de texto: não foi possível processar o Direct.'); }
+    });
+  }
+
   const commentEvents = extractCommentEvents(payload);
   const rules = commentEvents.length ? await loadAutomationRules() : [];
   const audioAutomationsByAccount = commentEvents.length
@@ -296,6 +308,16 @@ export async function POST(request) {
     : new Map();
 
   for (const event of commentEvents) {
+    try {
+      const textAutomationHandled = await processTextCommentEvent(event);
+      if (textAutomationHandled) continue;
+    } catch (error) {
+      console.error('Automação de texto: não foi possível processar o comentário.', {
+        commentId: event?.value?.id || null,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
     const commentId = event?.value?.id;
     const text = event?.value?.text;
     const username = event?.value?.from?.username;
@@ -362,5 +384,6 @@ export async function POST(request) {
     activeRules: rules.length,
     activeAudioAutomations: [...audioAutomationsByAccount.values()].flat().length,
     audioTrigger: 'direct+comment-button',
+    textTrigger: 'direct+comment-button',
   });
 }

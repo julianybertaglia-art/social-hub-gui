@@ -15,7 +15,7 @@ import { isArgoKeyword } from '../../../lib/argo-flow.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 180;
 
 const API_VERSION = 'v26.0';
 const AUTOMATIONS_STORAGE_KEY = 'guihub-automations';

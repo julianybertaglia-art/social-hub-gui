@@ -16,6 +16,8 @@ import QRCode from 'qrcode';
 
 const PORT = Number(process.env.PORT || 3000);
 const AUTH_DIR = process.env.AUTH_DIR || '/data/auth';
+const SESSION_LOCK_FILE = process.env.SESSION_LOCK_FILE
+  || path.join(path.dirname(AUTH_DIR), 'bridge.lock');
 const MESSAGE_CACHE_FILE = process.env.MESSAGE_CACHE_FILE || '/data/message-cache.json';
 const MESSAGE_CACHE_TTL_MS = Number(process.env.MESSAGE_CACHE_TTL_MS || 15 * 60 * 1000);
 const BRIDGE_API_TOKEN = String(process.env.BRIDGE_API_TOKEN || '');
@@ -39,6 +41,7 @@ let lastError = null;
 let reconnectAttempt = 0;
 let reconnectTimer = null;
 let connectPromise = null;
+let sessionLockAcquired = false;
 
 function nowIso() {
   return new Date().toISOString();
@@ -73,6 +76,57 @@ function clearReconnectTimer() {
 async function ensureStorage() {
   await fs.mkdir(AUTH_DIR, { recursive: true });
   await fs.mkdir(path.dirname(MESSAGE_CACHE_FILE), { recursive: true });
+  await fs.mkdir(path.dirname(SESSION_LOCK_FILE), { recursive: true });
+}
+
+async function acquireSessionLock() {
+  await ensureStorage();
+
+  try {
+    const handle = await fs.open(SESSION_LOCK_FILE, 'wx');
+    await handle.writeFile(JSON.stringify({
+      pid: process.pid,
+      startedAt: nowIso(),
+    }));
+    await handle.close();
+    sessionLockAcquired = true;
+    return;
+  } catch (error) {
+    if (error?.code !== 'EEXIST') throw error;
+  }
+
+  const existing = await fs.readFile(SESSION_LOCK_FILE, 'utf8').catch(() => '');
+  let pid = null;
+  try {
+    pid = Number(JSON.parse(existing).pid || 0);
+  } catch {}
+
+  if (pid && pid !== process.pid) {
+    try {
+      process.kill(pid, 0);
+      throw errorWithCode(
+        'Outra instância já está usando esta sessão do WhatsApp.',
+        'SESSION_LOCKED'
+      );
+    } catch (error) {
+      if (error?.code === 'SESSION_LOCKED') throw error;
+    }
+  }
+
+  await fs.rm(SESSION_LOCK_FILE, { force: true });
+  const handle = await fs.open(SESSION_LOCK_FILE, 'wx');
+  await handle.writeFile(JSON.stringify({
+    pid: process.pid,
+    startedAt: nowIso(),
+  }));
+  await handle.close();
+  sessionLockAcquired = true;
+}
+
+async function releaseSessionLock() {
+  if (!sessionLockAcquired) return;
+  sessionLockAcquired = false;
+  await fs.rm(SESSION_LOCK_FILE, { force: true }).catch(() => {});
 }
 
 function pruneMessageCache() {
@@ -704,6 +758,13 @@ const server = http.createServer((request, response) => {
   });
 });
 
+try {
+  await acquireSessionLock();
+} catch (error) {
+  logger.error({ err: error }, 'Não foi possível adquirir o lock da sessão.');
+  process.exit(1);
+}
+
 await loadMessageCache();
 
 server.listen(PORT, () => {
@@ -722,6 +783,7 @@ async function shutdown() {
   try {
     socket?.ws?.close();
   } catch {}
+  await releaseSessionLock();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 5000).unref();
 }

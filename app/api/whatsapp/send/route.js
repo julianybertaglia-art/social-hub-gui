@@ -1,6 +1,8 @@
 import {
   getSupabaseAdmin,
+  getWhatsAppProvider,
   normalizeWaId,
+  normalizeWhatsAppRecipient,
   sendWhatsAppText,
   sendWhatsAppVoiceByUrl,
   upsertWhatsAppContact,
@@ -10,7 +12,9 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   const body = await request.json().catch(() => ({}));
-  const to = normalizeWaId(body?.to);
+  const to = getWhatsAppProvider() === 'baileys'
+    ? normalizeWhatsAppRecipient(body?.to)
+    : normalizeWaId(body?.to);
   const text = String(body?.text || '').trim();
   const audioUrl = String(body?.audioUrl || '').trim();
   const wantsVoice = Boolean(audioUrl);
@@ -28,17 +32,17 @@ export async function POST(request) {
       ? await sendWhatsAppVoiceByUrl({ to, audioUrl })
       : await sendWhatsAppText({ to, text });
 
-    const metaMessageId = result?.messages?.[0]?.id || null;
+    const messageId = result?.messages?.[0]?.id || result?.messageId || null;
     const now = new Date().toISOString();
     const supabase = getSupabaseAdmin();
     const contact = await upsertWhatsAppContact(supabase, {
       waId: to,
-      source: 'WhatsApp',
+      source: getWhatsAppProvider() === 'baileys' ? 'WhatsApp Bridge' : 'WhatsApp',
       lastMessageAt: now,
     });
 
     const { error } = await supabase.from('whatsapp_messages').insert({
-      meta_message_id: metaMessageId,
+      meta_message_id: messageId,
       contact_id: contact.id,
       direction: 'outbound',
       message_type: wantsVoice ? 'audio' : 'text',
@@ -49,9 +53,22 @@ export async function POST(request) {
     });
 
     if (error) throw error;
-    return Response.json({ ok: true, messageId: metaMessageId, contact, type: wantsVoice ? 'audio' : 'text' });
+    return Response.json({
+      ok: true,
+      messageId,
+      contact,
+      type: wantsVoice ? 'audio' : 'text',
+    });
   } catch (error) {
-    const status = error?.code === 'WHATSAPP_NOT_CONFIGURED' ? 503 : 500;
-    return Response.json({ ok: false, error: error instanceof Error ? error.message : 'Falha ao enviar mensagem.' }, { status });
+    const status = [
+      'WHATSAPP_NOT_CONFIGURED',
+      'WHATSAPP_BRIDGE_NOT_CONFIGURED',
+      'BRIDGE_NOT_CONNECTED',
+    ].includes(error?.code) ? 503 : 500;
+
+    return Response.json({
+      ok: false,
+      error: error instanceof Error ? error.message : 'Falha ao enviar mensagem.',
+    }, { status });
   }
 }

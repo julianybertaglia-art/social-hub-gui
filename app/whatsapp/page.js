@@ -222,7 +222,7 @@ export default function WhatsAppPage() {
               <button
                 type="button"
                 className={styles.bridgeAction}
-                onClick={() => handleBridgeAction('connect')}
+                onClick={() => handleBridgeAction(status?.qrDataUrl ? 'relink' : 'connect')}
                 disabled={bridgeBusy || bridgeWaiting}
               >
                 {bridgeBusy ? 'Abrindo conexão...' : status?.qrDataUrl ? 'Gerar outro QR Code' : 'Conectar WhatsApp'}

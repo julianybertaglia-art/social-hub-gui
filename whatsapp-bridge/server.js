@@ -22,7 +22,7 @@ const MESSAGE_CACHE_FILE = process.env.MESSAGE_CACHE_FILE || '/data/message-cach
 const MESSAGE_CACHE_TTL_MS = Number(process.env.MESSAGE_CACHE_TTL_MS || 15 * 60 * 1000);
 const BRIDGE_API_TOKEN = String(process.env.BRIDGE_API_TOKEN || '');
 const BRIDGE_WEBHOOK_URL = String(process.env.BRIDGE_WEBHOOK_URL || '');
-const BRIDGE_WEBHOOK_TOKEN = String(process.env.BRIDGE_WEBHOOK_TOKEN || '');
+const BRIDGE_WEBHOOK_TOKEN = String(process.env.BRIDGE_WEBHOOK_TOKEN || process.env.BRIDGE_API_TOKEN || '');
 const AUTO_CONNECT = String(process.env.AUTO_CONNECT || 'true').toLowerCase() !== 'false';
 const LOG_LEVEL = process.env.LOG_LEVEL || 'warn';
 const MAX_BODY_BYTES = 2 * 1024 * 1024;

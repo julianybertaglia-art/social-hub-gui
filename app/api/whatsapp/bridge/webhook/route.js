@@ -65,7 +65,7 @@ export async function POST(request) {
         body: fallbackBody(message),
         status: 'received',
         raw_payload: payload,
-        received_at: receivedAt,
+        sent_at: receivedAt,
       }, {
         onConflict: 'meta_message_id',
         ignoreDuplicates: true,

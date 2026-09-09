@@ -9,12 +9,12 @@ const STAGES = ['Novo lead', 'Conversando', 'Interessado', 'Link enviado', 'Vend
 function formatPhone(value) {
   const digits = String(value || '').replace(/\D/g, '');
   if (digits.length === 13 && digits.startsWith('55')) {
-    return `+55 (${digits.slice(2, 4)}) ${digits.slice(4, 9)}-${digits.slice(9)}`;
+    return '+55 (' + digits.slice(2, 4) + ') ' + digits.slice(4, 9) + '-' + digits.slice(9);
   }
   if (digits.length === 12 && digits.startsWith('55')) {
-    return `+55 (${digits.slice(2, 4)}) ${digits.slice(4, 8)}-${digits.slice(8)}`;
+    return '+55 (' + digits.slice(2, 4) + ') ' + digits.slice(4, 8) + '-' + digits.slice(8);
   }
-  return digits ? `+${digits}` : 'Sem número';
+  return digits ? '+' + digits : 'Sem número';
 }
 
 function formatTime(value) {
@@ -36,9 +36,21 @@ export default function WhatsAppPage() {
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [bridgeBusy, setBridgeBusy] = useState(false);
   const [notice, setNotice] = useState('');
 
   const selected = contacts.find((contact) => contact.id === selectedId) || null;
+  const isBaileys = status?.provider === 'baileys';
+  const connectionReady = Boolean(status?.connected || status?.configured);
+  const bridgeWaiting = ['starting', 'connecting', 'reconnecting'].includes(status?.state);
+
+  const loadStatus = useCallback(async () => {
+    const response = await fetch('/api/whatsapp/status', { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.error || 'Não foi possível carregar o status do WhatsApp.');
+    setStatus(data);
+    return data;
+  }, []);
 
   const loadContacts = useCallback(async () => {
     const response = await fetch('/api/whatsapp/conversations', { cache: 'no-store' });
@@ -53,7 +65,7 @@ export default function WhatsAppPage() {
       setMessages([]);
       return;
     }
-    const response = await fetch(`/api/whatsapp/conversations?contact=${encodeURIComponent(contactId)}`, { cache: 'no-store' });
+    const response = await fetch('/api/whatsapp/conversations?contact=' + encodeURIComponent(contactId), { cache: 'no-store' });
     const data = await response.json();
     if (!response.ok) throw new Error(data?.error || 'Não foi possível carregar a conversa.');
     setMessages(data.messages || []);
@@ -61,13 +73,9 @@ export default function WhatsAppPage() {
   }, []);
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/whatsapp/status', { cache: 'no-store' }).then((response) => response.json()),
-      loadContacts(),
-    ])
-      .then(([connection]) => setStatus(connection))
+    Promise.all([loadStatus(), loadContacts()])
       .catch((error) => setNotice(error.message));
-  }, [loadContacts]);
+  }, [loadStatus, loadContacts]);
 
   useEffect(() => {
     loadMessages(selectedId).catch((error) => setNotice(error.message));
@@ -75,11 +83,12 @@ export default function WhatsAppPage() {
 
   useEffect(() => {
     const timer = setInterval(() => {
+      loadStatus().catch(() => {});
       loadContacts().catch(() => {});
       if (selectedId) loadMessages(selectedId).catch(() => {});
-    }, 8000);
+    }, isBaileys ? 3000 : 8000);
     return () => clearInterval(timer);
-  }, [selectedId, loadContacts, loadMessages]);
+  }, [isBaileys, selectedId, loadStatus, loadContacts, loadMessages]);
 
   const filteredContacts = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -90,6 +99,26 @@ export default function WhatsAppPage() {
         .some((value) => String(value).toLowerCase().includes(term))
     );
   }, [contacts, search]);
+
+  async function handleBridgeAction(action) {
+    setBridgeBusy(true);
+    setNotice('');
+    try {
+      const response = await fetch('/api/whatsapp/bridge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'Não foi possível controlar a conexão.');
+      setStatus((current) => ({ ...(current || {}), ...data }));
+      await loadStatus();
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setBridgeBusy(false);
+    }
+  }
 
   async function updateContact(patch) {
     if (!selected) return;
@@ -143,24 +172,78 @@ export default function WhatsAppPage() {
           <h1>WhatsApp</h1>
           <p>Leads, conversas e follow-up no mesmo lugar.</p>
         </div>
-        <div className={`${styles.connection} ${status?.configured ? styles.online : styles.pending}`}>
-          <span />
-          {status?.configured ? 'WhatsApp conectado' : 'Conexão pendente'}
+        <div className={styles.connectionGroup}>
+          <div className={styles.connection + ' ' + (connectionReady ? styles.online : styles.pending)}>
+            <span />
+            {connectionReady
+              ? 'WhatsApp conectado'
+              : isBaileys && status?.state === 'awaiting_qr'
+                ? 'Aguardando leitura do QR'
+                : isBaileys && status?.state === 'reconnecting'
+                  ? 'Reconectando WhatsApp'
+                  : 'Conexão pendente'}
+          </div>
+          {isBaileys && connectionReady && (
+            <button
+              type="button"
+              className={styles.disconnectButton}
+              onClick={() => handleBridgeAction('disconnect')}
+              disabled={bridgeBusy}
+            >
+              {bridgeBusy ? 'Desconectando...' : 'Desconectar'}
+            </button>
+          )}
         </div>
       </header>
 
-      {!status?.configured && (
-        <section className={styles.setupCard}>
-          <div>
-            <span className={styles.eyebrow}>ÚLTIMO PASSO</span>
-            <h2>O Hub já está pronto para receber o WhatsApp.</h2>
-            <p>Agora falta vincular o número na Meta e cadastrar as credenciais no ambiente do Hub.</p>
-          </div>
-          <div className={styles.setupGrid}>
-            <div><span>Callback do webhook</span><code>{status?.webhookUrl || '/api/whatsapp/webhook'}</code></div>
-            <div><span>Variáveis necessárias</span><code>META_WHATSAPP_ACCESS_TOKEN</code><code>META_WHATSAPP_PHONE_NUMBER_ID</code><code>META_WHATSAPP_VERIFY_TOKEN</code><code>META_APP_SECRET</code></div>
-          </div>
-        </section>
+      {isBaileys ? (
+        !connectionReady && (
+          <section className={styles.setupCard}>
+            <div>
+              <span className={styles.eyebrow}>CONEXÃO POR QR CODE</span>
+              <h2>{status?.state === 'awaiting_qr' && status?.qrDataUrl ? 'Escaneie o QR Code do WhatsApp.' : 'Conecte o WhatsApp pelo QR Code.'}</h2>
+              <p>
+                Use o número do atendimento aos leads. Esta conexão é separada da Meta e do número da Vital.
+              </p>
+              {status?.error && <p className={styles.bridgeError}>{status.error}</p>}
+            </div>
+            <div className={styles.bridgeSetup}>
+              {status?.qrDataUrl ? (
+                <div className={styles.qrBox}>
+                  <img className={styles.qrImage} src={status.qrDataUrl} alt="QR Code para conectar o WhatsApp" />
+                  <span>WhatsApp → Configurações → Aparelhos conectados → Conectar aparelho.</span>
+                </div>
+              ) : (
+                <div className={styles.bridgeState}>
+                  <strong>{bridgeWaiting ? 'Preparando a conexão...' : 'Pronto para gerar um QR Code.'}</strong>
+                  <span>O QR aparecerá aqui quando a ponte estiver online.</span>
+                </div>
+              )}
+              <button
+                type="button"
+                className={styles.bridgeAction}
+                onClick={() => handleBridgeAction('connect')}
+                disabled={bridgeBusy || bridgeWaiting}
+              >
+                {bridgeBusy ? 'Abrindo conexão...' : status?.qrDataUrl ? 'Gerar outro QR Code' : 'Conectar WhatsApp'}
+              </button>
+            </div>
+          </section>
+        )
+      ) : (
+        !status?.configured && (
+          <section className={styles.setupCard}>
+            <div>
+              <span className={styles.eyebrow}>ÚLTIMO PASSO</span>
+              <h2>O Hub já está pronto para receber o WhatsApp.</h2>
+              <p>Agora falta vincular o número na Meta e cadastrar as credenciais no ambiente do Hub.</p>
+            </div>
+            <div className={styles.setupGrid}>
+              <div><span>Callback do webhook</span><code>{status?.webhookUrl || '/api/whatsapp/webhook'}</code></div>
+              <div><span>Variáveis necessárias</span><code>META_WHATSAPP_ACCESS_TOKEN</code><code>META_WHATSAPP_PHONE_NUMBER_ID</code><code>META_WHATSAPP_VERIFY_TOKEN</code><code>META_APP_SECRET</code></div>
+            </div>
+          </section>
+        )
       )}
 
       {notice && <button className={styles.notice} onClick={() => setNotice('')}>{notice} ×</button>}
@@ -183,7 +266,7 @@ export default function WhatsAppPage() {
               <button
                 type="button"
                 key={contact.id}
-                className={`${styles.contact} ${selectedId === contact.id ? styles.selected : ''}`}
+                className={styles.contact + ' ' + (selectedId === contact.id ? styles.selected : '')}
                 onClick={() => setSelectedId(contact.id)}
               >
                 <div className={styles.avatar}>{(contact.profile_name || 'W').slice(0, 1).toUpperCase()}</div>
@@ -219,9 +302,9 @@ export default function WhatsAppPage() {
               <div className={styles.messages}>
                 {!messages.length && <div className={styles.empty}>Ainda não há mensagens salvas para este lead.</div>}
                 {messages.map((message) => (
-                  <div key={message.id} className={`${styles.bubble} ${message.direction === 'outbound' ? styles.outbound : styles.inbound}`}>
-                    <p>{message.body || `[${message.message_type}]`}</p>
-                    <span>{formatTime(message.sent_at)}{message.direction === 'outbound' && message.status ? ` · ${message.status}` : ''}</span>
+                  <div key={message.id} className={styles.bubble + ' ' + (message.direction === 'outbound' ? styles.outbound : styles.inbound)}>
+                    <p>{message.body || '[' + message.message_type + ']'}</p>
+                    <span>{formatTime(message.sent_at)}{message.direction === 'outbound' && message.status ? ' · ' + message.status : ''}</span>
                   </div>
                 ))}
               </div>
@@ -231,10 +314,10 @@ export default function WhatsAppPage() {
                   rows="2"
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
-                  placeholder={status?.configured ? 'Digite sua mensagem...' : 'Conecte o número para responder pelo Hub'}
-                  disabled={!status?.configured || sending}
+                  placeholder={connectionReady ? 'Digite sua mensagem...' : 'Conecte o número para responder pelo Hub'}
+                  disabled={!connectionReady || sending}
                 />
-                <button disabled={!status?.configured || sending || !draft.trim()}>{sending ? 'Enviando...' : 'Enviar'}</button>
+                <button disabled={!connectionReady || sending || !draft.trim()}>{sending ? 'Enviando...' : 'Enviar'}</button>
               </form>
             </>
           )}
@@ -248,8 +331,8 @@ export default function WhatsAppPage() {
             <div className={styles.crmForm}>
               <label>Origem<input value={selected.source || 'WhatsApp'} readOnly /></label>
               <label>Etapa<select value={selected.stage} onChange={(event) => updateContact({ stage: event.target.value })} disabled={saving}>{STAGES.map((stage) => <option key={stage}>{stage}</option>)}</select></label>
-              <label>Tags<input defaultValue={(selected.tags || []).join(', ')} key={`tags-${selected.id}-${(selected.tags || []).join('|')}`} onBlur={(event) => updateContact({ tags: event.target.value.split(',') })} placeholder="Imersão, Mentoria, Argoplace..." /></label>
-              <label>Observações<textarea rows="7" defaultValue={selected.notes || ''} key={`notes-${selected.id}-${selected.notes || ''}`} onBlur={(event) => updateContact({ notes: event.target.value })} placeholder="O que esse lead quer? O que falta para fechar?" /></label>
+              <label>Tags<input defaultValue={(selected.tags || []).join(', ')} key={'tags-' + selected.id + '-' + (selected.tags || []).join('|')} onBlur={(event) => updateContact({ tags: event.target.value.split(',') })} placeholder="Imersão, Mentoria, Argoplace..." /></label>
+              <label>Observações<textarea rows="7" defaultValue={selected.notes || ''} key={'notes-' + selected.id + '-' + (selected.notes || '')} onBlur={(event) => updateContact({ notes: event.target.value })} placeholder="O que esse lead quer? O que falta para fechar?" /></label>
               <small>{saving ? 'Salvando...' : 'Alterações são salvas ao sair do campo.'}</small>
             </div>
           )}

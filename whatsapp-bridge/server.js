@@ -656,6 +656,12 @@ async function handleRequest(request, response) {
       return;
     }
 
+    if (request.method === 'POST' && route === '/relink') {
+      await disconnectBridge();
+      sendJson(response, 200, await connectBridge());
+      return;
+    }
+
     if (request.method === 'GET' && route === '/groups') {
       sendJson(response, 200, { ok: true, groups: await listGroups() });
       return;

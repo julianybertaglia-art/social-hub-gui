@@ -26,18 +26,18 @@ function AudioCard({ type, title, subtitle, asset, onUploaded }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
 
-  async function upload() {
-    if (!file) return setMessage('Escolha o arquivo .ogg primeiro.');
+  async function upload(chosenFile = file) {
+    if (!chosenFile) return setMessage('Escolha o arquivo .ogg primeiro.');
     setBusy(true);
-    setMessage('Enviando...');
+    setMessage('Salvando áudio...');
     try {
       const form = new FormData();
       form.append('key', type);
-      form.append('file', file);
+      form.append('file', chosenFile);
       const response = await fetch('/api/whatsapp/campaign-audio', { method: 'POST', body: form });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || 'Não foi possível salvar o áudio.');
-      setMessage('Áudio salvo ✅');
+      setMessage('Áudio salvo de verdade ✅');
       await onUploaded();
     } catch (error) {
       setMessage(error.message);
@@ -46,29 +46,35 @@ function AudioCard({ type, title, subtitle, asset, onUploaded }) {
     }
   }
 
+  function chooseFile(event) {
+    const chosen = event.target.files?.[0] || null;
+    setFile(chosen);
+    if (chosen) upload(chosen);
+  }
+
   return (
     <section style={box}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', color: '#8e6b30' }}>{title}</div>
           <h2 style={{ margin: '6px 0 5px', fontSize: 20 }}>{subtitle}</h2>
-          <p style={{ margin: 0, color: '#77746d', fontSize: 13 }}>Use exatamente o arquivo .ogg que veio do WhatsApp.</p>
+          <p style={{ margin: 0, color: '#77746d', fontSize: 13 }}>Escolha o .ogg e aguarde aparecer “Áudio salvo de verdade ✅”.</p>
         </div>
-        <span style={{ fontSize: 12, fontWeight: 800, padding: '7px 10px', borderRadius: 999, background: asset?.ready ? '#e7f3e9' : '#f2eadb' }}>
-          {asset?.ready ? 'Áudio pronto' : 'Falta subir'}
+        <span style={{ fontSize: 12, fontWeight: 800, padding: '7px 10px', borderRadius: 999, background: asset?.ready ? '#e7f3e9' : '#f6e9df' }}>
+          {asset?.ready ? 'Áudio pronto ✅' : 'Áudio ainda não salvo'}
         </span>
       </div>
 
       <div style={{ marginTop: 16, display: 'grid', gap: 10 }}>
-        <input type="file" accept="audio/ogg,.ogg" onChange={(event) => setFile(event.target.files?.[0] || null)} />
+        <input type="file" accept="audio/ogg,.ogg" onChange={chooseFile} disabled={busy} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button type="button" onClick={upload} disabled={busy || !file} style={{ ...button, opacity: busy || !file ? .45 : 1 }}>
-            {busy ? 'Salvando...' : asset?.ready ? 'Trocar áudio' : 'Salvar áudio'}
+          <button type="button" onClick={() => upload()} disabled={busy || !file} style={{ ...button, opacity: busy || !file ? .45 : 1 }}>
+            {busy ? 'Salvando...' : asset?.ready ? 'Salvar novamente' : 'Salvar áudio'}
           </button>
-          {message && <span style={{ fontSize: 12, color: message.includes('✅') ? '#557d62' : '#6f6a61' }}>{message}</span>}
+          {message && <span style={{ fontSize: 12, color: message.includes('✅') ? '#557d62' : '#6f6a61', fontWeight: 700 }}>{message}</span>}
         </div>
-        {asset?.ready && (
-          <audio controls preload="none" src={asset.url} style={{ width: '100%', marginTop: 4 }} />
+        {asset?.ready && asset?.url && (
+          <audio controls preload="metadata" src={asset.url} style={{ width: '100%', marginTop: 4 }} />
         )}
       </div>
     </section>
@@ -86,7 +92,7 @@ function TestCard({ assets }) {
 
   async function sendTest() {
     if (!cleanPhone) return setMessage('Digite um número de WhatsApp para o teste.');
-    if (!selectedReady) return setMessage('Esse áudio ainda não está pronto.');
+    if (!selectedReady) return setMessage('Esse áudio ainda não foi salvo de verdade.');
 
     setBusy(true);
     setMessage('Enviando teste...');
@@ -114,7 +120,7 @@ function TestCard({ assets }) {
       <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', color: '#8e6b30' }}>TESTE SEGURO · 1 NÚMERO</div>
       <h2 style={{ margin: '6px 0 6px', fontSize: 21 }}>Teste antes de liberar a campanha</h2>
       <p style={{ margin: '0 0 16px', color: '#77746d', fontSize: 13 }}>
-        Use de preferência o seu próprio número ou outro número que você controla. Esse botão envia somente 1 áudio.
+        Use de preferência outro número que você controla. Esse botão envia somente 1 áudio.
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px,1fr) minmax(210px,.7fr) auto', gap: 10, alignItems: 'end' }}>
@@ -182,7 +188,7 @@ export default function CampanhaWhatsAppPage() {
         <div style={{ margin: '14px 0 18px' }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', color: '#8e6b30' }}>CAMPANHA DE ÁUDIO</div>
           <h1 style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontWeight: 500, fontSize: 34, margin: '5px 0 7px' }}>Áudios do Gui</h1>
-          <p style={{ margin: 0, color: '#77746d', fontSize: 14 }}>Suba os dois arquivos uma vez. Depois o Hub usa o áudio certo para cada grupo de leads.</p>
+          <p style={{ margin: 0, color: '#77746d', fontSize: 14 }}>Os dois arquivos precisam estar realmente salvos antes do teste.</p>
         </div>
 
         {loading ? <div style={box}>Carregando...</div> : (

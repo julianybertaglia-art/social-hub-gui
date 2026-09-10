@@ -7,21 +7,20 @@ const POLL_MS = 5000;
 let inFlight = false;
 let stopped = false;
 
-function workerUrl() {
+function workerOrigin() {
   if (!BRIDGE_WEBHOOK_URL) return '';
   try {
-    const origin = new URL(BRIDGE_WEBHOOK_URL).origin;
-    return origin + '/api/whatsapp/campaign-worker';
+    return new URL(BRIDGE_WEBHOOK_URL).origin;
   } catch {
     return '';
   }
 }
 
-async function hubRequest(body) {
-  const url = workerUrl();
-  if (!url || !BRIDGE_WEBHOOK_TOKEN) return null;
+async function hubRequest(path, body) {
+  const origin = workerOrigin();
+  if (!origin || !BRIDGE_WEBHOOK_TOKEN) return null;
 
-  const response = await fetch(url, {
+  const response = await fetch(origin + path, {
     method: 'POST',
     headers: {
       Authorization: 'Bearer ' + BRIDGE_WEBHOOK_TOKEN,
@@ -39,19 +38,25 @@ async function hubRequest(body) {
   return payload;
 }
 
-async function bridgeAudio(job) {
-  const response = await fetch('http://127.0.0.1:' + PORT + '/messages/audio', {
+async function bridgeSend(job) {
+  const isText = job?.type === 'text';
+  const route = isText ? '/messages/text' : '/messages/audio';
+  const body = isText
+    ? { to: job.to, text: job.text }
+    : {
+        to: job.to,
+        audioUrl: job.audioUrl,
+        ptt: true,
+        mimetype: 'audio/ogg; codecs=opus',
+      };
+
+  const response = await fetch('http://127.0.0.1:' + PORT + route, {
     method: 'POST',
     headers: {
       Authorization: 'Bearer ' + BRIDGE_API_TOKEN,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      to: job.to,
-      audioUrl: job.audioUrl,
-      ptt: true,
-      mimetype: 'audio/ogg; codecs=opus',
-    }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(45000),
   });
 
@@ -62,31 +67,61 @@ async function bridgeAudio(job) {
   return payload;
 }
 
+async function processOutboundQueue() {
+  const next = await hubRequest('/api/whatsapp/outbound-worker', { action: 'next' });
+  const job = next?.job;
+  if (!job) return false;
+
+  try {
+    const sent = await bridgeSend(job);
+    await hubRequest('/api/whatsapp/outbound-worker', {
+      action: 'result',
+      id: job.id,
+      success: true,
+      messageId: sent?.messageId || null,
+    });
+  } catch (error) {
+    await hubRequest('/api/whatsapp/outbound-worker', {
+      action: 'result',
+      id: job.id,
+      success: false,
+      error: error instanceof Error ? error.message : 'Falha no envio',
+    }).catch(() => {});
+  }
+  return true;
+}
+
+async function processCampaign() {
+  const next = await hubRequest('/api/whatsapp/campaign-worker', { action: 'next' });
+  const job = next?.job;
+  if (!job) return false;
+
+  try {
+    const sent = await bridgeSend({ ...job, type: 'audio' });
+    await hubRequest('/api/whatsapp/campaign-worker', {
+      action: 'result',
+      logId: job.logId,
+      success: true,
+      messageId: sent?.messageId || null,
+    });
+  } catch (error) {
+    await hubRequest('/api/whatsapp/campaign-worker', {
+      action: 'result',
+      logId: job.logId,
+      success: false,
+      error: error instanceof Error ? error.message : 'Falha no envio',
+    }).catch(() => {});
+  }
+  return true;
+}
+
 async function tick() {
-  if (stopped || inFlight || !BRIDGE_API_TOKEN || !workerUrl()) return;
+  if (stopped || inFlight || !BRIDGE_API_TOKEN || !workerOrigin()) return;
   inFlight = true;
 
   try {
-    const next = await hubRequest({ action: 'next' });
-    const job = next?.job;
-    if (!job) return;
-
-    try {
-      const sent = await bridgeAudio(job);
-      await hubRequest({
-        action: 'result',
-        logId: job.logId,
-        success: true,
-        messageId: sent?.messageId || null,
-      });
-    } catch (error) {
-      await hubRequest({
-        action: 'result',
-        logId: job.logId,
-        success: false,
-        error: error instanceof Error ? error.message : 'Falha no envio',
-      }).catch(() => {});
-    }
+    const handled = await processOutboundQueue();
+    if (!handled) await processCampaign();
   } catch (error) {
     console.error('[campaign-runner]', error instanceof Error ? error.message : error);
   } finally {

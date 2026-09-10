@@ -36,22 +36,43 @@ function counts(rows = []) {
 }
 
 async function loadCampaign(supabase) {
-  const { data, error } = await supabase
+  const { data: logs, error: logsError } = await supabase
     .from('whatsapp_audio_campaign_logs')
-    .select('id,contact_id,segment,status,message_id,reason,sent_at,updated_at,whatsapp_contacts(id,profile_name,phone,wa_id,stage,tags,last_message_at)')
+    .select('id,contact_id,segment,status,message_id,reason,sent_at,updated_at,created_at')
     .eq('campaign_key', CAMPAIGN_KEY)
     .order('created_at', { ascending: true });
-  if (error) throw error;
-  return data || [];
+  if (logsError) throw logsError;
+
+  const rows = logs || [];
+  const contactIds = [...new Set(rows.map((row) => row.contact_id).filter(Boolean))];
+  if (!contactIds.length) return rows.map((row) => ({ ...row, whatsapp_contacts: null }));
+
+  const { data: contacts, error: contactsError } = await supabase
+    .from('whatsapp_contacts')
+    .select('id,profile_name,phone,wa_id,stage,tags,last_message_at')
+    .in('id', contactIds);
+  if (contactsError) throw contactsError;
+
+  const byId = new Map((contacts || []).map((contact) => [contact.id, contact]));
+  return rows.map((row) => ({
+    ...row,
+    whatsapp_contacts: byId.get(row.contact_id) || null,
+  }));
 }
 
 export async function GET() {
   try {
     const supabase = getSupabaseAdmin();
     const rows = await loadCampaign(supabase);
-    return Response.json({ ok: true, campaignKey: CAMPAIGN_KEY, counts: counts(rows), rows });
+    return Response.json(
+      { ok: true, campaignKey: CAMPAIGN_KEY, counts: counts(rows), rows },
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
   } catch (error) {
-    return Response.json({ ok: false, error: error instanceof Error ? error.message : 'Falha ao carregar campanha.' }, { status: 500 });
+    return Response.json(
+      { ok: false, error: error instanceof Error ? error.message : 'Falha ao carregar campanha.' },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } }
+    );
   }
 }
 

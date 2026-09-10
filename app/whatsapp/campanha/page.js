@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const box = {
   background: '#fff',
@@ -160,10 +160,179 @@ function TestCard({ assets }) {
           {message}
         </div>
       )}
+    </section>
+  );
+}
 
-      <div style={{ marginTop: 14, padding: 12, borderRadius: 10, background: '#f8f7f3', color: '#6f6a61', fontSize: 12, lineHeight: 1.5 }}>
-        O teste agora usa exatamente a versão do áudio exibida no player acima. Se você trocar o arquivo, a versão antiga não fica mais em cache.
+function CampaignCard() {
+  const [campaign, setCampaign] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [seconds, setSeconds] = useState(null);
+  const timerRef = useRef(null);
+  const tickRef = useRef(null);
+
+  async function loadCampaign() {
+    const response = await fetch('/api/whatsapp/campaign-run?t=' + Date.now(), { cache: 'no-store' });
+    const data = await response.json();
+    if (response.ok) setCampaign(data);
+    return data;
+  }
+
+  useEffect(() => {
+    loadCampaign();
+    return () => {
+      clearTimeout(timerRef.current);
+      clearInterval(tickRef.current);
+    };
+  }, []);
+
+  function clearTimers() {
+    clearTimeout(timerRef.current);
+    clearInterval(tickRef.current);
+    timerRef.current = null;
+    tickRef.current = null;
+    setSeconds(null);
+  }
+
+  function scheduleNext() {
+    const delay = Math.floor(120 + Math.random() * 121);
+    setSeconds(delay);
+    clearInterval(tickRef.current);
+    tickRef.current = setInterval(() => {
+      setSeconds((current) => {
+        if (current === null || current <= 1) return 0;
+        return current - 1;
+      });
+    }, 1000);
+    timerRef.current = setTimeout(() => {
+      clearTimers();
+      sendNext();
+    }, delay * 1000);
+  }
+
+  async function sendNext() {
+    if (!running && !busy) return;
+    setBusy(true);
+    setMessage('Enviando próximo áudio...');
+    try {
+      const response = await fetch('/api/whatsapp/campaign-run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send-next' }),
+        cache: 'no-store',
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'Falha ao enviar próximo áudio.');
+      const fresh = await loadCampaign();
+      const count = fresh?.counts || data?.counts;
+
+      if (data?.sent) {
+        const name = data.contact?.name || data.contact?.phone || 'Lead';
+        setMessage('Enviado para ' + name + ' ✅');
+      } else if (data?.skipped) {
+        const name = data.contact?.name || data.contact?.phone || 'Lead';
+        setMessage(name + ' foi pulado: ' + data.reason);
+      }
+
+      if (data?.done || !count?.pending) {
+        setRunning(false);
+        clearTimers();
+        setMessage('Campanha concluída ✅');
+      } else if (running) {
+        scheduleNext();
+      }
+    } catch (error) {
+      setRunning(false);
+      clearTimers();
+      setMessage('Campanha pausada: ' + error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function startCampaign() {
+    const pending = campaign?.counts?.pending || 0;
+    if (!pending) return;
+    const ok = window.confirm(
+      'Começar agora? O primeiro áudio será enviado imediatamente e os próximos sairão com intervalo aleatório de 2 a 4 minutos.'
+    );
+    if (!ok) return;
+    setRunning(true);
+    setMessage('Campanha iniciada. Enviando o primeiro...');
+    setTimeout(() => sendNext(), 0);
+  }
+
+  function pauseCampaign() {
+    setRunning(false);
+    clearTimers();
+    setMessage('Campanha pausada. Nenhum novo áudio será enviado até você continuar.');
+  }
+
+  const c = campaign?.counts;
+  const finished = c && c.pending === 0;
+
+  return (
+    <section style={{ ...box, marginTop: 14, border: '2px solid #b9924d' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', color: '#8e6b30' }}>CAMPANHA REAL · 1ª ONDA</div>
+          <h2 style={{ margin: '6px 0 6px', fontSize: 23 }}>Áudio do Gui para os leads selecionados</h2>
+          <p style={{ margin: 0, color: '#77746d', fontSize: 13 }}>
+            Sellers recebem o áudio de seller. Iniciantes recebem o áudio de iniciante. Quem responder antes da vez é pulado automaticamente.
+          </p>
+        </div>
+        <span style={{ height: 'fit-content', fontSize: 12, fontWeight: 900, padding: '8px 11px', borderRadius: 999, background: running ? '#e7f3e9' : '#f2eadb' }}>
+          {running ? 'ENVIANDO' : finished ? 'CONCLUÍDA' : 'PRONTA'}
+        </span>
       </div>
+
+      {!c ? (
+        <div style={{ marginTop: 16, color: '#77746d' }}>Carregando a lista...</div>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(135px,1fr))', gap: 10, marginTop: 18 }}>
+            {[
+              ['Selecionados', c.total],
+              ['Sellers', c.seller.total],
+              ['Iniciantes', c.iniciante.total],
+              ['Enviados', c.sent],
+              ['Faltam', c.pending],
+              ['Pulados', c.skipped],
+            ].map(([label, value]) => (
+              <div key={label} style={{ background: '#f8f7f3', border: '1px solid #ebe7df', borderRadius: 12, padding: 13 }}>
+                <div style={{ fontSize: 11, color: '#77746d', fontWeight: 800 }}>{label}</div>
+                <div style={{ fontSize: 24, fontWeight: 900, marginTop: 3 }}>{value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginTop: 16, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            {!running ? (
+              <button type="button" onClick={startCampaign} disabled={finished || busy} style={{ ...button, background: '#8e6b30', opacity: finished || busy ? .45 : 1 }}>
+                {c.sent > 0 ? 'Continuar campanha' : 'Iniciar campanha'}
+              </button>
+            ) : (
+              <button type="button" onClick={pauseCampaign} style={{ ...button, background: '#7a3f3f' }}>Pausar campanha</button>
+            )}
+            <button type="button" onClick={loadCampaign} disabled={busy} style={{ ...button, background: '#fff', color: '#171714', border: '1px solid #d8d4c8' }}>
+              Atualizar números
+            </button>
+            {seconds !== null && running && <strong style={{ fontSize: 13 }}>Próximo envio em ~{seconds}s</strong>}
+          </div>
+
+          {message && (
+            <div style={{ marginTop: 13, padding: 12, background: '#f8f7f3', borderRadius: 10, fontSize: 13, fontWeight: 700 }}>
+              {message}
+            </div>
+          )}
+
+          <div style={{ marginTop: 13, color: '#77746d', fontSize: 12, lineHeight: 1.55 }}>
+            Intervalo aleatório de 2 a 4 minutos. Deixe esta aba aberta enquanto estiver em “ENVIANDO”. Se fechar ou pausar, os contatos que ainda faltam ficam salvos e você pode continuar depois sem duplicar os que já foram enviados.
+          </div>
+        </>
+      )}
     </section>
   );
 }
@@ -188,7 +357,7 @@ export default function CampanhaWhatsAppPage() {
         <div style={{ margin: '14px 0 18px' }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', color: '#8e6b30' }}>CAMPANHA DE ÁUDIO</div>
           <h1 style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontWeight: 500, fontSize: 34, margin: '5px 0 7px' }}>Áudios do Gui</h1>
-          <p style={{ margin: 0, color: '#77746d', fontSize: 14 }}>Os dois arquivos precisam estar realmente salvos antes do teste.</p>
+          <p style={{ margin: 0, color: '#77746d', fontSize: 14 }}>Teste validado. A campanha real está pronta para começar de forma controlada.</p>
         </div>
 
         {loading ? <div style={box}>Carregando...</div> : (
@@ -210,13 +379,9 @@ export default function CampanhaWhatsAppPage() {
               />
             </div>
             <TestCard assets={assets} />
+            <CampaignCard />
           </>
         )}
-
-        <div style={{ ...box, marginTop: 14, background: '#171714', color: '#fff' }}>
-          <strong style={{ display: 'block', marginBottom: 6 }}>A campanha completa ainda não está liberada.</strong>
-          <span style={{ color: '#c9c6bd', fontSize: 13 }}>Primeiro confirme que os dois testes chegaram com o conteúdo certo. Depois liberamos os envios para os grupos selecionados.</span>
-        </div>
       </div>
     </main>
   );

@@ -24,6 +24,14 @@ function fallbackBody(message) {
   return '[' + (message?.type || 'mensagem') + ']';
 }
 
+function newestDate(left, right) {
+  const leftMs = Date.parse(left || '');
+  const rightMs = Date.parse(right || '');
+  if (!Number.isFinite(leftMs)) return right;
+  if (!Number.isFinite(rightMs)) return left;
+  return leftMs >= rightMs ? left : right;
+}
+
 export async function POST(request) {
   if (!authorized(request)) {
     return Response.json({ ok: false, error: 'Não autorizado.' }, { status: 401 });
@@ -31,39 +39,58 @@ export async function POST(request) {
 
   const payload = await request.json().catch(() => null);
   const message = payload?.message;
+  const event = String(payload?.event || 'message').toLowerCase();
 
   if (!message?.id || !message?.chatId) {
     return Response.json({ ok: false, error: 'Evento de mensagem inválido.' }, { status: 400 });
   }
 
-  if (message.fromMe) {
-    return Response.json({ ok: true, ignored: true });
-  }
-
-  const waId = normalizeWaId(message.senderId || message.chatId);
+  const contactRef = message.contactId
+    || (message.fromMe ? message.chatId : (message.senderId || message.chatId));
+  const waId = normalizeWaId(contactRef);
   if (!waId) {
-    return Response.json({ ok: false, error: 'Remetente inválido.' }, { status: 400 });
+    return Response.json({ ok: false, error: 'Contato inválido.' }, { status: 400 });
   }
 
   try {
     const supabase = getSupabaseAdmin();
     const receivedAt = message.timestamp || new Date().toISOString();
+    let lastMessageAt = receivedAt;
+
+    if (event === 'history') {
+      const { data: existing } = await supabase
+        .from('whatsapp_contacts')
+        .select('last_message_at')
+        .eq('wa_id', waId)
+        .maybeSingle();
+      if (existing?.last_message_at) {
+        lastMessageAt = newestDate(existing.last_message_at, receivedAt);
+      }
+    }
+
+    const source = message.isGroup
+      ? 'WhatsApp Bridge · Grupo'
+      : event === 'history'
+        ? 'WhatsApp Bridge · Histórico'
+        : 'WhatsApp Bridge';
+
     const contact = await upsertWhatsAppContact(supabase, {
       waId,
-      profileName: message.senderName || null,
-      source: message.isGroup ? 'WhatsApp Bridge · Grupo' : 'WhatsApp Bridge',
-      lastMessageAt: receivedAt,
+      profileName: message.fromMe ? null : (message.senderName || null),
+      source,
+      lastMessageAt,
     });
 
+    const direction = message.fromMe ? 'outbound' : 'inbound';
     const { error } = await supabase
       .from('whatsapp_messages')
       .upsert({
         meta_message_id: message.id,
         contact_id: contact.id,
-        direction: 'inbound',
+        direction,
         message_type: message.type || 'text',
         body: fallbackBody(message),
-        status: 'received',
+        status: direction === 'outbound' ? 'sent' : 'received',
         raw_payload: payload,
         sent_at: receivedAt,
       }, {
@@ -75,13 +102,15 @@ export async function POST(request) {
 
     return Response.json({
       ok: true,
+      event,
+      direction,
       contactId: contact.id,
       messageId: message.id,
     });
   } catch (error) {
     return Response.json({
       ok: false,
-      error: error instanceof Error ? error.message : 'Falha ao salvar mensagem recebida.',
+      error: error instanceof Error ? error.message : 'Falha ao salvar mensagem do WhatsApp.',
     }, { status: 500 });
   }
 }

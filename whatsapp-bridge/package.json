@@ -7,7 +7,7 @@
     "node": ">=20.11.0"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node bootstrap.mjs"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "6.7.24",

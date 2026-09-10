@@ -5,7 +5,8 @@ WORKDIR /app
 COPY whatsapp-bridge/package.json whatsapp-bridge/package-lock.json ./
 RUN npm ci --omit=dev
 
-COPY whatsapp-bridge/server.js ./
+COPY whatsapp-bridge/server.js whatsapp-bridge/history-patch.mjs ./
+RUN node history-patch.mjs && rm history-patch.mjs
 
 ENV NODE_ENV=production
 ENV PORT=3000

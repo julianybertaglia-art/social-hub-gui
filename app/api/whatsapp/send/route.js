@@ -28,6 +28,7 @@ function campaignCounts(rows = []) {
     seller: { total: 0, sent: 0, pending: 0 },
     iniciante: { total: 0, sent: 0, pending: 0 },
   };
+
   for (const row of rows) {
     if (typeof result[row.status] === 'number') result[row.status] += 1;
     if (result[row.segment]) {
@@ -36,6 +37,7 @@ function campaignCounts(rows = []) {
       if (row.status === 'pending') result[row.segment].pending += 1;
     }
   }
+
   return result;
 }
 
@@ -45,8 +47,23 @@ async function loadCampaignLogs(supabase) {
     .select('id,contact_id,segment,status,message_id,reason,sent_at,updated_at,created_at')
     .eq('campaign_key', CAMPAIGN_KEY)
     .order('created_at', { ascending: true });
+
   if (error) throw error;
   return data || [];
+}
+
+async function campaignState(supabase) {
+  const rows = await loadCampaignLogs(supabase);
+  const counts = campaignCounts(rows);
+  return {
+    ok: true,
+    campaignKey: CAMPAIGN_KEY,
+    counts,
+    done: counts.pending === 0 && counts.sending === 0,
+    failed: rows
+      .filter((row) => row.status === 'failed')
+      .map((row) => ({ id: row.id, reason: row.reason })),
+  };
 }
 
 export async function GET(request) {
@@ -55,32 +72,30 @@ export async function GET(request) {
     if (url.searchParams.get('campaign') !== CAMPAIGN_KEY) {
       return Response.json({ ok: false, error: 'Campanha inválida.' }, { status: 400 });
     }
+
     const supabase = getSupabaseAdmin();
-    const rows = await loadCampaignLogs(supabase);
-    return Response.json({
-      ok: true,
-      campaignKey: CAMPAIGN_KEY,
-      counts: campaignCounts(rows),
-      pendingIds: rows.filter((row) => row.status === 'pending').map((row) => row.id),
-      failed: rows.filter((row) => row.status === 'failed').map((row) => ({ id: row.id, reason: row.reason })),
-    }, { headers: { 'Cache-Control': 'no-store' } });
+    return Response.json(await campaignState(supabase), {
+      headers: { 'Cache-Control': 'no-store, max-age=0' },
+    });
   } catch (error) {
     return Response.json({
       ok: false,
       error: error instanceof Error ? error.message : 'Falha ao carregar campanha.',
-    }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
+    }, { status: 500, headers: { 'Cache-Control': 'no-store, max-age=0' } });
   }
 }
 
 async function sendCampaignAudio(request, body) {
   const supabase = getSupabaseAdmin();
   const logId = String(body?.campaignLogId || '').trim();
+
   if (!logId) {
     return Response.json({ ok: false, error: 'Item da campanha não informado.' }, { status: 400 });
   }
 
   let log = null;
   let sentToWhatsApp = false;
+
   try {
     const { data: currentLog, error: logError } = await supabase
       .from('whatsapp_audio_campaign_logs')
@@ -88,19 +103,26 @@ async function sendCampaignAudio(request, body) {
       .eq('id', logId)
       .eq('campaign_key', CAMPAIGN_KEY)
       .maybeSingle();
+
     if (logError) throw logError;
-    if (!currentLog) return Response.json({ ok: false, error: 'Lead não pertence a esta campanha.' }, { status: 404 });
+    if (!currentLog) {
+      return Response.json({ ok: false, error: 'Lead não pertence a esta campanha.' }, { status: 404 });
+    }
+
     log = currentLog;
 
     if (log.status === 'sent') {
       return Response.json({ ok: true, alreadySent: true, messageId: log.message_id });
     }
+
     if (log.status === 'skipped') {
       return Response.json({ ok: true, alreadySkipped: true, reason: log.reason || 'Lead já foi pulado.' });
     }
+
     if (log.status === 'sending') {
       return Response.json({ ok: false, error: 'Este envio já está em processamento.' }, { status: 409 });
     }
+
     if (log.status === 'failed') {
       return Response.json({ ok: false, error: 'Este envio falhou anteriormente: ' + (log.reason || 'erro desconhecido') }, { status: 409 });
     }
@@ -112,8 +134,12 @@ async function sendCampaignAudio(request, body) {
       .eq('status', 'pending')
       .select('id,contact_id,segment')
       .maybeSingle();
+
     if (claimError) throw claimError;
-    if (!claimed) return Response.json({ ok: false, error: 'Não consegui reservar este envio. Atualize a página e tente novamente.' }, { status: 409 });
+    if (!claimed) {
+      return Response.json({ ok: false, error: 'Não consegui reservar este envio. Tente novamente.' }, { status: 409 });
+    }
+
     log = { ...log, ...claimed };
 
     const { data: contact, error: contactError } = await supabase
@@ -121,6 +147,7 @@ async function sendCampaignAudio(request, body) {
       .select('id,profile_name,phone,wa_id,stage,tags,last_message_at')
       .eq('id', log.contact_id)
       .single();
+
     if (contactError) throw contactError;
 
     const contactTags = Array.isArray(contact.tags) ? contact.tags : [];
@@ -132,10 +159,18 @@ async function sendCampaignAudio(request, body) {
 
     if (!to || ['Venda', 'Perdido'].includes(contact.stage) || !contactTags.includes(expectedTag)) {
       const reason = !to ? 'Número inválido' : 'Lead não está mais elegível para esta campanha';
-      await supabase.from('whatsapp_audio_campaign_logs')
+
+      await supabase
+        .from('whatsapp_audio_campaign_logs')
         .update({ status: 'skipped', reason, updated_at: new Date().toISOString() })
         .eq('id', log.id);
-      return Response.json({ ok: true, skipped: true, reason, contact: { id: contact.id, name: contact.profile_name, phone: to } });
+
+      return Response.json({
+        ok: true,
+        skipped: true,
+        reason,
+        contact: { id: contact.id, name: contact.profile_name, phone: to },
+      });
     }
 
     const { data: latestMessages, error: latestError } = await supabase
@@ -144,15 +179,24 @@ async function sendCampaignAudio(request, body) {
       .eq('contact_id', contact.id)
       .order('sent_at', { ascending: false })
       .limit(1);
+
     if (latestError) throw latestError;
     const latest = latestMessages?.[0] || null;
 
     if (latest?.direction === 'inbound') {
       const reason = 'Lead respondeu e precisa de atendimento antes do áudio';
-      await supabase.from('whatsapp_audio_campaign_logs')
+
+      await supabase
+        .from('whatsapp_audio_campaign_logs')
         .update({ status: 'skipped', reason, updated_at: new Date().toISOString() })
         .eq('id', log.id);
-      return Response.json({ ok: true, skipped: true, reason, contact: { id: contact.id, name: contact.profile_name, phone: to } });
+
+      return Response.json({
+        ok: true,
+        skipped: true,
+        reason,
+        contact: { id: contact.id, name: contact.profile_name, phone: to },
+      });
     }
 
     const { data: asset, error: assetError } = await supabase
@@ -160,59 +204,79 @@ async function sendCampaignAudio(request, body) {
       .select('key,sha256,data_base64')
       .eq('key', log.segment)
       .maybeSingle();
+
     if (assetError) throw assetError;
     if (!asset?.data_base64) throw new Error('O áudio de ' + log.segment + ' não está salvo.');
 
     const origin = new URL(request.url).origin;
-    const audioUrl = origin + '/api/whatsapp/campaign-audio?key=' + encodeURIComponent(log.segment)
+    const audioUrl = origin
+      + '/api/whatsapp/campaign-audio?key=' + encodeURIComponent(log.segment)
       + '&raw=1&v=' + encodeURIComponent(asset.sha256 || Date.now());
 
     const result = await sendWhatsAppVoiceByUrl({ to, audioUrl });
     sentToWhatsApp = true;
+
     const messageId = result?.messages?.[0]?.id || result?.messageId || null;
     const now = new Date().toISOString();
 
-    const { error: messageError } = await supabase.from('whatsapp_messages').insert({
-      meta_message_id: messageId,
-      contact_id: contact.id,
-      direction: 'outbound',
-      message_type: 'audio',
-      body: '🎙️ Áudio do Gui · campanha 10/09',
-      status: 'sent',
-      raw_payload: result,
-      sent_at: now,
-    });
+    const { error: messageError } = await supabase
+      .from('whatsapp_messages')
+      .insert({
+        meta_message_id: messageId,
+        contact_id: contact.id,
+        direction: 'outbound',
+        message_type: 'audio',
+        body: '🎙️ Áudio do Gui · campanha 10/09',
+        status: 'sent',
+        raw_payload: result,
+        sent_at: now,
+      });
+
     if (messageError) throw messageError;
 
     const sentTag = 'Áudio Gui enviado · 10/09';
-    const nextTags = contactTags.includes(sentTag) ? contactTags : [...contactTags, sentTag];
+    const nextTags = contactTags.includes(sentTag)
+      ? contactTags
+      : [...contactTags, sentTag];
+
     const { error: contactUpdateError } = await supabase
       .from('whatsapp_contacts')
       .update({ tags: nextTags, last_message_at: now, updated_at: now })
       .eq('id', contact.id);
+
     if (contactUpdateError) throw contactUpdateError;
 
     const { error: logUpdateError } = await supabase
       .from('whatsapp_audio_campaign_logs')
       .update({ status: 'sent', message_id: messageId, sent_at: now, reason: null, updated_at: now })
       .eq('id', log.id);
+
     if (logUpdateError) throw logUpdateError;
 
     return Response.json({
       ok: true,
       sent: true,
       messageId,
-      contact: { id: contact.id, name: contact.profile_name, phone: to, segment: log.segment },
+      contact: {
+        id: contact.id,
+        name: contact.profile_name,
+        phone: to,
+        segment: log.segment,
+      },
     });
   } catch (error) {
     if (log?.id) {
       const reason = (sentToWhatsApp ? 'Áudio pode ter sido enviado; não repetir automaticamente. ' : '')
         + (error instanceof Error ? error.message : 'Falha ao enviar');
-      await supabase.from('whatsapp_audio_campaign_logs')
-        .update({ status: 'failed', reason, updated_at: new Date().toISOString() })
-        .eq('id', log.id)
-        .catch(() => {});
+
+      try {
+        await supabase
+          .from('whatsapp_audio_campaign_logs')
+          .update({ status: 'failed', reason, updated_at: new Date().toISOString() })
+          .eq('id', log.id);
+      } catch {}
     }
+
     return Response.json({
       ok: false,
       error: error instanceof Error ? error.message : 'Falha ao enviar áudio da campanha.',
@@ -220,8 +284,57 @@ async function sendCampaignAudio(request, body) {
   }
 }
 
+async function sendNextCampaignAudio(request) {
+  const supabase = getSupabaseAdmin();
+  const rows = await loadCampaignLogs(supabase);
+  const next = rows.find((row) => row.status === 'pending');
+
+  if (!next) {
+    return Response.json(await campaignState(supabase), {
+      headers: { 'Cache-Control': 'no-store, max-age=0' },
+    });
+  }
+
+  const sendResponse = await sendCampaignAudio(request, { campaignLogId: next.id });
+  const payload = await sendResponse.json().catch(() => ({ ok: false, error: 'Resposta inválida no envio.' }));
+
+  if (!sendResponse.ok || !payload?.ok) {
+    return Response.json(payload, { status: sendResponse.status || 500 });
+  }
+
+  const state = await campaignState(supabase);
+  return Response.json({ ...payload, counts: state.counts, done: state.done }, {
+    headers: { 'Cache-Control': 'no-store, max-age=0' },
+  });
+}
+
 export async function POST(request) {
   const body = await request.json().catch(() => ({}));
+
+  if (body?.campaignAction === 'status') {
+    try {
+      const supabase = getSupabaseAdmin();
+      return Response.json(await campaignState(supabase), {
+        headers: { 'Cache-Control': 'no-store, max-age=0' },
+      });
+    } catch (error) {
+      return Response.json({
+        ok: false,
+        error: error instanceof Error ? error.message : 'Falha ao carregar campanha.',
+      }, { status: 500 });
+    }
+  }
+
+  if (body?.campaignAction === 'next') {
+    try {
+      return await sendNextCampaignAudio(request);
+    } catch (error) {
+      return Response.json({
+        ok: false,
+        error: error instanceof Error ? error.message : 'Falha ao enviar próximo áudio.',
+      }, { status: 500 });
+    }
+  }
 
   if (body?.campaignLogId) {
     return sendCampaignAudio(request, body);
@@ -250,24 +363,28 @@ export async function POST(request) {
     const messageId = result?.messages?.[0]?.id || result?.messageId || null;
     const now = new Date().toISOString();
     const supabase = getSupabaseAdmin();
+
     const contact = await upsertWhatsAppContact(supabase, {
       waId: to,
       source: getWhatsAppProvider() === 'baileys' ? 'WhatsApp Bridge' : 'WhatsApp',
       lastMessageAt: now,
     });
 
-    const { error } = await supabase.from('whatsapp_messages').insert({
-      meta_message_id: messageId,
-      contact_id: contact.id,
-      direction: 'outbound',
-      message_type: wantsVoice ? 'audio' : 'text',
-      body: wantsVoice ? '🎙️ Mensagem de voz' : text,
-      status: 'sent',
-      raw_payload: result,
-      sent_at: now,
-    });
+    const { error } = await supabase
+      .from('whatsapp_messages')
+      .insert({
+        meta_message_id: messageId,
+        contact_id: contact.id,
+        direction: 'outbound',
+        message_type: wantsVoice ? 'audio' : 'text',
+        body: wantsVoice ? '🎙️ Mensagem de voz' : text,
+        status: 'sent',
+        raw_payload: result,
+        sent_at: now,
+      });
 
     if (error) throw error;
+
     return Response.json({
       ok: true,
       messageId,

@@ -6,6 +6,8 @@ COPY whatsapp-bridge/package.json whatsapp-bridge/package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY whatsapp-bridge/server.js ./
+COPY whatsapp-bridge/bootstrap.mjs ./
+COPY whatsapp-bridge/campaign-runner.mjs ./
 
 ENV NODE_ENV=production
 ENV PORT=3000

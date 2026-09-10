@@ -5,6 +5,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from './whatsapp.module.css';
 
 const STAGES = ['Novo lead', 'Conversando', 'Interessado', 'Link enviado', 'Venda', 'Perdido'];
+const SMART_FILTERS = [
+  { id: 'all', label: 'Todos' },
+  { id: 'reply', label: 'Para responder' },
+  { id: 'followup', label: 'Para chamar' },
+  { id: 'hot', label: 'Quentes' },
+  { id: 'imersao', label: 'Imersão' },
+  { id: 'mentoria', label: 'Mentoria' },
+  { id: 'argo', label: 'ARGO' },
+  { id: 'treinamento', label: 'Treinamento' },
+];
 
 function formatPhone(value) {
   const digits = String(value || '').replace(/\D/g, '');
@@ -27,12 +37,35 @@ function formatTime(value) {
   }).format(new Date(value));
 }
 
+function matchesFilter(contact, filter) {
+  if (filter === 'all') return true;
+  if (filter === 'reply') return Boolean(contact.needs_reply);
+  if (filter === 'followup') return Boolean(contact.needs_follow_up);
+  if (filter === 'hot') return contact.smart_priority === 'high';
+
+  const categories = contact.smart_categories || [];
+  if (filter === 'imersao') return categories.includes('Imersão');
+  if (filter === 'mentoria') return categories.includes('Mentoria');
+  if (filter === 'argo') return categories.includes('ARGO');
+  if (filter === 'treinamento') return categories.includes('Treinamento');
+  return true;
+}
+
+function contactAction(contact) {
+  if (!contact) return 'Selecione um lead';
+  if (contact.needs_reply) return 'Responder agora';
+  if (contact.needs_follow_up) return 'Fazer follow-up';
+  if (contact.smart_priority === 'high') return 'Lead quente — acompanhar de perto';
+  return 'Sem ação urgente';
+}
+
 export default function WhatsAppPage() {
   const [status, setStatus] = useState(null);
   const [contacts, setContacts] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -90,15 +123,38 @@ export default function WhatsAppPage() {
     return () => clearInterval(timer);
   }, [isBaileys, selectedId, loadStatus, loadContacts, loadMessages]);
 
+  const filterCounts = useMemo(() => {
+    const counts = {};
+    for (const filter of SMART_FILTERS) {
+      counts[filter.id] = contacts.filter((contact) => matchesFilter(contact, filter.id)).length;
+    }
+    return counts;
+  }, [contacts]);
+
   const filteredContacts = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return contacts;
-    return contacts.filter((contact) =>
-      [contact.profile_name, contact.phone, contact.stage, ...(contact.tags || [])]
+    return contacts.filter((contact) => {
+      if (!matchesFilter(contact, activeFilter)) return false;
+      if (!term) return true;
+      return [
+        contact.profile_name,
+        contact.phone,
+        contact.stage,
+        contact.last_message_body,
+        ...(contact.tags || []),
+        ...(contact.smart_categories || []),
+      ]
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(term))
-    );
-  }, [contacts, search]);
+        .some((value) => String(value).toLowerCase().includes(term));
+    });
+  }, [contacts, search, activeFilter]);
+
+  function chooseFilter(filterId) {
+    setActiveFilter(filterId);
+    setSearch('');
+    const first = contacts.find((contact) => matchesFilter(contact, filterId));
+    if (first) setSelectedId(first.id);
+  }
 
   async function handleBridgeAction(action) {
     setBridgeBusy(true);
@@ -131,8 +187,11 @@ export default function WhatsAppPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || 'Não foi possível salvar.');
-      setContacts((current) => current.map((contact) => contact.id === data.contact.id ? data.contact : contact));
+      setContacts((current) => current.map((contact) =>
+        contact.id === data.contact.id ? { ...contact, ...data.contact } : contact
+      ));
       setNotice('Alteração salva.');
+      loadContacts().catch(() => {});
     } catch (error) {
       setNotice(error.message);
     } finally {
@@ -170,7 +229,7 @@ export default function WhatsAppPage() {
           <Link href="/" className={styles.back}>← Voltar para o Hub</Link>
           <span className={styles.eyebrow}>ATENDIMENTO & CRM</span>
           <h1>WhatsApp</h1>
-          <p>Leads, conversas e follow-up no mesmo lugar.</p>
+          <p>O Hub organiza quem precisa de atenção e separa os leads por interesse.</p>
         </div>
         <div className={styles.connectionGroup}>
           <div className={styles.connection + ' ' + (connectionReady ? styles.online : styles.pending)}>
@@ -202,9 +261,7 @@ export default function WhatsAppPage() {
             <div>
               <span className={styles.eyebrow}>CONEXÃO POR QR CODE</span>
               <h2>{status?.state === 'awaiting_qr' && status?.qrDataUrl ? 'Escaneie o QR Code do WhatsApp.' : 'Conecte o WhatsApp pelo QR Code.'}</h2>
-              <p>
-                Use o número do atendimento aos leads. Esta conexão é separada da Meta e do número da Vital.
-              </p>
+              <p>Use o número do atendimento aos leads. Esta conexão é separada da Meta e do número da Vital.</p>
               {status?.error && <p className={styles.bridgeError}>{status.error}</p>}
             </div>
             <div className={styles.bridgeSetup}>
@@ -248,51 +305,79 @@ export default function WhatsAppPage() {
 
       {notice && <button className={styles.notice} onClick={() => setNotice('')}>{notice} ×</button>}
 
+      <section className={styles.smartBar}>
+        <div className={styles.smartBarIntro}>
+          <strong>Fila inteligente</strong>
+          <span>Escolha o que você quer resolver agora.</span>
+        </div>
+        <div className={styles.smartFilters}>
+          {SMART_FILTERS.map((filter) => (
+            <button
+              type="button"
+              key={filter.id}
+              className={styles.smartFilter + ' ' + (activeFilter === filter.id ? styles.smartFilterActive : '')}
+              onClick={() => chooseFilter(filter.id)}
+            >
+              <span>{filter.label}</span>
+              <b>{filterCounts[filter.id] || 0}</b>
+            </button>
+          ))}
+        </div>
+      </section>
+
       <section className={styles.workspace}>
         <aside className={styles.contactsPane}>
           <div className={styles.paneHeading}>
-            <div><span className={styles.eyebrow}>LEADS</span><h2>Conversas</h2></div>
-            <span className={styles.count}>{contacts.length}</span>
+            <div><span className={styles.eyebrow}>LEADS</span><h2>{SMART_FILTERS.find((item) => item.id === activeFilter)?.label || 'Conversas'}</h2></div>
+            <span className={styles.count}>{filteredContacts.length}</span>
           </div>
           <input
             className={styles.search}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar nome, número ou etapa..."
+            placeholder="Buscar dentro desta fila..."
           />
           <div className={styles.contactList}>
-            {!filteredContacts.length && <div className={styles.empty}>Nenhuma conversa recebida ainda.</div>}
-            {filteredContacts.map((contact) => (
-              <button
-                type="button"
-                key={contact.id}
-                className={styles.contact + ' ' + (selectedId === contact.id ? styles.selected : '')}
-                onClick={() => setSelectedId(contact.id)}
-              >
-                <div className={styles.avatar}>{(contact.profile_name || 'W').slice(0, 1).toUpperCase()}</div>
-                <div className={styles.contactCopy}>
-                  <strong>{contact.profile_name || formatPhone(contact.phone)}</strong>
-                  <span>{contact.profile_name ? formatPhone(contact.phone) : contact.source}</span>
-                  <small>{contact.stage}</small>
-                </div>
-                <time>{formatTime(contact.last_message_at)}</time>
-              </button>
-            ))}
+            {!filteredContacts.length && <div className={styles.empty}>Nenhum lead nesta fila agora.</div>}
+            {filteredContacts.map((contact) => {
+              const topic = contact.smart_categories?.[0];
+              const attention = contact.needs_reply
+                ? 'Responder agora'
+                : contact.needs_follow_up
+                  ? 'Chamar novamente'
+                  : topic || contact.stage;
+              return (
+                <button
+                  type="button"
+                  key={contact.id}
+                  className={styles.contact + ' ' + (selectedId === contact.id ? styles.selected : '')}
+                  onClick={() => setSelectedId(contact.id)}
+                >
+                  <div className={styles.avatar}>{(contact.profile_name || 'W').slice(0, 1).toUpperCase()}</div>
+                  <div className={styles.contactCopy}>
+                    <strong>{contact.profile_name || formatPhone(contact.phone)}</strong>
+                    <span>{contact.profile_name ? formatPhone(contact.phone) : contact.source}</span>
+                    <small className={contact.needs_reply ? styles.needsReply : contact.needs_follow_up ? styles.needsFollowUp : ''}>{attention}</small>
+                  </div>
+                  <time>{formatTime(contact.last_message_sent_at || contact.last_message_at)}</time>
+                </button>
+              );
+            })}
           </div>
         </aside>
 
         <section className={styles.chatPane}>
           {!selected ? (
             <div className={styles.chatEmpty}>
-              <strong>As conversas vão aparecer aqui.</strong>
-              <span>Assim que um lead mandar mensagem para o número conectado, o Hub cria o contato automaticamente.</span>
+              <strong>Escolha um lead para começar.</strong>
+              <span>Use os filtros acima para ver quem precisa de resposta, follow-up ou separar por assunto.</span>
             </div>
           ) : (
             <>
               <div className={styles.chatHeader}>
                 <div>
                   <strong>{selected.profile_name || formatPhone(selected.phone)}</strong>
-                  <span>{formatPhone(selected.phone)} · {selected.source}</span>
+                  <span>{formatPhone(selected.phone)} · {(selected.smart_categories || []).join(' · ') || selected.source}</span>
                 </div>
                 <select value={selected.stage} onChange={(event) => updateContact({ stage: event.target.value })} disabled={saving}>
                   {STAGES.map((stage) => <option key={stage}>{stage}</option>)}
@@ -329,9 +414,14 @@ export default function WhatsAppPage() {
             <div className={styles.empty}>Selecione uma conversa para ver os dados do lead.</div>
           ) : (
             <div className={styles.crmForm}>
+              <div className={styles.smartCard}>
+                <span>PRÓXIMA AÇÃO</span>
+                <strong>{contactAction(selected)}</strong>
+                <p>{(selected.smart_categories || []).length ? selected.smart_categories.join(' · ') : 'Assunto ainda não identificado'}</p>
+              </div>
               <label>Origem<input value={selected.source || 'WhatsApp'} readOnly /></label>
               <label>Etapa<select value={selected.stage} onChange={(event) => updateContact({ stage: event.target.value })} disabled={saving}>{STAGES.map((stage) => <option key={stage}>{stage}</option>)}</select></label>
-              <label>Tags<input defaultValue={(selected.tags || []).join(', ')} key={'tags-' + selected.id + '-' + (selected.tags || []).join('|')} onBlur={(event) => updateContact({ tags: event.target.value.split(',') })} placeholder="Imersão, Mentoria, Argoplace..." /></label>
+              <label>Tags<input defaultValue={(selected.tags || []).join(', ')} key={'tags-' + selected.id + '-' + (selected.tags || []).join('|')} onBlur={(event) => updateContact({ tags: event.target.value.split(',') })} placeholder="Imersão, Mentoria, ARGO..." /></label>
               <label>Observações<textarea rows="7" defaultValue={selected.notes || ''} key={'notes-' + selected.id + '-' + (selected.notes || '')} onBlur={(event) => updateContact({ notes: event.target.value })} placeholder="O que esse lead quer? O que falta para fechar?" /></label>
               <small>{saving ? 'Salvando...' : 'Alterações são salvas ao sair do campo.'}</small>
             </div>

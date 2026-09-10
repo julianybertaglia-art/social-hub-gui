@@ -32,6 +32,20 @@ function newestDate(left, right) {
   return leftMs >= rightMs ? left : right;
 }
 
+async function resolveCanonicalWaId(supabase, value) {
+  const rawWaId = normalizeWaId(value);
+  if (!rawWaId) return '';
+
+  const { data, error } = await supabase
+    .from('whatsapp_contact_aliases')
+    .select('canonical_wa_id')
+    .eq('alias_wa_id', rawWaId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return normalizeWaId(data?.canonical_wa_id || rawWaId);
+}
+
 export async function POST(request) {
   if (!authorized(request)) {
     return Response.json({ ok: false, error: 'Não autorizado.' }, { status: 401 });
@@ -47,13 +61,14 @@ export async function POST(request) {
 
   const contactRef = message.contactId
     || (message.fromMe ? message.chatId : (message.senderId || message.chatId));
-  const waId = normalizeWaId(contactRef);
-  if (!waId) {
+  const rawWaId = normalizeWaId(contactRef);
+  if (!rawWaId) {
     return Response.json({ ok: false, error: 'Contato inválido.' }, { status: 400 });
   }
 
   try {
     const supabase = getSupabaseAdmin();
+    const waId = await resolveCanonicalWaId(supabase, rawWaId);
     const receivedAt = message.timestamp || new Date().toISOString();
     let lastMessageAt = receivedAt;
 
@@ -91,7 +106,13 @@ export async function POST(request) {
         message_type: message.type || 'text',
         body: fallbackBody(message),
         status: direction === 'outbound' ? 'sent' : 'received',
-        raw_payload: payload,
+        raw_payload: {
+          ...payload,
+          lynna_contact_resolution: {
+            raw_wa_id: rawWaId,
+            canonical_wa_id: waId,
+          },
+        },
         sent_at: receivedAt,
       }, {
         onConflict: 'meta_message_id',
@@ -106,6 +127,7 @@ export async function POST(request) {
       direction,
       contactId: contact.id,
       messageId: message.id,
+      canonicalWaId: waId,
     });
   } catch (error) {
     return Response.json({

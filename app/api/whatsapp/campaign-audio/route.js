@@ -30,24 +30,27 @@ export async function GET(request) {
     return new Response(Buffer.from(data.data_base64, 'base64'), {
       headers: {
         'Content-Type': data.mime_type || 'audio/ogg; codecs=opus',
+        'Content-Length': String(Buffer.byteLength(data.data_base64, 'base64')),
         'Cache-Control': 'public, max-age=300',
+        'Accept-Ranges': 'bytes',
       },
     });
   }
 
   const { data, error } = await supabase
     .from('whatsapp_campaign_audio_assets')
-    .select('key,mime_type,sha256,updated_at');
+    .select('key,mime_type,sha256,updated_at,data_base64');
   if (error) return Response.json({ ok: false, error: error.message }, { status: 500 });
 
   const assets = {};
   for (const item of data || []) {
+    const ready = Boolean(item.data_base64 && item.data_base64.length > 0);
     assets[item.key] = {
-      ready: true,
+      ready,
       mimeType: item.mime_type,
       sha256: item.sha256,
       updatedAt: item.updated_at,
-      url: '/api/whatsapp/campaign-audio?key=' + encodeURIComponent(item.key) + '&raw=1',
+      url: ready ? '/api/whatsapp/campaign-audio?key=' + encodeURIComponent(item.key) + '&raw=1' : null,
     };
   }
   return Response.json({ ok: true, assets });

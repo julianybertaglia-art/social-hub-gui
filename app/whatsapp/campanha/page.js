@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const box = {
   background: '#fff',
@@ -75,6 +75,93 @@ function AudioCard({ type, title, subtitle, asset, onUploaded }) {
   );
 }
 
+function TestCard({ assets }) {
+  const [phone, setPhone] = useState('');
+  const [audioKey, setAudioKey] = useState('seller');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const selectedReady = Boolean(assets?.[audioKey]?.ready);
+  const cleanPhone = useMemo(() => String(phone || '').replace(/\D/g, ''), [phone]);
+
+  async function sendTest() {
+    if (!cleanPhone) return setMessage('Digite um número de WhatsApp para o teste.');
+    if (!selectedReady) return setMessage('Esse áudio ainda não está pronto.');
+
+    setBusy(true);
+    setMessage('Enviando teste...');
+    try {
+      const audioUrl = window.location.origin
+        + '/api/whatsapp/campaign-audio?key=' + encodeURIComponent(audioKey)
+        + '&raw=1';
+      const response = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: cleanPhone, audioUrl }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'Não foi possível enviar o teste.');
+      setMessage('Teste enviado como mensagem de voz ✅');
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section style={{ ...box, marginTop: 14, border: '1px solid #d7ccb5' }}>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', color: '#8e6b30' }}>TESTE SEGURO · 1 NÚMERO</div>
+      <h2 style={{ margin: '6px 0 6px', fontSize: 21 }}>Teste antes de liberar a campanha</h2>
+      <p style={{ margin: '0 0 16px', color: '#77746d', fontSize: 13 }}>
+        Use de preferência o seu próprio número ou outro número que você controla. Esse botão envia somente 1 áudio.
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px,1fr) minmax(210px,.7fr) auto', gap: 10, alignItems: 'end' }}>
+        <label style={{ display: 'grid', gap: 6, fontSize: 11, fontWeight: 800, color: '#5f5b53' }}>
+          Número do teste
+          <input
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            placeholder="Ex.: 5511999999999"
+            inputMode="tel"
+            style={{ border: '1px solid #d8d4c8', borderRadius: 10, padding: '11px 12px', font: 'inherit' }}
+          />
+        </label>
+        <label style={{ display: 'grid', gap: 6, fontSize: 11, fontWeight: 800, color: '#5f5b53' }}>
+          Qual áudio testar
+          <select
+            value={audioKey}
+            onChange={(event) => setAudioKey(event.target.value)}
+            style={{ border: '1px solid #d8d4c8', borderRadius: 10, padding: '11px 12px', background: '#fff', font: 'inherit' }}
+          >
+            <option value="seller">Áudio 1 · Sellers</option>
+            <option value="iniciante">Áudio 2 · Iniciantes</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          onClick={sendTest}
+          disabled={busy || !selectedReady || !cleanPhone}
+          style={{ ...button, opacity: busy || !selectedReady || !cleanPhone ? .45 : 1, minHeight: 42 }}
+        >
+          {busy ? 'Enviando...' : 'Enviar teste'}
+        </button>
+      </div>
+
+      {message && (
+        <div style={{ marginTop: 11, fontSize: 12, fontWeight: 700, color: message.includes('✅') ? '#557d62' : '#795f2b' }}>
+          {message}
+        </div>
+      )}
+
+      <div style={{ marginTop: 14, padding: 12, borderRadius: 10, background: '#f8f7f3', color: '#6f6a61', fontSize: 12, lineHeight: 1.5 }}>
+        O envio usa o formato PTT do WhatsApp, então deve aparecer como mensagem de voz, e não como arquivo anexado ou encaminhado. A campanha completa continua bloqueada nesta tela.
+      </div>
+    </section>
+  );
+}
+
 export default function CampanhaWhatsAppPage() {
   const [assets, setAssets] = useState({});
   const [loading, setLoading] = useState(true);
@@ -99,27 +186,30 @@ export default function CampanhaWhatsAppPage() {
         </div>
 
         {loading ? <div style={box}>Carregando...</div> : (
-          <div style={{ display: 'grid', gap: 14 }}>
-            <AudioCard
-              type="seller"
-              title="ÁUDIO 1 · SELLERS"
-              subtitle="Para quem já vende"
-              asset={assets.seller}
-              onUploaded={loadAssets}
-            />
-            <AudioCard
-              type="iniciante"
-              title="ÁUDIO 2 · INICIANTES"
-              subtitle="Para quem está começando"
-              asset={assets.iniciante}
-              onUploaded={loadAssets}
-            />
-          </div>
+          <>
+            <div style={{ display: 'grid', gap: 14 }}>
+              <AudioCard
+                type="seller"
+                title="ÁUDIO 1 · SELLERS"
+                subtitle="Para quem já vende"
+                asset={assets.seller}
+                onUploaded={loadAssets}
+              />
+              <AudioCard
+                type="iniciante"
+                title="ÁUDIO 2 · INICIANTES"
+                subtitle="Para quem está começando"
+                asset={assets.iniciante}
+                onUploaded={loadAssets}
+              />
+            </div>
+            <TestCard assets={assets} />
+          </>
         )}
 
         <div style={{ ...box, marginTop: 14, background: '#171714', color: '#fff' }}>
-          <strong style={{ display: 'block', marginBottom: 6 }}>Nada será enviado ao salvar os arquivos.</strong>
-          <span style={{ color: '#c9c6bd', fontSize: 13 }}>Primeiro vamos testar em um único número. Só depois eu libero o botão de iniciar a campanha.</span>
+          <strong style={{ display: 'block', marginBottom: 6 }}>A campanha completa ainda não está liberada.</strong>
+          <span style={{ color: '#c9c6bd', fontSize: 13 }}>Primeiro confirme que o teste chegou como mensagem de voz. Depois liberamos os envios para os grupos selecionados.</span>
         </div>
       </div>
     </main>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const box = {
   background: '#fff',
@@ -14,196 +14,99 @@ const box = {
 const button = {
   border: 0,
   borderRadius: 10,
-  background: '#171714',
   color: '#fff',
   padding: '12px 16px',
   fontWeight: 800,
   cursor: 'pointer',
 };
 
-const FALLBACK_COUNTS = {
-  total: 29,
-  pending: 29,
+const EMPTY = {
+  total: 9,
+  pending: 9,
   sending: 0,
   sent: 0,
   skipped: 0,
   failed: 0,
-  seller: { total: 12, sent: 0, pending: 12 },
-  iniciante: { total: 17, sent: 0, pending: 17 },
+  seller: { total: 3, pending: 3, sent: 0 },
+  iniciante: { total: 6, pending: 6, sent: 0 },
 };
 
 export default function EnviarCampanhaPage() {
-  const [counts, setCounts] = useState(FALLBACK_COUNTS);
-  const [synced, setSynced] = useState(false);
-  const [running, setRunning] = useState(false);
+  const [data, setData] = useState({ counts: EMPTY, control: { status: 'paused', intervalMinSeconds: 45, intervalMaxSeconds: 75 } });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-  const [statusNote, setStatusNote] = useState('Conferindo a fila real...');
-  const [seconds, setSeconds] = useState(null);
-  const runningRef = useRef(false);
-  const busyRef = useRef(false);
-  const timerRef = useRef(null);
-  const tickRef = useRef(null);
 
-  async function campaignRequest(payload) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
-    try {
-      const response = await fetch('/api/whatsapp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error('O servidor respondeu de um jeito inesperado.');
-      }
-      if (!response.ok || !data?.ok) {
-        throw new Error(data?.error || 'Falha na campanha.');
-      }
-      return data;
-    } finally {
-      clearTimeout(timeout);
-    }
+  async function request(action) {
+    const options = action
+      ? {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action }),
+          cache: 'no-store',
+        }
+      : { cache: 'no-store' };
+
+    const response = await fetch('/api/whatsapp/campaign-worker?t=' + Date.now(), options);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload?.ok) throw new Error(payload?.error || 'Falha ao consultar a campanha.');
+    setData(payload);
+    return payload;
   }
 
-  async function loadCampaign({ silent = false } = {}) {
+  async function refresh(silent = false) {
     try {
-      const data = await campaignRequest({ campaignAction: 'status' });
-      if (!data?.counts) throw new Error('O servidor não retornou os números da fila.');
-      setCounts(data.counts);
-      setSynced(true);
-      setStatusNote('Lista sincronizada ✅');
-      return data;
+      await request();
+      if (!silent) setMessage('Lista revisada e sincronizada ✅');
     } catch (error) {
-      setSynced(false);
-      if (!silent) {
-        setStatusNote('Não consegui sincronizar a fila. Nenhuma mensagem foi enviada.');
-        setMessage('Erro: ' + error.message);
-      }
-      return null;
+      if (!silent) setMessage('Erro: ' + error.message);
     }
   }
 
   useEffect(() => {
-    loadCampaign();
-    return () => {
-      runningRef.current = false;
-      busyRef.current = false;
-      clearTimeout(timerRef.current);
-      clearInterval(tickRef.current);
-    };
+    refresh(true);
+    const timer = setInterval(() => refresh(true), 8000);
+    return () => clearInterval(timer);
   }, []);
 
-  function clearTimers() {
-    clearTimeout(timerRef.current);
-    clearInterval(tickRef.current);
-    timerRef.current = null;
-    tickRef.current = null;
-    setSeconds(null);
-  }
+  async function start() {
+    const ok = window.confirm(
+      'Iniciar a campanha revisada? Serão somente leads com interesse na Imersão, sem quem já recebeu áudio personalizado do Gui. Os envios continuam mesmo se você fechar esta página.'
+    );
+    if (!ok) return;
 
-  function stopRunning() {
-    runningRef.current = false;
-    setRunning(false);
-    clearTimers();
-  }
-
-  function scheduleNext() {
-    if (!runningRef.current) return;
-    const delay = Math.floor(120 + Math.random() * 121);
-    setSeconds(delay);
-    clearInterval(tickRef.current);
-    tickRef.current = setInterval(() => {
-      setSeconds((current) => current === null ? null : Math.max(0, current - 1));
-    }, 1000);
-    timerRef.current = setTimeout(() => {
-      clearTimers();
-      sendNext();
-    }, delay * 1000);
-  }
-
-  async function sendNext() {
-    if (!runningRef.current || busyRef.current) return;
-
-    busyRef.current = true;
     setBusy(true);
-    setMessage('Enviando o próximo áudio...');
-
     try {
-      const data = await campaignRequest({ campaignAction: 'next' });
-      if (data?.counts) {
-        setCounts(data.counts);
-        setSynced(true);
-        setStatusNote('Lista sincronizada ✅');
-      }
-
-      if (data?.sent) {
-        const name = data.contact?.name || data.contact?.phone || 'Lead';
-        setMessage('Enviado para ' + name + ' ✅');
-      } else if (data?.skipped || data?.alreadySkipped) {
-        const name = data.contact?.name || data.contact?.phone || 'Lead';
-        setMessage(name + ' foi pulado: ' + (data.reason || 'não está mais elegível'));
-      } else if (data?.alreadySent) {
-        setMessage('Esse lead já tinha recebido. Seguindo para o próximo.');
-      }
-
-      const c = data?.counts;
-      if (data?.done === true && c && c.pending === 0 && c.sending === 0) {
-        stopRunning();
-        setMessage((c.failed || 0) > 0 ? 'Fila terminou com envio(s) para revisar.' : 'Campanha concluída ✅');
-      } else if (runningRef.current) {
-        scheduleNext();
-      }
+      const result = await request('start');
+      setMessage('Campanha iniciada no servidor ✅ Pode fechar esta página; os envios continuam sozinhos.');
+      setData(result);
     } catch (error) {
-      stopRunning();
-      await loadCampaign({ silent: true });
-      setMessage('Campanha pausada: ' + error.message);
+      setMessage('Não iniciou: ' + error.message);
     } finally {
-      busyRef.current = false;
       setBusy(false);
     }
   }
 
-  async function startCampaign() {
-    if (busyRef.current) return;
-
+  async function pause() {
     setBusy(true);
-    const fresh = await loadCampaign({ silent: true });
-    setBusy(false);
-
-    if (!fresh?.counts) {
-      setMessage('Não vou iniciar sem conseguir conferir a fila real. Clique em “Atualizar números” e tente novamente.');
-      return;
+    try {
+      const result = await request('pause');
+      setData(result);
+      setMessage('Campanha pausada no servidor. Nenhum novo áudio será enviado até você retomar.');
+    } catch (error) {
+      setMessage('Erro ao pausar: ' + error.message);
+    } finally {
+      setBusy(false);
     }
-
-    if (!fresh.counts.pending) {
-      setMessage('Não há envios pendentes nessa campanha.');
-      return;
-    }
-
-    const ok = window.confirm(
-      'Começar agora? O primeiro áudio será enviado imediatamente. Depois, os próximos sairão com intervalo aleatório de 2 a 4 minutos.'
-    );
-    if (!ok) return;
-
-    runningRef.current = true;
-    setRunning(true);
-    setMessage('Campanha iniciada. Enviando o primeiro áudio...');
-    setTimeout(sendNext, 100);
   }
 
-  function pauseCampaign() {
-    stopRunning();
-    setMessage('Campanha pausada. Os contatos que faltam continuam salvos para você retomar depois.');
-  }
+  const counts = data?.counts || EMPTY;
+  const control = data?.control || {};
+  const status = control.status || 'paused';
+  const running = status === 'running';
+  const completed = status === 'completed';
+  const hasError = status === 'error';
 
-  const finished = synced && counts.pending === 0 && counts.sending === 0;
+  const badge = running ? 'ENVIANDO NO SERVIDOR' : completed ? 'CONCLUÍDA' : hasError ? 'PAUSADA POR ERRO' : 'PRONTA';
 
   return (
     <main style={{ minHeight: 'calc(100vh - 72px)', background: '#f4f3ef', color: '#171714', padding: 24 }}>
@@ -211,31 +114,29 @@ export default function EnviarCampanhaPage() {
         <Link href="/whatsapp/campanha" style={{ color: '#77746d', textDecoration: 'none', fontSize: 13 }}>← Voltar para os áudios</Link>
 
         <div style={{ margin: '14px 0 18px' }}>
-          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', color: '#8e6b30' }}>CAMPANHA REAL · 1ª ONDA</div>
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', color: '#8e6b30' }}>CAMPANHA REVISADA · IMERSÃO</div>
           <h1 style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontWeight: 500, fontSize: 34, margin: '5px 0 7px' }}>Envio dos áudios do Gui</h1>
-          <p style={{ margin: 0, color: '#77746d', fontSize: 14 }}>Agora a campanha só inicia e só conclui quando o servidor confirma a fila real.</p>
+          <p style={{ margin: 0, color: '#77746d', fontSize: 14 }}>Agora o envio roda no servidor. Você não precisa deixar esta página aberta.</p>
         </div>
 
         <section style={{ ...box, border: '2px solid #b9924d' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: 23 }}>Leads selecionados</h2>
-              <p style={{ margin: '7px 0 0', color: '#77746d', fontSize: 13, lineHeight: 1.5 }}>
-                Seller recebe o áudio de seller e iniciante recebe o áudio de iniciante. Antes de cada envio o Hub confere de novo se o lead ainda pode receber.
+              <h2 style={{ margin: 0, fontSize: 23 }}>Leads revisados</h2>
+              <p style={{ margin: '7px 0 0', color: '#77746d', fontSize: 13, lineHeight: 1.55 }}>
+                Só entra quem demonstrou interesse na Imersão. Leads de treinamento, Mentoria ou ARGO sem interesse na Imersão ficam fora. Também ficam fora os leads que já receberam um áudio pessoal do Gui.
               </p>
             </div>
-            <span style={{ height: 'fit-content', fontSize: 12, fontWeight: 900, padding: '8px 11px', borderRadius: 999, background: running ? '#e7f3e9' : '#f2eadb' }}>
-              {running ? 'ENVIANDO' : finished ? 'CONCLUÍDA' : synced ? 'PRONTA' : 'AGUARDANDO SINCRONIZAÇÃO'}
+            <span style={{ height: 'fit-content', fontSize: 12, fontWeight: 900, padding: '8px 11px', borderRadius: 999, background: running ? '#e7f3e9' : hasError ? '#f6e9df' : '#f2eadb' }}>
+              {badge}
             </span>
           </div>
-
-          <div style={{ marginTop: 14, fontSize: 12, color: synced ? '#557d62' : '#8e6b30', fontWeight: 700 }}>{statusNote}</div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 10, marginTop: 18 }}>
             {[
               ['Selecionados', counts.total],
-              ['Sellers', counts.seller.total],
-              ['Iniciantes', counts.iniciante.total],
+              ['Sellers', counts.seller?.total || 0],
+              ['Iniciantes', counts.iniciante?.total || 0],
               ['Enviados', counts.sent],
               ['Faltam', counts.pending],
               ['Pulados', counts.skipped],
@@ -248,24 +149,19 @@ export default function EnviarCampanhaPage() {
           </div>
 
           <div style={{ marginTop: 18, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            {!running ? (
-              <button
-                type="button"
-                onClick={startCampaign}
-                disabled={!synced || finished || busy}
-                style={{ ...button, background: '#8e6b30', opacity: !synced || finished || busy ? .45 : 1 }}
-              >
-                {counts.sent > 0 ? 'Continuar campanha' : 'Iniciar campanha'}
+            {!running && !completed && (
+              <button type="button" onClick={start} disabled={busy || !counts.pending} style={{ ...button, background: '#8e6b30', opacity: busy || !counts.pending ? .45 : 1 }}>
+                {hasError || counts.sent > 0 ? 'Retomar campanha' : 'Iniciar campanha revisada'}
               </button>
-            ) : (
-              <button type="button" onClick={pauseCampaign} style={{ ...button, background: '#7a3f3f' }}>Pausar campanha</button>
             )}
 
-            <button type="button" onClick={() => loadCampaign()} disabled={busy} style={{ ...button, background: '#fff', color: '#171714', border: '1px solid #d8d4c8' }}>
+            {running && (
+              <button type="button" onClick={pause} disabled={busy} style={{ ...button, background: '#7a3f3f' }}>Pausar campanha</button>
+            )}
+
+            <button type="button" onClick={() => refresh()} disabled={busy} style={{ ...button, background: '#fff', color: '#171714', border: '1px solid #d8d4c8' }}>
               Atualizar números
             </button>
-
-            {seconds !== null && running && <strong style={{ fontSize: 13 }}>Próximo envio em ~{seconds}s</strong>}
           </div>
 
           {message && (
@@ -274,8 +170,20 @@ export default function EnviarCampanhaPage() {
             </div>
           )}
 
+          {control.nextSendAt && running && (
+            <div style={{ marginTop: 12, fontSize: 12, color: '#6f6a61' }}>
+              Próximo envio programado pelo servidor. A página pode ser fechada normalmente.
+            </div>
+          )}
+
+          {control.lastError && (
+            <div style={{ marginTop: 12, padding: 12, borderRadius: 10, background: '#f6e9df', fontSize: 12 }}>
+              Campanha pausada por segurança: {control.lastError}
+            </div>
+          )}
+
           <div style={{ marginTop: 14, padding: 13, borderRadius: 10, background: '#f8f7f3', color: '#6f6a61', fontSize: 12, lineHeight: 1.55 }}>
-            Os envios têm intervalo aleatório de 2 a 4 minutos. Deixe esta aba aberta enquanto estiver em “ENVIANDO”. Se fechar a página, a sequência para. Quem já recebeu fica registrado e não recebe de novo.
+            Intervalo atual: aproximadamente <strong>45 a 75 segundos</strong> entre os áudios. Antes de cada envio, o servidor confere novamente o lead; se ele tiver respondido, tiver comprado ou não for mais elegível, o envio é pulado.
           </div>
         </section>
       </div>

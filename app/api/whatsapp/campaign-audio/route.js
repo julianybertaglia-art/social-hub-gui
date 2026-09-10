@@ -12,6 +12,11 @@ function validKey(value) {
   return KEYS.has(key) ? key : null;
 }
 
+function assetUrl(key, sha256) {
+  return '/api/whatsapp/campaign-audio?key=' + encodeURIComponent(key)
+    + '&raw=1&v=' + encodeURIComponent(sha256 || Date.now());
+}
+
 export async function GET(request) {
   const url = new URL(request.url);
   const key = validKey(url.searchParams.get('key'));
@@ -22,16 +27,20 @@ export async function GET(request) {
     if (!key) return new Response('Áudio inválido.', { status: 400 });
     const { data, error } = await supabase
       .from('whatsapp_campaign_audio_assets')
-      .select('mime_type,data_base64')
+      .select('mime_type,data_base64,sha256')
       .eq('key', key)
       .maybeSingle();
     if (error) return new Response(error.message, { status: 500 });
     if (!data?.data_base64) return new Response('Áudio não encontrado.', { status: 404 });
-    return new Response(Buffer.from(data.data_base64, 'base64'), {
+    const buffer = Buffer.from(data.data_base64, 'base64');
+    return new Response(buffer, {
       headers: {
         'Content-Type': data.mime_type || 'audio/ogg; codecs=opus',
-        'Content-Length': String(Buffer.byteLength(data.data_base64, 'base64')),
-        'Cache-Control': 'public, max-age=300',
+        'Content-Length': String(buffer.length),
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'X-Audio-Version': data.sha256 || '',
         'Accept-Ranges': 'bytes',
       },
     });
@@ -50,10 +59,12 @@ export async function GET(request) {
       mimeType: item.mime_type,
       sha256: item.sha256,
       updatedAt: item.updated_at,
-      url: ready ? '/api/whatsapp/campaign-audio?key=' + encodeURIComponent(item.key) + '&raw=1' : null,
+      url: ready ? assetUrl(item.key, item.sha256) : null,
     };
   }
-  return Response.json({ ok: true, assets });
+  return Response.json({ ok: true, assets }, {
+    headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' },
+  });
 }
 
 export async function POST(request) {
@@ -94,7 +105,9 @@ export async function POST(request) {
       key,
       bytes: buffer.length,
       sha256,
-      url: '/api/whatsapp/campaign-audio?key=' + encodeURIComponent(key) + '&raw=1',
+      url: assetUrl(key, sha256),
+    }, {
+      headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' },
     });
   } catch (error) {
     return Response.json({ ok: false, error: error instanceof Error ? error.message : 'Falha ao salvar áudio.' }, { status: 500 });

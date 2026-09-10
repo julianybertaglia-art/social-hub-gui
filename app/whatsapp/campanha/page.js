@@ -34,7 +34,7 @@ function AudioCard({ type, title, subtitle, asset, onUploaded }) {
       const form = new FormData();
       form.append('key', type);
       form.append('file', chosenFile);
-      const response = await fetch('/api/whatsapp/campaign-audio', { method: 'POST', body: form });
+      const response = await fetch('/api/whatsapp/campaign-audio', { method: 'POST', body: form, cache: 'no-store' });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || 'Não foi possível salvar o áudio.');
       setMessage('Áudio salvo de verdade ✅');
@@ -74,7 +74,7 @@ function AudioCard({ type, title, subtitle, asset, onUploaded }) {
           {message && <span style={{ fontSize: 12, color: message.includes('✅') ? '#557d62' : '#6f6a61', fontWeight: 700 }}>{message}</span>}
         </div>
         {asset?.ready && asset?.url && (
-          <audio controls preload="metadata" src={asset.url} style={{ width: '100%', marginTop: 4 }} />
+          <audio key={asset.sha256 || asset.url} controls preload="metadata" src={asset.url} style={{ width: '100%', marginTop: 4 }} />
         )}
       </div>
     </section>
@@ -87,7 +87,8 @@ function TestCard({ assets }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
 
-  const selectedReady = Boolean(assets?.[audioKey]?.ready);
+  const selectedAsset = assets?.[audioKey];
+  const selectedReady = Boolean(selectedAsset?.ready && selectedAsset?.url);
   const cleanPhone = useMemo(() => String(phone || '').replace(/\D/g, ''), [phone]);
 
   async function sendTest() {
@@ -97,13 +98,12 @@ function TestCard({ assets }) {
     setBusy(true);
     setMessage('Enviando teste...');
     try {
-      const audioUrl = window.location.origin
-        + '/api/whatsapp/campaign-audio?key=' + encodeURIComponent(audioKey)
-        + '&raw=1';
+      const audioUrl = new URL(selectedAsset.url, window.location.origin).href;
       const response = await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: cleanPhone, audioUrl }),
+        cache: 'no-store',
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || 'Não foi possível enviar o teste.');
@@ -138,11 +138,11 @@ function TestCard({ assets }) {
           Qual áudio testar
           <select
             value={audioKey}
-            onChange={(event) => setAudioKey(event.target.value)}
+            onChange={(event) => { setAudioKey(event.target.value); setMessage(''); }}
             style={{ border: '1px solid #d8d4c8', borderRadius: 10, padding: '11px 12px', background: '#fff', font: 'inherit' }}
           >
-            <option value="seller">Áudio 1 · Sellers</option>
-            <option value="iniciante">Áudio 2 · Iniciantes</option>
+            <option value="seller">Áudio para Sellers</option>
+            <option value="iniciante">Áudio para Iniciantes</option>
           </select>
         </label>
         <button
@@ -162,7 +162,7 @@ function TestCard({ assets }) {
       )}
 
       <div style={{ marginTop: 14, padding: 12, borderRadius: 10, background: '#f8f7f3', color: '#6f6a61', fontSize: 12, lineHeight: 1.5 }}>
-        O envio usa o formato PTT do WhatsApp, então deve aparecer como mensagem de voz, e não como arquivo anexado ou encaminhado. A campanha completa continua bloqueada nesta tela.
+        O teste agora usa exatamente a versão do áudio exibida no player acima. Se você trocar o arquivo, a versão antiga não fica mais em cache.
       </div>
     </section>
   );
@@ -173,7 +173,7 @@ export default function CampanhaWhatsAppPage() {
   const [loading, setLoading] = useState(true);
 
   async function loadAssets() {
-    const response = await fetch('/api/whatsapp/campaign-audio', { cache: 'no-store' });
+    const response = await fetch('/api/whatsapp/campaign-audio?t=' + Date.now(), { cache: 'no-store' });
     const data = await response.json();
     if (response.ok) setAssets(data.assets || {});
     setLoading(false);
@@ -196,14 +196,14 @@ export default function CampanhaWhatsAppPage() {
             <div style={{ display: 'grid', gap: 14 }}>
               <AudioCard
                 type="seller"
-                title="ÁUDIO 1 · SELLERS"
+                title="ÁUDIO · SELLERS"
                 subtitle="Para quem já vende"
                 asset={assets.seller}
                 onUploaded={loadAssets}
               />
               <AudioCard
                 type="iniciante"
-                title="ÁUDIO 2 · INICIANTES"
+                title="ÁUDIO · INICIANTES"
                 subtitle="Para quem está começando"
                 asset={assets.iniciante}
                 onUploaded={loadAssets}
@@ -215,7 +215,7 @@ export default function CampanhaWhatsAppPage() {
 
         <div style={{ ...box, marginTop: 14, background: '#171714', color: '#fff' }}>
           <strong style={{ display: 'block', marginBottom: 6 }}>A campanha completa ainda não está liberada.</strong>
-          <span style={{ color: '#c9c6bd', fontSize: 13 }}>Primeiro confirme que o teste chegou como mensagem de voz. Depois liberamos os envios para os grupos selecionados.</span>
+          <span style={{ color: '#c9c6bd', fontSize: 13 }}>Primeiro confirme que os dois testes chegaram com o conteúdo certo. Depois liberamos os envios para os grupos selecionados.</span>
         </div>
       </div>
     </main>

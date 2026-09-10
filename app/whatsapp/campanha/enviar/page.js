@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
+const CAMPAIGN_KEY = 'audio-gui-2026-09-10-wave1';
+
 const box = {
   background: '#fff',
   border: '1px solid #dedbd2',
@@ -33,6 +35,7 @@ const FALLBACK_CAMPAIGN = {
     seller: { total: 12, sent: 0, pending: 12 },
     iniciante: { total: 17, sent: 0, pending: 17 },
   },
+  pendingIds: [],
 };
 
 export default function EnviarCampanhaPage() {
@@ -46,35 +49,31 @@ export default function EnviarCampanhaPage() {
   const busyRef = useRef(false);
   const timerRef = useRef(null);
   const tickRef = useRef(null);
+  const campaignRef = useRef(FALLBACK_CAMPAIGN);
 
   async function loadCampaign({ silent = false } = {}) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const timeout = setTimeout(() => controller.abort(), 12000);
 
     try {
-      const response = await fetch('/api/whatsapp/campaign-run?t=' + Date.now(), {
+      const response = await fetch('/api/whatsapp/send?campaign=' + encodeURIComponent(CAMPAIGN_KEY) + '&t=' + Date.now(), {
         cache: 'no-store',
         signal: controller.signal,
       });
-
-      const text = await response.text();
-      let data = null;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error('A resposta do servidor não veio em JSON.');
-      }
+      const data = await response.json();
 
       if (!response.ok || !data?.ok || !data?.counts) {
         throw new Error(data?.error || 'Não foi possível carregar o status da campanha.');
       }
 
+      campaignRef.current = data;
       setCampaign(data);
       setStatusNote('Lista sincronizada ✅');
       return data;
     } catch (error) {
       if (!silent) {
-        setStatusNote('A lista está pronta; a atualização automática do status falhou. Você ainda pode iniciar e o servidor valida cada envio.');
+        setStatusNote('Não consegui atualizar os números agora. Nenhum envio foi feito.');
+        setMessage('Erro ao sincronizar: ' + error.message);
       }
       return null;
     } finally {
@@ -127,53 +126,57 @@ export default function EnviarCampanhaPage() {
 
     busyRef.current = true;
     setBusy(true);
-    setMessage('Enviando o próximo áudio...');
+    setMessage('Conferindo o próximo lead...');
 
     try {
-      const response = await fetch('/api/whatsapp/campaign-run', {
+      const fresh = await loadCampaign({ silent: true });
+      const current = fresh || campaignRef.current;
+      const pendingIds = Array.isArray(current?.pendingIds) ? current.pendingIds : [];
+
+      if (!pendingIds.length) {
+        stopRunning();
+        const failed = current?.counts?.failed || 0;
+        setMessage(failed ? 'A fila terminou, mas há ' + failed + ' envio(s) que precisam de revisão.' : 'Campanha concluída ✅');
+        return;
+      }
+
+      const campaignLogId = pendingIds[0];
+      setMessage('Enviando o próximo áudio...');
+
+      const response = await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'send-next' }),
+        body: JSON.stringify({ campaignLogId }),
         cache: 'no-store',
       });
-
-      const text = await response.text();
-      let data = null;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        throw new Error('O servidor respondeu de um jeito inesperado.');
-      }
+      const data = await response.json();
 
       if (!response.ok || !data?.ok) {
         throw new Error(data?.error || 'Falha ao enviar o próximo áudio.');
       }
 
-      if (data?.counts) {
-        setCampaign((current) => ({ ...(current || {}), counts: data.counts }));
-      }
+      const updated = await loadCampaign({ silent: true });
+      const counts = updated?.counts || campaignRef.current?.counts;
 
       if (data?.sent) {
         const name = data.contact?.name || data.contact?.phone || 'Lead';
         setMessage('Enviado para ' + name + ' ✅');
-      } else if (data?.skipped) {
+      } else if (data?.skipped || data?.alreadySkipped) {
         const name = data.contact?.name || data.contact?.phone || 'Lead';
-        setMessage(name + ' foi pulado: ' + data.reason);
-      } else if (data?.busy) {
-        setMessage('O servidor já estava processando um envio. Tentando novamente em instantes.');
+        setMessage(name + ' foi pulado: ' + (data.reason || 'não está mais elegível'));
+      } else if (data?.alreadySent) {
+        setMessage('Esse lead já tinha recebido. Seguindo para o próximo.');
       }
 
-      const counts = data?.counts;
-      if (data?.done || (counts && counts.pending === 0)) {
+      if (!counts?.pending) {
         stopRunning();
-        setMessage('Campanha concluída ✅');
+        setMessage((counts?.failed || 0) > 0 ? 'Fila concluída com envio(s) para revisar.' : 'Campanha concluída ✅');
       } else if (runningRef.current) {
         scheduleNext();
       }
-
-      loadCampaign({ silent: true });
     } catch (error) {
       stopRunning();
+      await loadCampaign({ silent: true });
       setMessage('Campanha pausada: ' + error.message);
     } finally {
       busyRef.current = false;
@@ -181,9 +184,17 @@ export default function EnviarCampanhaPage() {
     }
   }
 
-  function startCampaign() {
-    const pending = campaign?.counts?.pending ?? 29;
-    if (!pending || busyRef.current) return;
+  async function startCampaign() {
+    if (busyRef.current) return;
+
+    const fresh = await loadCampaign({ silent: true });
+    const current = fresh || campaignRef.current;
+    const pending = current?.counts?.pending || 0;
+
+    if (!pending) {
+      setMessage('Não há envios pendentes nessa campanha.');
+      return;
+    }
 
     const ok = window.confirm(
       'Começar agora? O primeiro áudio será enviado imediatamente. Depois, os próximos sairão com intervalo aleatório de 2 a 4 minutos.'
@@ -212,7 +223,7 @@ export default function EnviarCampanhaPage() {
         <div style={{ margin: '14px 0 18px' }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', color: '#8e6b30' }}>CAMPANHA REAL · 1ª ONDA</div>
           <h1 style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontWeight: 500, fontSize: 34, margin: '5px 0 7px' }}>Envio dos áudios do Gui</h1>
-          <p style={{ margin: 0, color: '#77746d', fontSize: 14 }}>Os testes já foram validados. Aqui você inicia, acompanha e pausa os envios.</p>
+          <p style={{ margin: 0, color: '#77746d', fontSize: 14 }}>Aqui você inicia, acompanha e pausa os envios. A mesma rota que funcionou no teste agora faz a campanha.</p>
         </div>
 
         <section style={{ ...box, border: '2px solid #b9924d' }}>
@@ -269,7 +280,7 @@ export default function EnviarCampanhaPage() {
           )}
 
           <div style={{ marginTop: 14, padding: 13, borderRadius: 10, background: '#f8f7f3', color: '#6f6a61', fontSize: 12, lineHeight: 1.55 }}>
-            Os envios têm intervalo aleatório de 2 a 4 minutos. Deixe esta aba aberta enquanto estiver em “ENVIANDO”. Se fechar a página, a sequência para; ao voltar, é só clicar em “Continuar campanha”. Quem já recebeu não recebe de novo.
+            Os envios têm intervalo aleatório de 2 a 4 minutos. Deixe esta aba aberta enquanto estiver em “ENVIANDO”. Se fechar a página, a sequência para. Quem já recebeu fica registrado e não recebe de novo.
           </div>
         </section>
       </div>

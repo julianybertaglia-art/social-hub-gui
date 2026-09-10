@@ -3,8 +3,6 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
-const CAMPAIGN_KEY = 'audio-gui-2026-09-10-wave1';
-
 const box = {
   background: '#fff',
   border: '1px solid #dedbd2',
@@ -23,61 +21,72 @@ const button = {
   cursor: 'pointer',
 };
 
-const FALLBACK_CAMPAIGN = {
-  ok: true,
-  counts: {
-    total: 29,
-    pending: 29,
-    sending: 0,
-    sent: 0,
-    skipped: 0,
-    failed: 0,
-    seller: { total: 12, sent: 0, pending: 12 },
-    iniciante: { total: 17, sent: 0, pending: 17 },
-  },
-  pendingIds: [],
+const FALLBACK_COUNTS = {
+  total: 29,
+  pending: 29,
+  sending: 0,
+  sent: 0,
+  skipped: 0,
+  failed: 0,
+  seller: { total: 12, sent: 0, pending: 12 },
+  iniciante: { total: 17, sent: 0, pending: 17 },
 };
 
 export default function EnviarCampanhaPage() {
-  const [campaign, setCampaign] = useState(FALLBACK_CAMPAIGN);
+  const [counts, setCounts] = useState(FALLBACK_COUNTS);
+  const [synced, setSynced] = useState(false);
   const [running, setRunning] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
-  const [statusNote, setStatusNote] = useState('Conferindo o status salvo...');
+  const [statusNote, setStatusNote] = useState('Conferindo a fila real...');
   const [seconds, setSeconds] = useState(null);
   const runningRef = useRef(false);
   const busyRef = useRef(false);
   const timerRef = useRef(null);
   const tickRef = useRef(null);
-  const campaignRef = useRef(FALLBACK_CAMPAIGN);
 
-  async function loadCampaign({ silent = false } = {}) {
+  async function campaignRequest(payload) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
-
+    const timeout = setTimeout(() => controller.abort(), 20000);
     try {
-      const response = await fetch('/api/whatsapp/send?campaign=' + encodeURIComponent(CAMPAIGN_KEY) + '&t=' + Date.now(), {
+      const response = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
         cache: 'no-store',
         signal: controller.signal,
       });
-      const data = await response.json();
-
-      if (!response.ok || !data?.ok || !data?.counts) {
-        throw new Error(data?.error || 'Não foi possível carregar o status da campanha.');
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error('O servidor respondeu de um jeito inesperado.');
       }
+      if (!response.ok || !data?.ok) {
+        throw new Error(data?.error || 'Falha na campanha.');
+      }
+      return data;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
 
-      campaignRef.current = data;
-      setCampaign(data);
+  async function loadCampaign({ silent = false } = {}) {
+    try {
+      const data = await campaignRequest({ campaignAction: 'status' });
+      if (!data?.counts) throw new Error('O servidor não retornou os números da fila.');
+      setCounts(data.counts);
+      setSynced(true);
       setStatusNote('Lista sincronizada ✅');
       return data;
     } catch (error) {
+      setSynced(false);
       if (!silent) {
-        setStatusNote('Não consegui atualizar os números agora. Nenhum envio foi feito.');
-        setMessage('Erro ao sincronizar: ' + error.message);
+        setStatusNote('Não consegui sincronizar a fila. Nenhuma mensagem foi enviada.');
+        setMessage('Erro: ' + error.message);
       }
       return null;
-    } finally {
-      clearTimeout(timeout);
     }
   }
 
@@ -109,12 +118,10 @@ export default function EnviarCampanhaPage() {
     if (!runningRef.current) return;
     const delay = Math.floor(120 + Math.random() * 121);
     setSeconds(delay);
-
     clearInterval(tickRef.current);
     tickRef.current = setInterval(() => {
       setSeconds((current) => current === null ? null : Math.max(0, current - 1));
     }, 1000);
-
     timerRef.current = setTimeout(() => {
       clearTimers();
       sendNext();
@@ -126,37 +133,15 @@ export default function EnviarCampanhaPage() {
 
     busyRef.current = true;
     setBusy(true);
-    setMessage('Conferindo o próximo lead...');
+    setMessage('Enviando o próximo áudio...');
 
     try {
-      const fresh = await loadCampaign({ silent: true });
-      const current = fresh || campaignRef.current;
-      const pendingIds = Array.isArray(current?.pendingIds) ? current.pendingIds : [];
-
-      if (!pendingIds.length) {
-        stopRunning();
-        const failed = current?.counts?.failed || 0;
-        setMessage(failed ? 'A fila terminou, mas há ' + failed + ' envio(s) que precisam de revisão.' : 'Campanha concluída ✅');
-        return;
+      const data = await campaignRequest({ campaignAction: 'next' });
+      if (data?.counts) {
+        setCounts(data.counts);
+        setSynced(true);
+        setStatusNote('Lista sincronizada ✅');
       }
-
-      const campaignLogId = pendingIds[0];
-      setMessage('Enviando o próximo áudio...');
-
-      const response = await fetch('/api/whatsapp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ campaignLogId }),
-        cache: 'no-store',
-      });
-      const data = await response.json();
-
-      if (!response.ok || !data?.ok) {
-        throw new Error(data?.error || 'Falha ao enviar o próximo áudio.');
-      }
-
-      const updated = await loadCampaign({ silent: true });
-      const counts = updated?.counts || campaignRef.current?.counts;
 
       if (data?.sent) {
         const name = data.contact?.name || data.contact?.phone || 'Lead';
@@ -168,9 +153,10 @@ export default function EnviarCampanhaPage() {
         setMessage('Esse lead já tinha recebido. Seguindo para o próximo.');
       }
 
-      if (!counts?.pending) {
+      const c = data?.counts;
+      if (data?.done === true && c && c.pending === 0 && c.sending === 0) {
         stopRunning();
-        setMessage((counts?.failed || 0) > 0 ? 'Fila concluída com envio(s) para revisar.' : 'Campanha concluída ✅');
+        setMessage((c.failed || 0) > 0 ? 'Fila terminou com envio(s) para revisar.' : 'Campanha concluída ✅');
       } else if (runningRef.current) {
         scheduleNext();
       }
@@ -187,11 +173,16 @@ export default function EnviarCampanhaPage() {
   async function startCampaign() {
     if (busyRef.current) return;
 
+    setBusy(true);
     const fresh = await loadCampaign({ silent: true });
-    const current = fresh || campaignRef.current;
-    const pending = current?.counts?.pending || 0;
+    setBusy(false);
 
-    if (!pending) {
+    if (!fresh?.counts) {
+      setMessage('Não vou iniciar sem conseguir conferir a fila real. Clique em “Atualizar números” e tente novamente.');
+      return;
+    }
+
+    if (!fresh.counts.pending) {
       setMessage('Não há envios pendentes nessa campanha.');
       return;
     }
@@ -212,8 +203,7 @@ export default function EnviarCampanhaPage() {
     setMessage('Campanha pausada. Os contatos que faltam continuam salvos para você retomar depois.');
   }
 
-  const c = campaign?.counts || FALLBACK_CAMPAIGN.counts;
-  const finished = Boolean(c && c.pending === 0);
+  const finished = synced && counts.pending === 0 && counts.sending === 0;
 
   return (
     <main style={{ minHeight: 'calc(100vh - 72px)', background: '#f4f3ef', color: '#171714', padding: 24 }}>
@@ -223,7 +213,7 @@ export default function EnviarCampanhaPage() {
         <div style={{ margin: '14px 0 18px' }}>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.1em', color: '#8e6b30' }}>CAMPANHA REAL · 1ª ONDA</div>
           <h1 style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontWeight: 500, fontSize: 34, margin: '5px 0 7px' }}>Envio dos áudios do Gui</h1>
-          <p style={{ margin: 0, color: '#77746d', fontSize: 14 }}>Aqui você inicia, acompanha e pausa os envios. A mesma rota que funcionou no teste agora faz a campanha.</p>
+          <p style={{ margin: 0, color: '#77746d', fontSize: 14 }}>Agora a campanha só inicia e só conclui quando o servidor confirma a fila real.</p>
         </div>
 
         <section style={{ ...box, border: '2px solid #b9924d' }}>
@@ -235,20 +225,20 @@ export default function EnviarCampanhaPage() {
               </p>
             </div>
             <span style={{ height: 'fit-content', fontSize: 12, fontWeight: 900, padding: '8px 11px', borderRadius: 999, background: running ? '#e7f3e9' : '#f2eadb' }}>
-              {running ? 'ENVIANDO' : finished ? 'CONCLUÍDA' : 'PRONTA'}
+              {running ? 'ENVIANDO' : finished ? 'CONCLUÍDA' : synced ? 'PRONTA' : 'AGUARDANDO SINCRONIZAÇÃO'}
             </span>
           </div>
 
-          <div style={{ marginTop: 14, fontSize: 12, color: '#6f6a61' }}>{statusNote}</div>
+          <div style={{ marginTop: 14, fontSize: 12, color: synced ? '#557d62' : '#8e6b30', fontWeight: 700 }}>{statusNote}</div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 10, marginTop: 18 }}>
             {[
-              ['Selecionados', c.total],
-              ['Sellers', c.seller.total],
-              ['Iniciantes', c.iniciante.total],
-              ['Enviados', c.sent],
-              ['Faltam', c.pending],
-              ['Pulados', c.skipped],
+              ['Selecionados', counts.total],
+              ['Sellers', counts.seller.total],
+              ['Iniciantes', counts.iniciante.total],
+              ['Enviados', counts.sent],
+              ['Faltam', counts.pending],
+              ['Pulados', counts.skipped],
             ].map(([label, value]) => (
               <div key={label} style={{ background: '#f8f7f3', border: '1px solid #ebe7df', borderRadius: 12, padding: 13 }}>
                 <div style={{ fontSize: 11, color: '#77746d', fontWeight: 800 }}>{label}</div>
@@ -259,8 +249,13 @@ export default function EnviarCampanhaPage() {
 
           <div style={{ marginTop: 18, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             {!running ? (
-              <button type="button" onClick={startCampaign} disabled={finished || busy} style={{ ...button, background: '#8e6b30', opacity: finished || busy ? .45 : 1 }}>
-                {c.sent > 0 ? 'Continuar campanha' : 'Iniciar campanha'}
+              <button
+                type="button"
+                onClick={startCampaign}
+                disabled={!synced || finished || busy}
+                style={{ ...button, background: '#8e6b30', opacity: !synced || finished || busy ? .45 : 1 }}
+              >
+                {counts.sent > 0 ? 'Continuar campanha' : 'Iniciar campanha'}
               </button>
             ) : (
               <button type="button" onClick={pauseCampaign} style={{ ...button, background: '#7a3f3f' }}>Pausar campanha</button>

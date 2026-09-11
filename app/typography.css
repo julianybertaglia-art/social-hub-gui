@@ -13,6 +13,10 @@ body {
   line-height: 1.6;
 }
 
+.dashboard-hero .subtitle {
+  display: none;
+}
+
 .eyebrow {
   font-size: 11px;
   letter-spacing: .12em;

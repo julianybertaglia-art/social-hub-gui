@@ -23,7 +23,10 @@
   border-bottom:1px solid var(--border);
   color:var(--text)!important;
   text-decoration:none!important;
+  cursor:pointer;
 }
+
+.brand:hover .wordmark{color:var(--accent-hover)}
 
 .wordmark{
   font-size:33px;
@@ -31,6 +34,7 @@
   line-height:1;
   letter-spacing:-.065em;
   color:var(--accent);
+  transition:color .16s ease;
 }
 
 .tagline{

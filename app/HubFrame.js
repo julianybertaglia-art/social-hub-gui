@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import styles from './hub-frame.module.css';
 
@@ -9,15 +9,15 @@ const GROUPS = [
   {
     label: 'PRINCIPAL',
     items: [
-      { href: '/', label: 'Hoje', icon: '●', match: 'home' },
+      { href: '/', label: 'Hoje', icon: '●', section: 'dashboard' },
     ],
   },
   {
     label: 'CONTEÚDO',
     items: [
-      { href: '/?section=calendar', label: 'Calendário', icon: '▦' },
-      { href: '/?section=tasks', label: 'Tarefas', icon: '✓' },
-      { href: '/?section=ideas', label: 'Ideias', icon: '✦' },
+      { href: '/?section=calendar', label: 'Calendário', icon: '▦', section: 'calendar' },
+      { href: '/?section=tasks', label: 'Tarefas', icon: '✓', section: 'tasks' },
+      { href: '/?section=ideas', label: 'Ideias', icon: '✦', section: 'ideas' },
     ],
   },
   {
@@ -30,27 +30,38 @@ const GROUPS = [
   {
     label: 'PERFORMANCE',
     items: [
-      { href: '/?section=metrics', label: 'Métricas', icon: '⌁' },
-      { href: '/?section=goals', label: 'Metas', icon: '◎' },
+      { href: '/?section=metrics', label: 'Métricas', icon: '⌁', section: 'metrics' },
+      { href: '/?section=goals', label: 'Metas', icon: '◎', section: 'goals' },
     ],
   },
 ];
 
-function pageLabel(pathname) {
+const SECTION_LABELS = {
+  dashboard: 'Hoje',
+  calendar: 'Calendário de conteúdo',
+  tasks: 'Tarefas',
+  ideas: 'Ideias',
+  metrics: 'Métricas',
+  goals: 'Metas',
+};
+
+function pageLabel(pathname, section) {
   if (pathname.startsWith('/whatsapp/campanha')) return 'Campanhas';
   if (pathname.startsWith('/whatsapp')) return 'CRM & Conversas';
   if (pathname.startsWith('/automacoes')) return 'Automações';
-  return 'Seu espaço social';
+  return SECTION_LABELS[section] || 'Hoje';
 }
 
-function isActive(item, pathname) {
-  if (item.match === 'home') return pathname === '/';
+function isActive(item, pathname, section) {
   if (item.match) return pathname.startsWith(item.match);
-  return false;
+  if (pathname !== '/') return false;
+  return item.section === section;
 }
 
 export default function HubFrame({ children }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const section = searchParams.get('section') || 'dashboard';
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -66,7 +77,7 @@ export default function HubFrame({ children }) {
             <div className={styles.group} key={group.label}>
               <span className={styles.groupLabel}>{group.label}</span>
               {group.items.map((item) => {
-                const active = isActive(item, pathname);
+                const active = isActive(item, pathname, section);
                 return (
                   <Link
                     href={item.href}
@@ -122,7 +133,7 @@ export default function HubFrame({ children }) {
 
           <div className={styles.currentArea}>
             <span>VOCÊ ESTÁ EM</span>
-            <strong>{pageLabel(pathname)}</strong>
+            <strong>{pageLabel(pathname, section)}</strong>
           </div>
 
           <span className={styles.connection}>

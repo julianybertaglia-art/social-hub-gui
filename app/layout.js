@@ -1,11 +1,12 @@
 import './globals.css';
 import './home-cleanup.css';
+import './lynna-theme.css';
 import CloudGate from './CloudGate';
 import HubFrame from './HubFrame';
 
 export const metadata = {
-  title: 'Gui Social Hub',
-  description: 'Central estratégica do Instagram do Gui Nonato',
+  title: 'Lynna · your social space.',
+  description: 'Conteúdo, relacionamento e performance em um só espaço.',
 };
 
 export default function RootLayout({ children }) {

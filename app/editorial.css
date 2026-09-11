@@ -1,0 +1,374 @@
+/* Lynna editorial layer — Tezza/Later inspired: larger type, softer surfaces, less dashboard density. */
+:root {
+  --bg: #f7f2ef;
+  --surface: #fffaf7;
+  --surface-soft: #f2ebe8;
+  --text: #24191f;
+  --muted: #74666d;
+  --muted-2: #9a8b92;
+  --border: #eadfda;
+  --border-strong: #dccbc5;
+  --accent: #792746;
+  --accent-hover: #611d38;
+  --accent-soft: #f3e3e9;
+  --ice: #e8f0f4;
+  --ice-strong: #dce9ef;
+  --blush: #f7e9ed;
+  --space: #24191f;
+  --shadow: 0 14px 42px rgba(82, 48, 62, .055);
+}
+
+body {
+  font-size: 16px;
+  line-height: 1.62;
+  letter-spacing: -.01em;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+.app-shell > .main-content > .page-content {
+  width: min(1280px, calc(100% - 88px));
+  padding: 52px 0 92px;
+}
+
+.hero-row,
+.page-heading {
+  margin-bottom: 38px;
+}
+
+.dashboard-hero {
+  min-height: 170px;
+  align-items: end;
+  padding: 22px 0 12px;
+}
+
+.dashboard-hero h1,
+.page-heading h1 {
+  max-width: 900px;
+  margin: 0 0 14px;
+  font-size: clamp(48px, 5.2vw, 68px);
+  font-weight: 700;
+  line-height: .98;
+  letter-spacing: -.06em;
+}
+
+.page-heading h1 {
+  font-size: clamp(44px, 4.4vw, 60px);
+}
+
+.subtitle {
+  max-width: 760px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+.eyebrow {
+  margin-bottom: 13px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 780;
+  letter-spacing: .085em;
+}
+
+.primary-button {
+  min-height: 50px;
+  padding: 0 21px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 720;
+  box-shadow: none;
+}
+
+.primary-button:hover {
+  background: var(--accent-hover);
+}
+
+.text-button,
+.task-open-hint,
+.post-open-hint {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* The summary reads as an editorial strip, not four independent dashboard cards. */
+.quick-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 0 0 36px;
+  overflow: visible;
+  border: 0;
+  border-top: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.quick-stat {
+  min-height: 144px;
+  padding: 26px 26px 24px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.quick-stat:last-child { border-right: 0; }
+.quick-stat:hover { background: rgba(255, 250, 247, .62); }
+.quick-stat span { color: var(--muted); font-size: 14px; font-weight: 650; }
+.quick-stat strong { margin: 10px 0 5px; font-size: 42px; font-weight: 700; letter-spacing: -.055em; }
+.quick-stat small { color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+.home-layout {
+  grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr);
+  gap: 24px;
+}
+
+.home-primary,
+.home-secondary { gap: 24px; }
+
+.panel,
+.goal-card,
+.idea-card,
+.metric-card,
+.metric-input-card {
+  border: 0;
+  border-radius: 30px;
+  box-shadow: none;
+}
+
+.focus-panel,
+.agenda-panel,
+.attention-panel,
+.performance-panel,
+.panel {
+  padding: 34px;
+}
+
+.attention-panel {
+  background: var(--blush) !important;
+}
+
+.focus-panel {
+  background: var(--ice) !important;
+}
+
+.agenda-panel {
+  background: var(--surface) !important;
+  box-shadow: var(--shadow);
+}
+
+.performance-panel {
+  background: #eee5e9 !important;
+}
+
+.panel-heading {
+  margin-bottom: 25px;
+}
+
+.panel-heading h2 {
+  margin-top: 2px;
+  font-size: 29px !important;
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -.04em;
+}
+
+.panel-heading p,
+.panel p,
+.note,
+.mini-guide p,
+.mini-guide li {
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.count-badge {
+  min-width: 42px;
+  height: 35px;
+  padding-inline: 12px;
+  font-size: 14px;
+}
+
+/* Rows become calm editorial lists instead of nested mini-cards. */
+.task-list,
+.post-list,
+.attention-list {
+  gap: 0 !important;
+}
+
+.task-row,
+.post-row,
+.content-card {
+  min-height: 72px;
+  padding: 17px 0;
+  border: 0;
+  border-bottom: 1px solid rgba(80, 54, 65, .13);
+  border-radius: 0;
+  background: transparent;
+}
+
+.task-row:last-child,
+.post-row:last-child,
+.content-card:last-child { border-bottom: 0; }
+
+.task-row:hover,
+.post-details-button:hover,
+.content-with-details:hover {
+  border-color: rgba(80, 54, 65, .13);
+  background: transparent;
+}
+
+.task-copy { font-size: 16px; line-height: 1.5; }
+.task-open-hint { margin-top: 4px; }
+.priority,
+.status-badge,
+.format-chip,
+.tag-row span { font-size: 12px; }
+
+.post-row { min-height: 92px; }
+.post-copy > span:first-child { font-size: 13px; }
+.post-copy > strong { font-size: 17px; line-height: 1.42; }
+.date-box strong { font-size: 15px; }
+.date-box span { font-size: 12px; }
+
+.attention-item {
+  min-height: 82px;
+  grid-template-columns: 12px minmax(0, 1fr) 22px;
+  gap: 14px;
+  padding: 18px 0;
+  border-bottom-color: rgba(80,54,65,.14);
+}
+
+.attention-item strong { font-size: 16px; line-height: 1.4; }
+.attention-item small { margin-top: 6px; font-size: 14px; line-height: 1.55; }
+.attention-arrow { font-size: 20px; }
+
+.performance-mini-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  border-top: 1px solid rgba(80,54,65,.13);
+}
+
+.performance-mini-grid > div {
+  padding: 22px 22px 5px;
+  border: 0;
+  border-right: 1px solid rgba(80,54,65,.13);
+  border-radius: 0;
+  background: transparent;
+}
+
+.performance-mini-grid > div:last-child { border-right: 0; }
+.performance-mini-grid span { font-size: 13px; }
+.performance-mini-grid strong { margin-top: 8px; font-size: 31px; font-weight: 700; }
+
+/* Secondary screens keep the same larger, calmer rhythm. */
+.two-column-form,
+.goals-grid,
+.ideas-grid,
+.metrics-edit-grid {
+  gap: 24px;
+}
+
+.form-panel,
+.mini-guide,
+.list-panel,
+.task-page,
+.instruction-panel {
+  padding: 34px;
+}
+
+.form-panel h2,
+.mini-guide h2,
+.task-page h2,
+.instruction-panel h2 {
+  font-size: 28px;
+  line-height: 1.2;
+}
+
+.form-grid label,
+.goal-inputs label,
+.metric-input-card > span {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+input,
+select,
+textarea {
+  min-height: 50px;
+  padding: 12px 14px;
+  border-radius: 13px !important;
+  font-size: 16px !important;
+}
+
+textarea { min-height: 118px; }
+
+.idea-card,
+.goal-card,
+.metric-input-card {
+  padding: 27px;
+}
+
+.idea-card h3,
+.goal-card strong,
+.metric-card strong {
+  font-size: 21px;
+  line-height: 1.35;
+}
+
+.idea-card p,
+.goal-card span,
+.metric-card span {
+  font-size: 14px;
+}
+
+.empty-state {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+@media (max-width: 1080px) {
+  .app-shell > .main-content > .page-content { width: min(100% - 56px, 1280px); }
+  .home-layout { grid-template-columns: 1fr; grid-template-areas: "attention" "focus" "agenda" "performance"; }
+  .quick-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quick-stat:nth-child(2) { border-right: 0; }
+  .quick-stat:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
+  .performance-mini-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .performance-mini-grid > div:nth-child(2) { border-right: 0; }
+}
+
+@media (max-width: 760px) {
+  .app-shell > .main-content > .page-content { width: min(100% - 34px, 1280px); padding-top: 34px; }
+  .dashboard-hero { min-height: 0; padding-top: 8px; }
+  .dashboard-hero h1,
+  .page-heading h1 { font-size: clamp(42px, 11vw, 54px); }
+  .subtitle { font-size: 16px; }
+  .focus-panel,
+  .agenda-panel,
+  .attention-panel,
+  .performance-panel,
+  .panel { padding: 26px; border-radius: 24px; }
+  .quick-stat { min-height: 126px; padding: 21px 18px; }
+  .quick-stat strong { font-size: 36px; }
+}
+
+@media (max-width: 520px) {
+  .quick-stats { grid-template-columns: 1fr; }
+  .quick-stat { border-right: 0; border-bottom: 1px solid var(--border); }
+  .quick-stat:last-child { border-bottom: 0; }
+  .performance-mini-grid { grid-template-columns: 1fr 1fr; }
+  .performance-mini-grid > div { padding-inline: 14px; }
+  .performance-mini-grid strong { font-size: 26px; }
+}

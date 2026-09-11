@@ -2,93 +2,119 @@
   display: grid;
   min-height: 100vh;
   place-items: center;
-  padding: 24px;
+  padding: 28px;
   background:
-    radial-gradient(circle at top left, rgba(185, 146, 77, 0.14), transparent 34%),
-    #f4f3ef;
+    radial-gradient(circle at 18% 12%, rgba(111, 36, 63, 0.10), transparent 32%),
+    radial-gradient(circle at 82% 88%, rgba(211, 223, 232, 0.34), transparent 30%),
+    #f7f2ef;
 }
 
 .card {
-  width: min(100%, 440px);
-  padding: 38px;
-  border: 1px solid #e6e2da;
-  border-radius: 18px;
-  background: #fff;
-  box-shadow: 0 18px 50px rgba(30, 27, 21, 0.09);
+  position: relative;
+  width: min(100%, 500px);
+  overflow: hidden;
+  padding: 46px 44px 42px;
+  border: 1px solid rgba(111, 36, 63, 0.10);
+  border-radius: 28px;
+  background: rgba(255, 253, 250, 0.94);
+  box-shadow: 0 24px 70px rgba(73, 41, 55, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.card::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, #6f243f, transparent);
+  background-size: 180% 100%;
+  content: '';
+  animation: lynnaLoad 1.8s ease-in-out infinite;
 }
 
 .mark {
-  display: grid;
-  width: 52px;
-  height: 52px;
-  margin-bottom: 26px;
-  place-items: center;
-  border-radius: 50%;
-  background: #171717;
-  color: #e7c98f;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  width: auto;
+  height: auto;
+  margin-bottom: 34px;
+  border-radius: 0;
+  background: transparent;
+  color: transparent;
+  font-size: 0;
+  font-weight: 780;
+  letter-spacing: -0.065em;
+}
+
+.mark::before {
+  content: 'lynna.';
+  color: #6f243f;
+  font-family: Inter, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  font-size: 42px;
+  font-weight: 780;
+  line-height: 1;
+  letter-spacing: -0.065em;
 }
 
 .eyebrow {
-  margin-bottom: 10px;
-  color: #8e6b30;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  display: none;
 }
 
 .card h1 {
-  margin-bottom: 12px;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: 38px;
-  font-weight: 500;
-  letter-spacing: -0.035em;
+  margin: 0 0 14px;
+  color: #1b1719;
+  font-family: Inter, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  font-size: clamp(34px, 5vw, 44px);
+  font-weight: 760;
+  line-height: 1.02;
+  letter-spacing: -0.05em;
 }
 
 .card > p:not(.eyebrow) {
-  color: #77746d;
-  line-height: 1.6;
+  margin: 0;
+  color: #766d71;
+  font-size: 15px;
+  line-height: 1.65;
 }
 
 .form {
   display: grid;
-  gap: 16px;
-  margin-top: 28px;
+  gap: 18px;
+  margin-top: 30px;
 }
 
 .form label {
   display: grid;
-  gap: 8px;
-  color: #55524c;
-  font-size: 12px;
+  gap: 9px;
+  color: #5f565a;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .form input {
   width: 100%;
-  min-height: 46px;
-  padding: 0 13px;
-  border: 1px solid #ddd8cf;
-  border-radius: 9px;
+  min-height: 50px;
+  padding: 0 15px;
+  border: 1px solid #d7cccf;
+  border-radius: 13px;
   outline: none;
-  background: #fff;
-  color: #171717;
+  background: #fffdfa;
+  color: #1b1719;
+  font-size: 15px;
 }
 
 .form input:focus {
-  border-color: #b9924d;
-  box-shadow: 0 0 0 3px rgba(185, 146, 77, 0.12);
+  border-color: rgba(111, 36, 63, 0.55);
+  box-shadow: 0 0 0 3px rgba(111, 36, 63, 0.09);
 }
 
 .form button {
-  min-height: 46px;
+  min-height: 50px;
   border: 0;
-  border-radius: 9px;
-  background: #171717;
+  border-radius: 13px;
+  background: #6f243f;
   color: #fff;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 740;
 }
 
 .form button:disabled {
@@ -98,11 +124,11 @@
 
 .error {
   margin: 0;
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: 12px 14px;
+  border-radius: 11px;
   background: #f8eaea;
   color: #934747;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .syncBar {
@@ -113,42 +139,58 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 10px 9px 13px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 10px 11px 10px 14px;
+  border: 1px solid rgba(111, 36, 63, 0.12);
   border-radius: 999px;
-  background: rgba(23, 23, 23, 0.94);
-  color: #fff;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
-  backdrop-filter: blur(12px);
-  font-size: 11px;
+  background: rgba(255, 253, 250, 0.94);
+  color: #4e4247;
+  box-shadow: 0 12px 34px rgba(58, 36, 45, 0.10);
+  backdrop-filter: blur(14px);
+  font-size: 12px;
 }
 
 .syncBar span::before {
   content: '';
   display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 7px;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
   border-radius: 50%;
-  background: #79a886;
+  background: #5f936d;
 }
 
 .syncBar button {
-  padding: 6px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 7px 11px;
+  border: 1px solid #d7cccf;
   border-radius: 999px;
-  background: transparent;
-  color: #fff;
-  font-size: 11px;
+  background: #fffdfa;
+  color: #6f243f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@keyframes lynnaLoad {
+  0% { background-position: 180% 0; opacity: .35; }
+  50% { opacity: .95; }
+  100% { background-position: -80% 0; opacity: .35; }
 }
 
 @media (max-width: 640px) {
+  .screen {
+    padding: 18px;
+  }
+
   .card {
-    padding: 28px 22px;
+    padding: 34px 26px 32px;
+    border-radius: 22px;
+  }
+
+  .mark::before {
+    font-size: 36px;
   }
 
   .card h1 {
-    font-size: 32px;
+    font-size: 34px;
   }
 
   .syncBar {

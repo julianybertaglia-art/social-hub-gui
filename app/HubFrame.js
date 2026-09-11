@@ -65,7 +65,16 @@ export default function HubFrame({ children }) {
   return (
     <div className={styles.frame}>
       <aside className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
-        <Link href="/" className={styles.brand} onClick={() => setMenuOpen(false)}>
+        <Link
+          href="/"
+          className={styles.brand}
+          aria-label="Voltar para a tela inicial da Lynna"
+          title="Voltar para o início"
+          onClick={() => {
+            setMenuOpen(false);
+            setProfileMenuOpen(false);
+          }}
+        >
           <div className={styles.wordmark}>lynna.</div>
           <span className={styles.tagline}>your social space.</span>
         </Link>
@@ -91,7 +100,6 @@ export default function HubFrame({ children }) {
           <div className={styles.profileDot}>J</div>
           <div className={styles.profileCopy}>
             <strong>Juliany</strong>
-            <span>Workspace · {activeAccount?.name || 'Instagram'}</span>
           </div>
         </div>
       </aside>

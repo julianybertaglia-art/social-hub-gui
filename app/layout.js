@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import './globals.css';
-import './home-cleanup.css';
 import './lynna-theme.css';
+import './home-cleanup.css';
 import CloudGate from './CloudGate';
 import HubFrame from './HubFrame';
 import { AccountProvider } from './AccountContext';

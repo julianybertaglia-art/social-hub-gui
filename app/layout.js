@@ -3,6 +3,7 @@ import './globals.css';
 import './lynna-theme.css';
 import './home-cleanup.css';
 import './typography.css';
+import './editorial.css';
 import CloudGate from './CloudGate';
 import HubFrame from './HubFrame';
 import { AccountProvider } from './AccountContext';

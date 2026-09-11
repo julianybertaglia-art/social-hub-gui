@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import './globals.css';
 import './home-cleanup.css';
 import './lynna-theme.css';
@@ -14,7 +15,9 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR">
       <body>
         <CloudGate>
-          <HubFrame>{children}</HubFrame>
+          <Suspense fallback={children}>
+            <HubFrame>{children}</HubFrame>
+          </Suspense>
         </CloudGate>
       </body>
     </html>

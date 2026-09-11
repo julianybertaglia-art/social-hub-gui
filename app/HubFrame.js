@@ -8,7 +8,7 @@ import styles from './hub-frame.module.css';
 import accountStyles from './account-switcher.module.css';
 
 const GROUPS = [
-  { label: 'PRINCIPAL', items: [{ href: '/', label: 'Hoje', icon: '●', section: 'dashboard' }] },
+  { label: 'PRINCIPAL', items: [{ href: '/', label: 'Início', icon: '⌂', section: 'dashboard' }] },
   {
     label: 'CONTEÚDO',
     items: [
@@ -34,7 +34,7 @@ const GROUPS = [
 ];
 
 const SECTION_LABELS = {
-  dashboard: 'Hoje', calendar: 'Calendário de conteúdo', tasks: 'Tarefas',
+  dashboard: 'Início', calendar: 'Calendário de conteúdo', tasks: 'Tarefas',
   ideas: 'Ideias', metrics: 'Métricas', goals: 'Metas',
 };
 
@@ -43,7 +43,7 @@ function pageLabel(pathname, section) {
   if (pathname.startsWith('/whatsapp/campanha')) return 'Campanhas';
   if (pathname.startsWith('/whatsapp')) return 'CRM & Conversas';
   if (pathname.startsWith('/automacoes')) return 'Automações';
-  return SECTION_LABELS[section] || 'Hoje';
+  return SECTION_LABELS[section] || 'Início';
 }
 
 function isActive(item, pathname, section) {
@@ -65,10 +65,10 @@ export default function HubFrame({ children }) {
   return (
     <div className={styles.frame}>
       <aside className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
-        <Link
+        <a
           href="/"
           className={styles.brand}
-          aria-label="Voltar para a tela inicial da Lynna"
+          aria-label="Voltar para a página inicial da Lynna"
           title="Voltar para o início"
           onClick={() => {
             setMenuOpen(false);
@@ -77,13 +77,13 @@ export default function HubFrame({ children }) {
         >
           <div className={styles.wordmark}>lynna.</div>
           <span className={styles.tagline}>your social space.</span>
-        </Link>
+        </a>
         <nav className={styles.nav} aria-label="Áreas da Lynna">
           {GROUPS.map((group) => (
             <div className={styles.group} key={group.label}>
               <span className={styles.groupLabel}>{group.label}</span>
               {group.items.map((item) => (
-                <Link
+                <a
                   href={item.href}
                   key={`${group.label}-${item.href}-${item.label}`}
                   className={`${styles.navLink} ${isActive(item, pathname, section) ? styles.active : ''}`}
@@ -91,7 +91,7 @@ export default function HubFrame({ children }) {
                 >
                   <span className={styles.icon} aria-hidden="true">{item.icon}</span>
                   <span>{item.label}</span>
-                </Link>
+                </a>
               ))}
             </div>
           ))}

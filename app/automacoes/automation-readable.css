@@ -1,0 +1,71 @@
+.automation-route {
+  font-size: 16px;
+}
+
+.automation-route h1 {
+  font-size: clamp(52px, 5.2vw, 66px) !important;
+  line-height: .98 !important;
+}
+
+.automation-route h2 {
+  font-size: clamp(27px, 3vw, 34px) !important;
+  line-height: 1.08 !important;
+}
+
+.automation-route h3 {
+  font-size: 21px !important;
+}
+
+.automation-route p,
+.automation-route li,
+.automation-route td {
+  font-size: 15px !important;
+  line-height: 1.65 !important;
+}
+
+.automation-route small {
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.automation-route label,
+.automation-route legend {
+  font-size: 15px !important;
+}
+
+.automation-route input,
+.automation-route textarea,
+.automation-route select {
+  font-size: 16px !important;
+}
+
+.automation-route button,
+.automation-route a {
+  font-size: 14px;
+}
+
+.automation-route th {
+  font-size: 12px !important;
+}
+
+.automation-route code {
+  font-size: 17px !important;
+}
+
+.automation-route summary b {
+  font-size: 19px !important;
+}
+
+.automation-route summary small {
+  font-size: 14px !important;
+}
+
+@media (max-width: 700px) {
+  .automation-route h1 {
+    font-size: 46px !important;
+  }
+
+  .automation-route h2 {
+    font-size: 28px !important;
+  }
+}

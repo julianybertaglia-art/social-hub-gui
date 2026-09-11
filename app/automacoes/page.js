@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import styles from './automacoes.module.css';
+import styles from './automacoes-refresh.module.css';
 import AudioTest from './AudioTest';
 import ArgoAudioAutomation from './ArgoAudioAutomation';
 import { isArgoKeyword } from '../lib/argo-flow';
@@ -175,38 +175,15 @@ export default function AutomacoesPage() {
 
                 {opened && (
                   <div className={styles.ruleEditor}>
-                    {index === 0 && (
-                      <div className={styles.notice}>Esta é a automação já usada para IMERSÃO. Você pode editar normalmente.</div>
-                    )}
-                    {isArgoKeyword(rule.keyword) && (
-                      <div className={styles.notice}>ARGO funciona pelo fluxo de Direct acima. Esta regra por comentário fica desativada.</div>
-                    )}
+                    {index === 0 && <div className={styles.notice}>Esta é a automação já usada para IMERSÃO. Você pode editar normalmente.</div>}
+                    {isArgoKeyword(rule.keyword) && <div className={styles.notice}>ARGO funciona pelo fluxo de Direct acima. Esta regra por comentário fica desativada.</div>}
 
                     <div className={styles.formGrid}>
-                      <label>
-                        Nome da automação
-                        <input value={rule.name} onChange={(event) => updateRule(index, 'name', event.target.value)} placeholder="Ex.: Leads — Mentoria" />
-                      </label>
-
-                      <label>
-                        Palavra-chave
-                        <input value={rule.keyword} onChange={(event) => updateRule(index, 'keyword', event.target.value.toUpperCase())} placeholder="Ex.: MENTORIA" />
-                      </label>
-
-                      <label className={styles.fullField}>
-                        Resposta pública no comentário
-                        <input value={rule.publicReply} onChange={(event) => updateRule(index, 'publicReply', event.target.value)} placeholder="Ex.: Te chamei no Direct 👊" />
-                      </label>
-
-                      <label className={styles.fullField}>
-                        Mensagem enviada no Direct
-                        <textarea rows="7" value={rule.privateMessage} onChange={(event) => updateRule(index, 'privateMessage', event.target.value)} placeholder="Escreva aqui a mensagem automática..." />
-                      </label>
-
-                      <label className={styles.fullField}>
-                        Tag do lead
-                        <input value={rule.tag} onChange={(event) => updateRule(index, 'tag', event.target.value)} placeholder="Ex.: Interesse — Mentoria" />
-                      </label>
+                      <label>Nome da automação<input value={rule.name} onChange={(event) => updateRule(index, 'name', event.target.value)} placeholder="Ex.: Leads — Mentoria" /></label>
+                      <label>Palavra-chave<input value={rule.keyword} onChange={(event) => updateRule(index, 'keyword', event.target.value.toUpperCase())} placeholder="Ex.: MENTORIA" /></label>
+                      <label className={styles.fullField}>Resposta pública no comentário<input value={rule.publicReply} onChange={(event) => updateRule(index, 'publicReply', event.target.value)} placeholder="Ex.: Te chamei no Direct 👊" /></label>
+                      <label className={styles.fullField}>Mensagem enviada no Direct<textarea rows="7" value={rule.privateMessage} onChange={(event) => updateRule(index, 'privateMessage', event.target.value)} placeholder="Escreva aqui a mensagem automática..." /></label>
+                      <label className={styles.fullField}>Tag do lead<input value={rule.tag} onChange={(event) => updateRule(index, 'tag', event.target.value)} placeholder="Ex.: Interesse — Mentoria" /></label>
                     </div>
 
                     <div className={styles.editorActions}>
@@ -222,10 +199,7 @@ export default function AutomacoesPage() {
       </section>
 
       <details className={styles.toolsPanel}>
-        <summary>
-          <span><b>Ferramentas de teste</b><small>Abra somente quando precisar testar ou trocar um áudio.</small></span>
-          <i aria-hidden="true">＋</i>
-        </summary>
+        <summary><span><b>Ferramentas de teste</b><small>Abra somente quando precisar testar ou trocar um áudio.</small></span><i aria-hidden="true">＋</i></summary>
         <div className={styles.toolsContent}><AudioTest /></div>
       </details>
 

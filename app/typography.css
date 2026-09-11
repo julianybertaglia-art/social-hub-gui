@@ -1,0 +1,84 @@
+body {
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.app-shell > .main-content > .page-content {
+  width: min(1220px, calc(100% - 64px));
+}
+
+.subtitle {
+  max-width: 760px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: .12em;
+}
+
+.primary-button {
+  min-height: 46px;
+  padding-inline: 18px;
+  font-size: 14px;
+}
+
+.text-button,
+.task-open-hint,
+.post-open-hint {
+  font-size: 13px;
+}
+
+.panel-heading h2 {
+  font-size: 25px;
+}
+
+.count-badge {
+  min-width: 38px;
+  height: 31px;
+  font-size: 13px;
+}
+
+.form-grid label,
+.goal-inputs label,
+.metric-input-card > span {
+  font-size: 13px;
+}
+
+input,
+select,
+textarea {
+  min-height: 44px;
+  font-size: 14px !important;
+}
+
+textarea {
+  line-height: 1.55;
+}
+
+.idea-card h3,
+.goal-card strong,
+.metric-card strong {
+  font-size: 18px;
+}
+
+.idea-card p,
+.goal-card span,
+.metric-card span,
+.note,
+.mini-guide p,
+.mini-guide li {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+@media (max-width: 760px) {
+  .app-shell > .main-content > .page-content {
+    width: min(100% - 32px, 1220px);
+  }
+
+  .subtitle {
+    font-size: 15px;
+  }
+}

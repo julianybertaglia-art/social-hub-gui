@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import styles from './automacoes.module.css';
 import AudioTest from './AudioTest';
@@ -53,6 +52,7 @@ export default function AutomacoesPage() {
   const [rules, setRules] = useState(initialRules);
   const [saved, setSaved] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [openRule, setOpenRule] = useState(0);
 
   useEffect(() => {
     try {
@@ -112,130 +112,128 @@ export default function AutomacoesPage() {
     <main className={styles.page}>
       <header className={styles.header}>
         <div>
-          <span className={styles.eyebrow}>INSTAGRAM · @GUI_NONATO</span>
+          <span className={styles.eyebrow}>INSTAGRAM · AUTOMAÇÕES</span>
           <h1>Automações</h1>
-          <p>O Argo começa no Direct, com áudio e três opções. Abaixo, gerencie também as respostas automáticas por comentário.</p>
+          <p>Veja primeiro o que está ativo. Abra uma automação só quando quiser editar e deixe os testes técnicos fora do caminho no dia a dia.</p>
         </div>
-        <Link className={styles.backButton} href="/">← Voltar ao Hub</Link>
       </header>
 
-      <section className={styles.statusGrid}>
-        <article className={styles.statusCard}>
-          <span>Conta profissional</span>
-          <strong>Conectada</strong>
-          <small>@gui_nonato</small>
-        </article>
-        <article className={styles.statusCard}>
-          <span>Regras por comentário ativas</span>
-          <strong>{activeCount} de 3</strong>
-          <small>Você pode deixar até três regras prontas</small>
-        </article>
-        <article className={styles.statusCard}>
-          <span>Envio automático</span>
-          <strong>Conectado</strong>
-          <small>Webhook oficial da Meta ativo</small>
-        </article>
+      <section className={styles.statusStrip} aria-label="Resumo das automações">
+        <div><span>Conta</span><strong>@gui_nonato</strong><small>Meta conectada</small></div>
+        <div><span>Comentários</span><strong>{activeCount} ativa{activeCount === 1 ? '' : 's'}</strong><small>de até 3 regras</small></div>
+        <div><span>Envio</span><strong>Online</strong><small>Webhook da Meta ativo</small></div>
       </section>
 
-      <ArgoAudioAutomation />
-
-      <AudioTest />
-
-      <section className={styles.rulesWrap}>
-        {rules.map((rule, index) => (
-          <article className={styles.panel} key={rule.id}>
-            <div className={styles.panelHeading}>
-              <div>
-                <span className={styles.eyebrow}>AUTOMAÇÃO {index + 1}</span>
-                <h2>{rule.name || `Automação ${index + 1}`}</h2>
-              </div>
-              <label className={styles.switchRow}>
-                <span>{rule.active ? 'Ativa' : 'Pausada'}</span>
-                <input
-                  type="checkbox"
-                  checked={rule.active}
-                  disabled={isArgoKeyword(rule.keyword)}
-                  onChange={(event) => updateRule(index, 'active', event.target.checked)}
-                />
-                <i aria-hidden="true" />
-              </label>
-            </div>
-
-            {index === 0 && (
-              <div className={styles.notice}>
-                Esta é a automação que já testamos com IMERSÃO. Você pode editar o texto e salvar normalmente.
-              </div>
-            )}
-            {isArgoKeyword(rule.keyword) && (
-              <div className={styles.notice}>ARGO agora funciona no Direct, pelo fluxo de áudio acima. Esta regra por comentário está desativada.</div>
-            )}
-
-            <div className={styles.formGrid}>
-              <label>
-                Nome da automação
-                <input
-                  value={rule.name}
-                  onChange={(event) => updateRule(index, 'name', event.target.value)}
-                  placeholder="Ex.: Leads — Mentoria"
-                />
-              </label>
-
-              <label>
-                Palavra-chave
-                <input
-                  value={rule.keyword}
-                  onChange={(event) => updateRule(index, 'keyword', event.target.value.toUpperCase())}
-                  placeholder="Ex.: MENTORIA"
-                />
-              </label>
-
-              <label className={styles.fullField}>
-                Resposta pública no comentário
-                <input
-                  value={rule.publicReply}
-                  onChange={(event) => updateRule(index, 'publicReply', event.target.value)}
-                  placeholder="Ex.: Te chamei no Direct 👊"
-                />
-              </label>
-
-              <label className={styles.fullField}>
-                Mensagem enviada no Direct
-                <textarea
-                  rows="9"
-                  value={rule.privateMessage}
-                  onChange={(event) => updateRule(index, 'privateMessage', event.target.value)}
-                  placeholder="Escreva aqui a mensagem automática..."
-                />
-              </label>
-
-              <label className={styles.fullField}>
-                Tag do lead
-                <input
-                  value={rule.tag}
-                  onChange={(event) => updateRule(index, 'tag', event.target.value)}
-                  placeholder="Ex.: Interesse — Mentoria"
-                />
-              </label>
-            </div>
-
-            {index > 0 && (
-              <button className={styles.clearButton} type="button" onClick={() => resetRule(index)}>
-                Limpar esta automação
-              </button>
-            )}
-          </article>
-        ))}
-      </section>
-
-      <section className={styles.saveDock}>
-        <div>
-          <strong>{hydrated ? 'As alterações são sincronizadas com o Hub.' : 'Carregando configurações...'}</strong>
-          <span>Depois de salvar, aguarde alguns segundos antes de testar a nova palavra-chave.</span>
+      <section className={styles.sectionBlock}>
+        <div className={styles.sectionHeading}>
+          <div>
+            <span className={styles.eyebrow}>DIRECT</span>
+            <h2>Fluxos no Direct</h2>
+            <p>Automações que começam por mensagem privada e seguem um fluxo de resposta.</p>
+          </div>
         </div>
-        <button className={styles.saveButton} type="button" onClick={saveRules} disabled={!hydrated}>
-          {saved ? 'Configurações salvas ✓' : 'Salvar as 3 automações'}
-        </button>
+        <ArgoAudioAutomation />
       </section>
+
+      <section className={styles.sectionBlock}>
+        <div className={styles.sectionHeading}>
+          <div>
+            <span className={styles.eyebrow}>COMENTÁRIOS</span>
+            <h2>Respostas por palavra-chave</h2>
+            <p>Uma visão simples das regras. Clique em editar apenas quando precisar alterar alguma coisa.</p>
+          </div>
+          <span className={styles.sectionCount}>{activeCount} ativa{activeCount === 1 ? '' : 's'}</span>
+        </div>
+
+        <div className={styles.rulesWrap}>
+          {rules.map((rule, index) => {
+            const opened = openRule === index;
+            const keyword = rule.keyword.trim() || 'Sem palavra-chave';
+            return (
+              <article className={`${styles.ruleCard} ${opened ? styles.ruleCardOpen : ''}`} key={rule.id}>
+                <div className={styles.ruleSummary}>
+                  <button className={styles.ruleMainButton} type="button" onClick={() => setOpenRule(opened ? null : index)} aria-expanded={opened}>
+                    <span className={styles.ruleNumber}>{String(index + 1).padStart(2, '0')}</span>
+                    <span className={styles.ruleCopy}>
+                      <strong>{rule.name || `Automação ${index + 1}`}</strong>
+                      <small><b>{keyword}</b>{rule.tag ? ` · ${rule.tag}` : ''}</small>
+                    </span>
+                    <span className={styles.editHint}>{opened ? 'Fechar' : 'Editar'} <i aria-hidden="true">{opened ? '↑' : '↓'}</i></span>
+                  </button>
+
+                  <label className={styles.switchRow}>
+                    <span>{rule.active ? 'Ativa' : 'Pausada'}</span>
+                    <input
+                      type="checkbox"
+                      checked={rule.active}
+                      disabled={isArgoKeyword(rule.keyword)}
+                      onChange={(event) => updateRule(index, 'active', event.target.checked)}
+                    />
+                    <i aria-hidden="true" />
+                  </label>
+                </div>
+
+                {opened && (
+                  <div className={styles.ruleEditor}>
+                    {index === 0 && (
+                      <div className={styles.notice}>Esta é a automação já usada para IMERSÃO. Você pode editar normalmente.</div>
+                    )}
+                    {isArgoKeyword(rule.keyword) && (
+                      <div className={styles.notice}>ARGO funciona pelo fluxo de Direct acima. Esta regra por comentário fica desativada.</div>
+                    )}
+
+                    <div className={styles.formGrid}>
+                      <label>
+                        Nome da automação
+                        <input value={rule.name} onChange={(event) => updateRule(index, 'name', event.target.value)} placeholder="Ex.: Leads — Mentoria" />
+                      </label>
+
+                      <label>
+                        Palavra-chave
+                        <input value={rule.keyword} onChange={(event) => updateRule(index, 'keyword', event.target.value.toUpperCase())} placeholder="Ex.: MENTORIA" />
+                      </label>
+
+                      <label className={styles.fullField}>
+                        Resposta pública no comentário
+                        <input value={rule.publicReply} onChange={(event) => updateRule(index, 'publicReply', event.target.value)} placeholder="Ex.: Te chamei no Direct 👊" />
+                      </label>
+
+                      <label className={styles.fullField}>
+                        Mensagem enviada no Direct
+                        <textarea rows="7" value={rule.privateMessage} onChange={(event) => updateRule(index, 'privateMessage', event.target.value)} placeholder="Escreva aqui a mensagem automática..." />
+                      </label>
+
+                      <label className={styles.fullField}>
+                        Tag do lead
+                        <input value={rule.tag} onChange={(event) => updateRule(index, 'tag', event.target.value)} placeholder="Ex.: Interesse — Mentoria" />
+                      </label>
+                    </div>
+
+                    <div className={styles.editorActions}>
+                      {index > 0 && <button className={styles.clearButton} type="button" onClick={() => resetRule(index)}>Limpar automação</button>}
+                      <button className={styles.saveButton} type="button" onClick={saveRules} disabled={!hydrated}>{saved ? 'Salvo ✓' : 'Salvar alterações'}</button>
+                    </div>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <details className={styles.toolsPanel}>
+        <summary>
+          <span><b>Ferramentas de teste</b><small>Abra somente quando precisar testar ou trocar um áudio.</small></span>
+          <i aria-hidden="true">＋</i>
+        </summary>
+        <div className={styles.toolsContent}><AudioTest /></div>
+      </details>
+
+      <div className={styles.pageSaveNote}>
+        <span>{hydrated ? 'As alterações ficam sincronizadas com o Hub.' : 'Carregando configurações...'}</span>
+        {!saved && <button type="button" onClick={saveRules} disabled={!hydrated}>Salvar tudo</button>}
+        {saved && <strong>Salvo ✓</strong>}
+      </div>
     </main>
   );
 }

@@ -9,7 +9,7 @@
   inset:0 auto 0 0;
   z-index:50;
   display:flex;
-  width:276px;
+  width:292px;
   flex-direction:column;
   padding:30px 20px 22px;
   border-right:1px solid rgba(121,39,70,.08);
@@ -27,7 +27,7 @@
 .brand:hover .wordmark{color:var(--accent-hover)}
 
 .wordmark{
-  font-size:41px;
+  font-size:43px;
   font-weight:760;
   line-height:.96;
   letter-spacing:-.07em;
@@ -39,7 +39,7 @@
   display:block;
   margin-top:10px;
   color:var(--muted);
-  font-size:13px;
+  font-size:14px;
   font-weight:620;
   letter-spacing:.01em;
 }
@@ -49,34 +49,42 @@
   flex:1;
   min-height:0;
   align-content:start;
-  gap:25px;
+  gap:27px;
   margin-top:20px;
   overflow-y:auto;
   padding:4px 1px 12px;
-  scrollbar-width:thin;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
 }
 
-.group{display:grid;gap:6px}
+.nav::-webkit-scrollbar{
+  display:none;
+  width:0;
+  height:0;
+}
+
+.group{display:grid;gap:7px}
 
 .groupLabel{
-  margin:0 14px 7px;
+  margin:0 14px 8px;
   color:var(--muted-2);
-  font-size:11px;
+  font-size:12px;
   font-weight:760;
-  letter-spacing:.095em;
+  letter-spacing:.085em;
 }
 
 .navLink{
   display:flex;
-  min-height:51px;
+  min-height:55px;
   align-items:center;
-  gap:13px;
-  padding:11px 14px;
+  gap:14px;
+  padding:12px 15px;
   border:1px solid transparent;
-  border-radius:16px;
+  border-radius:17px;
   color:var(--muted)!important;
-  font-size:15px;
+  font-size:17px;
   font-weight:650;
+  line-height:1.2;
   text-decoration:none!important;
   transition:background .16s ease,color .16s ease,transform .16s ease,box-shadow .16s ease;
 }
@@ -95,11 +103,11 @@
 
 .icon{
   display:inline-grid;
-  width:23px;
-  flex:0 0 23px;
+  width:25px;
+  flex:0 0 25px;
   place-items:center;
   color:currentColor;
-  font-size:15px;
+  font-size:17px;
 }
 
 .sidebarFooter{
@@ -113,25 +121,25 @@
 
 .profileDot{
   display:grid;
-  width:42px;
-  height:42px;
-  flex:0 0 42px;
+  width:44px;
+  height:44px;
+  flex:0 0 44px;
   place-items:center;
   border-radius:50%;
   background:var(--accent);
   color:#fff;
-  font-size:15px;
+  font-size:16px;
   font-weight:760;
 }
 
 .profileCopy{min-width:0}
 .profileCopy strong,.profileCopy span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.profileCopy strong{font-size:15px;color:var(--text)}
-.profileCopy span{margin-top:3px;color:var(--muted);font-size:12px}
+.profileCopy strong{font-size:17px;color:var(--text)}
+.profileCopy span{margin-top:3px;color:var(--muted);font-size:13px}
 
 .main{
   min-height:100vh;
-  margin-left:276px;
+  margin-left:292px;
 }
 
 .topbar{
@@ -206,16 +214,16 @@
 .body{min-height:calc(100vh - 82px)}
 .menuButton,.overlay{display:none}
 
-@media(max-width:1020px){
-  .sidebar{width:250px}
-  .main{margin-left:250px}
+@media(max-width:1080px){
+  .sidebar{width:270px}
+  .main{margin-left:270px}
   .currentArea{display:none}
   .connection{margin-left:auto}
 }
 
 @media(max-width:760px){
   .sidebar{
-    width:min(310px,90vw);
+    width:min(320px,92vw);
     transform:translateX(-102%);
     box-shadow:0 30px 90px rgba(29,20,24,.18);
     transition:transform .2s ease;

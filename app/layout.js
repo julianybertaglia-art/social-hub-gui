@@ -4,6 +4,7 @@ import './home-cleanup.css';
 import './lynna-theme.css';
 import CloudGate from './CloudGate';
 import HubFrame from './HubFrame';
+import { AccountProvider } from './AccountContext';
 
 export const metadata = {
   title: 'Lynna · your social space.',
@@ -15,9 +16,11 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR">
       <body>
         <CloudGate>
-          <Suspense fallback={children}>
-            <HubFrame>{children}</HubFrame>
-          </Suspense>
+          <AccountProvider>
+            <Suspense fallback={children}>
+              <HubFrame>{children}</HubFrame>
+            </Suspense>
+          </AccountProvider>
         </CloudGate>
       </body>
     </html>

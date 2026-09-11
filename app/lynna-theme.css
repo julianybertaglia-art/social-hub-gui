@@ -1,0 +1,344 @@
+/* Lynna product system — inspired by Argoplace's clarity, not its brand. */
+:root {
+  --bg: #f4f1ed;
+  --surface: #fffdf9;
+  --surface-soft: #f8f4f2;
+  --text: #1b1719;
+  --muted: #766d71;
+  --muted-2: #a0979b;
+  --border: #e5dddf;
+  --border-strong: #d7cccf;
+  --accent: #6f243f;
+  --accent-hover: #5d1d35;
+  --accent-soft: #f1e5ea;
+  --space: #1b1518;
+  --success: #4f8a66;
+  --danger: #b3545f;
+  --warning: #b17d3f;
+  --gold: var(--accent);
+  --gold-dark: var(--accent);
+  --gold-soft: var(--accent-soft);
+  --dark: var(--space);
+  --shadow: 0 8px 28px rgba(45, 28, 36, .045);
+}
+
+html,
+body {
+  background: var(--bg);
+}
+
+body {
+  color: var(--text);
+  font-family: Inter, 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+h1,
+h2,
+h3,
+.metric-card strong,
+.quick-stat strong,
+.performance-mini-grid strong,
+.detail-header h2,
+.brief-section h3 {
+  font-family: inherit;
+}
+
+h1 {
+  font-weight: 760;
+  letter-spacing: -.055em;
+}
+
+h2 {
+  font-weight: 730;
+  letter-spacing: -.035em;
+}
+
+h3 { font-weight: 720; }
+
+/* The new universal frame owns navigation. Remove the legacy shell duplicated by app/page.js. */
+.app-shell > .sidebar,
+.app-shell > .menu-overlay,
+.app-shell > .main-content > .topbar {
+  display: none !important;
+}
+
+.app-shell > .main-content {
+  min-height: 0;
+  margin-left: 0 !important;
+}
+
+.app-shell > .main-content > .page-content {
+  width: min(1160px, calc(100% - 56px));
+  padding: 38px 0 72px;
+}
+
+.hero-row,
+.page-heading {
+  align-items: flex-start;
+  margin-bottom: 25px;
+}
+
+.dashboard-hero {
+  padding: 4px 0 2px;
+}
+
+.dashboard-hero h1,
+.page-heading h1 {
+  margin-bottom: 9px;
+  font-size: clamp(34px, 4vw, 48px);
+  line-height: 1.02;
+}
+
+.subtitle {
+  max-width: 720px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.eyebrow {
+  margin-bottom: 9px;
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 820;
+  letter-spacing: .15em;
+}
+
+.primary-button {
+  min-height: 42px;
+  border-color: var(--space);
+  border-radius: 12px;
+  background: var(--space);
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 760;
+  transition: transform .16s ease, background .16s ease;
+}
+
+.primary-button:hover {
+  transform: translateY(-1px);
+  background: #2a2025;
+}
+
+.text-button,
+.task-open-hint,
+.post-open-hint,
+.brief-link,
+.brief-alternative summary {
+  color: var(--accent);
+}
+
+.quick-stats {
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--border);
+  box-shadow: var(--shadow);
+}
+
+.quick-stat {
+  min-height: 126px;
+  padding: 18px 19px;
+  border: 0;
+  border-radius: 0;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.quick-stat:hover {
+  transform: none;
+  border-color: transparent;
+  background: var(--surface-soft);
+}
+
+.quick-stat span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 680;
+}
+
+.quick-stat strong {
+  margin: 14px 0 6px;
+  color: var(--text);
+  font-size: 30px;
+  font-weight: 760;
+  letter-spacing: -.045em;
+}
+
+.quick-stat small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.home-layout {
+  gap: 18px;
+}
+
+.home-primary,
+.home-secondary {
+  gap: 18px;
+}
+
+.panel,
+.goal-card,
+.idea-card,
+.metric-card,
+.metric-input-card {
+  border-color: var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.focus-panel,
+.agenda-panel,
+.attention-panel,
+.performance-panel,
+.panel {
+  padding: 24px;
+}
+
+.panel-heading {
+  margin-bottom: 17px;
+}
+
+.panel-heading h2 {
+  font-size: 21px;
+  font-weight: 730;
+}
+
+.count-badge {
+  min-width: 35px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.task-row,
+.post-row,
+.content-card,
+.brief-related button,
+.brief-scenes li,
+.brief-facts div,
+.performance-mini-grid > div {
+  border-color: var(--border);
+  border-radius: 13px;
+  background: var(--surface-soft);
+}
+
+.task-row:hover,
+.post-details-button:hover,
+.content-with-details:hover,
+.brief-related button:hover {
+  border-color: rgba(111, 36, 63, .35);
+}
+
+.priority,
+.status-badge,
+.format-chip,
+.tag-row span {
+  border-radius: 999px;
+}
+
+.attention-item {
+  border-bottom-color: var(--border);
+}
+
+.attention-arrow {
+  color: var(--accent);
+}
+
+.attention-dot.warning { background: var(--warning); }
+.attention-dot.ok { background: var(--success); }
+
+.performance-mini-grid > div {
+  padding: 14px;
+}
+
+.performance-mini-grid strong {
+  font-size: 21px;
+  font-weight: 740;
+  letter-spacing: -.03em;
+}
+
+input,
+select,
+textarea {
+  border-color: var(--border-strong);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: rgba(111, 36, 63, .55) !important;
+  box-shadow: 0 0 0 3px rgba(111, 36, 63, .09) !important;
+}
+
+.task-check-control input:focus-visible + .custom-check,
+.task-details-button:focus-visible,
+.post-details-button:focus-visible,
+.content-details-button:focus-visible,
+.detail-dialog button:focus-visible,
+.detail-dialog a:focus-visible,
+.brief-alternative summary:focus-visible {
+  outline-color: var(--accent);
+}
+
+.detail-dialog {
+  border-radius: 22px;
+  background: var(--surface);
+}
+
+.detail-header,
+.detail-footer,
+.brief-section .brief-copy {
+  background: var(--surface-soft);
+}
+
+.detail-tabs button[aria-pressed='true'] {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+.brief-reuse,
+.brief-note {
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+  color: #67384a;
+}
+
+.brief-scene-number {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+@media (max-width: 760px) {
+  .app-shell > .main-content > .page-content {
+    width: min(100% - 32px, 1160px);
+    padding-top: 28px;
+  }
+
+  .hero-row,
+  .page-heading {
+    gap: 18px;
+  }
+
+  .quick-stats {
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 520px) {
+  .hero-row,
+  .page-heading {
+    display: grid;
+  }
+
+  .hero-row .primary-button {
+    width: 100%;
+  }
+}

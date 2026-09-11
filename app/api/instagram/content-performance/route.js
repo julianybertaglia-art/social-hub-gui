@@ -148,6 +148,7 @@ async function enrichMedia(media) {
     permalink: media?.permalink || null,
     timestamp: media?.timestamp || null,
     thumbnailUrl: media?.thumbnail_url || null,
+    mediaUrl: media?.media_url || null,
     likes,
     comments,
     reach,
@@ -172,7 +173,7 @@ async function enrichMedia(media) {
 export async function GET() {
   try {
     const mediaPayload = await metaGet(`${GUI_ACCOUNT_ID}/media`, {
-      fields: 'id,caption,media_type,media_product_type,permalink,timestamp,thumbnail_url,like_count,comments_count',
+      fields: 'id,caption,media_type,media_product_type,permalink,timestamp,thumbnail_url,media_url,like_count,comments_count',
       limit: MAX_MEDIA,
     });
 
@@ -182,7 +183,6 @@ export async function GET() {
 
     const items = [];
 
-    // Fazemos em pequenos blocos para evitar uma rajada grande de chamadas à Meta.
     for (let index = 0; index < media.length; index += 3) {
       const batch = media.slice(index, index + 3);
       const enriched = await Promise.all(batch.map(enrichMedia));

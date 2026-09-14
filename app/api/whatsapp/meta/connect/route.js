@@ -86,23 +86,10 @@ export async function POST(request) {
 
     const phone = requestedPhoneId
       ? phones.find((item) => String(item.id) === requestedPhoneId)
-      : phones.length === 1
-        ? phones[0]
-        : null;
+      : phones[0];
 
     if (!phone) {
-      return Response.json({
-        ok: false,
-        needsPhoneChoice: true,
-        error: 'Há mais de um número nessa conta. Escolha qual deseja conectar.',
-        wabaId,
-        accessToken,
-        phones: phones.map((item) => ({
-          id: item.id,
-          displayPhoneNumber: item.display_phone_number || null,
-          verifiedName: item.verified_name || null,
-        })),
-      }, { status: 409 });
+      throw new Error('O número escolhido não foi encontrado na conta autorizada.');
     }
 
     await subscribeApp(wabaId, accessToken);
@@ -132,6 +119,7 @@ export async function POST(request) {
       phoneNumberId: String(phone.id),
       displayPhoneNumber: phone.display_phone_number || null,
       verifiedName: phone.verified_name || null,
+      multipleNumbersFound: phones.length > 1,
     });
   } catch (error) {
     console.error('WhatsApp Meta Embedded Signup:', error);

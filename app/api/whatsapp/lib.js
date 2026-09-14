@@ -21,6 +21,23 @@ export function getSupabaseAdmin() {
   });
 }
 
+export async function getStoredMetaConnection() {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('whatsapp_meta_connections')
+      .select('id,waba_id,phone_number_id,access_token,display_phone_number,verified_name,coexistence,connected_at,updated_at')
+      .eq('id', 'primary')
+      .maybeSingle();
+
+    if (error) throw error;
+    return data || null;
+  } catch (error) {
+    console.error('WhatsApp Meta connection:', error);
+    return null;
+  }
+}
+
 export function normalizeWaId(value) {
   return String(value || '').replace(/\D/g, '');
 }
@@ -104,17 +121,25 @@ export async function upsertWhatsAppContact(supabase, {
   return data;
 }
 
-function whatsappCredentials() {
-  const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
+async function whatsappCredentials() {
+  const envAccessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
+  const envPhoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
 
-  if (!accessToken || !phoneNumberId) {
-    const error = new Error('WhatsApp ainda não foi conectado na Meta.');
-    error.code = 'WHATSAPP_NOT_CONFIGURED';
-    throw error;
+  if (envAccessToken && envPhoneNumberId) {
+    return { accessToken: envAccessToken, phoneNumberId: envPhoneNumberId };
   }
 
-  return { accessToken, phoneNumberId };
+  const stored = await getStoredMetaConnection();
+  if (stored?.access_token && stored?.phone_number_id) {
+    return {
+      accessToken: stored.access_token,
+      phoneNumberId: stored.phone_number_id,
+    };
+  }
+
+  const error = new Error('WhatsApp ainda não foi conectado na Meta.');
+  error.code = 'WHATSAPP_NOT_CONFIGURED';
+  throw error;
 }
 
 function bridgeCredentials() {
@@ -176,7 +201,7 @@ export async function getWhatsAppBridgeGroups() {
 }
 
 async function postWhatsAppMessage(body) {
-  const { accessToken, phoneNumberId } = whatsappCredentials();
+  const { accessToken, phoneNumberId } = await whatsappCredentials();
   const response = await fetch(
     'https://graph.facebook.com/' + WHATSAPP_API_VERSION + '/' + phoneNumberId + '/messages',
     {

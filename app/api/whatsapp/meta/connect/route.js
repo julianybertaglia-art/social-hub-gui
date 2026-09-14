@@ -63,6 +63,20 @@ async function subscribeApp(wabaId, accessToken) {
   );
 }
 
+async function requestSync(phoneNumberId, accessToken, syncType) {
+  return graphJson(
+    `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${encodeURIComponent(phoneNumberId)}/smb_app_data`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messaging_product: 'whatsapp', sync_type: syncType }),
+    }
+  );
+}
+
 export async function POST(request) {
   const body = await request.json().catch(() => ({}));
   const code = String(body?.code || '').trim();
@@ -112,6 +126,20 @@ export async function POST(request) {
 
     if (error) throw error;
 
+    const sync = { contacts: false, history: false };
+    try {
+      await requestSync(String(phone.id), accessToken, 'smb_app_state_sync');
+      sync.contacts = true;
+    } catch (syncError) {
+      console.warn('WhatsApp contact sync request:', syncError);
+    }
+    try {
+      await requestSync(String(phone.id), accessToken, 'history');
+      sync.history = true;
+    } catch (syncError) {
+      console.warn('WhatsApp history sync request:', syncError);
+    }
+
     return Response.json({
       ok: true,
       connected: true,
@@ -120,6 +148,7 @@ export async function POST(request) {
       displayPhoneNumber: phone.display_phone_number || null,
       verifiedName: phone.verified_name || null,
       multipleNumbersFound: phones.length > 1,
+      sync,
     });
   } catch (error) {
     console.error('WhatsApp Meta Embedded Signup:', error);

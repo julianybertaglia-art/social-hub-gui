@@ -222,6 +222,13 @@ export default function WhatsAppPage() {
     }
   }
 
+  function handleComposerKeyDown(event) {
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent?.isComposing) return;
+    event.preventDefault();
+    if (!connectionReady || sending || !draft.trim()) return;
+    event.currentTarget.form?.requestSubmit();
+  }
+
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -400,6 +407,7 @@ export default function WhatsAppPage() {
                   rows="2"
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
+                  onKeyDown={handleComposerKeyDown}
                   placeholder={connectionReady ? 'Digite sua mensagem...' : 'Conecte o número para responder pelo Hub'}
                   disabled={!connectionReady || sending}
                 />

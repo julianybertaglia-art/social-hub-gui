@@ -17,6 +17,15 @@ function configIdFrom(value) {
   return /^[A-Za-z0-9_-]{8,}$/.test(raw) ? raw : '';
 }
 
+function isFacebookOrigin(origin) {
+  try {
+    const hostname = new URL(origin).hostname;
+    return hostname === 'facebook.com' || hostname.endsWith('.facebook.com');
+  } catch {
+    return false;
+  }
+}
+
 export default function ConnectWhatsApp() {
   const [sdkReady, setSdkReady] = useState(false);
   const [input, setInput] = useState('');
@@ -62,6 +71,18 @@ export default function ConnectWhatsApp() {
       setInput(saved);
     }
 
+    fetch('/api/whatsapp/status', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data?.provider === 'meta' && data?.connected) {
+          setDone({
+            verifiedName: data.verifiedName,
+            displayPhoneNumber: data.displayPhoneNumber,
+          });
+        }
+      })
+      .catch(() => {});
+
     window.fbAsyncInit = () => {
       window.FB.init({ appId: APP_ID, autoLogAppEvents: true, xfbml: false, version: VERSION });
       setSdkReady(true);
@@ -79,7 +100,7 @@ export default function ConnectWhatsApp() {
     }
 
     function onMessage(event) {
-      if (!event.origin.includes('facebook.com')) return;
+      if (!isFacebookOrigin(event.origin)) return;
       let payload = event.data;
       if (typeof payload === 'string') {
         try { payload = JSON.parse(payload); } catch { return; }

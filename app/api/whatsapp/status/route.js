@@ -11,13 +11,19 @@ export async function GET(request) {
     process.env.META_WHATSAPP_VERIFY_TOKEN || process.env.META_WEBHOOK_VERIFY_TOKEN
   );
   const hasAppSecret = Boolean(process.env.META_APP_SECRET);
-  const connected = hasAccessToken && hasPhoneNumberId && hasVerifyToken && hasAppSecret;
+
+  // Para enviar pela Cloud API bastam a credencial oficial e o Phone Number ID.
+  // Verify Token e App Secret pertencem ao webhook e não devem bloquear o composer.
+  const connected = hasAccessToken && hasPhoneNumberId;
+  const webhookReady = hasVerifyToken && hasAppSecret;
 
   return Response.json({
     ok: true,
     provider: 'meta',
     configured: connected,
     connected,
+    canSend: connected,
+    webhookReady,
     state: connected ? 'connected' : 'authorization_required',
     connectionSource: connected ? meta?.source || 'meta' : null,
     coexistence: Boolean(meta?.coexistence),
@@ -30,6 +36,7 @@ export async function GET(request) {
       phoneNumberId: hasPhoneNumberId,
       verifyToken: hasVerifyToken,
       appSecret: hasAppSecret,
+      webhookReady,
       legacyBridgeDisabled: true,
       storedMetaConnection: meta?.source === 'meta_embedded_signup',
       officialEnvironmentFallback: meta?.source === 'meta_environment',

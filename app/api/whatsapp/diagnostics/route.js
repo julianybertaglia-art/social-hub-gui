@@ -1,20 +1,10 @@
+import { getStoredMetaConnection, WHATSAPP_API_VERSION } from '../lib';
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const API_VERSION = process.env.META_GRAPH_API_VERSION || 'v26.0';
-
-function safeConfig() {
-  return {
-    accessToken: Boolean(process.env.META_WHATSAPP_ACCESS_TOKEN),
-    phoneNumberId: Boolean(process.env.META_WHATSAPP_PHONE_NUMBER_ID),
-    verifyToken: Boolean(process.env.META_WHATSAPP_VERIFY_TOKEN || process.env.META_WEBHOOK_VERIFY_TOKEN),
-    appSecret: Boolean(process.env.META_APP_SECRET),
-    wabaId: Boolean(process.env.META_WHATSAPP_BUSINESS_ACCOUNT_ID || process.env.META_WHATSAPP_WABA_ID),
-  };
-}
-
 async function graphGet(path, token) {
-  const response = await fetch(`https://graph.facebook.com/${API_VERSION}/${path}`, {
+  const response = await fetch(`https://graph.facebook.com/${WHATSAPP_API_VERSION}/${path}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',
     signal: AbortSignal.timeout(10000),
@@ -30,20 +20,35 @@ async function graphGet(path, token) {
 }
 
 export async function GET() {
-  const token = process.env.META_WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
-  const wabaId = process.env.META_WHATSAPP_BUSINESS_ACCOUNT_ID || process.env.META_WHATSAPP_WABA_ID;
-  const checks = safeConfig();
+  const stored = await getStoredMetaConnection();
+  const token = stored?.access_token || '';
+  const phoneNumberId = stored?.phone_number_id || '';
+  const wabaId = stored?.waba_id || '';
+  const checks = {
+    storedConnection: Boolean(stored),
+    accessToken: Boolean(token),
+    phoneNumberId: Boolean(phoneNumberId),
+    verifyToken: Boolean(
+      process.env.META_WHATSAPP_VERIFY_TOKEN || process.env.META_WEBHOOK_VERIFY_TOKEN
+    ),
+    appSecret: Boolean(process.env.META_APP_SECRET),
+    wabaId: Boolean(wabaId),
+    legacyBridgeDisabled: true,
+  };
 
   const result = {
     ok: true,
+    provider: 'meta',
     configured: checks.accessToken && checks.phoneNumberId && checks.verifyToken && checks.appSecret,
+    connected: false,
     checks,
     phone: null,
     subscriptions: null,
     coexistence: {
       ready: false,
-      reason: 'Credenciais ainda não permitem consultar o número na Meta.',
+      reason: token && phoneNumberId
+        ? 'Validando a conexão oficial na Meta.'
+        : 'A autorização oficial da Meta ainda não foi concluída.',
     },
     errors: [],
   };
@@ -71,6 +76,7 @@ export async function GET() {
 
     const isCoexistence = phone.is_on_biz_app === true && phone.platform_type === 'CLOUD_API';
     const isConnected = ['CONNECTED', 'APPROVED'].includes(String(phone.status || '').toUpperCase());
+    result.connected = isConnected;
     result.coexistence = {
       ready: isCoexistence && isConnected,
       isCoexistence,
@@ -90,9 +96,14 @@ export async function GET() {
     try {
       const subscriptions = await graphGet(`${wabaId}/subscribed_apps`, token);
       result.subscriptions = Array.isArray(subscriptions?.data)
-        ? subscriptions.data.map((item) => ({ id: item.id || null, name: item.name || null, subscribedFields: item.subscribed_fields || [] }))
+        ? subscriptions.data.map((item) => ({
+            id: item.id || null,
+            name: item.name || null,
+            subscribedFields: item.subscribed_fields || [],
+          }))
         : [];
     } catch (error) {
+      result.ok = false;
       result.errors.push({ scope: 'subscriptions', code: error.code || null, message: error.message });
     }
   }

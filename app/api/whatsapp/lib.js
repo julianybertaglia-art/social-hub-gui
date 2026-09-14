@@ -3,17 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 export const WHATSAPP_API_VERSION = process.env.META_GRAPH_API_VERSION || 'v26.0';
 
 export function getWhatsAppProvider() {
-  const hasMetaCredentials = Boolean(
-    process.env.META_WHATSAPP_ACCESS_TOKEN && process.env.META_WHATSAPP_PHONE_NUMBER_ID
-  );
-
-  // Assim que a conexão oficial da Meta estiver configurada, ela sempre tem prioridade.
-  // A ponte Baileys fica apenas como fallback temporário para ambientes sem credenciais Meta.
-  if (hasMetaCredentials) return 'meta';
-
-  return String(process.env.WHATSAPP_PROVIDER || 'meta').toLowerCase() === 'baileys'
-    ? 'baileys'
-    : 'meta';
+  // O Hub usa exclusivamente a conexão oficial da Meta.
+  return 'meta';
 }
 
 export function getSupabaseAdmin() {
@@ -130,13 +121,6 @@ export async function upsertWhatsAppContact(supabase, {
 }
 
 async function whatsappCredentials() {
-  const envAccessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
-  const envPhoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
-
-  if (envAccessToken && envPhoneNumberId) {
-    return { accessToken: envAccessToken, phoneNumberId: envPhoneNumberId };
-  }
-
   const stored = await getStoredMetaConnection();
   if (stored?.access_token && stored?.phone_number_id) {
     return {
@@ -145,7 +129,7 @@ async function whatsappCredentials() {
     };
   }
 
-  const error = new Error('WhatsApp ainda não foi conectado na Meta.');
+  const error = new Error('Conclua a conexão oficial do WhatsApp pela Meta antes de enviar.');
   error.code = 'WHATSAPP_NOT_CONFIGURED';
   throw error;
 }
@@ -164,7 +148,7 @@ function bridgeCredentials() {
 }
 
 export function isWhatsAppBridgeConfigured() {
-  return Boolean(process.env.WHATSAPP_BRIDGE_URL && process.env.WHATSAPP_BRIDGE_TOKEN);
+  return false;
 }
 
 async function bridgeRequest(route, options = {}) {

@@ -74,7 +74,7 @@ export default function WhatsAppPage() {
 
   const selected = contacts.find((contact) => contact.id === selectedId) || null;
   const isBaileys = status?.provider === 'baileys';
-  const connectionReady = Boolean(status?.connected || status?.configured);
+  const connectionReady = Boolean(status?.connected);
   const bridgeWaiting = ['starting', 'connecting', 'reconnecting'].includes(status?.state);
 
   const loadStatus = useCallback(async () => {
@@ -288,16 +288,17 @@ export default function WhatsAppPage() {
           </section>
         )
       ) : (
-        !status?.configured && (
+        !status?.connected && (
           <section className={styles.setupCard}>
             <div>
-              <span className={styles.eyebrow}>ÚLTIMO PASSO</span>
-              <h2>O Hub já está pronto para receber o WhatsApp.</h2>
-              <p>Agora falta vincular o número na Meta e cadastrar as credenciais no ambiente do Hub.</p>
+              <span className={styles.eyebrow}>CONEXÃO OFICIAL META</span>
+              <h2>Autorize o WhatsApp Business para ativar o Hub.</h2>
+              <p>A ponte antiga foi removida. Mensagens e envios funcionarão somente pela conexão oficial da Meta.</p>
             </div>
-            <div className={styles.setupGrid}>
-              <div><span>Callback do webhook</span><code>{status?.webhookUrl || '/api/whatsapp/webhook'}</code></div>
-              <div><span>Variáveis necessárias</span><code>META_WHATSAPP_ACCESS_TOKEN</code><code>META_WHATSAPP_PHONE_NUMBER_ID</code><code>META_WHATSAPP_VERIFY_TOKEN</code><code>META_APP_SECRET</code></div>
+            <div className={styles.bridgeSetup}>
+              <strong>Conexão oficial pendente</strong>
+              <span>Conclua a autorização segura na janela da Meta.</span>
+              <Link href="/whatsapp/conectar" className={styles.bridgeAction}>Conectar pela Meta</Link>
             </div>
           </section>
         )

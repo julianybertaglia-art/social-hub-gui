@@ -49,11 +49,35 @@ function safeBusiness(data) {
 }
 
 export async function GET() {
-  const secret = process.env.META_APP_SECRET;
-  if (!secret) {
+  const rawSecret = process.env.META_APP_SECRET || '';
+  if (!rawSecret) {
     return Response.json({ ok: false, error: 'META_APP_SECRET ausente.' }, { status: 503 });
   }
 
+  const trimmedSecret = rawSecret.trim();
+  const unquotedSecret = trimmedSecret.replace(/^['"]|['"]$/g, '');
+  const candidates = [
+    { name: 'raw', secret: rawSecret },
+    { name: 'trimmed', secret: trimmedSecret },
+    { name: 'unquoted', secret: unquotedSecret },
+  ].filter((candidate, index, list) =>
+    candidate.secret && list.findIndex((item) => item.secret === candidate.secret) === index
+  );
+  const candidateChecks = await Promise.all(candidates.map(async (candidate) => {
+    const token = `${APP_ID}|${candidate.secret}`;
+    const checked = await graph(`debug_token?input_token=${encodeURIComponent(token)}`, token);
+    return {
+      name: candidate.name,
+      length: candidate.secret.length,
+      valid: checked.data?.data?.is_valid === true,
+      status: checked.status,
+      error: checked.error,
+    };
+  }));
+  const validCandidate = candidates.find((candidate) =>
+    candidateChecks.find((check) => check.name === candidate.name)?.valid
+  );
+  const secret = validCandidate?.secret || trimmedSecret;
   const appToken = `${APP_ID}|${secret}`;
   const [appResult, businessResult, tokenResult] = await Promise.all([
     graph(`${APP_ID}?fields=id,name,company,app_domains,link`, appToken),
@@ -65,6 +89,12 @@ export async function GET() {
   return Response.json({
     ok: appResult.ok && tokenResult.ok,
     expected: { appId: APP_ID, businessId: BUSINESS_ID },
+    secretFormat: {
+      rawLength: rawSecret.length,
+      hasOuterWhitespace: rawSecret !== trimmedSecret,
+      hasOuterQuotes: trimmedSecret !== unquotedSecret,
+      candidates: candidateChecks,
+    },
     app: { ...appResult, data: safeApp(appResult.data) },
     business: { ...businessResult, data: safeBusiness(businessResult.data) },
     appToken: {

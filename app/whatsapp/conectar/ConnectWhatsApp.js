@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 const APP_ID = '1975149819862842';
 const VERSION = 'v26.0';
+const SYSTEM_USERS_URL = 'https://business.facebook.com/latest/settings/system_users';
 
 function configIdFrom(value) {
   const raw = String(value || '').trim();
@@ -32,6 +33,7 @@ export default function ConnectWhatsApp() {
   const [configId, setConfigId] = useState('');
   const [message, setMessage] = useState('');
   const [done, setDone] = useState(null);
+  const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(false);
   const codeRef = useRef('');
   const sessionRef = useRef(null);
@@ -74,6 +76,7 @@ export default function ConnectWhatsApp() {
     fetch('/api/whatsapp/status', { cache: 'no-store' })
       .then((response) => response.json())
       .then((data) => {
+        setStatus(data);
         if (data?.provider === 'meta' && data?.connected) {
           setDone({
             verifiedName: data.verifiedName,
@@ -178,6 +181,25 @@ export default function ConnectWhatsApp() {
     );
   }
 
+  const needsCredentialRefresh = status?.state === 'credential_refresh_required'
+    || status?.needsCredentialRefresh
+    || status?.needsReauthorization;
+
+  if (needsCredentialRefresh) {
+    return (
+      <div>
+        <h2>O número já está conectado</h2>
+        <p>Não refaça o cadastro do WhatsApp. O que precisa ser renovado é somente a credencial usada pelo Lynna para enviar mensagens.</p>
+        <p><strong>Não altere o número, o portfólio, a WABA ou o WhatsApp Business do celular.</strong></p>
+        <p>
+          <a href={SYSTEM_USERS_URL} target="_blank" rel="noreferrer">Abrir Usuários do sistema na Meta</a>
+        </p>
+        <p>Gere uma nova chave para o app Gui Social Hub com as permissões de WhatsApp. Não envie a chave pelo chat.</p>
+        <p><a href="/whatsapp">Voltar ao CRM</a></p>
+      </div>
+    );
+  }
+
   return (
     <div>
       {!configId && (
@@ -191,7 +213,7 @@ export default function ConnectWhatsApp() {
       <button type="button" disabled={!configId || !sdkReady || busy} onClick={connect}>
         {busy ? 'Aguardando a Meta...' : sdkReady ? 'Conectar WhatsApp Business' : 'Carregando Meta...'}
       </button>
-      <p>Use a opção de conectar o WhatsApp Business existente para manter o número no celular.</p>
+      <p>Use esta opção apenas para uma primeira conexão. Se o número já recebe mensagens no Lynna, não refaça o cadastro.</p>
       {message && <p>{message}</p>}
     </div>
   );

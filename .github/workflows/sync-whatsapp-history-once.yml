@@ -1,0 +1,16 @@
+name: Sincronizar histórico recente do WhatsApp uma vez
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-whatsapp-history-once.yml'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Solicitar contatos e histórico à Meta
+        run: |
+          curl --fail-with-body --silent --show-error -X POST \
+            'https://social-hub-gui.vercel.app/api/whatsapp/meta/sync'

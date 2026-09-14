@@ -61,6 +61,33 @@ async function saveMessage(supabase, {
   if (error) throw error;
 }
 
+async function saveStatusEvent(supabase, status) {
+  if (!status?.id) return;
+
+  const { data: current, error: readError } = await supabase
+    .from('whatsapp_messages')
+    .select('raw_payload')
+    .eq('meta_message_id', status.id)
+    .maybeSingle();
+  if (readError) throw readError;
+
+  const previous = current?.raw_payload && typeof current.raw_payload === 'object'
+    ? current.raw_payload
+    : {};
+
+  const { error } = await supabase
+    .from('whatsapp_messages')
+    .update({
+      status: status.status || 'unknown',
+      raw_payload: {
+        ...previous,
+        meta_status: status,
+      },
+    })
+    .eq('meta_message_id', status.id);
+  if (error) throw error;
+}
+
 async function handleMessages(supabase, value) {
   const contactsById = new Map(
     (value.contacts || []).map((contact) => [
@@ -93,12 +120,7 @@ async function handleMessages(supabase, value) {
   }
 
   for (const status of value.statuses || []) {
-    if (!status?.id) continue;
-    const { error } = await supabase
-      .from('whatsapp_messages')
-      .update({ status: status.status || 'unknown' })
-      .eq('meta_message_id', status.id);
-    if (error) throw error;
+    await saveStatusEvent(supabase, status);
   }
 }
 

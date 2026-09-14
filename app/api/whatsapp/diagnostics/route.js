@@ -1,4 +1,4 @@
-import { getStoredMetaConnection, WHATSAPP_API_VERSION } from '../lib';
+import { getMetaCredentials, WHATSAPP_API_VERSION } from '../lib';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,12 +20,14 @@ async function graphGet(path, token) {
 }
 
 export async function GET() {
-  const stored = await getStoredMetaConnection();
-  const token = stored?.access_token || '';
-  const phoneNumberId = stored?.phone_number_id || '';
-  const wabaId = stored?.waba_id || '';
+  const meta = await getMetaCredentials();
+  const token = meta?.accessToken || '';
+  const phoneNumberId = meta?.phoneNumberId || '';
+  const wabaId = meta?.wabaId || '';
   const checks = {
-    storedConnection: Boolean(stored),
+    credentialSource: meta?.source || null,
+    storedConnection: meta?.source === 'meta_embedded_signup',
+    officialEnvironmentFallback: meta?.source === 'meta_environment',
     accessToken: Boolean(token),
     phoneNumberId: Boolean(phoneNumberId),
     verifyToken: Boolean(

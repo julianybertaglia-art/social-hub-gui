@@ -1,0 +1,143 @@
+import { getSupabaseAdmin, WHATSAPP_API_VERSION } from '../../lib';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const META_APP_ID = process.env.META_APP_ID || '1975149819862842';
+
+async function graphJson(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    cache: 'no-store',
+    signal: AbortSignal.timeout(20000),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.error) {
+    const message = payload?.error?.message || `Meta HTTP ${response.status}`;
+    const error = new Error(message);
+    error.code = payload?.error?.code || response.status;
+    throw error;
+  }
+  return payload;
+}
+
+async function exchangeCode(code) {
+  const appSecret = process.env.META_APP_SECRET;
+  if (!appSecret) throw new Error('META_APP_SECRET não configurado no servidor.');
+
+  const body = new URLSearchParams({
+    client_id: META_APP_ID,
+    client_secret: appSecret,
+    code,
+  });
+
+  const payload = await graphJson(
+    `https://graph.facebook.com/${WHATSAPP_API_VERSION}/oauth/access_token`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    }
+  );
+
+  if (!payload?.access_token) throw new Error('A Meta não devolveu o token de acesso.');
+  return payload.access_token;
+}
+
+async function getPhoneNumbers(wabaId, accessToken) {
+  const fields = 'id,display_phone_number,verified_name,quality_rating';
+  const payload = await graphJson(
+    `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${encodeURIComponent(wabaId)}/phone_numbers?fields=${encodeURIComponent(fields)}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  return Array.isArray(payload?.data) ? payload.data : [];
+}
+
+async function subscribeApp(wabaId, accessToken) {
+  return graphJson(
+    `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${encodeURIComponent(wabaId)}/subscribed_apps`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }
+  );
+}
+
+export async function POST(request) {
+  const body = await request.json().catch(() => ({}));
+  const code = String(body?.code || '').trim();
+  const wabaId = String(body?.wabaId || body?.waba_id || '').trim();
+  const requestedPhoneId = String(body?.phoneNumberId || body?.phone_number_id || '').trim();
+
+  if (!code || !wabaId) {
+    return Response.json({
+      ok: false,
+      error: 'O Cadastro Incorporado não devolveu código e WABA completos.',
+    }, { status: 400 });
+  }
+
+  try {
+    const accessToken = await exchangeCode(code);
+    const phones = await getPhoneNumbers(wabaId, accessToken);
+
+    if (!phones.length) {
+      throw new Error('A conexão foi autorizada, mas nenhum número foi encontrado nessa conta do WhatsApp.');
+    }
+
+    const phone = requestedPhoneId
+      ? phones.find((item) => String(item.id) === requestedPhoneId)
+      : phones.length === 1
+        ? phones[0]
+        : null;
+
+    if (!phone) {
+      return Response.json({
+        ok: false,
+        needsPhoneChoice: true,
+        error: 'Há mais de um número nessa conta. Escolha qual deseja conectar.',
+        wabaId,
+        accessToken,
+        phones: phones.map((item) => ({
+          id: item.id,
+          displayPhoneNumber: item.display_phone_number || null,
+          verifiedName: item.verified_name || null,
+        })),
+      }, { status: 409 });
+    }
+
+    await subscribeApp(wabaId, accessToken);
+
+    const supabase = getSupabaseAdmin();
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('whatsapp_meta_connections')
+      .upsert({
+        id: 'primary',
+        waba_id: wabaId,
+        phone_number_id: String(phone.id),
+        access_token: accessToken,
+        display_phone_number: phone.display_phone_number || null,
+        verified_name: phone.verified_name || null,
+        coexistence: true,
+        connected_at: now,
+        updated_at: now,
+      }, { onConflict: 'id' });
+
+    if (error) throw error;
+
+    return Response.json({
+      ok: true,
+      connected: true,
+      wabaId,
+      phoneNumberId: String(phone.id),
+      displayPhoneNumber: phone.display_phone_number || null,
+      verifiedName: phone.verified_name || null,
+    });
+  } catch (error) {
+    console.error('WhatsApp Meta Embedded Signup:', error);
+    return Response.json({
+      ok: false,
+      error: error instanceof Error ? error.message : 'Falha ao concluir a conexão com a Meta.',
+    }, { status: 500 });
+  }
+}

@@ -302,8 +302,8 @@ export async function sendWhatsAppVoiceByUrl({ to, audioUrl }) {
     throw new Error('URL do áudio inválida.');
   }
 
-  if (url.protocol !== 'https:' || !url.pathname.toLowerCase().endsWith('.ogg')) {
-    throw new Error('Para mensagem de voz, use um arquivo HTTPS .ogg codificado em Opus.');
+  if (url.protocol !== 'https:') {
+    throw new Error('Para mensagem de voz, use um arquivo HTTPS em formato OGG/Opus.');
   }
 
   return postWhatsAppMessage({

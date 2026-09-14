@@ -37,6 +37,45 @@ export async function getStoredMetaConnection() {
   }
 }
 
+export async function getMetaCredentials() {
+  const stored = await getStoredMetaConnection();
+  if (stored?.access_token && stored?.phone_number_id) {
+    return {
+      source: 'meta_embedded_signup',
+      accessToken: stored.access_token,
+      phoneNumberId: stored.phone_number_id,
+      wabaId: stored.waba_id || null,
+      displayPhoneNumber: stored.display_phone_number || null,
+      verifiedName: stored.verified_name || null,
+      coexistence: Boolean(stored.coexistence),
+      stored,
+    };
+  }
+
+  const accessToken = String(process.env.META_WHATSAPP_ACCESS_TOKEN || '').trim();
+  const phoneNumberId = String(process.env.META_WHATSAPP_PHONE_NUMBER_ID || '').trim();
+  const wabaId = String(
+    process.env.META_WHATSAPP_BUSINESS_ACCOUNT_ID
+      || process.env.META_WHATSAPP_WABA_ID
+      || ''
+  ).trim();
+
+  if (accessToken && phoneNumberId) {
+    return {
+      source: 'meta_environment',
+      accessToken,
+      phoneNumberId,
+      wabaId: wabaId || null,
+      displayPhoneNumber: null,
+      verifiedName: null,
+      coexistence: true,
+      stored: null,
+    };
+  }
+
+  return null;
+}
+
 export function normalizeWaId(value) {
   return String(value || '').replace(/\D/g, '');
 }
@@ -121,12 +160,9 @@ export async function upsertWhatsAppContact(supabase, {
 }
 
 async function whatsappCredentials() {
-  const stored = await getStoredMetaConnection();
-  if (stored?.access_token && stored?.phone_number_id) {
-    return {
-      accessToken: stored.access_token,
-      phoneNumberId: stored.phone_number_id,
-    };
+  const credentials = await getMetaCredentials();
+  if (credentials?.accessToken && credentials?.phoneNumberId) {
+    return credentials;
   }
 
   const error = new Error('Conclua a conexão oficial do WhatsApp pela Meta antes de enviar.');

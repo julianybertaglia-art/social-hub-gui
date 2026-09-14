@@ -15,9 +15,34 @@ async function graphJson(url, options = {}) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.error) {
-    throw new Error(payload?.error?.message || `Meta HTTP ${response.status}`);
+    const error = new Error(payload?.error?.message || `Meta HTTP ${response.status}`);
+    error.code = payload?.error?.code || response.status;
+    error.subcode = payload?.error?.error_subcode || null;
+    throw error;
   }
   return payload;
+}
+
+async function validateMetaAuthentication(meta) {
+  if (!meta?.accessToken || !meta?.phoneNumberId) {
+    return { valid: false, reason: 'missing_credentials' };
+  }
+
+  try {
+    const phone = await graphJson(
+      `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${encodeURIComponent(meta.phoneNumberId)}?fields=id,display_phone_number,verified_name,quality_rating,status`,
+      { headers: { Authorization: `Bearer ${meta.accessToken}` } }
+    );
+    return { valid: true, phone };
+  } catch (error) {
+    return {
+      valid: false,
+      reason: Number(error?.code) === 190 ? 'authentication_expired' : 'authentication_failed',
+      code: error?.code || null,
+      subcode: error?.subcode || null,
+      message: error instanceof Error ? error.message : 'Falha de autenticação na Meta.',
+    };
+  }
 }
 
 async function ensureCoexistenceWebhook(meta, origin, verifyToken) {
@@ -83,11 +108,17 @@ export async function GET(request) {
   const hasVerifyToken = Boolean(verifyToken);
   const hasAppSecret = Boolean(process.env.META_APP_SECRET);
 
-  const connected = hasAccessToken && hasPhoneNumberId;
+  const auth = hasAccessToken && hasPhoneNumberId
+    ? await validateMetaAuthentication(meta)
+    : { valid: false, reason: 'missing_credentials' };
+
+  const connected = Boolean(auth.valid);
   const webhookReady = hasVerifyToken && hasAppSecret;
   const webhookEnsure = connected && hasVerifyToken
     ? await ensureCoexistenceWebhook(meta, origin, verifyToken)
     : { ok: false, skipped: true };
+
+  const needsReauthorization = hasAccessToken && hasPhoneNumberId && !connected;
 
   return Response.json({
     ok: true,
@@ -95,18 +126,29 @@ export async function GET(request) {
     configured: connected,
     connected,
     canSend: connected,
+    needsReauthorization,
     webhookReady,
     webhookEnsure,
-    state: connected ? 'connected' : 'authorization_required',
+    state: connected ? 'connected' : needsReauthorization ? 'reauthorization_required' : 'authorization_required',
+    error: needsReauthorization
+      ? 'A autorização da Meta expirou ou foi invalidada. Reconecte o WhatsApp Business pela Meta para voltar a enviar.'
+      : null,
+    authentication: {
+      valid: connected,
+      reason: auth.reason || null,
+      code: auth.code || null,
+      subcode: auth.subcode || null,
+    },
     connectionSource: connected ? meta?.source || 'meta' : null,
     coexistence: Boolean(meta?.coexistence),
-    displayPhoneNumber: meta?.displayPhoneNumber || null,
-    verifiedName: meta?.verifiedName || null,
+    displayPhoneNumber: auth?.phone?.display_phone_number || meta?.displayPhoneNumber || null,
+    verifiedName: auth?.phone?.verified_name || meta?.verifiedName || null,
     wabaId: meta?.wabaId || null,
     phoneNumberId: meta?.phoneNumberId || null,
     checks: {
       accessToken: hasAccessToken,
       phoneNumberId: hasPhoneNumberId,
+      authenticationValid: connected,
       verifyToken: hasVerifyToken,
       appSecret: hasAppSecret,
       webhookReady,

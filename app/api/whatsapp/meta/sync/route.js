@@ -1,4 +1,4 @@
-import { WHATSAPP_API_VERSION } from '../../lib';
+import { getMetaCredentials, WHATSAPP_API_VERSION } from '../../lib';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,9 +46,10 @@ async function requestSync(phoneNumberId, accessToken, syncType) {
 }
 
 export async function POST() {
-  const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
-  const wabaId = process.env.META_WHATSAPP_WABA_ID || DEFAULT_WABA_ID;
+  const meta = await getMetaCredentials();
+  const accessToken = meta?.accessToken || '';
+  const phoneNumberId = meta?.phoneNumberId || '';
+  const wabaId = meta?.wabaId || DEFAULT_WABA_ID;
 
   if (!accessToken || !phoneNumberId) {
     return Response.json({ ok: false, error: 'Credenciais oficiais do WhatsApp não configuradas.' }, { status: 503 });
@@ -56,6 +57,7 @@ export async function POST() {
 
   const result = {
     ok: true,
+    credentialSource: meta?.source || null,
     subscribed: false,
     contactsRequested: false,
     historyRequested: false,

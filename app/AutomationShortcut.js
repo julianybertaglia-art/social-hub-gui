@@ -17,6 +17,11 @@ export default function AutomationShortcut() {
         <strong>WhatsApp CRM</strong>
       </Link>
 
+      <Link href="/whatsapp/conectar" className="shortcut-link">
+        <span className="shortcut-icon">↗</span>
+        <strong>Conectar WhatsApp</strong>
+      </Link>
+
       <Link href="/automacoes" className="shortcut-link">
         <span className="shortcut-icon">⚡</span>
         <strong>Automações</strong>
@@ -80,7 +85,7 @@ export default function AutomationShortcut() {
             right: auto;
             bottom: 12px;
             width: calc(100% - 24px);
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             transform: translateX(-50%);
             padding: 6px;
             border: 1px solid var(--border);
@@ -96,7 +101,12 @@ export default function AutomationShortcut() {
 
           .shortcut-link {
             min-height: 46px;
-            padding: 8px 10px;
+            padding: 8px;
+            gap: 7px;
+          }
+
+          .shortcut-link strong {
+            font-size: 10px;
           }
         }
       `}</style>

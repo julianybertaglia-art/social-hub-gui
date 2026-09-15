@@ -1,0 +1,16 @@
+name: Auditar templates Meta uma vez
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-meta-templates-once.yml'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Listar templates aprovados
+        run: |
+          curl --fail-with-body --silent --show-error \
+            'https://social-hub-gui.vercel.app/api/whatsapp/template-audit'

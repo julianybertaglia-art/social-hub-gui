@@ -61,7 +61,7 @@ function safeDetail(error, token = '') {
     .slice(0, 420);
 }
 
-async function metaRequest(path, body) {
+export async function metaRequest(path, body) {
   const token = process.env.META_INSTAGRAM_ACCESS_TOKEN;
   if (!token) throw automationError('A conexão do Instagram precisa ser configurada no Hub.', 503);
 
@@ -107,13 +107,24 @@ export async function getOwnerAutomation(db, userId) {
   return ownerAutomation(db, userId);
 }
 
-async function ensureSubscription(accountId) {
+export async function getSubscriptionStatus(accountId) {
   const subscriptions = await metaRequest(`${accountId}/subscribed_apps`);
   if (!Array.isArray(subscriptions.data)) {
     throw automationError('Não foi possível verificar o recebimento de mensagens.', 502);
   }
 
   const fields = new Set(subscriptions.data.flatMap((app) => app.subscribed_fields || []));
+  const requiredFields = ['comments', 'messages', 'messaging_postbacks'];
+
+  return {
+    fields: [...fields],
+    connected: requiredFields.every((field) => fields.has(field)),
+  };
+}
+
+export async function ensureSubscription(accountId) {
+  const current = await getSubscriptionStatus(accountId);
+  const fields = new Set(current.fields);
   fields.add('comments');
   fields.add('messages');
   fields.add('messaging_postbacks');
@@ -125,6 +136,8 @@ async function ensureSubscription(accountId) {
   if (result.success !== true) {
     throw automationError('O Instagram não confirmou o recebimento de mensagens do Direct.', 502);
   }
+
+  return { fields: [...fields], connected: true };
 }
 
 export async function setAutomationActive(db, userId, active) {

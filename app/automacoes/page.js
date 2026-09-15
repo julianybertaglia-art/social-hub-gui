@@ -6,6 +6,7 @@ import styles from './automacoes.module.css';
 import AudioTest from './AudioTest';
 import ArgoAudioAutomation from './ArgoAudioAutomation';
 import { isArgoKeyword } from '../lib/argo-flow';
+import { supabase } from '../CloudGate';
 
 const DEFAULT_IMERSAO_MESSAGE = 'Fala! Vi que você comentou IMERSÃO no vídeo 👊\n\nA Imersão Ecommerce Mercado Livre Pro é um evento presencial para quem quer escalar sua operação nos marketplaces, com conteúdo prático sobre Mercado Livre, anúncios, operação, IA, importação e estratégias de crescimento.\n\n📅 26 de setembro de 2026\n⏰ 09h30 às 20h30\n📍 R. Airi, 227 — Tatuapé, São Paulo/SP\n\nPara compra de ingressos ou mais informações, fale com a equipe pelo WhatsApp: (11) 92399-0244';
 
@@ -52,23 +53,45 @@ function ensureThreeRules(value) {
 export default function AutomacoesPage() {
   const [rules, setRules] = useState(initialRules);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [connected, setConnected] = useState(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem('guihub-automations');
-      if (stored) {
-        setRules(ensureThreeRules(JSON.parse(stored)));
-      } else {
-        window.localStorage.setItem('guihub-automations', JSON.stringify(initialRules));
-        setRules(initialRules);
+    let cancelled = false;
+
+    async function loadRules() {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!data?.session?.access_token) throw new Error('Entre novamente no Hub.');
+        const response = await fetch('/api/instagram/comment-automations', {
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+          cache: 'no-store',
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || 'Não foi possível carregar as automações.');
+        if (cancelled) return;
+        const nextRules = ensureThreeRules(payload.rules);
+        window.localStorage.setItem('guihub-automations', JSON.stringify(nextRules));
+        setRules(nextRules);
+        setConnected(Boolean(payload.connected));
+      } catch (error) {
+        if (cancelled) return;
+        setSaveError(error.message);
+        try {
+          const stored = window.localStorage.getItem('guihub-automations');
+          setRules(stored ? ensureThreeRules(JSON.parse(stored)) : initialRules);
+        } catch {
+          setRules(initialRules);
+        }
+      } finally {
+        if (!cancelled) setHydrated(true);
       }
-    } catch (error) {
-      console.warn('Não foi possível carregar as automações.', error);
-      setRules(initialRules);
-    } finally {
-      setHydrated(true);
     }
+
+    loadRules();
+    return () => { cancelled = true; };
   }, []);
 
   const activeCount = useMemo(
@@ -91,7 +114,7 @@ export default function AutomacoesPage() {
     setSaved(false);
   }
 
-  function saveRules() {
+  async function saveRules() {
     const cleaned = rules.map((rule) => ({
       ...rule,
       name: rule.name.trim() || 'Automação sem nome',
@@ -102,10 +125,33 @@ export default function AutomacoesPage() {
       active: Boolean(rule.active && rule.keyword.trim() && rule.privateMessage.trim() && !isArgoKeyword(rule.keyword)),
     }));
 
-    window.localStorage.setItem('guihub-automations', JSON.stringify(cleaned));
-    setRules(cleaned);
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2500);
+    setSaving(true);
+    setSaveError('');
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (!data?.session?.access_token) throw new Error('Sua sessão expirou. Entre novamente no Hub.');
+      const response = await fetch('/api/instagram/comment-automations', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${data.session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ rules: cleaned }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Não foi possível salvar as automações.');
+      const nextRules = ensureThreeRules(payload.rules);
+      window.localStorage.setItem('guihub-automations', JSON.stringify(nextRules));
+      setRules(nextRules);
+      setConnected(Boolean(payload.connected));
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2500);
+    } catch (error) {
+      setConnected(false);
+      setSaveError(error.message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -132,8 +178,8 @@ export default function AutomacoesPage() {
         </article>
         <article className={styles.statusCard}>
           <span>Envio automático</span>
-          <strong>Conectado</strong>
-          <small>Webhook oficial da Meta ativo</small>
+          <strong>{connected === null ? 'Verificando' : connected ? 'Conectado' : 'Atenção'}</strong>
+          <small>{connected ? 'Webhook oficial da Meta ativo' : 'Salve as regras para reparar a conexão'}</small>
         </article>
       </section>
 
@@ -229,11 +275,11 @@ export default function AutomacoesPage() {
 
       <section className={styles.saveDock}>
         <div>
-          <strong>{hydrated ? 'As alterações são sincronizadas com o Hub.' : 'Carregando configurações...'}</strong>
-          <span>Depois de salvar, aguarde alguns segundos antes de testar a nova palavra-chave.</span>
+          <strong>{saveError || (hydrated ? 'As alterações são salvas no servidor e na Meta.' : 'Carregando configurações...')}</strong>
+          <span>{saveError ? 'Tente salvar novamente.' : 'Depois de salvar, aguarde alguns segundos antes de testar a nova palavra-chave.'}</span>
         </div>
-        <button className={styles.saveButton} type="button" onClick={saveRules} disabled={!hydrated}>
-          {saved ? 'Configurações salvas ✓' : 'Salvar as 3 automações'}
+        <button className={styles.saveButton} type="button" onClick={saveRules} disabled={!hydrated || saving}>
+          {saving ? 'Salvando e conectando…' : saved ? 'Configurações salvas ✓' : 'Salvar as 3 automações'}
         </button>
       </section>
     </main>

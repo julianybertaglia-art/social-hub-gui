@@ -11,26 +11,17 @@ import {
   processTextSelections,
   processTextCommentEvent,
 } from '../text-automation/service.js';
-import { isArgoKeyword } from '../../../lib/argo-flow.js';
+import {
+  findMatchingCommentRule,
+  loadLatestWebhookRules,
+  normalizeCommentText,
+} from '../comment-automations/service.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 180;
 
 const API_VERSION = 'v26.0';
-const AUTOMATIONS_STORAGE_KEY = 'guihub-automations';
-const FALLBACK_RULES = [
-  {
-    id: 'imersao-reel',
-    name: 'Leads — Imersão',
-    keyword: 'IMERSÃO',
-    publicReply: 'Te chamei no Direct 👊',
-    privateMessage: 'Fala! Vi que você comentou IMERSÃO no vídeo 👊\n\nA Imersão Ecommerce Mercado Livre Pro é um evento presencial para quem quer escalar sua operação nos marketplaces, com conteúdo prático sobre Mercado Livre, anúncios, operação, IA, importação e estratégias de crescimento.\n\n📅 26 de setembro de 2026\n⏰ 09h30 às 20h30\n📍 R. Airi, 227 — Tatuapé, São Paulo/SP\n\nPara compra de ingressos ou mais informações, fale com a equipe pelo WhatsApp: (11) 92399-0244',
-    tag: 'Interesse — Imersão',
-    active: true,
-  },
-];
-
 function isValidSignature(rawBody, signatureHeader) {
   const appSecret = process.env.META_APP_SECRET;
 
@@ -49,41 +40,14 @@ function isValidSignature(rawBody, signatureHeader) {
   return crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
 }
 
-function normalizeText(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase()
-    .trim();
-}
-
-function sanitizeRules(value) {
-  if (!Array.isArray(value)) return [];
-
-  return value
-    .slice(0, 3)
-    .map((rule, index) => ({
-      id: String(rule?.id || `automation-${index + 1}`),
-      name: String(rule?.name || `Automação ${index + 1}`),
-      keyword: String(rule?.keyword || '').trim(),
-      publicReply: String(rule?.publicReply || '').trim(),
-      privateMessage: String(rule?.privateMessage || '').trim(),
-      tag: String(rule?.tag || '').trim(),
-      active: Boolean(rule?.active),
-    }))
-    .filter((rule) => rule.active && rule.keyword && rule.privateMessage && !isArgoKeyword(rule.keyword));
-}
-
 async function loadAutomationRules() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseServerKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
 
   if (!supabaseUrl || !supabaseServerKey) {
-    console.warn(
-      'Automações: chave secreta do Supabase não configurada no servidor; usando fallback de IMERSÃO.'
-    );
-    return FALLBACK_RULES;
+    console.error('Automações: chave secreta do Supabase não configurada no servidor.');
+    return [];
   }
 
   try {
@@ -91,44 +55,17 @@ async function loadAutomationRules() {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const { data, error } = await supabase
-      .from('content_items')
-      .select('description')
-      .eq('title', '__SOCIAL_HUB_STATE__')
-      .maybeSingle();
-
-    if (error || !data?.description) {
-      console.warn('Automações: não foi possível ler a configuração no Supabase.', error?.message || 'Estado vazio');
-      return FALLBACK_RULES;
-    }
-
-    const state = JSON.parse(data.description || '{}');
-    const serializedRules = state?.data?.[AUTOMATIONS_STORAGE_KEY];
-    const parsedRules = typeof serializedRules === 'string'
-      ? JSON.parse(serializedRules)
-      : serializedRules;
-    const rules = sanitizeRules(parsedRules);
-
-    return rules.length ? rules : FALLBACK_RULES;
+    return await loadLatestWebhookRules(supabase);
   } catch (error) {
-    console.warn('Automações: falha ao carregar regras; usando regra segura de IMERSÃO.', error instanceof Error ? error.message : String(error));
-    return FALLBACK_RULES;
+    console.error('Automações: falha ao carregar regras do Hub.', error instanceof Error ? error.message : String(error));
+    return [];
   }
 }
 
-function findMatchingRule(text, rules) {
-  const normalizedComment = normalizeText(text);
-
-  return rules.find((rule) => {
-    const normalizedKeyword = normalizeText(rule.keyword);
-    return normalizedKeyword && normalizedComment.includes(normalizedKeyword);
-  }) || null;
-}
-
 function findAudioAutomationForComment(text, automations) {
-  const normalizedComment = normalizeText(text);
+  const normalizedComment = normalizeCommentText(text);
   return (automations || []).find((automation) => {
-    const keyword = normalizeText(automation.comment_keyword);
+    const keyword = normalizeCommentText(automation.comment_keyword);
     return keyword && normalizedComment.includes(keyword);
   }) || null;
 }
@@ -325,14 +262,14 @@ export async function POST(request) {
       text,
       audioAutomationsByAccount.get(String(event.igUserId)) || []
     );
-    const matchingRule = audioAutomation ? null : findMatchingRule(text, rules);
+    const matchingRule = audioAutomation ? null : findMatchingCommentRule(text, rules);
 
     if (!commentId || !event.igUserId || (!audioAutomation && !matchingRule)) continue;
     if (String(username || '').toLowerCase() === 'gui_nonato') continue;
 
     const logPrefix = audioAutomation
       ? 'AUDIO:ARGO'
-      : `AUTOMACAO:${normalizeText(matchingRule.keyword)}`;
+      : `AUTOMACAO:${normalizeCommentText(matchingRule.keyword)}`;
     const ruleId = audioAutomation ? audioAutomation.id : matchingRule.id;
     const publicReply = audioAutomation ? audioAutomation.public_reply : matchingRule.publicReply;
 

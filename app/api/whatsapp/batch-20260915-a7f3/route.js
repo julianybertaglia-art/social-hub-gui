@@ -1,4 +1,4 @@
-import { getSupabaseAdmin, sendWhatsAppVoiceByUrl } from '../../lib';
+import { getSupabaseAdmin, sendWhatsAppVoiceByUrl } from '../lib';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

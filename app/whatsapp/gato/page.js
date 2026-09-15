@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 
 function digits(value) {
@@ -22,21 +22,54 @@ function profile(contact) {
   return { label: 'Não classificado', audio: null };
 }
 
+function stateLabel(status) {
+  if (status?.connected) return 'Conectado';
+  if (status?.state === 'awaiting_qr') return 'Aguardando QR Code';
+  if (status?.state === 'starting') return 'Iniciando';
+  if (status?.state === 'connecting') return 'Conectando';
+  if (status?.state === 'reconnecting') return 'Reconectando';
+  if (status?.state === 'not_configured') return 'Não configurado';
+  if (status?.state === 'unavailable') return 'Indisponível';
+  return 'Desconectado';
+}
+
 export default function WhatsAppGatoPage() {
   const [contacts, setContacts] = useState([]);
+  const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState('');
+  const [sent, setSent] = useState({});
+
+  const loadContacts = useCallback(async () => {
+    const response = await fetch('/api/whatsapp/conversations', { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.error || 'Não foi possível carregar os leads.');
+    setContacts(data.contacts || []);
+  }, []);
+
+  const loadStatus = useCallback(async () => {
+    const response = await fetch('/api/whatsapp/gato', { cache: 'no-store' });
+    const data = await response.json();
+    setStatus(data);
+    if (!response.ok && data?.state === 'not_configured') {
+      setError(data?.error || 'WhatsApp Gato ainda não está configurado.');
+    }
+    return data;
+  }, []);
 
   useEffect(() => {
-    fetch('/api/whatsapp/conversations', { cache: 'no-store' })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data?.error || 'Não foi possível carregar os leads.');
-        setContacts(data.contacts || []);
-      })
+    Promise.all([loadContacts(), loadStatus()])
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [loadContacts, loadStatus]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      loadStatus().catch(() => {});
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [loadStatus]);
 
   const queue = useMemo(() => {
     return contacts
@@ -47,89 +80,149 @@ export default function WhatsAppGatoPage() {
       .sort((a, b) => String(a.profile_name || a.phone).localeCompare(String(b.profile_name || b.phone), 'pt-BR'));
   }, [contacts]);
 
-  const page = {
-    minHeight: '100vh',
-    background: '#080808',
-    color: '#f5f5f5',
-    padding: '34px 16px 70px',
-  };
+  async function bridgeAction(action) {
+    setBusy(action);
+    setError('');
+    try {
+      const response = await fetch('/api/whatsapp/gato', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'Não foi possível controlar a conexão.');
+      setStatus(data);
+      setTimeout(() => loadStatus().catch(() => {}), 1000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function sendAudio(contact) {
+    setBusy(contact.id);
+    setError('');
+    try {
+      const response = await fetch('/api/whatsapp/gato', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send_audio', contactId: contact.id }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'Não foi possível enviar o áudio.');
+      setSent((current) => ({ ...current, [contact.id]: true }));
+      await loadContacts();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  const page = { minHeight: '100vh', background: '#080808', color: '#f5f5f5', padding: '34px 16px 70px' };
   const shell = { width: 'min(1100px, 100%)', margin: '0 auto' };
   const eyebrow = { fontSize: 11, fontWeight: 900, letterSpacing: '.14em', color: '#999' };
-  const grid = { display: 'grid', gap: 14, marginTop: 24 };
-  const card = {
-    display: 'grid',
-    gridTemplateColumns: '1.25fr .8fr 1.2fr',
-    gap: 18,
-    alignItems: 'center',
-    padding: 18,
-    borderRadius: 16,
-    border: '1px solid rgba(255,255,255,.1)',
-    background: '#111',
-  };
-  const button = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '11px 14px',
-    borderRadius: 10,
-    background: '#fff',
-    color: '#111',
-    textDecoration: 'none',
-    fontWeight: 900,
-    fontSize: 13,
-  };
+  const card = { padding: 18, borderRadius: 16, border: '1px solid rgba(255,255,255,.1)', background: '#111' };
+  const primary = { border: 0, cursor: 'pointer', padding: '12px 15px', borderRadius: 10, background: '#fff', color: '#111', fontWeight: 900, fontSize: 13 };
+  const secondary = { ...primary, background: '#222', color: '#fff', border: '1px solid rgba(255,255,255,.12)' };
 
   return (
     <main style={page}>
       <div style={shell}>
         <Link href="/" style={{ color: '#aaa', textDecoration: 'none', fontSize: 13 }}>← Voltar para o Hub</Link>
+
         <div style={{ marginTop: 24 }}>
-          <span style={eyebrow}>WHATSAPP GATO · MODO APP/WEB</span>
-          <h1 style={{ fontSize: 42, margin: '8px 0 10px' }}>Fila fora da janela da Meta</h1>
-          <p style={{ color: '#aaa', maxWidth: 760, lineHeight: 1.6, margin: 0 }}>
-            Use esta área para os contatos que precisam ser tratados pelo WhatsApp App/Web. O WhatsApp Meta continua separado e funcionando normalmente.
+          <span style={eyebrow}>WHATSAPP GATO · BAILEYS</span>
+          <h1 style={{ fontSize: 42, margin: '8px 0 10px' }}>Envio direto pelo WhatsApp</h1>
+          <p style={{ color: '#aaa', maxWidth: 780, lineHeight: 1.6, margin: 0 }}>
+            Esta conexão é independente do WhatsApp Meta. Os áudios são enviados como mensagem de voz nativa (PTT), usando os arquivos já salvos no Lynna.
           </p>
         </div>
 
-        <div style={{ marginTop: 20, padding: 16, borderRadius: 14, background: '#161616', border: '1px solid rgba(255,255,255,.08)' }}>
-          <strong style={{ display: 'block', marginBottom: 6 }}>Como usar</strong>
-          <span style={{ color: '#aaa', fontSize: 14 }}>Abra a conversa pelo botão, confira o tipo de áudio indicado e envie pelo próprio WhatsApp. Aqui o Lynna só organiza a fila; não mistura essa operação com a API Meta.</span>
+        <section style={{ ...card, marginTop: 22, display: 'grid', gridTemplateColumns: '1fr auto', gap: 20, alignItems: 'center' }}>
+          <div>
+            <span style={eyebrow}>CONEXÃO DO GATO</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 7 }}>
+              <span style={{ width: 9, height: 9, borderRadius: 99, background: status?.connected ? '#65d98b' : status?.state === 'awaiting_qr' ? '#f0c45b' : '#777' }} />
+              <strong style={{ fontSize: 20 }}>{stateLabel(status)}</strong>
+            </div>
+            {status?.account?.phone && <p style={{ color: '#aaa', margin: '7px 0 0' }}>{formatPhone(status.account.phone)}</p>}
+            {status?.lastError && <p style={{ color: '#ff9a9a', margin: '8px 0 0', fontSize: 13 }}>{status.lastError}</p>}
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {!status?.connected && status?.state !== 'awaiting_qr' && (
+              <button style={primary} disabled={Boolean(busy)} onClick={() => bridgeAction('connect')}>
+                {busy === 'connect' ? 'Conectando...' : 'Conectar Gato'}
+              </button>
+            )}
+            {status?.connected && (
+              <button style={secondary} disabled={Boolean(busy)} onClick={() => bridgeAction('relink')}>Gerar novo QR</button>
+            )}
+          </div>
+        </section>
+
+        {status?.state === 'awaiting_qr' && status?.qrDataUrl && (
+          <section style={{ ...card, marginTop: 14, display: 'grid', gridTemplateColumns: 'minmax(230px, 320px) 1fr', gap: 26, alignItems: 'center' }}>
+            <div style={{ background: '#fff', padding: 12, borderRadius: 14 }}>
+              <img src={status.qrDataUrl} alt="QR Code do WhatsApp Gato" style={{ width: '100%', display: 'block' }} />
+            </div>
+            <div>
+              <span style={eyebrow}>ÚNICA ETAPA NO CELULAR</span>
+              <h2 style={{ margin: '7px 0 10px', fontSize: 26 }}>Escaneie este QR no WhatsApp Business</h2>
+              <p style={{ color: '#aaa', lineHeight: 1.6, margin: 0 }}>
+                WhatsApp Business → Configurações → Aparelhos conectados → Conectar aparelho. Depois de escanear, esta tela muda sozinha para “Conectado”.
+              </p>
+              <button style={{ ...secondary, marginTop: 14 }} disabled={Boolean(busy)} onClick={() => bridgeAction('relink')}>Gerar outro QR</button>
+            </div>
+          </section>
+        )}
+
+        {error && (
+          <button onClick={() => setError('')} style={{ width: '100%', textAlign: 'left', marginTop: 14, padding: 13, borderRadius: 10, border: '1px solid #633', background: '#241212', color: '#ffb1b1', cursor: 'pointer' }}>
+            {error} ×
+          </button>
+        )}
+
+        <div style={{ marginTop: 28 }}>
+          <span style={eyebrow}>FILA DE ÁUDIOS</span>
+          <h2 style={{ margin: '6px 0 0', fontSize: 27 }}>Pendentes para enviar</h2>
         </div>
 
-        {loading && <p style={{ color: '#aaa', marginTop: 30 }}>Carregando fila...</p>}
-        {error && <p style={{ color: '#ff8b8b', marginTop: 30 }}>{error}</p>}
-        {!loading && !error && !queue.length && <p style={{ color: '#aaa', marginTop: 30 }}>Nenhum contato pendente nessa fila.</p>}
+        {loading && <p style={{ color: '#aaa', marginTop: 24 }}>Carregando...</p>}
+        {!loading && !queue.length && <p style={{ color: '#aaa', marginTop: 24 }}>Nenhum áudio pendente nesta fila.</p>}
 
-        <section style={grid}>
+        <section style={{ display: 'grid', gap: 12, marginTop: 18 }}>
           {queue.map((contact) => {
             const p = profile(contact);
-            const phone = digits(contact.phone || contact.wa_id);
-            const waUrl = phone ? `https://wa.me/${phone}` : '#';
+            const wasSent = Boolean(sent[contact.id]);
             return (
-              <article key={contact.id} style={card}>
+              <article key={contact.id} style={{ ...card, display: 'grid', gridTemplateColumns: '1.1fr .8fr 1.35fr', gap: 18, alignItems: 'center' }}>
                 <div>
                   <strong style={{ display: 'block', fontSize: 18 }}>{contact.profile_name || formatPhone(contact.phone)}</strong>
-                  <span style={{ color: '#999', fontSize: 13 }}>{formatPhone(contact.phone)}</span>
-                  <div style={{ marginTop: 9, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ color: '#999', fontSize: 13 }}>{formatPhone(contact.phone || contact.wa_id)}</span>
+                  <div style={{ marginTop: 8 }}>
                     <span style={{ padding: '5px 8px', borderRadius: 999, background: '#222', fontSize: 11, fontWeight: 800 }}>{p.label}</span>
-                    {(contact.tags || []).includes('Aguardando resposta para áudio') && (
-                      <span style={{ padding: '5px 8px', borderRadius: 999, background: '#222', fontSize: 11, fontWeight: 800 }}>Pendente de áudio</span>
-                    )}
                   </div>
                 </div>
 
                 <div>
-                  <span style={eyebrow}>ÁUDIO INDICADO</span>
+                  <span style={eyebrow}>ÁUDIO</span>
                   <strong style={{ display: 'block', marginTop: 6 }}>{p.audio === 'seller' ? 'Gui · Já vende' : p.audio === 'iniciante' ? 'Gui · Iniciante' : 'Novo áudio · Não respondeu'}</strong>
                 </div>
 
-                <div style={{ display: 'grid', gap: 10 }}>
-                  {p.audio ? (
-                    <audio controls preload="none" src={`/api/whatsapp/campaign-audio?key=${p.audio}&raw=1`} style={{ width: '100%' }} />
-                  ) : (
-                    <div style={{ color: '#999', fontSize: 13 }}>Ainda aguardando o novo áudio do Gui.</div>
+                <div style={{ display: 'grid', gap: 9 }}>
+                  {p.audio ? <audio controls preload="none" src={`/api/whatsapp/campaign-audio?key=${p.audio}&raw=1`} style={{ width: '100%' }} /> : <span style={{ color: '#999', fontSize: 13 }}>Aguardando o novo áudio.</span>}
+                  {p.audio && (
+                    <button
+                      style={{ ...primary, opacity: !status?.connected || busy === contact.id ? .55 : 1 }}
+                      disabled={!status?.connected || Boolean(busy)}
+                      onClick={() => sendAudio(contact)}
+                    >
+                      {busy === contact.id ? 'Enviando...' : wasSent ? 'Enviado ✓' : 'Enviar como áudio do WhatsApp'}
+                    </button>
                   )}
-                  <a href={waUrl} target="_blank" rel="noreferrer" style={button}>Abrir conversa no WhatsApp</a>
                 </div>
               </article>
             );

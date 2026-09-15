@@ -1,0 +1,16 @@
+name: Verificar WhatsApp Gato uma vez
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/check-gato-once.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar status do Gato no Lynna
+        run: |
+          curl --fail-with-body --silent --show-error \
+            'https://social-hub-gui.vercel.app/api/whatsapp/gato'

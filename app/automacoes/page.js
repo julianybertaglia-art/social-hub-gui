@@ -56,6 +56,8 @@ export default function AutomacoesPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [connected, setConnected] = useState(null);
+  const [recovering, setRecovering] = useState(false);
+  const [recoveryMessage, setRecoveryMessage] = useState('');
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -151,6 +153,37 @@ export default function AutomacoesPage() {
       setSaveError(error.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function recoverLatestComments() {
+    setRecovering(true);
+    setRecoveryMessage('');
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (!data?.session?.access_token) throw new Error('Sua sessão expirou. Entre novamente no Hub.');
+      const response = await fetch('/api/instagram/comment-automations', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${data.session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'recover_latest' }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Não foi possível recuperar os comentários.');
+      const result = payload.recovery;
+      setRecoveryMessage(
+        result.recovered
+          ? `${result.recovered} comentário(s) recuperado(s) e Direct enviado.`
+          : result.matched
+            ? 'Os comentários encontrados já tinham sido processados.'
+            : 'Ainda não encontrei comentário com a palavra-chave no Reels mais recente.'
+      );
+    } catch (error) {
+      setRecoveryMessage(error.message);
+    } finally {
+      setRecovering(false);
     }
   }
 
@@ -275,9 +308,12 @@ export default function AutomacoesPage() {
 
       <section className={styles.saveDock}>
         <div>
-          <strong>{saveError || (hydrated ? 'As alterações são salvas no servidor e na Meta.' : 'Carregando configurações...')}</strong>
-          <span>{saveError ? 'Tente salvar novamente.' : 'Depois de salvar, aguarde alguns segundos antes de testar a nova palavra-chave.'}</span>
+          <strong>{recoveryMessage || saveError || (hydrated ? 'As alterações são salvas no servidor e na Meta.' : 'Carregando configurações...')}</strong>
+          <span>{saveError ? 'Tente salvar novamente.' : 'Você também pode recuperar comentários do conteúdo mais recente.'}</span>
         </div>
+        <button className={styles.clearButton} type="button" onClick={recoverLatestComments} disabled={!hydrated || recovering || saving}>
+          {recovering ? 'Verificando comentários…' : 'Recuperar comentários pendentes'}
+        </button>
         <button className={styles.saveButton} type="button" onClick={saveRules} disabled={!hydrated || saving}>
           {saving ? 'Salvando e conectando…' : saved ? 'Configurações salvas ✓' : 'Salvar as 3 automações'}
         </button>

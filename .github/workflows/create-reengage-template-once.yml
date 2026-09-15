@@ -1,0 +1,16 @@
+name: Criar template de reativação Meta uma vez
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/create-reengage-template-once.yml'
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Criar template
+        run: |
+          curl --fail-with-body --silent --show-error -X POST \
+            'https://social-hub-gui.vercel.app/api/whatsapp/create-reengage-template'

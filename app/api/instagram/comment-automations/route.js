@@ -6,6 +6,7 @@ import {
   metaRequest,
   serverClient,
 } from '../audio-automation/service.js';
+import { after } from 'next/server';
 import { loadOwnerRules, saveOwnerRules } from './service.js';
 import { findMatchingCommentRule } from './service.js';
 
@@ -115,6 +116,24 @@ export async function GET(request) {
       instagramIdentity(),
     ]);
     const subscription = await getSubscriptionStatus(identity.accountId);
+
+    // Meta can deliver a comment webhook with a delay (or occasionally miss a
+    // retry). A status refresh is a safe place to recover the latest matching
+    // comments because recovery is idempotent and skips already handled ones.
+    after(async () => {
+      try {
+        const recovery = await recoverLatestMediaComments(db, userId, identity);
+        if (recovery.recovered || recovery.matched) {
+          console.info('AUTOMACAO:RECOVERY: comentários verificados', recovery);
+        }
+      } catch (error) {
+        console.warn(
+          'AUTOMACAO:RECOVERY: não foi possível verificar comentários pendentes',
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    });
+
     return json({ rules, account: `@${identity.username}`, ...subscription });
   } catch (error) {
     return failure(error);

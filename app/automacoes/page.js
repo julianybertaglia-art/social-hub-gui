@@ -92,8 +92,36 @@ export default function AutomacoesPage() {
       }
     }
 
+    async function recoverQuietly() {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!data?.session?.access_token || cancelled) return;
+        const response = await fetch('/api/instagram/comment-automations', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${data.session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action: 'recover_latest' }),
+          cache: 'no-store',
+        });
+        const payload = await response.json().catch(() => null);
+        if (!cancelled && response.ok && payload?.recovery?.recovered) {
+          setRecoveryMessage(`${payload.recovery.recovered} comentário(s) recuperado(s) e Direct enviado.`);
+        }
+      } catch {
+        // The webhook remains the primary trigger; background recovery is best effort.
+      }
+    }
+
     loadRules();
-    return () => { cancelled = true; };
+    const recoveryTimer = window.setTimeout(recoverQuietly, 1500);
+    const recoveryInterval = window.setInterval(recoverQuietly, 20000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(recoveryTimer);
+      window.clearInterval(recoveryInterval);
+    };
   }, []);
 
   const activeCount = useMemo(

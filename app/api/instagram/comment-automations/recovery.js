@@ -43,7 +43,7 @@ export async function recoverLatestMediaComments(db, userId, identity) {
   if (!activeRules.length) throw automationError('Nenhuma regra por comentário está ativa.', 422);
 
   const mediaPayload = await metaRequest(
-    `${identity.accountId}/media?fields=id,caption,timestamp,permalink&limit=25`
+    `${identity.accountId}/media?fields=id,caption,timestamp,permalink&limit=10`
   );
   const media = (mediaPayload.data || []).filter((item) => item?.id);
   if (!media.length) throw automationError('Não encontrei conteúdo recente para verificar.', 404);
@@ -79,7 +79,7 @@ export async function recoverLatestMediaComments(db, userId, identity) {
 
   // A resposta pública funciona como recibo persistente. Assim cada ciclo
   // avança pela fila, em vez de repetir para sempre os mesmos comentários.
-  const pending = matched.filter((entry) => !entry.alreadyPublic).slice(0, 20);
+  const pending = matched.filter((entry) => !entry.alreadyPublic).slice(0, 10);
 
   const results = await Promise.all(pending.map(async ({ comment, rule, media: item }) => {
     let privateSent = false;

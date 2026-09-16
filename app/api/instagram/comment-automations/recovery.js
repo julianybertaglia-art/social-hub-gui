@@ -1,7 +1,7 @@
 import { automationError, metaRequest } from '../audio-automation/service.js';
 import { findMatchingCommentRule, loadOwnerRules } from './service.js';
 
-const RECOVERY_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
+const RECOVERY_LOOKBACK_MS = 24 * 60 * 60 * 1000;
 
 export async function instagramIdentity() {
   const profile = await metaRequest('me?fields=user_id,username');
@@ -56,10 +56,9 @@ export async function recoverLatestMediaComments(db, userId, identity) {
     }))
     .filter(({ comment, rule }) => rule && authorUsername(comment) !== 'gui_nonato')
     .sort((left, right) => Date.parse(right.comment.timestamp || 0) - Date.parse(left.comment.timestamp || 0))
-    .slice(0, 50);
+    .slice(0, 10);
 
-  const results = [];
-  for (const { comment, rule, media: item } of matched) {
+  const results = await Promise.all(matched.map(async ({ comment, rule, media: item }) => {
     const repliesPayload = await metaRequest(
       `${comment.id}/replies?fields=id,text,from,username&limit=100`
     ).catch(() => ({ data: [] }));
@@ -77,20 +76,19 @@ export async function recoverLatestMediaComments(db, userId, identity) {
       privateSent = true;
     } catch (error) {
       if (!alreadyPrivateReply(error)) {
-        results.push({ commentId: comment.id, mediaId: item.id, status: 'failed' });
-        continue;
+        return { commentId: comment.id, mediaId: item.id, status: 'failed' };
       }
     }
 
     if (rule.publicReply && !alreadyPublic) {
       await metaRequest(`${comment.id}/replies`, { message: rule.publicReply });
     }
-    results.push({
+    return {
       commentId: comment.id,
       mediaId: item.id,
       status: privateSent ? 'recovered' : 'private_already_sent',
-    });
-  }
+    };
+  }));
 
   return {
     mediaScanned: media.length,

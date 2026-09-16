@@ -1,5 +1,5 @@
 name: Recuperar comentários do Instagram
-# O push deste fluxo confirma a integração antes das execuções agendadas.
+# O push confirma a integração antes das execuções agendadas.
 
 on:
   schedule:
@@ -16,7 +16,7 @@ permissions:
 
 concurrency:
   group: recover-instagram-comments
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   recover:
@@ -38,7 +38,7 @@ jobs:
           OIDC_TOKEN: ${{ steps.oidc.outputs.token }}
         run: |
           for attempt in 1 2 3 4 5 6; do
-            if curl --fail-with-body --silent --show-error -X POST \
+            if curl --max-time 45 --fail-with-body --silent --show-error -X POST \
               -H "Authorization: Bearer ${OIDC_TOKEN}" \
               'https://social-hub-gui.vercel.app/api/instagram/comment-automations/recover'; then
               exit 0

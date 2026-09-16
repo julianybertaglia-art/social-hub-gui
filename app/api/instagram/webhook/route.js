@@ -77,22 +77,28 @@ async function metaPost(path, body) {
     throw new Error('META_INSTAGRAM_ACCESS_TOKEN não configurado.');
   }
 
-  const response = await fetch(
-    `https://graph.instagram.com/${API_VERSION}/${path}`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      cache: 'no-store',
-    }
-  );
+  const versions = String(path).endsWith('/messages') ? [API_VERSION, 'v25.0'] : [API_VERSION];
+  let response;
+  let result;
+  for (const version of versions) {
+    response = await fetch(
+      `https://graph.instagram.com/${version}/${path}`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        cache: 'no-store',
+      }
+    );
+    result = await response.json().catch(() => ({}));
+    if (response.ok && !result?.error) return result;
+    if (Number(result?.error?.code) !== 1 || version === versions.at(-1)) break;
+  }
 
-  const result = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
+  if (!response?.ok || result?.error) {
     const message = result?.error?.message || `Erro Meta HTTP ${response.status}`;
     throw new Error(message);
   }

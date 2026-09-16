@@ -67,19 +67,28 @@ export async function metaRequest(path, body) {
   const token = process.env.META_INSTAGRAM_ACCESS_TOKEN;
   if (!token) throw automationError('A conexão do Instagram precisa ser configurada no Hub.', 503);
 
-  const response = await fetch(`https://graph.instagram.com/${API_VERSION}/${path}`, {
-    method: body ? 'POST' : 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-    cache: 'no-store',
-    signal: AbortSignal.timeout(10000),
-  });
+  const versions = body && String(path).endsWith('/messages')
+    ? [API_VERSION, 'v25.0']
+    : [API_VERSION];
+  let response;
+  let result;
+  for (const version of versions) {
+    response = await fetch(`https://graph.instagram.com/${version}/${path}`, {
+      method: body ? 'POST' : 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(10000),
+    });
+    result = await response.json().catch(() => ({}));
+    if (response.ok && !result?.error) return result;
+    if (Number(result?.error?.code) !== 1 || version === versions.at(-1)) break;
+  }
 
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok || result?.error) {
+  if (!response?.ok || result?.error) {
     const code = Number(result?.error?.code);
     const subcode = Number(result?.error?.error_subcode);
     const detail = safeDetail(result?.error, token);

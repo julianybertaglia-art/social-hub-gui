@@ -76,7 +76,12 @@ export async function recoverLatestMediaComments(db, userId, identity) {
       privateSent = true;
     } catch (error) {
       if (!alreadyPrivateReply(error)) {
-        return { commentId: comment.id, mediaId: item.id, status: 'failed' };
+        return {
+          commentId: comment.id,
+          mediaId: item.id,
+          status: 'failed',
+          error: String(error?.message || 'Recusa sem detalhe.'),
+        };
       }
     }
 
@@ -96,5 +101,6 @@ export async function recoverLatestMediaComments(db, userId, identity) {
     recovered: results.filter((item) => item.status === 'recovered').length,
     alreadyHandled: results.filter((item) => item.status === 'private_already_sent').length,
     failed: results.filter((item) => item.status === 'failed').length,
+    errors: [...new Set(results.filter((item) => item.status === 'failed').map((item) => item.error))].slice(0, 3),
   };
 }

@@ -76,7 +76,9 @@ export async function POST(request) {
     console.info('AUTOMACAO:SCHEDULED_RECOVERY', recovery);
     return Response.json({ ok: true, recovery });
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
+    const detail = error instanceof Error
+      ? error.message
+      : error?.message || JSON.stringify(error);
     console.error('AUTOMACAO:SCHEDULED_RECOVERY: falha', detail);
     return Response.json(
       { ok: false, error: 'Não foi possível recuperar os comentários.', detail },

@@ -79,7 +79,7 @@ export async function recoverLatestMediaComments(db, userId, identity) {
 
   // A resposta pública funciona como recibo persistente. Assim cada ciclo
   // avança pela fila, em vez de repetir para sempre os mesmos comentários.
-  const pending = matched.filter((entry) => !entry.alreadyPublic).slice(0, 10);
+  const pending = matched.filter((entry) => !entry.alreadyPublic).slice(0, 3);
 
   const results = await Promise.all(pending.map(async ({ comment, rule, media: item }) => {
     let privateSent = false;

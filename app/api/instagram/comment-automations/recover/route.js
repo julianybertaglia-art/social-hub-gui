@@ -63,12 +63,12 @@ export async function POST(request) {
     }
 
     const db = serverClient();
-    const { data: state, error } = await db.from('content_items')
+    const { data: states, error } = await db.from('content_items')
       .select('user_id')
       .eq('title', STATE_TITLE)
       .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+    const state = states?.[0];
     if (error || !state?.user_id) throw error || new Error('Estado do Hub não encontrado.');
 
     const identity = await instagramIdentity();

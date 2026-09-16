@@ -101,10 +101,16 @@ async function metaPost(path, body) {
 }
 
 async function sendPrivateReply(igUserId, commentId, message) {
-  return metaPost(`${igUserId}/messages`, {
+  const body = {
     recipient: { comment_id: commentId },
     message: { text: message },
-  });
+  };
+  try {
+    return await metaPost(`${igUserId}/messages`, body);
+  } catch (error) {
+    if (!/unknown error/i.test(String(error?.message || ''))) throw error;
+    return metaPost('me/messages', body);
+  }
 }
 
 async function sendAudioPrompt(igUserId, commentId, automation) {

@@ -24,6 +24,19 @@ function alreadyPrivateReply(error) {
     .test(String(error?.message || ''));
 }
 
+async function sendPrivateReply(accountId, commentId, text) {
+  const body = {
+    recipient: { comment_id: commentId },
+    message: { text },
+  };
+  try {
+    return await metaRequest(`${accountId}/messages`, body);
+  } catch (error) {
+    if (!/código 1\)|unknown error/i.test(String(error?.message || ''))) throw error;
+    return metaRequest('me/messages', body);
+  }
+}
+
 export async function recoverLatestMediaComments(db, userId, identity) {
   const { rules } = await loadOwnerRules(db, userId);
   const activeRules = rules.filter((rule) => rule.active);
@@ -69,10 +82,7 @@ export async function recoverLatestMediaComments(db, userId, identity) {
 
     let privateSent = false;
     try {
-      await metaRequest(`${identity.accountId}/messages`, {
-        recipient: { comment_id: comment.id },
-        message: { text: rule.privateMessage },
-      });
+      await sendPrivateReply(identity.accountId, comment.id, rule.privateMessage);
       privateSent = true;
     } catch (error) {
       if (!alreadyPrivateReply(error)) {

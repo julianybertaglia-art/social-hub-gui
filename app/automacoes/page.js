@@ -204,9 +204,11 @@ export default function AutomacoesPage() {
       setRecoveryMessage(
         result.recovered
           ? `${result.recovered} comentário(s) recuperado(s) e Direct enviado.`
+          : result.failed
+            ? `O Instagram recusou o Direct de ${result.failed} comentário(s). Salve as regras para reparar a conexão.`
           : result.matched
             ? 'Os comentários encontrados já tinham sido processados.'
-            : 'Ainda não encontrei comentário com a palavra-chave no Reels mais recente.'
+            : 'Ainda não encontrei comentário recente com uma palavra-chave ativa.'
       );
     } catch (error) {
       setRecoveryMessage(error.message);

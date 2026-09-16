@@ -14,6 +14,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
+const RECOVERY_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
+
 function json(payload, status = 200) {
   return Response.json(payload, { status, headers: { 'Cache-Control': 'no-store' } });
 }
@@ -52,23 +54,39 @@ async function recoverLatestMediaComments(db, userId, identity) {
   if (!activeRules.length) throw automationError('Nenhuma regra por comentário está ativa.', 422);
 
   const mediaPayload = await metaRequest(
-    `${identity.accountId}/media?fields=id,caption,timestamp,permalink&limit=10`
+    `${identity.accountId}/media?fields=id,caption,timestamp,permalink&limit=25`
   );
-  const media = (mediaPayload.data || []).find((item) => (
-    activeRules.some((rule) => String(item.caption || '').toUpperCase().includes(rule.keyword))
-  ));
-  if (!media?.id) throw automationError('Não encontrei um conteúdo recente com uma palavra-chave ativa.', 404);
+  const media = (mediaPayload.data || []).filter((item) => item?.id);
+  if (!media.length) throw automationError('Não encontrei conteúdo recente para verificar.', 404);
 
-  const commentsPayload = await metaRequest(
-    `${media.id}/comments?fields=id,text,timestamp,from,username&limit=100`
-  );
-  const matched = (commentsPayload.data || [])
-    .map((comment) => ({ comment, rule: findMatchingCommentRule(comment.text, activeRules) }))
+  // A palavra-chave pode ser falada no vídeo sem aparecer na legenda. Por isso,
+  // verificamos os comentários dos conteúdos recentes, em vez de adivinhar o
+  // Reel pela caption.
+  const commentBatches = await Promise.allSettled(media.map(async (item) => {
+    const payload = await metaRequest(
+      `${item.id}/comments?fields=id,text,timestamp,from,username&limit=100`
+    );
+    return (payload.data || []).map((comment) => ({ comment, media: item }));
+  }));
+  const cutoff = Date.now() - RECOVERY_LOOKBACK_MS;
+  const matched = commentBatches
+    .filter((batch) => batch.status === 'fulfilled')
+    .flatMap((batch) => batch.value)
+    .filter(({ comment }) => {
+      const timestamp = Date.parse(comment.timestamp || '');
+      return !Number.isFinite(timestamp) || timestamp >= cutoff;
+    })
+    .map(({ comment, media: item }) => ({
+      comment,
+      media: item,
+      rule: findMatchingCommentRule(comment.text, activeRules),
+    }))
     .filter(({ comment, rule }) => rule && authorUsername(comment) !== 'gui_nonato')
-    .slice(0, 20);
+    .sort((left, right) => Date.parse(right.comment.timestamp || 0) - Date.parse(left.comment.timestamp || 0))
+    .slice(0, 50);
 
   const results = [];
-  for (const { comment, rule } of matched) {
+  for (const { comment, rule, media: item } of matched) {
     const repliesPayload = await metaRequest(
       `${comment.id}/replies?fields=id,text,from,username&limit=100`
     ).catch(() => ({ data: [] }));
@@ -76,11 +94,6 @@ async function recoverLatestMediaComments(db, userId, identity) {
       authorUsername(reply) === 'gui_nonato'
       || String(reply.text || '').trim() === rule.publicReply
     ));
-    if (alreadyPublic) {
-      results.push({ commentId: comment.id, status: 'already_handled' });
-      continue;
-    }
-
     let privateSent = false;
     try {
       await metaRequest(`${identity.accountId}/messages`, {
@@ -89,21 +102,28 @@ async function recoverLatestMediaComments(db, userId, identity) {
       });
       privateSent = true;
     } catch (error) {
-      if (!alreadyPrivateReply(error)) throw error;
+      if (!alreadyPrivateReply(error)) {
+        results.push({ commentId: comment.id, mediaId: item.id, status: 'failed' });
+        continue;
+      }
     }
 
-    if (rule.publicReply) {
+    if (rule.publicReply && !alreadyPublic) {
       await metaRequest(`${comment.id}/replies`, { message: rule.publicReply });
     }
-    results.push({ commentId: comment.id, status: privateSent ? 'recovered' : 'private_already_sent' });
+    results.push({
+      commentId: comment.id,
+      mediaId: item.id,
+      status: privateSent ? 'recovered' : 'private_already_sent',
+    });
   }
 
   return {
-    mediaId: String(media.id),
-    permalink: String(media.permalink || ''),
+    mediaScanned: media.length,
     matched: matched.length,
     recovered: results.filter((item) => item.status === 'recovered').length,
-    alreadyHandled: results.filter((item) => item.status !== 'recovered').length,
+    alreadyHandled: results.filter((item) => item.status === 'private_already_sent').length,
+    failed: results.filter((item) => item.status === 'failed').length,
   };
 }
 

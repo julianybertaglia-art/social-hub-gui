@@ -85,7 +85,9 @@ export async function recoverLatestMediaComments(db, userId, identity) {
       await sendPrivateReply(identity.accountId, comment.id, rule.privateMessage);
       privateSent = true;
     } catch (error) {
-      if (!alreadyPrivateReply(error)) {
+      const likelyPreviouslyHandled = alreadyPublic
+        && /código 1\)|unknown error/i.test(String(error?.message || ''));
+      if (!alreadyPrivateReply(error) && !likelyPreviouslyHandled) {
         return {
           commentId: comment.id,
           mediaId: item.id,

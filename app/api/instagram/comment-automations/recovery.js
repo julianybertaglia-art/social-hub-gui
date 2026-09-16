@@ -50,7 +50,7 @@ export async function recoverLatestMediaComments(db, userId, identity) {
 
   const commentBatches = await Promise.allSettled(media.map(async (item) => {
     const payload = await metaRequest(
-      `${item.id}/comments?fields=id,text,timestamp,from,username&limit=100`
+      `${item.id}/comments?fields=id,text,timestamp,from,username,replies.limit(100){id,text,from,username}&limit=100`
     );
     return (payload.data || []).map((comment) => ({ comment, media: item }));
   }));
@@ -68,26 +68,26 @@ export async function recoverLatestMediaComments(db, userId, identity) {
       rule: findMatchingCommentRule(comment.text, activeRules),
     }))
     .filter(({ comment, rule }) => rule && authorUsername(comment) !== 'gui_nonato')
-    .sort((left, right) => Date.parse(right.comment.timestamp || 0) - Date.parse(left.comment.timestamp || 0))
-    .slice(0, 10);
+    .map((entry) => ({
+      ...entry,
+      alreadyPublic: (entry.comment?.replies?.data || []).some((reply) => (
+        authorUsername(reply) === 'gui_nonato'
+        || String(reply.text || '').trim() === entry.rule.publicReply
+      )),
+    }))
+    .sort((left, right) => Date.parse(right.comment.timestamp || 0) - Date.parse(left.comment.timestamp || 0));
 
-  const results = await Promise.all(matched.map(async ({ comment, rule, media: item }) => {
-    const repliesPayload = await metaRequest(
-      `${comment.id}/replies?fields=id,text,from,username&limit=100`
-    ).catch(() => ({ data: [] }));
-    const alreadyPublic = (repliesPayload.data || []).some((reply) => (
-      authorUsername(reply) === 'gui_nonato'
-      || String(reply.text || '').trim() === rule.publicReply
-    ));
+  // A resposta pública funciona como recibo persistente. Assim cada ciclo
+  // avança pela fila, em vez de repetir para sempre os mesmos comentários.
+  const pending = matched.filter((entry) => !entry.alreadyPublic).slice(0, 20);
 
+  const results = await Promise.all(pending.map(async ({ comment, rule, media: item }) => {
     let privateSent = false;
     try {
       await sendPrivateReply(identity.accountId, comment.id, rule.privateMessage);
       privateSent = true;
     } catch (error) {
-      const likelyPreviouslyHandled = alreadyPublic
-        && /código 1\)|unknown error/i.test(String(error?.message || ''));
-      if (!alreadyPrivateReply(error) && !likelyPreviouslyHandled) {
+      if (!alreadyPrivateReply(error)) {
         return {
           commentId: comment.id,
           mediaId: item.id,
@@ -97,7 +97,7 @@ export async function recoverLatestMediaComments(db, userId, identity) {
       }
     }
 
-    if (rule.publicReply && !alreadyPublic) {
+    if (rule.publicReply) {
       await metaRequest(`${comment.id}/replies`, { message: rule.publicReply });
     }
     return {
@@ -110,6 +110,7 @@ export async function recoverLatestMediaComments(db, userId, identity) {
   return {
     mediaScanned: media.length,
     matched: matched.length,
+    pending: pending.length,
     recovered: results.filter((item) => item.status === 'recovered').length,
     alreadyHandled: results.filter((item) => item.status === 'private_already_sent').length,
     failed: results.filter((item) => item.status === 'failed').length,

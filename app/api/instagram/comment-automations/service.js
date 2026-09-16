@@ -65,11 +65,13 @@ export function findMatchingCommentRule(text, rules) {
 }
 
 export async function loadOwnerRules(db, userId) {
-  const { data, error } = await db.from('content_items')
+  const { data: rows, error } = await db.from('content_items')
     .select('id,description,updated_at')
     .eq('title', STATE_TITLE)
     .eq('user_id', userId)
-    .maybeSingle();
+    .order('updated_at', { ascending: false })
+    .limit(1);
+  const data = rows?.[0];
 
   if (error || !data?.id) throw error || new Error('Estado do Hub não encontrado.');
   return { row: data, rules: rulesFromState(data.description) };

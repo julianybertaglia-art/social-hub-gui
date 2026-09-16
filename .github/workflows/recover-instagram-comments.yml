@@ -1,5 +1,5 @@
 name: Recuperar comentários do Instagram
-# O push deste arquivo confirma a integração antes das execuções agendadas.
+# O push deste fluxo confirma a integração antes das execuções agendadas.
 
 on:
   schedule:

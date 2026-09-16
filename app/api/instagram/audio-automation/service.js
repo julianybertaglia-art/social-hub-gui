@@ -31,11 +31,13 @@ export async function authorizedOwner(request, db) {
   const { data, error } = await db.auth.getUser(token);
   if (error || !data?.user?.id) throw automationError('Sua sessão expirou. Entre novamente no Hub.', 401);
 
-  const { data: state, error: stateError } = await db.from('content_items')
+  const { data: states, error: stateError } = await db.from('content_items')
     .select('id')
     .eq('title', '__SOCIAL_HUB_STATE__')
     .eq('user_id', data.user.id)
-    .maybeSingle();
+    .order('updated_at', { ascending: false })
+    .limit(1);
+  const state = states?.[0];
 
   if (stateError) throw automationError('Não foi possível verificar seu acesso. Tente novamente.', 503);
   if (!state) throw automationError('Esta conta não tem acesso à automação do Gui.', 403);

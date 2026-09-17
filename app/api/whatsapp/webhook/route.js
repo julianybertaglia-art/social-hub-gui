@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { getSupabaseAdmin, messageBody, normalizeWaId, upsertWhatsAppContact } from '../lib';
+import { processWhatsAppAutomation } from '../automation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -88,7 +89,7 @@ async function saveStatusEvent(supabase, status) {
   if (error) throw error;
 }
 
-async function handleMessages(supabase, value) {
+async function handleMessages(supabase, value, origin) {
   const contactsById = new Map(
     (value.contacts || []).map((contact) => [
       normalizeWaId(contact?.wa_id),
@@ -117,6 +118,12 @@ async function handleMessages(supabase, value) {
       status: 'received',
       sentAt,
     });
+
+    try {
+      await processWhatsAppAutomation(supabase, { contact, message, origin });
+    } catch (automationError) {
+      console.error('WhatsApp menu automation:', automationError);
+    }
   }
 
   for (const status of value.statuses || []) {
@@ -260,10 +267,11 @@ export async function POST(request) {
   }
 
   const supabase = getSupabaseAdmin();
+  const origin = new URL(request.url).origin;
 
   try {
     for (const change of eventChanges(payload)) {
-      if (change.field === 'messages') await handleMessages(supabase, change.value);
+      if (change.field === 'messages') await handleMessages(supabase, change.value, origin);
       if (change.field === 'smb_message_echoes') await handleEchoes(supabase, change.value);
       if (change.field === 'smb_app_state_sync') await handleContactSync(supabase, change.value);
       if (change.field === 'history') await handleHistory(supabase, change.value);

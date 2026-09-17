@@ -1,14 +1,18 @@
-import { getMetaCredentials, getSupabaseAdmin, WHATSAPP_API_VERSION } from '../lib';
+import { getMetaCredentials, getSupabaseAdmin, isMetaRateLimitCode, WHATSAPP_API_VERSION } from '../lib';
 
 export const dynamic = 'force-dynamic';
 
 const DEFAULT_WABA_ID = '2367783123681402';
 const APP_ID = process.env.META_APP_ID || '1975149819862842';
 const ENSURE_INTERVAL_MS = 5 * 60 * 1000;
+const AUTH_INTERVAL_MS = 2 * 60 * 1000;
 let lastEnsureAt = 0;
 let lastEnsureResult = null;
 let lastRecoveryAt = 0;
 let lastRecoveryResult = null;
+let lastAuthAt = 0;
+let lastAuthKey = '';
+let lastAuthResult = null;
 
 async function graphJson(url, options = {}) {
   const response = await fetch(url, {
@@ -31,20 +35,43 @@ async function validateMetaAuthentication(meta) {
     return { valid: false, reason: 'missing_credentials' };
   }
 
+  const authKey = `${meta.source || 'meta'}:${meta.phoneNumberId}:${meta.accessToken.slice(-8)}`;
+  const now = Date.now();
+  if (lastAuthResult && lastAuthKey === authKey && now - lastAuthAt < AUTH_INTERVAL_MS) {
+    return lastAuthResult;
+  }
+
   try {
     const phone = await graphJson(
       `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${encodeURIComponent(meta.phoneNumberId)}?fields=id,display_phone_number,verified_name,quality_rating,status`,
       { headers: { Authorization: `Bearer ${meta.accessToken}` } }
     );
-    return { valid: true, phone };
+    lastAuthAt = now;
+    lastAuthKey = authKey;
+    lastAuthResult = { valid: true, phone };
+    return lastAuthResult;
   } catch (error) {
-    return {
-      valid: false,
-      reason: Number(error?.code) === 190 ? 'authentication_expired' : 'authentication_failed',
+    const rateLimited = isMetaRateLimitCode(error?.code);
+    lastAuthAt = now;
+    lastAuthKey = authKey;
+    lastAuthResult = {
+      valid: rateLimited,
+      temporarilyLimited: rateLimited,
+      reason: rateLimited
+        ? 'rate_limited'
+        : Number(error?.code) === 190
+          ? 'authentication_expired'
+          : 'authentication_failed',
       code: error?.code || null,
       subcode: error?.subcode || null,
       message: error instanceof Error ? error.message : 'Falha de autenticação na Meta.',
+      phone: rateLimited ? {
+        id: meta.phoneNumberId,
+        display_phone_number: meta.displayPhoneNumber || null,
+        verified_name: meta.verifiedName || null,
+      } : null,
     };
+    return lastAuthResult;
   }
 }
 
@@ -215,9 +242,9 @@ export async function GET(request) {
 
   const connected = Boolean(auth.valid);
   const webhookReady = hasVerifyToken && hasAppSecret;
-  const webhookEnsure = connected && hasVerifyToken
+  const webhookEnsure = connected && hasVerifyToken && !auth.temporarilyLimited
     ? await ensureCoexistenceWebhook(meta, origin, verifyToken)
-    : { ok: false, skipped: true };
+    : { ok: Boolean(auth.temporarilyLimited), skipped: true, reason: auth.temporarilyLimited ? 'rate_limited' : null };
 
   const needsCredentialRefresh = hasAccessToken && hasPhoneNumberId && !connected;
 
@@ -246,6 +273,7 @@ export async function GET(request) {
       reason: auth.reason || null,
       code: auth.code || null,
       subcode: auth.subcode || null,
+      temporarilyLimited: Boolean(auth.temporarilyLimited),
     },
     connectionSource: connected ? meta?.source || 'meta' : null,
     coexistence: Boolean(meta?.coexistence),

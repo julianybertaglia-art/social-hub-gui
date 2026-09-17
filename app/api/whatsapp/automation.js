@@ -13,7 +13,7 @@ export const WHATSAPP_MENU_ROWS = [
   },
   {
     id: 'topic_mercado_livre',
-    title: 'Começar no M. Livre',
+    title: 'Mercado Livre',
     description: 'Quero começar a vender online',
   },
   {
@@ -24,7 +24,7 @@ export const WHATSAPP_MENU_ROWS = [
   {
     id: 'topic_mentoria',
     title: 'Aplicação Mentoria',
-    description: 'Já vendo online e quero acompanhamento',
+    description: 'Já vendo online e quero saber sobre a mentoria',
   },
   {
     id: 'topic_influencer',
@@ -41,8 +41,8 @@ export const WHATSAPP_MENU_ROWS = [
 export const WELCOME_MENU_BUTTON_GROUPS = [
   [
     { id: 'topic_imersao', title: 'Imersão Ecommerce' },
-    { id: 'topic_mercado_livre', title: 'Começar no M. Livre' },
-    { id: 'topic_mentoria', title: 'Mentoria' },
+    { id: 'topic_mercado_livre', title: 'Mercado Livre' },
+    { id: 'topic_mentoria', title: 'Já vendo | Mentoria' },
   ],
   [
     { id: 'topic_importacao', title: 'Importação' },
@@ -217,7 +217,7 @@ async function sendMainMenu(supabase, contact, { welcome = true } = {}) {
   await sendAndStoreReplyButtons(
     supabase,
     contact,
-    'Outras opções:',
+    '👇',
     WELCOME_MENU_BUTTON_GROUPS[1]
   );
 

@@ -25,6 +25,10 @@ function withOfficialVitalBrand(markup, actionPath = '') {
       '<div class="brand brand-logo"><img src="/vital-decor-logo.png" alt="Vital Decor"></div>'
     )
     .replace(
+      /<label class="full">Por que você quer criar conteúdo para a Vital Decor\?<textarea name="motivation"[^>]*>[\s\S]*?<\/textarea><\/label>/,
+      '<input type="hidden" name="motivation" value="Não informado (campo removido do formulário).">'
+    )
+    .replace(
       '</style>',
       '.brand-logo{display:inline-flex;align-items:center}.brand-logo img{display:block;width:190px;max-width:55vw;height:auto}</style>'
     );
@@ -122,8 +126,6 @@ export async function POST(request, context) {
   const action = actionPath(token);
   const origin = request.headers.get('origin');
 
-  // Mantém a checagem de origem, mas não usa Sec-Fetch-Site como bloqueio isolado,
-  // porque WebViews do WhatsApp podem reportar esse cabeçalho de forma inconsistente.
   if (origin && origin !== 'null' && origin !== new URL(request.url).origin) {
     return invalidLinkResponse();
   }

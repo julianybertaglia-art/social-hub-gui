@@ -1,6 +1,10 @@
 import { serverClient } from '../../../api/instagram/audio-automation/service.js';
 import { influencerFormHtml } from '../html.js';
-import { loadApplicationByToken } from '../service.js';
+import {
+  loadApplicationByToken,
+  saveInfluencerApplication,
+  validateInfluencerApplication,
+} from '../service.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,8 +18,8 @@ const RESPONSE_HEADERS = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 };
 
-function withOfficialVitalBrand(markup) {
-  return String(markup || '')
+function withOfficialVitalBrand(markup, actionPath = '') {
+  let result = String(markup || '')
     .replaceAll(
       '<div class="brand"><i>VD</i> VITAL DECOR</div>',
       '<div class="brand brand-logo"><img src="/vital-decor-logo.png" alt="Vital Decor"></div>'
@@ -24,10 +28,19 @@ function withOfficialVitalBrand(markup) {
       '</style>',
       '.brand-logo{display:inline-flex;align-items:center}.brand-logo img{display:block;width:190px;max-width:55vw;height:auto}</style>'
     );
+
+  if (actionPath) {
+    result = result.replace(
+      'action="/parcerias/vital-influenciadores"',
+      `action="${actionPath}"`
+    );
+  }
+
+  return result;
 }
 
-function html(options, status = 200) {
-  return new Response(withOfficialVitalBrand(influencerFormHtml(options)), {
+function html(options, status = 200, actionPath = '') {
+  return new Response(withOfficialVitalBrand(influencerFormHtml(options), actionPath), {
     status,
     headers: RESPONSE_HEADERS,
   });
@@ -52,18 +65,87 @@ function invalidLinkResponse() {
 </html>`, { status: 404, headers: RESPONSE_HEADERS });
 }
 
+function tokenFromContext(context) {
+  return Promise.resolve(context.params)
+    .then((params) => String(params?.token || '').trim());
+}
+
+function actionPath(token) {
+  return `/parcerias/vital-influenciadores/${encodeURIComponent(token)}`;
+}
+
 export async function GET(request, context) {
-  const params = await context.params;
-  const token = String(params?.token || '').trim();
+  const token = await tokenFromContext(context);
+  const action = actionPath(token);
 
   try {
     const application = await loadApplicationByToken(serverClient(), token);
     if (!application) return invalidLinkResponse();
-    return html({ token, alreadySubmitted: application.status === 'submitted' });
+    return html({ token, alreadySubmitted: application.status === 'submitted' }, 200, action);
   } catch (error) {
     return html({
       token,
       error: error?.status ? error.message : 'O formulário está temporariamente indisponível.',
-    }, error?.status || 503);
+    }, error?.status || 503, action);
+  }
+}
+
+async function boundedForm(request) {
+  if (!request.headers.get('content-type')?.startsWith('application/x-www-form-urlencoded')) {
+    throw Object.assign(new Error('Use o formulário abaixo para enviar sua inscrição.'), { status: 415 });
+  }
+
+  const reader = request.body?.getReader();
+  if (!reader) return {};
+
+  const decoder = new TextDecoder();
+  let raw = '';
+  let bytes = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes += value.byteLength;
+    if (bytes > 32768) {
+      await reader.cancel();
+      throw Object.assign(new Error('O formulário excedeu o tamanho permitido.'), { status: 413 });
+    }
+    raw += decoder.decode(value, { stream: true });
+  }
+
+  raw += decoder.decode();
+  return Object.fromEntries(new URLSearchParams(raw));
+}
+
+export async function POST(request, context) {
+  const token = await tokenFromContext(context);
+  const action = actionPath(token);
+  const origin = request.headers.get('origin');
+
+  if ((origin && origin !== new URL(request.url).origin) || request.headers.get('sec-fetch-site') === 'cross-site') {
+    return invalidLinkResponse();
+  }
+
+  let values = {};
+
+  try {
+    const linkedApplication = await loadApplicationByToken(serverClient(), token);
+    if (!linkedApplication) return invalidLinkResponse();
+
+    values = await boundedForm(request);
+    if (values.company_site) return html({ success: true }, 200, action);
+
+    // O token válido vem da própria URL individual, não de um campo escondido do navegador.
+    values.token = token;
+
+    const application = validateInfluencerApplication(values);
+    const saved = await saveInfluencerApplication(serverClient(), application);
+    return html({ success: true, alreadySubmitted: saved.alreadySubmitted }, 200, action);
+  } catch (error) {
+    return html({
+      token,
+      values,
+      error: error?.status ? error.message : 'Não foi possível enviar sua inscrição. Tente novamente.',
+    }, error?.status || 503, action);
   }
 }

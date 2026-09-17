@@ -38,6 +38,19 @@ export const WHATSAPP_MENU_ROWS = [
   },
 ];
 
+export const WELCOME_MENU_BUTTON_GROUPS = [
+  [
+    { id: 'topic_imersao', title: 'Imersão Ecommerce' },
+    { id: 'topic_mercado_livre', title: 'Começar no M. Livre' },
+    { id: 'topic_mentoria', title: 'Mentoria' },
+  ],
+  [
+    { id: 'topic_importacao', title: 'Importação' },
+    { id: 'topic_influencer', title: 'Afiliado TikTok' },
+    { id: 'topic_other', title: 'Outro assunto' },
+  ],
+];
+
 export const AD_IMERSAO_ROWS = [
   {
     id: 'ad_imersao_seller',
@@ -191,17 +204,22 @@ async function sendAndStoreFormButton(supabase, contact, text, url) {
 }
 
 async function sendMainMenu(supabase, contact, { welcome = true } = {}) {
-  const body = welcome
+  const firstBody = welcome
     ? 'Oi! Eu sou a Juliany, da equipe do Gui Nonato e da Vital Decor 👋\n\nPara eu te direcionar mais rápido, escolha abaixo o assunto que você quer falar:'
     : 'Claro! Escolha abaixo o assunto que você quer falar:';
 
-  const result = await sendWhatsAppInteractiveList({
-    to: contact.wa_id,
-    body,
-    button: 'Escolher assunto',
-    sections: [{ title: 'Como podemos ajudar?', rows: WHATSAPP_MENU_ROWS }],
-  });
-  await saveOutboundMessage(supabase, contact, result, body, 'interactive');
+  await sendAndStoreReplyButtons(
+    supabase,
+    contact,
+    firstBody,
+    WELCOME_MENU_BUTTON_GROUPS[0]
+  );
+  await sendAndStoreReplyButtons(
+    supabase,
+    contact,
+    'Outras opções:',
+    WELCOME_MENU_BUTTON_GROUPS[1]
+  );
 
   const now = new Date().toISOString();
   const { error } = await supabase.from('whatsapp_automation_sessions').upsert({

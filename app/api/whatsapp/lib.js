@@ -80,6 +80,10 @@ export function normalizeWaId(value) {
   return String(value || '').replace(/\D/g, '');
 }
 
+export function isMetaRateLimitCode(value) {
+  return Number(value) === 80008;
+}
+
 export function normalizeWhatsAppRecipient(value) {
   const raw = String(value || '').trim();
   if (raw.endsWith('@g.us') || raw.endsWith('@s.whatsapp.net')) return raw;

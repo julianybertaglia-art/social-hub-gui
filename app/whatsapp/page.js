@@ -14,6 +14,7 @@ const SMART_FILTERS = [
   { id: 'mentoria', label: 'Mentoria' },
   { id: 'argo', label: 'ARGO' },
   { id: 'treinamento', label: 'Treinamento' },
+  { id: 'influenciadores', label: 'Influenciadores' },
 ];
 
 function formatPhone(value) {
@@ -48,6 +49,7 @@ function matchesFilter(contact, filter) {
   if (filter === 'mentoria') return categories.includes('Mentoria');
   if (filter === 'argo') return categories.includes('ARGO');
   if (filter === 'treinamento') return categories.includes('Treinamento');
+  if (filter === 'influenciadores') return categories.includes('Influenciadores');
   return true;
 }
 
@@ -75,6 +77,7 @@ export default function WhatsAppPage() {
   const selected = contacts.find((contact) => contact.id === selectedId) || null;
   const isBaileys = status?.provider === 'baileys';
   const connectionReady = Boolean(status?.connected);
+  const checkingConnection = status === null;
   const bridgeWaiting = ['starting', 'connecting', 'reconnecting'].includes(status?.state);
 
   const loadStatus = useCallback(async () => {
@@ -241,7 +244,9 @@ export default function WhatsAppPage() {
         <div className={styles.connectionGroup}>
           <div className={styles.connection + ' ' + (connectionReady ? styles.online : styles.pending)}>
             <span />
-            {connectionReady
+            {checkingConnection
+              ? 'Verificando conexão...'
+              : connectionReady
               ? 'WhatsApp conectado'
               : isBaileys && status?.state === 'awaiting_qr'
                 ? 'Aguardando leitura do QR'
@@ -295,7 +300,7 @@ export default function WhatsAppPage() {
           </section>
         )
       ) : (
-        !status?.connected && (
+        status && !status.connected && (
           <section className={styles.setupCard}>
             <div>
               <span className={styles.eyebrow}>CONEXÃO OFICIAL META</span>
@@ -304,8 +309,8 @@ export default function WhatsAppPage() {
             </div>
             <div className={styles.bridgeSetup}>
               <strong>Conexão oficial pendente</strong>
-              <span>Conclua a autorização segura na janela da Meta.</span>
-              <Link href="/whatsapp/conectar" className={styles.bridgeAction}>Conectar pela Meta</Link>
+              <span>{status?.error || 'Conclua a autorização segura na janela da Meta.'}</span>
+              <Link href="/whatsapp/diagnostico" className={styles.bridgeAction}>Ver diagnóstico</Link>
             </div>
           </section>
         )

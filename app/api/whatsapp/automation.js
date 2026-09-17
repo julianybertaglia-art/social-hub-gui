@@ -1,4 +1,5 @@
 import {
+  sendWhatsAppCtaUrl,
   sendWhatsAppInteractiveList,
   sendWhatsAppText,
 } from './lib.js';
@@ -117,6 +118,17 @@ async function sendAndStoreText(supabase, contact, text) {
   return result;
 }
 
+async function sendAndStoreFormButton(supabase, contact, text, url) {
+  const result = await sendWhatsAppCtaUrl({
+    to: contact.wa_id,
+    body: text,
+    buttonText: 'Preencher formulário',
+    url,
+  });
+  await saveOutboundMessage(supabase, contact, result, text, 'interactive');
+  return result;
+}
+
 async function sendMainMenu(supabase, contact) {
   const body = 'Oi! Eu sou a Juliany, da equipe do Gui Nonato e da Vital Decor 👋\n\nPara eu te direcionar mais rápido, escolha abaixo o assunto que você quer falar:';
   const result = await sendWhatsAppInteractiveList({
@@ -179,8 +191,8 @@ async function selectTopic(supabase, contact, selectionId, origin) {
   if (selectionId === 'topic_influencer') {
     await tagContact(supabase, contact, 'Influenciador TikTok — Vital');
     const application = await influencerApplicationLink(supabase, contact, origin);
-    const text = 'Que legal ter você por aqui! 💛\n\nPara avaliarmos a parceria com a Vital Decor, preencha este formulário rápido. Ele leva cerca de 3 minutos:\n\n' + application.url + '\n\nDepois do envio, seu perfil entra automaticamente na nossa triagem.';
-    await sendAndStoreText(supabase, contact, text);
+    const text = 'Que legal ter você por aqui! 💛\n\nPara avaliarmos a parceria com a Vital Decor, preencha o formulário abaixo. Ele leva cerca de 3 minutos.\n\nDepois do envio, seu perfil entra automaticamente na nossa triagem.';
+    await sendAndStoreFormButton(supabase, contact, text, application.url);
     const { error } = await supabase.from('whatsapp_automation_sessions').upsert({
       contact_id: contact.id,
       current_topic: 'Influenciador TikTok — Vital',

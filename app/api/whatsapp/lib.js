@@ -305,6 +305,44 @@ export async function sendWhatsAppInteractiveList({ to, body, button, sections }
   });
 }
 
+export function buildWhatsAppCtaUrlMessage({ to, body, buttonText, url }) {
+  const safeBody = String(body || '').trim();
+  const safeButtonText = String(buttonText || '').trim();
+  let safeUrl;
+
+  try {
+    safeUrl = new URL(String(url || '').trim());
+  } catch {
+    throw new Error('O link do botão do WhatsApp é inválido.');
+  }
+
+  if (!safeBody || safeBody.length > 1024) throw new Error('O texto da mensagem do WhatsApp é inválido.');
+  if (!safeButtonText || safeButtonText.length > 20) throw new Error('O texto do botão do WhatsApp é inválido.');
+  if (safeUrl.protocol !== 'https:') throw new Error('O botão do WhatsApp precisa usar um link HTTPS.');
+
+  return {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: normalizeWaId(to),
+    type: 'interactive',
+    interactive: {
+      type: 'cta_url',
+      body: { text: safeBody },
+      action: {
+        name: 'cta_url',
+        parameters: {
+          display_text: safeButtonText,
+          url: safeUrl.toString(),
+        },
+      },
+    },
+  };
+}
+
+export async function sendWhatsAppCtaUrl(options) {
+  return postWhatsAppMessage(buildWhatsAppCtaUrlMessage(options));
+}
+
 export async function sendWhatsAppVoiceByUrl({ to, audioUrl }) {
   if (getWhatsAppProvider() === 'baileys') {
     let url;

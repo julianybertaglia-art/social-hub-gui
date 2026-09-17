@@ -10,9 +10,7 @@ export function formError(message, status = 400) {
 
 function cleanText(value, { min = 0, max = 500, label = 'campo' } = {}) {
   const text = String(value || '').trim().replace(/\s+/g, ' ');
-  if (text.length < min || text.length > max) {
-    throw formError(`Confira o ${label}.`, 400);
-  }
+  if (text.length < min || text.length > max) throw formError(`Confira o ${label}.`, 400);
   return text;
 }
 
@@ -20,9 +18,7 @@ function integer(value, { min = 0, max, label }) {
   const raw = String(value ?? '').trim();
   if (!/^\d+$/.test(raw)) throw formError(`Preencha ${label} usando apenas números.`, 400);
   const parsed = Number(raw);
-  if (!Number.isSafeInteger(parsed) || parsed < min || parsed > max) {
-    throw formError(`Confira ${label}.`, 400);
-  }
+  if (!Number.isSafeInteger(parsed) || parsed < min || parsed > max) throw formError(`Confira ${label}.`, 400);
   return parsed;
 }
 
@@ -72,12 +68,8 @@ export function validateInfluencerApplication(values) {
   if (!['yes', 'no'].includes(affiliateExperience) || !['yes', 'no'].includes(liveExperience)) {
     throw formError('Responda às perguntas sobre sua experiência.', 400);
   }
-  if (values.contentCommitment !== 'yes') {
-    throw formError('Confirme sua disponibilidade para produzir os conteúdos.', 400);
-  }
-  if (values.consent !== 'yes') {
-    throw formError('Autorize a análise dos dados para enviar sua inscrição.', 400);
-  }
+  if (values.contentCommitment !== 'yes') throw formError('Confirme sua disponibilidade para produzir os conteúdos.', 400);
+  if (values.consent !== 'yes') throw formError('Autorize a análise dos dados para enviar sua inscrição.', 400);
 
   const application = {
     publicToken,
@@ -96,18 +88,12 @@ export function validateInfluencerApplication(values) {
     affiliateExperience,
     liveExperience,
     contentCommitment: 'yes',
-    topVideoUrls: [values.topVideo1, values.topVideo2, values.topVideo3]
-      .map(optionalTikTokVideo)
-      .filter(Boolean),
-    motivation: cleanText(values.motivation, { min: 20, max: 1200, label: 'motivo da parceria' }),
+    topVideoUrls: [values.topVideo1, values.topVideo2, values.topVideo3].map(optionalTikTokVideo).filter(Boolean),
+    motivation: null,
   };
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(application.email)) {
-    throw formError('Informe um e-mail válido.', 400);
-  }
-  if (!application.topVideoUrls.length) {
-    throw formError('Envie pelo menos um vídeo do TikTok que represente seu conteúdo.', 400);
-  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(application.email)) throw formError('Informe um e-mail válido.', 400);
+  if (!application.topVideoUrls.length) throw formError('Envie pelo menos um vídeo do TikTok que represente seu conteúdo.', 400);
 
   return { ...application, ...calculateInfluencerScore(application) };
 }
@@ -166,7 +152,7 @@ export async function saveInfluencerApplication(db, values) {
     live_experience: values.liveExperience === 'yes',
     content_commitment: true,
     top_video_urls: values.topVideoUrls,
-    motivation: values.motivation,
+    motivation: null,
     score: values.score,
     score_breakdown: values.breakdown,
     qualification: values.classification,
@@ -179,10 +165,7 @@ export async function saveInfluencerApplication(db, values) {
   if (error) throw formError('Não foi possível salvar sua inscrição. Tente novamente.', 503);
 
   if (current.contact_id) {
-    const { data: contact } = await db.from('whatsapp_contacts')
-      .select('tags,notes')
-      .eq('id', current.contact_id)
-      .maybeSingle();
+    const { data: contact } = await db.from('whatsapp_contacts').select('tags,notes').eq('id', current.contact_id).maybeSingle();
     const label = INFLUENCER_CLASSIFICATIONS[values.classification]?.label || 'Revisar';
     const tags = Array.isArray(contact?.tags) ? contact.tags : [];
     const nextTags = [...new Set([...tags, 'Influenciador TikTok — Vital', `Influenciador — ${label}`])];
@@ -200,7 +183,7 @@ export async function saveInfluencerApplication(db, values) {
     }).eq('contact_id', current.contact_id);
   }
 
-  const confirmation = 'Recebi seu formulário! 💛 Agora nossa equipe vai analisar seu perfil e seus conteúdos. Se houver aderência com as campanhas da Vital Decor, falaremos com você por aqui.';
+  const confirmation = 'Recebi seu formulário! 💛 Agora nossa equipe vai analisar seu perfil e seus conteúdos. Se houver aderência com as campanhas da Vital Decor, entramos em contato.';
   try {
     const result = await sendWhatsAppText({ to: current.wa_id, text: confirmation });
     await saveConfirmationMessage(db, current, result, confirmation);

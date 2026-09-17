@@ -273,6 +273,38 @@ export async function sendWhatsAppText({ to, text }) {
   });
 }
 
+export async function sendWhatsAppInteractiveList({ to, body, button, sections }) {
+  const safeBody = String(body || '').trim();
+  const safeButton = String(button || '').trim();
+  const safeSections = Array.isArray(sections) ? sections.map((section) => ({
+    title: String(section?.title || '').trim().slice(0, 24),
+    rows: Array.isArray(section?.rows) ? section.rows.map((row) => ({
+      id: String(row?.id || '').trim().slice(0, 200),
+      title: String(row?.title || '').trim().slice(0, 24),
+      description: String(row?.description || '').trim().slice(0, 72),
+    })).filter((row) => row.id && row.title).slice(0, 10) : [],
+  })).filter((section) => section.rows.length).slice(0, 10) : [];
+
+  if (!safeBody || safeBody.length > 1024) throw new Error('O texto do menu do WhatsApp é inválido.');
+  if (!safeButton || safeButton.length > 20) throw new Error('O botão do menu do WhatsApp é inválido.');
+  if (!safeSections.length) throw new Error('O menu do WhatsApp precisa ter pelo menos uma opção.');
+
+  return postWhatsAppMessage({
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: normalizeWaId(to),
+    type: 'interactive',
+    interactive: {
+      type: 'list',
+      body: { text: safeBody },
+      action: {
+        button: safeButton,
+        sections: safeSections,
+      },
+    },
+  });
+}
+
 export async function sendWhatsAppVoiceByUrl({ to, audioUrl }) {
   if (getWhatsAppProvider() === 'baileys') {
     let url;

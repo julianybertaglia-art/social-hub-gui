@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { calculateInfluencerScore } from '../app/lib/influencer-scoring.js';
 import { buildWhatsAppCtaUrlMessage, isMetaRateLimitCode } from '../app/api/whatsapp/lib.js';
 import {
+  cameFromAd,
   interactiveSelectionId,
+  isReplyToBusiness,
   requestsMainMenu,
   shouldSendInitialMenu,
   WHATSAPP_MENU_ROWS,
@@ -31,7 +33,6 @@ const baseApplication = {
   topVideo1: 'https://www.tiktok.com/@criadora/video/123456789',
   topVideo2: '',
   topVideo3: '',
-  motivation: 'Quero mostrar transformações fáceis e reais usando os produtos da Vital Decor.',
   consent: 'yes',
 };
 
@@ -45,11 +46,41 @@ test('the WhatsApp list fits Meta limits and exposes the six requested topics', 
   assert.ok(WHATSAPP_MENU_ROWS.some((row) => row.id === 'topic_influencer'));
 });
 
-test('new conversations and explicit menu requests open the routing menu', () => {
-  assert.equal(shouldSendInitialMenu({ message: { text: { body: 'Oi' } }, messageCount: 1 }), true);
-  assert.equal(shouldSendInitialMenu({ message: { text: { body: 'MENU' } }, messageCount: 25 }), true);
-  assert.equal(shouldSendInitialMenu({ message: { text: { body: 'Já mandei os dados' } }, messageCount: 25 }), false);
+test('welcome menu is only sent on the first spontaneous contact', () => {
+  assert.equal(shouldSendInitialMenu({
+    message: { text: { body: 'Oi' } },
+    messageCount: 1,
+  }), true);
+
+  assert.equal(shouldSendInitialMenu({
+    message: {
+      text: { body: 'Olá! Tenho interesse e queria mais informações, por favor.' },
+      referral: { source_type: 'ad', ctwa_clid: 'abc123' },
+    },
+    messageCount: 1,
+  }), false);
+
+  assert.equal(shouldSendInitialMenu({
+    message: {
+      text: { body: 'Oi, tudo bem?' },
+      context: { id: 'wamid.outbound', from: '5511923990244' },
+    },
+    messageCount: 1,
+  }), false);
+
+  assert.equal(shouldSendInitialMenu({
+    message: { text: { body: 'Voltei' } },
+    messageCount: 2,
+  }), false);
+
+  assert.equal(cameFromAd({ referral: { source_type: 'ad' } }), true);
+  assert.equal(isReplyToBusiness({ context: { id: 'wamid.outbound' } }), true);
+});
+
+test('explicit menu requests remain available without being treated as a welcome', () => {
+  assert.equal(requestsMainMenu({ text: { body: 'MENU' } }), true);
   assert.equal(requestsMainMenu({ text: { body: 'começar' } }), true);
+  assert.equal(requestsMainMenu({ text: { body: 'Já mandei os dados' } }), false);
   assert.equal(interactiveSelectionId({ interactive: { list_reply: { id: 'topic_influencer' } } }), 'topic_influencer');
 });
 

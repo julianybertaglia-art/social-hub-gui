@@ -25,6 +25,10 @@ function withOfficialVitalBrand(markup) {
       '<div class="brand brand-logo"><img src="/vital-decor-logo.png" alt="Vital Decor"></div>'
     )
     .replace(
+      /<label class="full">Por que você quer criar conteúdo para a Vital Decor\?<textarea name="motivation"[^>]*>[\s\S]*?<\/textarea><\/label>/,
+      '<input type="hidden" name="motivation" value="Não informado (campo removido do formulário).">'
+    )
+    .replace(
       '</style>',
       '.brand-logo{display:inline-flex;align-items:center}.brand-logo img{display:block;width:190px;max-width:55vw;height:auto}</style>'
     );

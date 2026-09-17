@@ -37,6 +37,30 @@ export const WHATSAPP_MENU_ROWS = [
   },
 ];
 
+export const AD_IMERSAO_ROWS = [
+  {
+    id: 'ad_imersao_seller',
+    title: 'Já vendo',
+    description: 'Já vendo no Mercado Livre',
+  },
+  {
+    id: 'ad_imersao_beginner',
+    title: 'Ainda não vendo',
+    description: 'Ainda estou começando',
+  },
+];
+
+const AD_IMERSAO_RESPONSES = {
+  ad_imersao_seller: {
+    tag: 'Imersão: Já vende',
+    text: 'Perfeito! A Imersão é bem prática e foi pensada para quem quer profissionalizar a operação e crescer no Mercado Livre.\n\nDurante o dia, o Gui vai falar sobre operação, anúncios, análise de mercado, importação, margem, escala e estratégias que ele aplica nas próprias operações e com os mentorados.\n\nQuais são seus principais objetivos e desafios hoje?',
+  },
+  ad_imersao_beginner: {
+    tag: 'Imersão: Iniciante',
+    text: 'Perfeito! Mesmo para quem ainda não vende, a Imersão vai te ajudar a entender como o Mercado Livre funciona na prática e quais são os primeiros passos.\n\nAlém disso, você recebe acesso ao Destravando o Mercado Livre, pensado para quem está começando.\n\nVocê já tem algum conhecimento nessa área ou seria seu primeiro contato com esse mercado?',
+  },
+};
+
 const TOPICS = {
   topic_imersao: {
     topic: 'Imersão',
@@ -95,6 +119,10 @@ export function cameFromAd(message) {
 
 export function isReplyToBusiness(message) {
   return Boolean(message?.context?.id || message?.context?.from);
+}
+
+export function isAdImersaoSelection(selectionId) {
+  return Object.prototype.hasOwnProperty.call(AD_IMERSAO_RESPONSES, String(selectionId || ''));
 }
 
 export function shouldSendInitialMenu({ message, messageCount }) {
@@ -164,6 +192,68 @@ async function sendMainMenu(supabase, contact, { welcome = true } = {}) {
     updated_at: now,
   }, { onConflict: 'contact_id' });
   if (error) throw error;
+}
+
+async function sendAdImersaoQualification(supabase, contact) {
+  const body = 'Oi! Tudo bem? 😊\nEu sou a Juliany, da equipe do Gui Nonato. Vi que você veio pelo anúncio da Imersão Ecommerce.\n\nPra eu conseguir te orientar melhor, me conta: você já vende no Mercado Livre ou ainda está começando?';
+  const result = await sendWhatsAppInteractiveList({
+    to: contact.wa_id,
+    body,
+    button: 'Selecionar opção',
+    sections: [{ title: 'Seu momento hoje', rows: AD_IMERSAO_ROWS }],
+  });
+  await saveOutboundMessage(supabase, contact, result, body, 'interactive');
+  await tagContact(supabase, contact, 'Interesse — Imersão');
+
+  const now = new Date().toISOString();
+  const { error } = await supabase.from('whatsapp_automation_sessions').upsert({
+    contact_id: contact.id,
+    current_topic: 'Imersão',
+    state: 'ad_imersao_waiting_profile',
+    last_interaction_at: now,
+    updated_at: now,
+  }, { onConflict: 'contact_id' });
+  if (error) throw error;
+}
+
+async function getAutomationSession(supabase, contactId) {
+  const { data, error } = await supabase.from('whatsapp_automation_sessions')
+    .select('contact_id,current_topic,state,last_interaction_at')
+    .eq('contact_id', contactId)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+async function handleAdImersaoSelection(supabase, contact, selectionId) {
+  const response = AD_IMERSAO_RESPONSES[selectionId];
+  if (!response) return false;
+
+  const session = await getAutomationSession(supabase, contact.id);
+  if (session?.state !== 'ad_imersao_waiting_profile') return false;
+
+  await tagContact(supabase, contact, response.tag);
+  await tagContact(supabase, contact, 'Aguardando atendimento');
+  await sendAndStoreText(supabase, contact, response.text);
+
+  const now = new Date().toISOString();
+  const { error: contactError } = await supabase.from('whatsapp_contacts')
+    .update({
+      stage: 'Aguardando atendimento',
+      updated_at: now,
+    })
+    .eq('id', contact.id);
+  if (contactError) throw contactError;
+
+  const { error: sessionError } = await supabase.from('whatsapp_automation_sessions').upsert({
+    contact_id: contact.id,
+    current_topic: 'Imersão',
+    state: 'awaiting_human',
+    last_interaction_at: now,
+    updated_at: now,
+  }, { onConflict: 'contact_id' });
+  if (sessionError) throw sessionError;
+  return true;
 }
 
 async function tagContact(supabase, contact, tag) {
@@ -266,6 +356,12 @@ export async function processWhatsAppAutomation(supabase, {
 
   try {
     const selectionId = interactiveSelectionId(message);
+
+    if (isAdImersaoSelection(selectionId) && await handleAdImersaoSelection(supabase, contact, selectionId)) {
+      await finishEvent(supabase, messageId, 'processed');
+      return { handled: true, action: selectionId };
+    }
+
     if (selectionId && await selectTopic(supabase, contact, selectionId, origin)) {
       await finishEvent(supabase, messageId, 'processed');
       return { handled: true, action: selectionId };
@@ -275,6 +371,12 @@ export async function processWhatsAppAutomation(supabase, {
       .select('id', { count: 'exact', head: true })
       .eq('contact_id', contact.id);
     if (countError) throw countError;
+
+    if (cameFromAd(message)) {
+      await sendAdImersaoQualification(supabase, contact);
+      await finishEvent(supabase, messageId, 'processed');
+      return { handled: true, action: 'ad_imersao_qualification' };
+    }
 
     if (requestsMainMenu(message)) {
       await sendMainMenu(supabase, contact, { welcome: false });

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateInfluencerScore } from '../app/lib/influencer-scoring.js';
-import { buildWhatsAppCtaUrlMessage } from '../app/api/whatsapp/lib.js';
+import { buildWhatsAppCtaUrlMessage, isMetaRateLimitCode } from '../app/api/whatsapp/lib.js';
 import {
   interactiveSelectionId,
   requestsMainMenu,
@@ -66,6 +66,12 @@ test('the influencer form is sent behind a clean WhatsApp button', () => {
   assert.equal(payload.interactive.action.parameters.display_text, 'Preencher formulário');
   assert.match(payload.interactive.action.parameters.url, /^https:\/\/social-hub-gui\.vercel\.app\//);
   assert.doesNotMatch(payload.interactive.body.text, /https?:\/\//);
+});
+
+test('a temporary Meta rate limit is not mistaken for an expired credential', () => {
+  assert.equal(isMetaRateLimitCode(80008), true);
+  assert.equal(isMetaRateLimitCode('80008'), true);
+  assert.equal(isMetaRateLimitCode(190), false);
 });
 
 test('engaged niche creators rank above large but weak profiles', () => {

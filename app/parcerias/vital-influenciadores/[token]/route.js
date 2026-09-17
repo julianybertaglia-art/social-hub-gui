@@ -122,7 +122,9 @@ export async function POST(request, context) {
   const action = actionPath(token);
   const origin = request.headers.get('origin');
 
-  if ((origin && origin !== new URL(request.url).origin) || request.headers.get('sec-fetch-site') === 'cross-site') {
+  // Mantém a checagem de origem, mas não usa Sec-Fetch-Site como bloqueio isolado,
+  // porque WebViews do WhatsApp podem reportar esse cabeçalho de forma inconsistente.
+  if (origin && origin !== 'null' && origin !== new URL(request.url).origin) {
     return invalidLinkResponse();
   }
 
@@ -135,7 +137,6 @@ export async function POST(request, context) {
     values = await boundedForm(request);
     if (values.company_site) return html({ success: true }, 200, action);
 
-    // O token válido vem da própria URL individual, não de um campo escondido do navegador.
     values.token = token;
 
     const application = validateInfluencerApplication(values);

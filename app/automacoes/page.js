@@ -221,9 +221,9 @@ export default function AutomacoesPage() {
     <main className={styles.page}>
       <header className={styles.header}>
         <div>
-          <span className={styles.eyebrow}>INSTAGRAM · @GUI_NONATO</span>
+          <span className={styles.eyebrow}>INSTAGRAM + WHATSAPP</span>
           <h1>Automações</h1>
-          <p>O Argo começa no Direct, com áudio e três opções. Abaixo, gerencie também as respostas automáticas por comentário.</p>
+          <p>Gerencie os fluxos automáticos do Instagram e do atendimento oficial pelo WhatsApp.</p>
         </div>
         <Link className={styles.backButton} href="/">← Voltar ao Hub</Link>
       </header>
@@ -244,6 +244,27 @@ export default function AutomacoesPage() {
           <strong>{connected === null ? 'Verificando' : connected ? 'Conectado' : 'Atenção'}</strong>
           <small>{connected ? 'Webhook oficial da Meta ativo' : 'Salve as regras para reparar a conexão'}</small>
         </article>
+      </section>
+
+      <section className={styles.whatsappAutomation}>
+        <div>
+          <span className={styles.eyebrow}>WHATSAPP · VITAL DECOR</span>
+          <h2>Menu de atendimento e triagem de influenciadores</h2>
+          <p>Todo novo contato escolhe o assunto. Criadores do TikTok recebem o formulário, são pontuados automaticamente e entram na fila por aderência.</p>
+          <div className={styles.whatsappTopics} aria-label="Assuntos do menu automático">
+            <span>Imersão</span>
+            <span>Mercado Livre</span>
+            <span>Importação</span>
+            <span>Mentoria</span>
+            <span>Afiliado TikTok Vital</span>
+            <span>Outro assunto</span>
+          </div>
+        </div>
+        <div className={styles.whatsappActions}>
+          <strong><i aria-hidden="true" /> Automação ativa</strong>
+          <Link href="/whatsapp/influenciadores">Ver influenciadores</Link>
+          <Link href="/whatsapp">Abrir conversas</Link>
+        </div>
       </section>
 
       <ArgoAudioAutomation />

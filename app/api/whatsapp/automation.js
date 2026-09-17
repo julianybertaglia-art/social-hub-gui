@@ -3,6 +3,7 @@ import {
   sendWhatsAppInteractiveList,
   sendWhatsAppText,
 } from './lib.js';
+import { sendWhatsAppReplyButtons } from './reply-buttons.js';
 
 export const WHATSAPP_MENU_ROWS = [
   {
@@ -48,6 +49,11 @@ export const AD_IMERSAO_ROWS = [
     title: 'Ainda não vendo',
     description: 'Ainda estou começando',
   },
+];
+
+export const AD_IMERSAO_NEXT_ACTIONS = [
+  { id: 'ad_imersao_buy', title: 'Garantir ingresso' },
+  { id: 'ad_imersao_question', title: 'Tirar uma dúvida' },
 ];
 
 const AD_IMERSAO_RESPONSES = {
@@ -125,6 +131,10 @@ export function isAdImersaoSelection(selectionId) {
   return Object.prototype.hasOwnProperty.call(AD_IMERSAO_RESPONSES, String(selectionId || ''));
 }
 
+export function isAdImersaoNextAction(selectionId) {
+  return AD_IMERSAO_NEXT_ACTIONS.some((item) => item.id === String(selectionId || ''));
+}
+
 export function shouldSendInitialMenu({ message, messageCount }) {
   if (interactiveSelectionId(message)) return false;
   if (Number(messageCount) !== 1) return false;
@@ -156,6 +166,16 @@ async function saveOutboundMessage(supabase, contact, result, body, messageType)
 async function sendAndStoreText(supabase, contact, text) {
   const result = await sendWhatsAppText({ to: contact.wa_id, text });
   await saveOutboundMessage(supabase, contact, result, text, 'text');
+  return result;
+}
+
+async function sendAndStoreReplyButtons(supabase, contact, text, buttons) {
+  const result = await sendWhatsAppReplyButtons({
+    to: contact.wa_id,
+    body: text,
+    buttons,
+  });
+  await saveOutboundMessage(supabase, contact, result, text, 'interactive');
   return result;
 }
 
@@ -225,18 +245,10 @@ async function getAutomationSession(supabase, contactId) {
   return data || null;
 }
 
-async function handleAdImersaoSelection(supabase, contact, selectionId) {
-  const response = AD_IMERSAO_RESPONSES[selectionId];
-  if (!response) return false;
-
-  const session = await getAutomationSession(supabase, contact.id);
-  if (session?.state !== 'ad_imersao_waiting_profile') return false;
-
-  await tagContact(supabase, contact, response.tag);
-  await tagContact(supabase, contact, 'Aguardando atendimento');
-  await sendAndStoreText(supabase, contact, response.text);
-
+async function markAwaitingHuman(supabase, contact) {
   const now = new Date().toISOString();
+  await tagContact(supabase, contact, 'Aguardando atendimento');
+
   const { error: contactError } = await supabase.from('whatsapp_contacts')
     .update({
       stage: 'Aguardando atendimento',
@@ -253,7 +265,71 @@ async function handleAdImersaoSelection(supabase, contact, selectionId) {
     updated_at: now,
   }, { onConflict: 'contact_id' });
   if (sessionError) throw sessionError;
+}
+
+async function handleAdImersaoSelection(supabase, contact, selectionId) {
+  const response = AD_IMERSAO_RESPONSES[selectionId];
+  if (!response) return false;
+
+  const session = await getAutomationSession(supabase, contact.id);
+  if (session?.state !== 'ad_imersao_waiting_profile') return false;
+
+  await tagContact(supabase, contact, response.tag);
+  await sendAndStoreReplyButtons(
+    supabase,
+    contact,
+    response.text + '\n\nSe preferir, você também pode escolher uma das opções abaixo.',
+    AD_IMERSAO_NEXT_ACTIONS
+  );
+
+  const now = new Date().toISOString();
+  const { error } = await supabase.from('whatsapp_automation_sessions').upsert({
+    contact_id: contact.id,
+    current_topic: 'Imersão',
+    state: 'ad_imersao_waiting_next_action',
+    last_interaction_at: now,
+    updated_at: now,
+  }, { onConflict: 'contact_id' });
+  if (error) throw error;
   return true;
+}
+
+async function handleAdImersaoNextAction(supabase, contact, selectionId) {
+  if (!isAdImersaoNextAction(selectionId)) return false;
+
+  const session = await getAutomationSession(supabase, contact.id);
+  if (session?.state !== 'ad_imersao_waiting_next_action') return false;
+
+  if (selectionId === 'ad_imersao_buy') {
+    const text = 'Perfeito! 😊 Você pode garantir seu ingresso por aqui:';
+    const result = await sendWhatsAppCtaUrl({
+      to: contact.wa_id,
+      body: text,
+      buttonText: 'Garantir ingresso',
+      url: 'https://imersao.guinonato.com/',
+    });
+    await saveOutboundMessage(supabase, contact, result, text, 'interactive');
+    await tagContact(supabase, contact, 'Link de ingresso enviado');
+
+    const now = new Date().toISOString();
+    const { error } = await supabase.from('whatsapp_automation_sessions').upsert({
+      contact_id: contact.id,
+      current_topic: 'Imersão',
+      state: 'purchase_link_sent',
+      last_interaction_at: now,
+      updated_at: now,
+    }, { onConflict: 'contact_id' });
+    if (error) throw error;
+    return true;
+  }
+
+  if (selectionId === 'ad_imersao_question') {
+    await sendAndStoreText(supabase, contact, 'Claro! Pode me contar sua dúvida por aqui 😊');
+    await markAwaitingHuman(supabase, contact);
+    return true;
+  }
+
+  return false;
 }
 
 async function tagContact(supabase, contact, tag) {
@@ -357,6 +433,11 @@ export async function processWhatsAppAutomation(supabase, {
   try {
     const selectionId = interactiveSelectionId(message);
 
+    if (isAdImersaoNextAction(selectionId) && await handleAdImersaoNextAction(supabase, contact, selectionId)) {
+      await finishEvent(supabase, messageId, 'processed');
+      return { handled: true, action: selectionId };
+    }
+
     if (isAdImersaoSelection(selectionId) && await handleAdImersaoSelection(supabase, contact, selectionId)) {
       await finishEvent(supabase, messageId, 'processed');
       return { handled: true, action: selectionId };
@@ -371,6 +452,13 @@ export async function processWhatsAppAutomation(supabase, {
       .select('id', { count: 'exact', head: true })
       .eq('contact_id', contact.id);
     if (countError) throw countError;
+
+    const session = await getAutomationSession(supabase, contact.id);
+    if (session?.state === 'ad_imersao_waiting_next_action' && message?.type === 'text') {
+      await markAwaitingHuman(supabase, contact);
+      await finishEvent(supabase, messageId, 'processed');
+      return { handled: true, action: 'ad_imersao_human_answer' };
+    }
 
     if (cameFromAd(message)) {
       await sendAdImersaoQualification(supabase, contact);

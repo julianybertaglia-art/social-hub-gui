@@ -10,6 +10,7 @@ import {
   isReplyToBusiness,
   requestsMainMenu,
   shouldSendInitialMenu,
+  WELCOME_MENU_BUTTON_GROUPS,
   WHATSAPP_MENU_ROWS,
 } from '../app/api/whatsapp/automation.js';
 import { influencerFormHtml } from '../app/parcerias/vital-influenciadores/html.js';
@@ -46,6 +47,21 @@ test('the WhatsApp list fits Meta limits and exposes the six requested topics', 
     assert.ok(row.description.length <= 72, row.description);
   }
   assert.ok(WHATSAPP_MENU_ROWS.some((row) => row.id === 'topic_influencer'));
+});
+
+test('welcome options are exposed as two groups of visible reply buttons', () => {
+  assert.equal(WELCOME_MENU_BUTTON_GROUPS.length, 2);
+  const buttons = WELCOME_MENU_BUTTON_GROUPS.flat();
+  assert.equal(buttons.length, 6);
+  assert.equal(new Set(buttons.map((button) => button.id)).size, 6);
+  assert.deepEqual(
+    new Set(buttons.map((button) => button.id)),
+    new Set(WHATSAPP_MENU_ROWS.map((row) => row.id))
+  );
+  for (const group of WELCOME_MENU_BUTTON_GROUPS) {
+    assert.ok(group.length <= 3);
+    for (const button of group) assert.ok(button.title.length <= 20, button.title);
+  }
 });
 
 test('welcome menu is only sent on the first spontaneous contact', () => {
@@ -99,6 +115,7 @@ test('explicit menu requests remain available without being treated as a welcome
   assert.equal(requestsMainMenu({ text: { body: 'começar' } }), true);
   assert.equal(requestsMainMenu({ text: { body: 'Já mandei os dados' } }), false);
   assert.equal(interactiveSelectionId({ interactive: { list_reply: { id: 'topic_influencer' } } }), 'topic_influencer');
+  assert.equal(interactiveSelectionId({ interactive: { button_reply: { id: 'topic_imersao' } } }), 'topic_imersao');
 });
 
 test('the influencer form is sent behind a clean WhatsApp button', () => {

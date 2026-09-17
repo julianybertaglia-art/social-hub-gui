@@ -28,6 +28,7 @@ function enrichContact(contact, recentMessages = []) {
   if (includesAny(corpus, ['argo', 'argoplace'])) categories.push('ARGO');
   if (includesAny(corpus, ['treinamento', 'curso', 'renda livre', 'destravando'])) categories.push('Treinamento');
   if (includesAny(corpus, ['importacao', 'importar', 'alibaba', 'fornecedor'])) categories.push('Importação');
+  if (includesAny(corpus, ['influenciador', 'criador', 'afiliado tiktok', 'tiktok vital'])) categories.push('Influenciadores');
 
   const stage = normalizeText(contact.stage);
   const actionable = !includesAny(stage, ['venda', 'perdido']);

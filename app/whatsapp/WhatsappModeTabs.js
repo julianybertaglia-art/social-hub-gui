@@ -5,7 +5,9 @@ import { usePathname } from 'next/navigation';
 
 export default function WhatsappModeTabs() {
   const pathname = usePathname();
-  const gato = pathname.startsWith('/whatsapp/gato');
+  const influencers = pathname.startsWith('/whatsapp/influenciadores');
+  const diagnostics = pathname.startsWith('/whatsapp/diagnostico');
+  const crm = !influencers && !diagnostics;
 
   const wrap = {
     width: 'min(1440px, calc(100% - 32px))',
@@ -32,8 +34,9 @@ export default function WhatsappModeTabs() {
 
   return (
     <nav style={wrap} aria-label="Modos do WhatsApp">
-      <Link href="/whatsapp" style={tab(!gato)}>WhatsApp Meta</Link>
-      <Link href="/whatsapp/gato" style={tab(gato)}>WhatsApp Gato</Link>
+      <Link href="/whatsapp" style={tab(crm)}>Conversas</Link>
+      <Link href="/whatsapp/influenciadores" style={tab(influencers)}>Influenciadores</Link>
+      <Link href="/whatsapp/diagnostico" style={tab(diagnostics)}>Conexão Meta</Link>
     </nav>
   );
 }

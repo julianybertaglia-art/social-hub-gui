@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import { calculateInfluencerScore } from '../app/lib/influencer-scoring.js';
 import { buildWhatsAppCtaUrlMessage, isMetaRateLimitCode } from '../app/api/whatsapp/lib.js';
 import {
+  AD_IMERSAO_ROWS,
   cameFromAd,
   interactiveSelectionId,
+  isAdImersaoSelection,
   isReplyToBusiness,
   requestsMainMenu,
   shouldSendInitialMenu,
@@ -75,6 +77,21 @@ test('welcome menu is only sent on the first spontaneous contact', () => {
 
   assert.equal(cameFromAd({ referral: { source_type: 'ad' } }), true);
   assert.equal(isReplyToBusiness({ context: { id: 'wamid.outbound' } }), true);
+});
+
+test('Meta ad leads receive only the Imersao qualification choices', () => {
+  assert.deepEqual(AD_IMERSAO_ROWS.map((row) => row.id), [
+    'ad_imersao_seller',
+    'ad_imersao_beginner',
+  ]);
+  assert.equal(AD_IMERSAO_ROWS[0].title, 'Já vendo');
+  assert.equal(AD_IMERSAO_ROWS[1].title, 'Ainda não vendo');
+  assert.equal(isAdImersaoSelection('ad_imersao_seller'), true);
+  assert.equal(isAdImersaoSelection('ad_imersao_beginner'), true);
+  assert.equal(isAdImersaoSelection('topic_imersao'), false);
+  assert.equal(interactiveSelectionId({
+    interactive: { list_reply: { id: 'ad_imersao_seller' } },
+  }), 'ad_imersao_seller');
 });
 
 test('explicit menu requests remain available without being treated as a welcome', () => {

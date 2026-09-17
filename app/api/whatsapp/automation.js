@@ -41,7 +41,7 @@ const TOPICS = {
   topic_imersao: {
     topic: 'Imersão',
     tag: 'Interesse — Imersão',
-    text: 'Perfeito! Para conhecer a próxima Imersão Ecommerce, ver todos os conteúdos e garantir seu ingresso, acesse: https://imersao.guinonato.com/\n\nSe ficou alguma dúvida, pode escrever por aqui.',
+    text: 'Claro! A Imersão Ecommerce Mercado Livre Pro acontece no dia 26/09, no Tatuapé, em São Paulo. É um dia inteiro com o Gui, focado em operação e escala, análise de mercado, importação, estratégias para Mercado Livre e networking.\n\nAntes de eu te passar o ingresso, me conta: você já vende no Mercado Livre hoje ou ainda está começando?',
   },
   topic_mercado_livre: {
     topic: 'Mercado Livre',
@@ -87,9 +87,22 @@ export function requestsMainMenu(message) {
   return ['menu', 'inicio', 'iniciar', 'comecar', 'atendimento'].includes(text);
 }
 
+export function cameFromAd(message) {
+  return Boolean(message?.referral)
+    || normalizeText(message?.referral?.source_type) === 'ad'
+    || Boolean(message?.referral?.ctwa_clid);
+}
+
+export function isReplyToBusiness(message) {
+  return Boolean(message?.context?.id || message?.context?.from);
+}
+
 export function shouldSendInitialMenu({ message, messageCount }) {
   if (interactiveSelectionId(message)) return false;
-  return requestsMainMenu(message) || Number(messageCount) <= 1;
+  if (Number(messageCount) !== 1) return false;
+  if (cameFromAd(message)) return false;
+  if (isReplyToBusiness(message)) return false;
+  return true;
 }
 
 async function saveOutboundMessage(supabase, contact, result, body, messageType) {
@@ -129,8 +142,11 @@ async function sendAndStoreFormButton(supabase, contact, text, url) {
   return result;
 }
 
-async function sendMainMenu(supabase, contact) {
-  const body = 'Oi! Eu sou a Juliany, da equipe do Gui Nonato e da Vital Decor 👋\n\nPara eu te direcionar mais rápido, escolha abaixo o assunto que você quer falar:';
+async function sendMainMenu(supabase, contact, { welcome = true } = {}) {
+  const body = welcome
+    ? 'Oi! Eu sou a Juliany, da equipe do Gui Nonato e da Vital Decor 👋\n\nPara eu te direcionar mais rápido, escolha abaixo o assunto que você quer falar:'
+    : 'Claro! Escolha abaixo o assunto que você quer falar:';
+
   const result = await sendWhatsAppInteractiveList({
     to: contact.wa_id,
     body,
@@ -260,10 +276,16 @@ export async function processWhatsAppAutomation(supabase, {
       .eq('contact_id', contact.id);
     if (countError) throw countError;
 
-    if (shouldSendInitialMenu({ message, messageCount: count })) {
-      await sendMainMenu(supabase, contact);
+    if (requestsMainMenu(message)) {
+      await sendMainMenu(supabase, contact, { welcome: false });
       await finishEvent(supabase, messageId, 'processed');
-      return { handled: true, action: 'menu' };
+      return { handled: true, action: 'menu_requested' };
+    }
+
+    if (shouldSendInitialMenu({ message, messageCount: count })) {
+      await sendMainMenu(supabase, contact, { welcome: true });
+      await finishEvent(supabase, messageId, 'processed');
+      return { handled: true, action: 'welcome_menu' };
     }
 
     await finishEvent(supabase, messageId, 'ignored');

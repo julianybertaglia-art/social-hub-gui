@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateInfluencerScore } from '../app/lib/influencer-scoring.js';
+import { buildWhatsAppCtaUrlMessage } from '../app/api/whatsapp/lib.js';
 import {
   interactiveSelectionId,
   requestsMainMenu,
@@ -50,6 +51,21 @@ test('new conversations and explicit menu requests open the routing menu', () =>
   assert.equal(shouldSendInitialMenu({ message: { text: { body: 'Já mandei os dados' } }, messageCount: 25 }), false);
   assert.equal(requestsMainMenu({ text: { body: 'começar' } }), true);
   assert.equal(interactiveSelectionId({ interactive: { list_reply: { id: 'topic_influencer' } } }), 'topic_influencer');
+});
+
+test('the influencer form is sent behind a clean WhatsApp button', () => {
+  const payload = buildWhatsAppCtaUrlMessage({
+    to: '+55 (11) 99999-9999',
+    body: 'Preencha o formulário abaixo.',
+    buttonText: 'Preencher formulário',
+    url: 'https://social-hub-gui.vercel.app/parcerias/vital-influenciadores?token=11111111-1111-4111-8111-111111111111',
+  });
+
+  assert.equal(payload.type, 'interactive');
+  assert.equal(payload.interactive.type, 'cta_url');
+  assert.equal(payload.interactive.action.parameters.display_text, 'Preencher formulário');
+  assert.match(payload.interactive.action.parameters.url, /^https:\/\/social-hub-gui\.vercel\.app\//);
+  assert.doesNotMatch(payload.interactive.body.text, /https?:\/\//);
 });
 
 test('engaged niche creators rank above large but weak profiles', () => {

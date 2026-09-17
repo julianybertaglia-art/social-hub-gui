@@ -96,7 +96,7 @@ async function boundedForm(request) {
 
 export async function POST(request) {
   const origin = request.headers.get('origin');
-  if ((origin && origin !== new URL(request.url).origin) || request.headers.get('sec-fetch-site') === 'cross-site') {
+  if (origin && origin !== 'null' && origin !== new URL(request.url).origin) {
     return invalidLinkResponse();
   }
 

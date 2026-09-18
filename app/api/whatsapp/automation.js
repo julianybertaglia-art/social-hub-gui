@@ -13,8 +13,8 @@ export const WHATSAPP_MENU_ROWS = [
   },
   {
     id: 'topic_mercado_livre',
-    title: 'Mercado Livre',
-    description: 'Quero começar a vender online',
+    title: 'Quero aprender a vender',
+    description: 'no Mercado Livre',
   },
   {
     id: 'topic_importacao',
@@ -23,8 +23,8 @@ export const WHATSAPP_MENU_ROWS = [
   },
   {
     id: 'topic_mentoria',
-    title: 'Aplicação Mentoria',
-    description: 'Já vendo online e quero saber sobre a mentoria',
+    title: 'Já vendo e quero saber',
+    description: 'sobre a mentoria',
   },
   {
     id: 'topic_influencer',

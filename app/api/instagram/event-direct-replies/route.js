@@ -26,10 +26,7 @@ function targetFor(profile, latestInbound) {
   if (name === 'renata dilys' || username === 'renata dilys') return 'want';
   if (name === 'clarissa simara' || username === 'clarissa simara') return 'date';
 
-  // Fallbacks restricted to the exact inbox snippets shown by the owner.
-  if (text.startsWith('gostaria de saber mais informacoes sobre')) return 'info';
-  if (text === 'eu quero') return 'want';
-  if (text.startsWith('tera outra data')) return 'date';
+  // Only the three explicitly approved recipients may receive this message.
 
   return null;
 }

@@ -56,7 +56,7 @@ async function participantProfile(participant) {
 async function scanTargets() {
   const identity = await instagramIdentity();
   const payload = await metaRequest(
-    `${identity.accountId}/conversations?fields=id,participants,updated_time&limit=50`
+    `${identity.accountId}/conversations?fields=id,participants{id,username,name},updated_time&limit=50`
   );
   const conversations = payload?.data || [];
 

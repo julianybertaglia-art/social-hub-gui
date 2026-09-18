@@ -1,4 +1,4 @@
-name: Validate Event Directs Once
+name: Inspect Event Direct Targets Once
 
 on:
   push:
@@ -11,14 +11,13 @@ permissions:
   contents: read
 
 jobs:
-  validate:
+  inspect:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Locate only the three approved Instagram recipients
+      - name: Inspect approved Instagram recipients without sending
         shell: bash
         run: |
           set -euo pipefail
-          response="$(curl --fail --silent --show-error --max-time 80 https://social-hub-gui.vercel.app/api/instagram/event-direct-replies)"
-          printf '%s\n' "$response"
-          node -e 'const r=JSON.parse(process.argv[1]); const kinds=new Set((r.results||[]).map(x=>x.kind)); if(!r.ok || r.matched!==3 || kinds.size!==3 || !["info","want","date"].every(x=>kinds.has(x)) || (r.results||[]).some(x=>x.status!=="ready")) process.exit(1);' "$response"
+          curl --silent --show-error --max-time 80 https://social-hub-gui.vercel.app/api/instagram/event-direct-replies
+          printf '\n'

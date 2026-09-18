@@ -1,0 +1,24 @@
+name: Send Event Directs Once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/send-event-directs-once.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Send only the three approved Instagram replies
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error --max-time 80 https://social-hub-gui.vercel.app/api/instagram/event-direct-replies)"
+          printf '%s\n' "$response"
+          node -e 'const r=JSON.parse(process.argv[1]); if(!r.ok || r.matched !== 3 || !Array.isArray(r.results)) process.exit(1); const allowed=new Set(["thami__mayara","renata dilys","clarissa simara"]); if(r.results.some(x=>!allowed.has(String(x.user||"").toLowerCase()))) process.exit(2);' "$response"

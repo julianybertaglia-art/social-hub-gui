@@ -111,7 +111,7 @@ async function recordResult(request, body, supabase) {
 
   const { data: row, error } = await supabase
     .from('whatsapp_outbound_queue')
-    .select('id,contact_id,message_type,segment,batch_key,status')
+    .select('id,contact_id,message_type,segment,batch_key,text_body,status')
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
@@ -137,7 +137,9 @@ async function recordResult(request, body, supabase) {
   const tags = Array.isArray(contact.tags) ? contact.tags : [];
   const sentTag = row.message_type === 'audio'
     ? 'Áudio Gui enviado · seleção recente 10/09'
-    : 'Follow-up recente enviado · 10/09';
+    : row.batch_key?.startsWith('lp-imersao-reativacao-')
+      ? 'LP Imersão enviada'
+      : 'Follow-up recente enviado · 10/09';
   const nextTags = tags.includes(sentTag) ? tags : [...tags, sentTag];
 
   if (messageId) {
@@ -146,9 +148,16 @@ async function recordResult(request, body, supabase) {
       contact_id: contact.id,
       direction: 'outbound',
       message_type: row.message_type,
-      body: row.message_type === 'audio' ? '🎙️ Áudio do Gui · seleção recente 10/09' : 'Follow-up enviado pelo Hub',
+      body: row.message_type === 'audio'
+        ? '🎙️ Áudio do Gui · seleção recente 10/09'
+        : (row.text_body || 'Follow-up enviado pelo Hub'),
       status: 'sent',
-      raw_payload: { source: 'railway_outbound_queue', batch_key: row.batch_key, segment: row.segment || null },
+      raw_payload: {
+        source: 'railway_outbound_queue',
+        provider: 'gato',
+        batch_key: row.batch_key,
+        segment: row.segment || null,
+      },
       sent_at: now,
     }, { onConflict: 'meta_message_id', ignoreDuplicates: true });
   }

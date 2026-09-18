@@ -214,15 +214,22 @@ async function sendMainMenu(supabase, contact, { welcome = true } = {}) {
   if (error) throw error;
 }
 
-async function sendAdImersaoLanding(supabase, contact) {
+async function sendImersaoLanding(supabase, contact, { source = 'ad' } = {}) {
   const tags = Array.isArray(contact.tags) ? contact.tags : [];
   const session = await getAutomationSession(supabase, contact.id);
 
-  if (tags.includes('LP Imersão enviada') || session?.state === 'ad_imersao_lp_sent') {
+  if (
+    tags.includes('LP Imersão enviada')
+    || session?.state === 'imersao_lp_sent'
+    || session?.state === 'ad_imersao_lp_sent'
+  ) {
     return { sent: false, alreadySent: true };
   }
 
-  const body = 'Oi! Eu sou a Juliany, da equipe do Gui Nonato 👋\n\nVi que você veio pelo anúncio da Imersão Ecommerce.\n\nPara facilitar, deixei aqui a página com todas as informações do evento e os ingressos.\n\nSe ficar qualquer dúvida, pode me chamar por aqui. 😊';
+  const body = source === 'ad'
+    ? 'Oi! Eu sou a Juliany, da equipe do Gui Nonato 👋\n\nVi que você veio pelo anúncio da Imersão Ecommerce.\n\nPara facilitar, deixei aqui a página com todas as informações do evento e os ingressos.\n\nSe ficar qualquer dúvida, pode me chamar por aqui. 😊'
+    : 'Perfeito! 😊\n\nPara facilitar, deixei aqui a página da Imersão Ecommerce com todas as informações do evento e os ingressos.\n\nSe ficar qualquer dúvida, pode me chamar por aqui.';
+
   const result = await sendWhatsAppCtaUrl({
     to: contact.wa_id,
     body,
@@ -237,7 +244,7 @@ async function sendAdImersaoLanding(supabase, contact) {
   const { error } = await supabase.from('whatsapp_automation_sessions').upsert({
     contact_id: contact.id,
     current_topic: 'Imersão',
-    state: 'ad_imersao_lp_sent',
+    state: 'imersao_lp_sent',
     last_interaction_at: now,
     updated_at: now,
   }, { onConflict: 'contact_id' });
@@ -380,6 +387,11 @@ async function influencerApplicationLink(supabase, contact, origin) {
 async function selectTopic(supabase, contact, selectionId, origin) {
   const now = new Date().toISOString();
 
+  if (selectionId === 'topic_imersao') {
+    await sendImersaoLanding(supabase, contact, { source: 'organic' });
+    return true;
+  }
+
   if (selectionId === 'topic_influencer') {
     await tagContact(supabase, contact, 'Influenciador TikTok — Vital');
     const application = await influencerApplicationLink(supabase, contact, origin);
@@ -471,7 +483,7 @@ export async function processWhatsAppAutomation(supabase, {
     }
 
     if (cameFromAd(message)) {
-      const landing = await sendAdImersaoLanding(supabase, contact);
+      const landing = await sendImersaoLanding(supabase, contact, { source: 'ad' });
       await finishEvent(supabase, messageId, 'processed');
       return {
         handled: true,
@@ -485,7 +497,7 @@ export async function processWhatsAppAutomation(supabase, {
       return { handled: true, action: 'menu_requested' };
     }
 
-    if (session?.state === 'ad_imersao_lp_sent') {
+    if (['imersao_lp_sent', 'ad_imersao_lp_sent'].includes(session?.state)) {
       await markAwaitingHuman(supabase, contact);
       await finishEvent(supabase, messageId, 'processed');
       return { handled: true, action: 'ad_imersao_human_answer' };

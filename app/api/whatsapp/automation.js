@@ -214,26 +214,36 @@ async function sendMainMenu(supabase, contact, { welcome = true } = {}) {
   if (error) throw error;
 }
 
-async function sendAdImersaoQualification(supabase, contact) {
-  const body = 'Oi! Tudo bem? 😊\nEu sou a Juliany, da equipe do Gui Nonato. Vi que você veio pelo anúncio da Imersão Ecommerce.\n\nPra eu conseguir te orientar melhor, me conta: você já vende no Mercado Livre ou ainda está começando?';
-  const result = await sendWhatsAppInteractiveList({
+async function sendAdImersaoLanding(supabase, contact) {
+  const tags = Array.isArray(contact.tags) ? contact.tags : [];
+  const session = await getAutomationSession(supabase, contact.id);
+
+  if (tags.includes('LP Imersão enviada') || session?.state === 'ad_imersao_lp_sent') {
+    return { sent: false, alreadySent: true };
+  }
+
+  const body = 'Oi! Eu sou a Juliany, da equipe do Gui Nonato 👋\n\nVi que você veio pelo anúncio da Imersão Ecommerce.\n\nPara facilitar, deixei aqui a página com todas as informações do evento e os ingressos.\n\nSe ficar qualquer dúvida, pode me chamar por aqui. 😊';
+  const result = await sendWhatsAppCtaUrl({
     to: contact.wa_id,
     body,
-    button: 'Selecionar opção',
-    sections: [{ title: 'Seu momento hoje', rows: AD_IMERSAO_ROWS }],
+    buttonText: 'Ver a Imersão',
+    url: 'https://imersao.guinonato.com/',
   });
   await saveOutboundMessage(supabase, contact, result, body, 'interactive');
   await tagContact(supabase, contact, 'Interesse — Imersão');
+  await tagContact(supabase, contact, 'LP Imersão enviada');
 
   const now = new Date().toISOString();
   const { error } = await supabase.from('whatsapp_automation_sessions').upsert({
     contact_id: contact.id,
     current_topic: 'Imersão',
-    state: 'ad_imersao_waiting_profile',
+    state: 'ad_imersao_lp_sent',
     last_interaction_at: now,
     updated_at: now,
   }, { onConflict: 'contact_id' });
   if (error) throw error;
+
+  return { sent: true, alreadySent: false };
 }
 
 async function getAutomationSession(supabase, contactId) {
@@ -461,15 +471,24 @@ export async function processWhatsAppAutomation(supabase, {
     }
 
     if (cameFromAd(message)) {
-      await sendAdImersaoQualification(supabase, contact);
+      const landing = await sendAdImersaoLanding(supabase, contact);
       await finishEvent(supabase, messageId, 'processed');
-      return { handled: true, action: 'ad_imersao_qualification' };
+      return {
+        handled: true,
+        action: landing.alreadySent ? 'ad_imersao_lp_already_sent' : 'ad_imersao_lp_sent',
+      };
     }
 
     if (requestsMainMenu(message)) {
       await sendMainMenu(supabase, contact, { welcome: false });
       await finishEvent(supabase, messageId, 'processed');
       return { handled: true, action: 'menu_requested' };
+    }
+
+    if (session?.state === 'ad_imersao_lp_sent') {
+      await markAwaitingHuman(supabase, contact);
+      await finishEvent(supabase, messageId, 'processed');
+      return { handled: true, action: 'ad_imersao_human_answer' };
     }
 
     if (shouldSendInitialMenu({ message, messageCount: count })) {

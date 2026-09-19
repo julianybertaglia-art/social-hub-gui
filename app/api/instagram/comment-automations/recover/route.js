@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { metaRequest, serverClient } from '../../audio-automation/service.js';
+import { ensureSubscription, metaRequest, serverClient } from '../../audio-automation/service.js';
 import { STATE_TITLE } from '../service.js';
 import { instagramIdentity, recoverLatestMediaComments } from '../recovery.js';
 
@@ -72,6 +72,7 @@ export async function POST(request) {
     if (error || !state?.user_id) throw error || new Error('Estado do Hub não encontrado.');
 
     const identity = await instagramIdentity();
+    const subscription = await ensureSubscription(identity.accountId);
     const [recovery, permissionsPayload] = await Promise.all([
       recoverLatestMediaComments(db, state.user_id, identity),
       metaRequest('me/permissions').catch(() => ({ data: [] })),
@@ -80,7 +81,7 @@ export async function POST(request) {
       .filter((item) => item?.status === 'granted')
       .map((item) => item.permission);
     console.info('AUTOMACAO:SCHEDULED_RECOVERY', recovery);
-    return Response.json({ ok: true, recovery, permissions });
+    return Response.json({ ok: true, recovery, subscription, permissions });
   } catch (error) {
     const detail = error instanceof Error
       ? error.message

@@ -1,5 +1,5 @@
 name: Recuperar comentários do Instagram
-# Recuperação de segurança + auto-reparo da assinatura do webhook.
+# Recuperação de segurança + auto-reparo da assinatura do webhook. Verificação pós-deploy.
 
 on:
   schedule:

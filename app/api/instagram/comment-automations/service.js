@@ -9,7 +9,7 @@ export const FALLBACK_RULES = [
     name: 'Leads — Imersão',
     keyword: 'IMERSÃO',
     publicReply: 'Te chamei no Direct 👊',
-    privateMessage: 'Fala! Vi que você comentou IMERSÃO no vídeo 👊\n\nA Imersão Ecommerce Mercado Livre Pro é um evento presencial para quem quer escalar sua operação nos marketplaces, com conteúdo prático sobre Mercado Livre, anúncios, operação, IA, importação e estratégias de crescimento.\n\n📅 26 de setembro de 2026\n⏰ 09h30 às 20h30\n📍 R. Airi, 227 — Tatuapé, São Paulo/SP\n\nPara compra de ingressos ou mais informações, fale com a equipe pelo WhatsApp: (11) 92399-0244',
+    privateMessage: 'Fala 👊🏻 vi seu comentário no meu post!\n\nVocê pode ver todas as informações sobre a Imersão Ecommerce e comprar ingressos através do link:\nimersao.guinonato.com\n\nOu se preferir, chama minha equipe no WhatsApp: 1192399-0244\n\nEspero você lá!',
     tag: 'Interesse — Imersão',
     active: true,
   },

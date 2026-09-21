@@ -135,7 +135,8 @@ export function isAdImersaoNextAction(selectionId) {
   return AD_IMERSAO_NEXT_ACTIONS.some((item) => item.id === String(selectionId || ''));
 }
 
-export function shouldSendInitialMenu({ message, messageCount }) {
+export function shouldSendInitialMenu({ message, messageCount, hasPreviousContact = false }) {
+  if (hasPreviousContact) return false;
   if (interactiveSelectionId(message)) return false;
   if (Number(messageCount) !== 1) return false;
   if (cameFromAd(message)) return false;
@@ -503,7 +504,11 @@ export async function processWhatsAppAutomation(supabase, {
       return { handled: true, action: 'ad_imersao_human_answer' };
     }
 
-    if (shouldSendInitialMenu({ message, messageCount: count })) {
+    if (shouldSendInitialMenu({
+      message,
+      messageCount: count,
+      hasPreviousContact: Boolean(contact._wasExistingBeforeUpsert) || Boolean(session),
+    })) {
       await sendMainMenu(supabase, contact, { welcome: true });
       await finishEvent(supabase, messageId, 'processed');
       return { handled: true, action: 'welcome_menu' };

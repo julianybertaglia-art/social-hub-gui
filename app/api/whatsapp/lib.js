@@ -143,7 +143,7 @@ export async function upsertWhatsAppContact(supabase, {
       .single();
 
     if (error) throw error;
-    return data;
+    return { ...data, _wasExistingBeforeUpsert: true };
   }
 
   const { data, error } = await supabase
@@ -160,7 +160,7 @@ export async function upsertWhatsAppContact(supabase, {
     .single();
 
   if (error) throw error;
-  return data;
+  return { ...data, _wasExistingBeforeUpsert: false };
 }
 
 async function whatsappCredentials() {

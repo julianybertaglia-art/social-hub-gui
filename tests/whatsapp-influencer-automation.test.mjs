@@ -91,6 +91,12 @@ test('welcome menu is only sent on the first spontaneous contact', () => {
     messageCount: 2,
   }), false);
 
+  assert.equal(shouldSendInitialMenu({
+    message: { text: { body: 'Oi novamente' } },
+    messageCount: 1,
+    hasPreviousContact: true,
+  }), false);
+
   assert.equal(cameFromAd({ referral: { source_type: 'ad' } }), true);
   assert.equal(isReplyToBusiness({ context: { id: 'wamid.outbound' } }), true);
 });

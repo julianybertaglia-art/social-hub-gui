@@ -253,6 +253,24 @@ export async function createWhatsAppBridgeGroup({ subject, participants }) {
   });
 }
 
+export async function addWhatsAppBridgeGroupParticipants({ jid, participants }) {
+  const safeJid = String(jid || '').trim();
+  const safeParticipants = Array.isArray(participants)
+    ? participants.map((value) => String(value || '').trim()).filter(Boolean)
+    : [];
+
+  if (!safeJid) throw new Error('Grupo inválido.');
+  if (!safeParticipants.length) throw new Error('Adicione pelo menos um participante.');
+
+  return bridgeRequest('/groups/participants', {
+    method: 'POST',
+    body: JSON.stringify({
+      jid: safeJid,
+      participants: safeParticipants,
+    }),
+  });
+}
+
 async function postWhatsAppMessage(body) {
   const { accessToken, phoneNumberId } = await whatsappCredentials();
   const response = await fetch(

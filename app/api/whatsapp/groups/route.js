@@ -63,6 +63,66 @@ export async function POST(request) {
   const limit = 1;
 
   try {
+    if (action === 'add-next') {
+      if (!eventKey) {
+        return Response.json({ ok: false, error: 'Evento inválido.' }, { status: 400 });
+      }
+
+      const supabase = getSupabaseAdmin();
+      const { data: job, error: jobError } = await supabase
+        .from('event_group_jobs')
+        .select('group_jid, next_offset')
+        .eq('event_key', eventKey)
+        .single();
+
+      if (jobError) throw jobError;
+
+      const currentOffset = Math.max(0, Number(job?.next_offset || 0));
+      const { data: rows, error: participantError } = await supabase
+        .from('event_participants')
+        .select('phone')
+        .eq('event_key', eventKey)
+        .eq('active', true)
+        .not('phone', 'is', null)
+        .order('source_row', { ascending: true })
+        .range(currentOffset, currentOffset);
+
+      if (participantError) throw participantError;
+
+      const phone = rows?.[0]?.phone || null;
+      if (!phone) {
+        return Response.json({ ok: true, done: true, nextOffset: currentOffset });
+      }
+
+      const result = await addWhatsAppBridgeGroupParticipants({
+        jid: job.group_jid,
+        participants: [phone],
+      });
+
+      const status = String(result?.results?.[0]?.status || 'unknown');
+
+      const { error: updateError } = await supabase
+        .from('event_group_jobs')
+        .update({
+          next_offset: currentOffset + 1,
+          last_status: status,
+          last_phone: phone,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('event_key', eventKey);
+
+      if (updateError) throw updateError;
+
+      return Response.json({
+        ok: true,
+        done: false,
+        offset: currentOffset,
+        nextOffset: currentOffset + 1,
+        status,
+        result,
+      });
+    }
+
     if (!participants.length && eventKey) {
       const supabase = getSupabaseAdmin();
       let query = supabase

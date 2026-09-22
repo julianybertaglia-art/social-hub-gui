@@ -54,16 +54,32 @@ export async function POST(request) {
 
   const body = await request.json().catch(() => ({}));
   const subject = String(body?.subject || '').trim();
-  const participants = Array.isArray(body?.participants) ? body.participants : [];
+  let participants = Array.isArray(body?.participants) ? body.participants : [];
+  const eventKey = String(body?.eventKey || '').trim();
 
   if (!subject) {
     return Response.json({ ok: false, error: 'Informe o nome do grupo.' }, { status: 400 });
   }
-  if (!participants.length) {
-    return Response.json({ ok: false, error: 'Adicione pelo menos um participante.' }, { status: 400 });
-  }
 
   try {
+    if (!participants.length && eventKey) {
+      const supabase = getSupabaseAdmin();
+      const { data, error } = await supabase
+        .from('event_participants')
+        .select('phone')
+        .eq('event_key', eventKey)
+        .eq('active', true)
+        .not('phone', 'is', null)
+        .order('source_row', { ascending: true });
+
+      if (error) throw error;
+      participants = (data || []).map((row) => row.phone).filter(Boolean);
+    }
+
+    if (!participants.length) {
+      return Response.json({ ok: false, error: 'Adicione pelo menos um participante.' }, { status: 400 });
+    }
+
     const group = await createWhatsAppBridgeGroup({ subject, participants });
     return Response.json({ ok: true, group });
   } catch (error) {

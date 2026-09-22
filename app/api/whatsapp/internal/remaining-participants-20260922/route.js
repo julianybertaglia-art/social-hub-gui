@@ -27,7 +27,8 @@ Claudia Furlan — 19 99127-3521
 Esses são os números que não entraram automaticamente ou ainda não tinham sido tentados. Adiciona um por um pelo WhatsApp.`;
 
 export async function GET(request) {
-  const url = new URL(request.url);
+  try {
+    const url = new URL(request.url);
   if (url.searchParams.get('key') !== KEY) {
     return Response.json({ ok: false }, { status: 404 });
   }
@@ -57,4 +58,11 @@ export async function GET(request) {
   if (updateError) throw updateError;
 
   return Response.json({ ok: true, sent: true, messageId });
+  } catch (error) {
+    return Response.json({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error || 'Falha desconhecida'),
+      code: error?.code || null,
+    }, { status: 500 });
+  }
 }

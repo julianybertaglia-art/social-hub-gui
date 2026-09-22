@@ -726,6 +726,33 @@ async function createGroup(body) {
   };
 }
 
+async function addGroupParticipants(body) {
+  const jid = String(body?.jid || '').trim();
+  if (!jid.endsWith('@g.us')) {
+    throw errorWithCode('Grupo inválido.', 'INVALID_GROUP');
+  }
+
+  const rawParticipants = Array.isArray(body?.participants) ? body.participants : [];
+  const participants = [...new Set(rawParticipants.map(groupParticipantJid).filter(Boolean))].slice(0, 5);
+  if (!participants.length) {
+    throw errorWithCode('Nenhum telefone válido foi informado.', 'INVALID_GROUP');
+  }
+
+  const activeSocket = requireConnectedSocket();
+  const result = await activeSocket.groupParticipantsUpdate(jid, participants, 'add');
+
+  return {
+    ok: true,
+    jid,
+    requestedParticipants: participants.map(numberFromJid),
+    results: (Array.isArray(result) ? result : []).map((item, index) => ({
+      requestedPhone: numberFromJid(participants[index] || ''),
+      returnedJid: item?.jid || item?.participant || null,
+      status: String(item?.status || ''),
+    })),
+  };
+}
+
 function authorized(request) {
   if (!BRIDGE_API_TOKEN) return false;
   const header = String(request.headers.authorization || '');
@@ -828,6 +855,11 @@ async function handleRequest(request, response) {
 
     if (request.method === 'POST' && route === '/groups') {
       sendJson(response, 200, await createGroup(await readJson(request)));
+      return;
+    }
+
+    if (request.method === 'POST' && route === '/groups/participants') {
+      sendJson(response, 200, await addGroupParticipants(await readJson(request)));
       return;
     }
 

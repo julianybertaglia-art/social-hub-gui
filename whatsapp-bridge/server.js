@@ -633,6 +633,57 @@ async function listGroups() {
     .sort((left, right) => left.name.localeCompare(right.name, 'pt-BR'));
 }
 
+function groupParticipantJid(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  if (raw.endsWith('@s.whatsapp.net')) return raw;
+
+  let digits = raw.replace(/\D/g, '');
+  if (!digits) return null;
+
+  // Os contatos da Imersão são majoritariamente brasileiros. Quando vier
+  // DDD + número sem DDI, completa com 55 para formar o JID válido.
+  if (digits.length === 10 || digits.length === 11) digits = '55' + digits;
+  if (digits.length < 12 || digits.length > 15) return null;
+
+  return digits + '@s.whatsapp.net';
+}
+
+async function createGroup(body) {
+  const subject = String(body?.subject || '').trim().slice(0, 100);
+  if (!subject) throw errorWithCode('Nome do grupo é obrigatório.', 'INVALID_GROUP');
+
+  const rawParticipants = Array.isArray(body?.participants) ? body.participants : [];
+  const participants = [...new Set(rawParticipants.map(groupParticipantJid).filter(Boolean))];
+
+  if (!participants.length) {
+    throw errorWithCode('Nenhum telefone válido foi informado para o grupo.', 'INVALID_GROUP');
+  }
+
+  const activeSocket = requireConnectedSocket();
+  const created = await activeSocket.groupCreate(subject, participants);
+  const jid = created?.id || created?.gid || created?.key?.remoteJid || null;
+
+  let inviteCode = null;
+  if (jid) {
+    try {
+      inviteCode = await activeSocket.groupInviteCode(jid);
+    } catch (error) {
+      logger.warn({ err: error, jid }, 'Grupo criado, mas não foi possível gerar o link de convite.');
+    }
+  }
+
+  return {
+    ok: true,
+    jid,
+    name: created?.subject || subject,
+    requestedParticipants: rawParticipants.length,
+    validParticipants: participants.length,
+    inviteCode,
+    inviteUrl: inviteCode ? 'https://chat.whatsapp.com/' + inviteCode : null,
+  };
+}
+
 function authorized(request) {
   if (!BRIDGE_API_TOKEN) return false;
   const header = String(request.headers.authorization || '');
@@ -661,7 +712,7 @@ async function readJson(request) {
 
 function responseStatus(error) {
   if (error?.code === 'BRIDGE_NOT_CONNECTED') return 409;
-  if (error?.code === 'INVALID_RECIPIENT' || error?.code === 'INVALID_MESSAGE') return 400;
+  if (error?.code === 'INVALID_RECIPIENT' || error?.code === 'INVALID_MESSAGE' || error?.code === 'INVALID_GROUP') return 400;
   if (error?.code === 'INVALID_MEDIA_URL' || error?.code === 'INVALID_MEDIA_TYPE') return 400;
   if (error?.code === 'MEDIA_TOO_LARGE' || error?.code === 'REQUEST_TOO_LARGE') return 413;
   return 500;
@@ -730,6 +781,11 @@ async function handleRequest(request, response) {
 
     if (request.method === 'GET' && route === '/groups') {
       sendJson(response, 200, { ok: true, groups: await listGroups() });
+      return;
+    }
+
+    if (request.method === 'POST' && route === '/groups') {
+      sendJson(response, 200, await createGroup(await readJson(request)));
       return;
     }
 

@@ -188,7 +188,10 @@ function bridgeCredentials() {
 }
 
 export function isWhatsAppBridgeConfigured() {
-  return false;
+  return Boolean(
+    String(process.env.WHATSAPP_BRIDGE_URL || '').trim()
+    && String(process.env.WHATSAPP_BRIDGE_TOKEN || '').trim()
+  );
 }
 
 async function bridgeRequest(route, options = {}) {
@@ -230,6 +233,24 @@ export async function controlWhatsAppBridge(action) {
 
 export async function getWhatsAppBridgeGroups() {
   return bridgeRequest('/groups');
+}
+
+export async function createWhatsAppBridgeGroup({ subject, participants }) {
+  const safeSubject = String(subject || '').trim();
+  const safeParticipants = Array.isArray(participants)
+    ? participants.map((value) => String(value || '').trim()).filter(Boolean)
+    : [];
+
+  if (!safeSubject) throw new Error('Informe o nome do grupo.');
+  if (!safeParticipants.length) throw new Error('Adicione pelo menos um participante.');
+
+  return bridgeRequest('/groups', {
+    method: 'POST',
+    body: JSON.stringify({
+      subject: safeSubject,
+      participants: safeParticipants,
+    }),
+  });
 }
 
 async function postWhatsAppMessage(body) {

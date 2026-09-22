@@ -235,6 +235,12 @@ export async function getWhatsAppBridgeGroups() {
   return bridgeRequest('/groups');
 }
 
+export async function getWhatsAppBridgeGroupDetails(jid) {
+  const safeJid = String(jid || '').trim();
+  if (!safeJid) throw new Error('Grupo inválido.');
+  return bridgeRequest('/groups/details?jid=' + encodeURIComponent(safeJid));
+}
+
 export async function createWhatsAppBridgeGroup({ subject, participants }) {
   const safeSubject = String(subject || '').trim();
   const safeParticipants = Array.isArray(participants)

@@ -654,13 +654,36 @@ async function createGroup(body) {
   if (!subject) throw errorWithCode('Nome do grupo é obrigatório.', 'INVALID_GROUP');
 
   const rawParticipants = Array.isArray(body?.participants) ? body.participants : [];
-  const participants = [...new Set(rawParticipants.map(groupParticipantJid).filter(Boolean))];
+  const normalized = [...new Set(rawParticipants.map(groupParticipantJid).filter(Boolean))];
 
-  if (!participants.length) {
+  if (!normalized.length) {
     throw errorWithCode('Nenhum telefone válido foi informado para o grupo.', 'INVALID_GROUP');
   }
 
   const activeSocket = requireConnectedSocket();
+
+  let participants = normalized;
+  let notOnWhatsApp = [];
+  try {
+    const checks = await activeSocket.onWhatsApp(...normalized);
+    const existing = new Set(
+      (Array.isArray(checks) ? checks : [])
+        .filter((item) => item?.exists && item?.jid)
+        .map((item) => item.jid)
+    );
+
+    if (existing.size) {
+      participants = normalized.filter((jid) => existing.has(jid));
+      notOnWhatsApp = normalized.filter((jid) => !existing.has(jid));
+    }
+  } catch (error) {
+    logger.warn({ err: error }, 'Não foi possível validar todos os números antes de criar o grupo.');
+  }
+
+  if (!participants.length) {
+    throw errorWithCode('Nenhum dos telefones informados foi encontrado no WhatsApp.', 'INVALID_GROUP');
+  }
+
   const created = await activeSocket.groupCreate(subject, participants);
   const jid = created?.id || created?.gid || created?.key?.remoteJid || null;
 
@@ -679,6 +702,7 @@ async function createGroup(body) {
     name: created?.subject || subject,
     requestedParticipants: rawParticipants.length,
     validParticipants: participants.length,
+    notOnWhatsApp: notOnWhatsApp.map(numberFromJid),
     inviteCode,
     inviteUrl: inviteCode ? 'https://chat.whatsapp.com/' + inviteCode : null,
   };

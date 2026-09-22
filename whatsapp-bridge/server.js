@@ -654,46 +654,64 @@ async function createGroup(body) {
   if (!subject) throw errorWithCode('Nome do grupo é obrigatório.', 'INVALID_GROUP');
 
   const rawParticipants = Array.isArray(body?.participants) ? body.participants : [];
-  const normalized = [...new Set(rawParticipants.map(groupParticipantJid).filter(Boolean))];
+  const participants = [...new Set(rawParticipants.map(groupParticipantJid).filter(Boolean))];
 
-  if (!normalized.length) {
+  if (!participants.length) {
     throw errorWithCode('Nenhum telefone válido foi informado para o grupo.', 'INVALID_GROUP');
   }
 
   const activeSocket = requireConnectedSocket();
 
-  let participants = normalized;
-  let notOnWhatsApp = [];
-  try {
-    const checks = await activeSocket.onWhatsApp(...normalized);
-    const existing = new Set(
-      (Array.isArray(checks) ? checks : [])
-        .filter((item) => item?.exists && item?.jid)
-        .map((item) => item.jid)
-    );
+  // Cria o grupo com poucos membros primeiro. Adicionar dezenas de números
+  // de uma vez pode acionar o rate-limit do WhatsApp e derrubar a sessão.
+  const seed = participants.slice(0, Math.min(2, participants.length));
+  const remaining = participants.slice(seed.length);
 
-    if (existing.size) {
-      participants = normalized.filter((jid) => existing.has(jid));
-      notOnWhatsApp = normalized.filter((jid) => !existing.has(jid));
-    }
-  } catch (error) {
-    logger.warn({ err: error }, 'Não foi possível validar todos os números antes de criar o grupo.');
-  }
-
-  if (!participants.length) {
-    throw errorWithCode('Nenhum dos telefones informados foi encontrado no WhatsApp.', 'INVALID_GROUP');
-  }
-
-  const created = await activeSocket.groupCreate(subject, participants);
+  const created = await activeSocket.groupCreate(subject, seed);
   const jid = created?.id || created?.gid || created?.key?.remoteJid || null;
+  if (!jid) throw errorWithCode('O WhatsApp não devolveu o identificador do grupo.', 'GROUP_CREATE_FAILED');
+
+  const added = new Set(seed);
+  const failed = [];
+  const batchSize = 5;
+
+  for (let index = 0; index < remaining.length; index += batchSize) {
+    const batch = remaining.slice(index, index + batchSize);
+
+    try {
+      const result = await activeSocket.groupParticipantsUpdate(jid, batch, 'add');
+      for (const item of Array.isArray(result) ? result : []) {
+        const participantJid = item?.jid || item?.participant || null;
+        const status = String(item?.status || '');
+        if (participantJid && ['200', '201', '409'].includes(status)) {
+          added.add(participantJid);
+        } else if (participantJid) {
+          failed.push({
+            phone: numberFromJid(participantJid),
+            status: status || 'unknown',
+          });
+        }
+      }
+    } catch (error) {
+      logger.warn({ err: error, batch }, 'Falha ao adicionar um lote de participantes ao grupo.');
+      for (const participantJid of batch) {
+        failed.push({
+          phone: numberFromJid(participantJid),
+          status: error?.message || error?.code || 'error',
+        });
+      }
+    }
+
+    if (index + batchSize < remaining.length) {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+    }
+  }
 
   let inviteCode = null;
-  if (jid) {
-    try {
-      inviteCode = await activeSocket.groupInviteCode(jid);
-    } catch (error) {
-      logger.warn({ err: error, jid }, 'Grupo criado, mas não foi possível gerar o link de convite.');
-    }
+  try {
+    inviteCode = await activeSocket.groupInviteCode(jid);
+  } catch (error) {
+    logger.warn({ err: error, jid }, 'Grupo criado, mas não foi possível gerar o link de convite.');
   }
 
   return {
@@ -701,8 +719,8 @@ async function createGroup(body) {
     jid,
     name: created?.subject || subject,
     requestedParticipants: rawParticipants.length,
-    validParticipants: participants.length,
-    notOnWhatsApp: notOnWhatsApp.map(numberFromJid),
+    addedParticipants: added.size,
+    failedParticipants: failed,
     inviteCode,
     inviteUrl: inviteCode ? 'https://chat.whatsapp.com/' + inviteCode : null,
   };

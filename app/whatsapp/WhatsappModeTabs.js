@@ -8,7 +8,8 @@ export default function WhatsappModeTabs() {
   const influencers = pathname.startsWith('/whatsapp/influenciadores');
   const diagnostics = pathname.startsWith('/whatsapp/diagnostico');
   const gato = pathname.startsWith('/whatsapp/gato');
-  const crm = !influencers && !diagnostics && !gato;
+  const groups = pathname.startsWith('/whatsapp/grupos');
+  const crm = !influencers && !diagnostics && !gato && !groups;
 
   const wrap = {
     width: 'min(1440px, calc(100% - 32px))',
@@ -38,6 +39,7 @@ export default function WhatsappModeTabs() {
     <nav style={wrap} aria-label="Modos do WhatsApp">
       <Link href="/whatsapp" style={tab(crm)}>Conversas</Link>
       <Link href="/whatsapp/influenciadores" style={tab(influencers)}>Influenciadores</Link>
+      <Link href="/whatsapp/grupos" style={tab(groups)}>Grupos</Link>
       <Link href="/whatsapp/gato" style={tab(gato)}>WhatsApp Gato</Link>
       <Link href="/whatsapp/diagnostico" style={tab(diagnostics)}>Conexão Meta</Link>
     </nav>

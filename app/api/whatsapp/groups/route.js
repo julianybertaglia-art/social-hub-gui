@@ -2,6 +2,7 @@ import {
   addWhatsAppBridgeGroupParticipants,
   createWhatsAppBridgeGroup,
   getSupabaseAdmin,
+  getWhatsAppBridgeGroupDetails,
   getWhatsAppBridgeGroups,
   isWhatsAppBridgeConfigured,
 } from '../lib';
@@ -15,10 +16,19 @@ function unavailable() {
   }, { status: 503 });
 }
 
-export async function GET() {
+export async function GET(request) {
   if (!isWhatsAppBridgeConfigured()) return unavailable();
 
   try {
+    const url = new URL(request.url);
+    const jid = String(url.searchParams.get('jid') || '').trim();
+    if (jid) {
+      const details = await getWhatsAppBridgeGroupDetails(jid);
+      return Response.json(details, {
+        headers: { 'Cache-Control': 'no-store, max-age=0' },
+      });
+    }
+
     const result = await getWhatsAppBridgeGroups();
     const groups = Array.isArray(result?.groups) ? result.groups : [];
     const syncedAt = new Date().toISOString();

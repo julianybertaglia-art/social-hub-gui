@@ -83,9 +83,12 @@ export async function POST(request) {
     const group = await createWhatsAppBridgeGroup({ subject, participants });
     return Response.json({ ok: true, group });
   } catch (error) {
+    const message = error instanceof Error
+      ? error.message
+      : String(error?.message || error?.details || error?.hint || JSON.stringify(error || {}));
     return Response.json({
       ok: false,
-      error: error instanceof Error ? error.message : 'Não foi possível criar o grupo.',
+      error: message || 'Não foi possível criar o grupo.',
     }, { status: 503 });
   }
 }

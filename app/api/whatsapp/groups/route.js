@@ -1,4 +1,5 @@
 import {
+  addWhatsAppBridgeGroupParticipants,
   createWhatsAppBridgeGroup,
   getSupabaseAdmin,
   getWhatsAppBridgeGroups,
@@ -54,17 +55,17 @@ export async function POST(request) {
 
   const body = await request.json().catch(() => ({}));
   const subject = String(body?.subject || '').trim();
+  const jid = String(body?.jid || '').trim();
+  const action = String(body?.action || '').trim();
   let participants = Array.isArray(body?.participants) ? body.participants : [];
   const eventKey = String(body?.eventKey || '').trim();
-
-  if (!subject) {
-    return Response.json({ ok: false, error: 'Informe o nome do grupo.' }, { status: 400 });
-  }
+  const offset = Math.max(0, Number(body?.offset || 0));
+  const limit = Math.min(5, Math.max(1, Number(body?.limit || 5)));
 
   try {
     if (!participants.length && eventKey) {
       const supabase = getSupabaseAdmin();
-      const { data, error } = await supabase
+      let query = supabase
         .from('event_participants')
         .select('phone')
         .eq('event_key', eventKey)
@@ -72,10 +73,25 @@ export async function POST(request) {
         .not('phone', 'is', null)
         .order('source_row', { ascending: true });
 
+      if (action === 'add' && jid) {
+        query = query.range(offset, offset + limit - 1);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       participants = (data || []).map((row) => row.phone).filter(Boolean);
     }
 
+    if (action === 'add') {
+      if (!jid) return Response.json({ ok: false, error: 'Grupo inválido.' }, { status: 400 });
+      if (!participants.length) return Response.json({ ok: false, error: 'Nenhum participante neste lote.' }, { status: 400 });
+      const result = await addWhatsAppBridgeGroupParticipants({ jid, participants });
+      return Response.json({ ok: true, result, offset, limit });
+    }
+
+    if (!subject) {
+      return Response.json({ ok: false, error: 'Informe o nome do grupo.' }, { status: 400 });
+    }
     if (!participants.length) {
       return Response.json({ ok: false, error: 'Adicione pelo menos um participante.' }, { status: 400 });
     }
@@ -88,7 +104,7 @@ export async function POST(request) {
       : String(error?.message || error?.details || error?.hint || JSON.stringify(error || {}));
     return Response.json({
       ok: false,
-      error: message || 'Não foi possível criar o grupo.',
+      error: message || 'Não foi possível atualizar o grupo.',
     }, { status: 503 });
   }
 }

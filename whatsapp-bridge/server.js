@@ -733,7 +733,7 @@ async function addGroupParticipants(body) {
   }
 
   const rawParticipants = Array.isArray(body?.participants) ? body.participants : [];
-  const participants = [...new Set(rawParticipants.map(groupParticipantJid).filter(Boolean))].slice(0, 5);
+  const participants = [...new Set(rawParticipants.map(groupParticipantJid).filter(Boolean))].slice(0, 1);
   if (!participants.length) {
     throw errorWithCode('Nenhum telefone válido foi informado.', 'INVALID_GROUP');
   }

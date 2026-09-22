@@ -25,6 +25,15 @@ const BRIDGE_WEBHOOK_URL = String(process.env.BRIDGE_WEBHOOK_URL || '');
 const BRIDGE_WEBHOOK_TOKEN = String(process.env.BRIDGE_WEBHOOK_TOKEN || process.env.BRIDGE_API_TOKEN || '');
 const AUTO_CONNECT = String(process.env.AUTO_CONNECT || 'true').toLowerCase() !== 'false';
 const LOG_LEVEL = process.env.LOG_LEVEL || 'warn';
+const GROUP_RESUME_JID = String(process.env.GROUP_RESUME_JID || '').trim();
+const GROUP_RESUME_PHONES = String(process.env.GROUP_RESUME_PHONES || '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
+const GROUP_RESUME_DELAY_MS = Math.max(5000, Number(process.env.GROUP_RESUME_DELAY_MS || 20000));
+const GROUP_RESUME_PROGRESS_FILE = String(
+  process.env.GROUP_RESUME_PROGRESS_FILE || '/data/group-resume-progress.json'
+);
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 const RECONNECT_BACKOFF_MS = [2000, 5000, 10000, 30000];
 
@@ -42,6 +51,7 @@ let reconnectAttempt = 0;
 let reconnectTimer = null;
 let connectPromise = null;
 let sessionLockAcquired = false;
+let groupResumeRunning = false;
 
 const INSTANCE_ID = String(
   process.env.RAILWAY_DEPLOYMENT_ID
@@ -395,6 +405,11 @@ async function handleConnectionUpdate(update, generation, nextSocket) {
     lastError = null;
     account = accountFromUser(nextSocket.user);
     logger.info({ account }, 'WhatsApp conectado.');
+    setTimeout(() => {
+      runGroupResume().catch((error) => {
+        logger.warn({ err: error }, 'Falha ao retomar participantes pendentes do grupo.');
+      });
+    }, 5000).unref();
     return;
   }
 
@@ -724,6 +739,94 @@ async function createGroup(body) {
     inviteCode,
     inviteUrl: inviteCode ? 'https://chat.whatsapp.com/' + inviteCode : null,
   };
+}
+
+async function readGroupResumeProgress() {
+  const raw = await fs.readFile(GROUP_RESUME_PROGRESS_FILE, 'utf8').catch(() => '');
+  if (!raw) return { index: 0, results: [], completed: false };
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      index: Math.max(0, Number(parsed?.index || 0)),
+      results: Array.isArray(parsed?.results) ? parsed.results : [],
+      completed: Boolean(parsed?.completed),
+    };
+  } catch {
+    return { index: 0, results: [], completed: false };
+  }
+}
+
+async function writeGroupResumeProgress(progress) {
+  await fs.writeFile(
+    GROUP_RESUME_PROGRESS_FILE,
+    JSON.stringify({ ...progress, updatedAt: nowIso() }),
+    'utf8'
+  );
+}
+
+async function runGroupResume() {
+  if (groupResumeRunning) return;
+  if (!GROUP_RESUME_JID || !GROUP_RESUME_PHONES.length) return;
+  if (!socket || connectionState !== 'connected') return;
+
+  groupResumeRunning = true;
+
+  try {
+    const progress = await readGroupResumeProgress();
+    if (progress.completed) return;
+
+    while (progress.index < GROUP_RESUME_PHONES.length) {
+      if (!socket || connectionState !== 'connected') break;
+
+      const rawPhone = GROUP_RESUME_PHONES[progress.index];
+      const participantJid = groupParticipantJid(rawPhone);
+
+      if (!participantJid) {
+        progress.results.push({
+          index: progress.index,
+          phone: rawPhone,
+          status: 'invalid',
+          attemptedAt: nowIso(),
+        });
+        progress.index += 1;
+        await writeGroupResumeProgress(progress);
+        continue;
+      }
+
+      let status = 'unknown';
+      try {
+        const result = await socket.groupParticipantsUpdate(
+          GROUP_RESUME_JID,
+          [participantJid],
+          'add'
+        );
+        status = String(result?.[0]?.status || 'unknown');
+      } catch (error) {
+        status = String(error?.message || error?.code || 'error');
+      }
+
+      if (status === 'rate-overlimit') {
+        await writeGroupResumeProgress(progress);
+        break;
+      }
+
+      progress.results.push({
+        index: progress.index,
+        phone: numberFromJid(participantJid),
+        status,
+        attemptedAt: nowIso(),
+      });
+      progress.index += 1;
+      progress.completed = progress.index >= GROUP_RESUME_PHONES.length;
+      await writeGroupResumeProgress(progress);
+
+      if (!progress.completed) {
+        await new Promise((resolve) => setTimeout(resolve, GROUP_RESUME_DELAY_MS));
+      }
+    }
+  } finally {
+    groupResumeRunning = false;
+  }
 }
 
 async function addGroupParticipants(body) {

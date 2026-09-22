@@ -60,7 +60,7 @@ export async function POST(request) {
   let participants = Array.isArray(body?.participants) ? body.participants : [];
   const eventKey = String(body?.eventKey || '').trim();
   const offset = Math.max(0, Number(body?.offset || 0));
-  const limit = Math.min(5, Math.max(1, Number(body?.limit || 5)));
+  const limit = 1;
 
   try {
     if (!participants.length && eventKey) {

@@ -648,6 +648,47 @@ async function listGroups() {
     .sort((left, right) => left.name.localeCompare(right.name, 'pt-BR'));
 }
 
+function participantPhone(participant) {
+  const candidates = [participant?.jid, participant?.id, participant?.lid];
+  for (const value of candidates) {
+    const raw = String(value || '');
+    if (raw.endsWith('@s.whatsapp.net')) {
+      return raw.split('@')[0].replace(/\D/g, '') || null;
+    }
+  }
+  return null;
+}
+
+async function getGroupDetails(jid) {
+  const safeJid = String(jid || '').trim();
+  if (!safeJid.endsWith('@g.us')) {
+    throw errorWithCode('Grupo inválido.', 'INVALID_GROUP');
+  }
+
+  const activeSocket = requireConnectedSocket();
+  const group = await activeSocket.groupMetadata(safeJid);
+  const participants = Array.isArray(group?.participants) ? group.participants : [];
+
+  return {
+    ok: true,
+    group: {
+      jid: group?.id || safeJid,
+      name: group?.subject || 'Grupo sem nome',
+      description: group?.desc || null,
+      size: Number(group?.size || participants.length || 0),
+      owner: group?.owner || group?.ownerJid || null,
+      participants: participants.map((participant) => ({
+        id: participant?.id || null,
+        lid: participant?.lid || null,
+        jid: participant?.jid || null,
+        phone: participantPhone(participant),
+        name: participant?.name || participant?.notify || participant?.verifiedName || null,
+        admin: participant?.admin || null,
+      })),
+    },
+  };
+}
+
 function groupParticipantJid(value) {
   const raw = String(value || '').trim();
   if (!raw) return null;
@@ -953,6 +994,11 @@ async function handleRequest(request, response) {
 
     if (request.method === 'GET' && route === '/groups') {
       sendJson(response, 200, { ok: true, groups: await listGroups() });
+      return;
+    }
+
+    if (request.method === 'GET' && route === '/groups/details') {
+      sendJson(response, 200, await getGroupDetails(requestUrl.searchParams.get('jid')));
       return;
     }
 

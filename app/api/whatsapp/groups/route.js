@@ -1,18 +1,21 @@
 import {
+  createWhatsAppBridgeGroup,
   getSupabaseAdmin,
   getWhatsAppBridgeGroups,
-  getWhatsAppProvider,
+  isWhatsAppBridgeConfigured,
 } from '../lib';
 
 export const dynamic = 'force-dynamic';
 
+function unavailable() {
+  return Response.json({
+    ok: false,
+    error: 'A conexão auxiliar de grupos ainda não está configurada.',
+  }, { status: 503 });
+}
+
 export async function GET() {
-  if (getWhatsAppProvider() !== 'baileys') {
-    return Response.json({
-      ok: false,
-      error: 'A consulta de grupos está disponível quando a ponte Baileys está ativa.',
-    }, { status: 409 });
-  }
+  if (!isWhatsAppBridgeConfigured()) return unavailable();
 
   try {
     const result = await getWhatsAppBridgeGroups();
@@ -42,6 +45,31 @@ export async function GET() {
     return Response.json({
       ok: false,
       error: error instanceof Error ? error.message : 'Não foi possível carregar os grupos.',
+    }, { status: 503 });
+  }
+}
+
+export async function POST(request) {
+  if (!isWhatsAppBridgeConfigured()) return unavailable();
+
+  const body = await request.json().catch(() => ({}));
+  const subject = String(body?.subject || '').trim();
+  const participants = Array.isArray(body?.participants) ? body.participants : [];
+
+  if (!subject) {
+    return Response.json({ ok: false, error: 'Informe o nome do grupo.' }, { status: 400 });
+  }
+  if (!participants.length) {
+    return Response.json({ ok: false, error: 'Adicione pelo menos um participante.' }, { status: 400 });
+  }
+
+  try {
+    const group = await createWhatsAppBridgeGroup({ subject, participants });
+    return Response.json({ ok: true, group });
+  } catch (error) {
+    return Response.json({
+      ok: false,
+      error: error instanceof Error ? error.message : 'Não foi possível criar o grupo.',
     }, { status: 503 });
   }
 }

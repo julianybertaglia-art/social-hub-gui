@@ -1,0 +1,31 @@
+name: Send last two spots now
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/send-last2-now.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wait for deployment and send
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://social-hub-gui.vercel.app/api/whatsapp/last2-send?key=last2-20260925-7f1c4e9a'
+          for i in $(seq 1 30); do
+            code=$(curl -sS -o /tmp/result.json -w '%{http_code}' --max-time 60               -X POST "$endpoint" || true)
+            if [ "$code" = "200" ]; then
+              cat /tmp/result.json
+              exit 0
+            fi
+            sleep 8
+          done
+          cat /tmp/result.json || true
+          exit 1

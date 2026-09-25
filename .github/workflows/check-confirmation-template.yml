@@ -1,0 +1,18 @@
+name: Check participant confirmation template
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/check-confirmation-template.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check template
+        run: |
+          curl --fail-with-body --silent --show-error             'https://social-hub-gui.vercel.app/api/whatsapp/template-audit'             | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps([x for x in d.get('templates',[]) if x.get('name')=='imersao_confirmacao_26_09_v1'], ensure_ascii=False))"

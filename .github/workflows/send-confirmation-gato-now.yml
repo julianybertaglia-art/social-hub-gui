@@ -1,0 +1,35 @@
+name: Send Imersao confirmation via Gato
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/send-confirmation-gato-now.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Wait for deploy and send batches
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://social-hub-gui.vercel.app/api/whatsapp/confirmation-batch'
+          sleep 20
+          for i in $(seq 1 12); do
+            code=$(curl -sS -o /tmp/result.json -w '%{http_code}' --max-time 60 -X POST "$endpoint" || true)
+            cat /tmp/result.json
+            echo
+            if [ "$code" != "200" ]; then
+              exit 1
+            fi
+            if grep -q '"done":true' /tmp/result.json; then
+              exit 0
+            fi
+            sleep 3
+          done
+          exit 1

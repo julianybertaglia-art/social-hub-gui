@@ -58,16 +58,16 @@ export async function GET() {
       return Number.isFinite(t) && t >= cutoff;
     });
 
-    const results = [];
-    for (const conv of recent.slice(0, 80)) {
+    const batches = await Promise.allSettled(recent.slice(0, 60).map(async (conv) => {
       const participant = (conv?.participants?.data || []).find(
         (p) => String(p?.id || '') !== identity.accountId
       );
-      if (!participant?.id) continue;
+      if (!participant?.id) return null;
 
-      const profile = await profileFor(participant);
-      let messages = [];
-      try { messages = await conversationMessages(conv.id); } catch { continue; }
+      const [profile, messages] = await Promise.all([
+        profileFor(participant),
+        conversationMessages(conv.id),
+      ]);
 
       const ordered = [...messages].sort((a,b) => Date.parse(a.created_time||0) - Date.parse(b.created_time||0));
       const corpus = ordered.map((m) => m.message || '').join(' ');
@@ -77,17 +77,15 @@ export async function GET() {
 
       const accountMentionedEvent = ordered.some((m) => {
         const fromId = String(m?.from?.id || '');
-        if (fromId !== identity.accountId) return false;
-        const text = m?.message || '';
-        return hits(text, [...STRONG, 'evento']).length > 0;
+        return fromId === identity.accountId
+          && hits(m?.message || '', [...STRONG, 'evento']).length > 0;
       });
       const inbound = ordered.filter((m) => String(m?.from?.id || '') !== identity.accountId);
       const inboundInterest = inbound.some((m) => hits(m?.message || '', [...STRONG, ...EVENT, ...INTEREST]).length > 0);
-
       const qualifies = strongHits.length > 0 || (accountMentionedEvent && inboundInterest);
-      if (!qualifies) continue;
+      if (!qualifies) return null;
 
-      results.push({
+      return {
         user: profile.username || profile.name || profile.id,
         username: profile.username || null,
         name: profile.name || null,
@@ -101,10 +99,13 @@ export async function GET() {
           at: m.created_time || null,
           text: clip(m.message),
         })).filter((m) => m.text),
-      });
-    }
+      };
+    }));
 
-    results.sort((a,b) => Date.parse(b.updatedTime||0)-Date.parse(a.updatedTime||0));
+    const results = batches
+      .filter((b) => b.status === 'fulfilled' && b.value)
+      .map((b) => b.value)
+      .sort((a,b) => Date.parse(b.updatedTime||0)-Date.parse(a.updatedTime||0));
 
     return Response.json({
       ok: true,

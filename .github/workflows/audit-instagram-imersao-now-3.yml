@@ -1,0 +1,45 @@
+name: Audit Instagram Imersao leads nested
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-instagram-imersao-now-3.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://social-hub-gui.vercel.app/api/instagram/audit-imersao-leads'
+          mkdir -p tmp
+          for i in $(seq 1 20); do
+            code=$(curl -sS -o /tmp/audit.json -w '%{http_code}' --max-time 60 "$endpoint" || true)
+            if [ "$code" = "200" ] && jq -e '.ok == true' /tmp/audit.json >/dev/null 2>&1; then
+              cat /tmp/audit.json
+              cp /tmp/audit.json tmp/instagram-imersao-audit.json
+              exit 0
+            fi
+            sleep 6
+          done
+          cat /tmp/audit.json || true
+          exit 1
+      - name: Save audit
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --rebase
+          git add tmp/instagram-imersao-audit.json
+          git commit -m 'chore: save Instagram Imersao nested audit' || exit 0
+          git push

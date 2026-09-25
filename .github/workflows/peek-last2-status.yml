@@ -1,0 +1,33 @@
+name: Peek last2 template status
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/peek-last2-status.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  peek:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read status
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p tmp
+          curl -sS --fail --max-time 30             'https://social-hub-gui.vercel.app/api/whatsapp/last2-campaign'             -o /tmp/status.json
+          jq '{ok, template_status:(.template.status // null), template_name:(.template.name // null)}'             /tmp/status.json > tmp/last2-template-status.json
+      - name: Save status
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tmp/last2-template-status.json
+          git commit -m 'chore: save last2 template status' || exit 0
+          git push

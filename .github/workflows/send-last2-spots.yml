@@ -1,0 +1,86 @@
+name: Send last 2 spots WhatsApp campaign
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/send-last2-spots.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for route and create marketing template
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://social-hub-gui.vercel.app/api/whatsapp/last2-campaign'
+          ready=0
+          for i in $(seq 1 30); do
+            code=$(curl -sS -o /tmp/create.json -w '%{http_code}' --max-time 30               -X POST "$endpoint"               -H 'Content-Type: application/json'               --data '{"action":"create"}' || true)
+            if [ "$code" = "200" ] && jq -e '.ok == true' /tmp/create.json >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 10
+          done
+          if [ "$ready" != "1" ]; then
+            echo "Route/template creation did not become ready"
+            exit 1
+          fi
+
+      - name: Wait for Meta approval and send
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint='https://social-hub-gui.vercel.app/api/whatsapp/last2-campaign'
+          mkdir -p tmp
+          sent=0
+          last_status='UNKNOWN'
+
+          for i in $(seq 1 36); do
+            curl -sS --fail --max-time 30 "$endpoint" -o /tmp/status.json
+            last_status=$(jq -r '.template.status // "PENDING"' /tmp/status.json)
+
+            if [ "$last_status" = "APPROVED" ]; then
+              curl -sS --fail --max-time 120                 -X POST "$endpoint"                 -H 'Content-Type: application/json'                 --data '{"action":"send"}'                 -o /tmp/send.json
+
+              jq '{
+                ok,
+                total,
+                sent,
+                skipped,
+                failed,
+                template_status: (.template.status // null)
+              }' /tmp/send.json > tmp/last2-campaign-summary.json
+              sent=1
+              break
+            fi
+
+            if [ "$last_status" = "REJECTED" ] || [ "$last_status" = "PAUSED" ] || [ "$last_status" = "DISABLED" ]; then
+              jq -n --arg status "$last_status"                 '{ok:false, sent:0, skipped:0, failed:0, template_status:$status}'                 > tmp/last2-campaign-summary.json
+              break
+            fi
+
+            sleep 10
+          done
+
+          if [ "$sent" != "1" ] && [ ! -f tmp/last2-campaign-summary.json ]; then
+            jq -n --arg status "$last_status"               '{ok:false, sent:0, skipped:0, failed:0, template_status:$status}'               > tmp/last2-campaign-summary.json
+          fi
+
+      - name: Save summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tmp/last2-campaign-summary.json
+          git commit -m 'chore: save last 2 spots campaign summary' || exit 0
+          git push

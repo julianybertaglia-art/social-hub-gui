@@ -52,6 +52,7 @@ const PARTICIPANTS = [
   ['Guilherme Sarmento', '119470044855'],
   ['Gustavo Palacios', '73991487382'],
   ['Gustavo Guimarães', '13997001617'],
+  ['Damiela Sousa', '11934649136'],
   ['Gustavo Nonato', '11982500205'],
   ['Nicolas Acom.', '11982500205'],
   ['Pedro Henrique Acom.', '11982500205'],

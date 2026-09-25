@@ -1,0 +1,34 @@
+name: Send participant confirmation 26-09
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/send-participant-confirmation-2609.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Wait for deployment, template approval and send
+        shell: bash
+        run: |
+          set -u
+          endpoint='https://social-hub-gui.vercel.app/api/whatsapp/participant-confirmation?key=confirmacao-2609-9d7f31b2'
+          for i in $(seq 1 60); do
+            code=$(curl -sS -o /tmp/result.json -w '%{http_code}' --max-time 120 -X POST "$endpoint" || true)
+            cat /tmp/result.json || true
+            echo
+            if [ "$code" = "200" ]; then
+              exit 0
+            fi
+            if [ "$code" = "409" ]; then
+              exit 1
+            fi
+            sleep 12
+          done
+          exit 1

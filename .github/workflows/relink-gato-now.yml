@@ -1,0 +1,18 @@
+name: Relink WhatsApp Gato now
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/relink-gato-now.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  relink:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Relink
+        run: |
+          curl --fail-with-body --silent --show-error             -X POST 'https://social-hub-gui.vercel.app/api/whatsapp/gato'             -H 'Content-Type: application/json'             --data '{"action":"relink"}'

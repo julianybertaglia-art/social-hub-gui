@@ -407,3 +407,16 @@
   background: #fff7eb;
   color: #946428;
 }
+
+.metric-input-card.metric-live {
+  border-color: color-mix(in srgb, var(--success) 22%, var(--border));
+}
+
+.metric-input-card.metric-live input {
+  cursor: default;
+}
+
+.metric-input-card.metric-live small {
+  color: #4f855e;
+  font-weight: 700;
+}

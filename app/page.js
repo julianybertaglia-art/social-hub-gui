@@ -223,6 +223,49 @@ function EmptyState({ children }) {
   return <div className="empty-state">{children}</div>;
 }
 
+function SummaryIcon({ type }) {
+  const paths = {
+    tasks: (
+      <>
+        <path d="M5 6.5h14" />
+        <path d="M5 12h14" />
+        <path d="M5 17.5h9" />
+        <path d="m2.8 6.5.9.9 1.7-1.9" />
+        <path d="m2.8 12 .9.9 1.7-1.9" />
+      </>
+    ),
+    content: (
+      <>
+        <rect x="4" y="3.5" width="16" height="17" rx="2.5" />
+        <path d="M8 8h8" />
+        <path d="M8 12h8" />
+        <path d="M8 16h5" />
+      </>
+    ),
+    leads: (
+      <>
+        <circle cx="9" cy="9" r="3" />
+        <path d="M3.5 19c.8-3.2 2.8-5 5.5-5s4.7 1.8 5.5 5" />
+        <path d="M17 8v6" />
+        <path d="M14 11h6" />
+      </>
+    ),
+    automations: (
+      <>
+        <path d="M13 2 5.5 13h5L9.8 22 18.5 10h-5L13 2Z" />
+      </>
+    ),
+  };
+
+  return (
+    <span className="quick-stat-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        {paths[type]}
+      </svg>
+    </span>
+  );
+}
+
 function TaskRow({ task, onToggle, onOpen }) {
   return (
     <div className={`task-row ${task.done ? 'done' : ''}`}>
@@ -258,6 +301,7 @@ export default function Home() {
   const [crmSummary, setCrmSummary] = useState({ total: null, newLeads: null });
   const [automationCount, setAutomationCount] = useState(1);
   const [liveMetrics, setLiveMetrics] = useState(null);
+  const [instagramConnected, setInstagramConnected] = useState(null);
   const [metrics, setMetrics] = useStoredState(
     getWorkspaceStorageKey('guihub-metrics', workspace.id),
     defaultMetrics
@@ -305,8 +349,11 @@ export default function Home() {
       setAutomationCount(0);
       setCrmSummary({ total: 0, newLeads: 0 });
       setLiveMetrics(null);
+      setInstagramConnected(false);
       return;
     }
+
+    setInstagramConnected(null);
 
     try {
       const stored = JSON.parse(window.localStorage.getItem('guihub-automations') || '[]');
@@ -335,12 +382,15 @@ export default function Home() {
     ])
       .then(([profileData, metricsData]) => {
         const apiMetrics = metricsData?.metrics || {};
+        setInstagramConnected(Boolean(profileData?.connected));
         setLiveMetrics({
           ...apiMetrics,
           seguidores: profileData?.followersCount || apiMetrics.seguidores || 0,
         });
       })
-      .catch(() => {});
+      .catch(() => {
+        setInstagramConnected(false);
+      });
   }, [workspace.id, isGuiWorkspace]);
 
   function openTask(id) {
@@ -434,21 +484,25 @@ export default function Home() {
 
         <section className="quick-stats" aria-label="Resumo do dia">
           <button type="button" className="quick-stat" onClick={() => goTo('tasks')}>
+            <SummaryIcon type="tasks" />
             <span>Tarefas pendentes</span>
             <strong>{pendingTasks.length}</strong>
             <small>{highPriorityCount ? `${highPriorityCount} de alta prioridade` : 'Nenhuma urgente'}</small>
           </button>
           <button type="button" className="quick-stat" onClick={() => goTo('calendar')}>
+            <SummaryIcon type="content" />
             <span>Conteúdos programados</span>
             <strong>{scheduledPosts.length}</strong>
             <small>{contentInProduction ? `${contentInProduction} em produção` : 'Tudo encaminhado'}</small>
           </button>
           <Link className="quick-stat" href="/whatsapp">
+            <SummaryIcon type="leads" />
             <span>Leads no CRM</span>
             <strong>{formatNumber(leadCount)}</strong>
             <small>{crmSummary.newLeads === null ? 'Carregando CRM…' : `${crmSummary.newLeads} novos`}</small>
           </Link>
           <Link className="quick-stat" href="/automacoes">
+            <SummaryIcon type="automations" />
             <span>Automações ativas</span>
             <strong>{automationCount}</strong>
             <small>Direct e comentários</small>
@@ -760,7 +814,16 @@ export default function Home() {
           <button className="menu-button" onClick={() => setMobileMenu(true)} aria-label="Abrir menu">☰</button>
           <WorkspaceSwitcher />
           <ThemeCustomizer />
-          <span className="workspace-status"><i className={workspace.connected ? '' : 'pending'} /> {workspace.connected ? 'Meta conectada' : 'Conta sem conexão'}</span>
+          <span className={`workspace-status ${instagramConnected === false ? 'workspace-status-warning' : ''}`}>
+            <i className={instagramConnected === false ? 'pending' : ''} />
+            {workspace.id !== 'gui-nonato'
+              ? 'Conta sem conexão'
+              : instagramConnected === null
+                ? 'Verificando Meta...'
+                : instagramConnected
+                  ? 'Meta conectada'
+                  : 'Reconectar Meta'}
+          </span>
         </header>
         <div className="page-content">{content()}</div>
       </main>

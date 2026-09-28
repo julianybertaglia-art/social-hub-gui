@@ -321,3 +321,39 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.workspace-status i.pending {
+  background: #c28b42;
+}
+
+.quick-stat {
+  position: relative;
+  min-height: 112px;
+  padding: 18px;
+}
+
+.quick-stat::before {
+  content: '';
+  display: block;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 13px;
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--gold) 13%, transparent), transparent),
+    var(--surface-soft);
+  border: 1px solid color-mix(in srgb, var(--gold) 16%, var(--border));
+}
+
+.quick-stat strong {
+  margin: 4px 0 4px;
+  font-family: inherit;
+  font-size: 28px;
+  font-weight: 750;
+  letter-spacing: -.035em;
+}
+
+.quick-stat:hover {
+  border-color: color-mix(in srgb, var(--gold) 28%, var(--border));
+  box-shadow: 0 12px 30px rgba(54, 35, 41, .07);
+}

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import DetailDialog from './DetailDialog';
+import ThemeCustomizer from './ThemeCustomizer';
 
 const SECTION_IDS = ['dashboard', 'calendar', 'tasks', 'ideas', 'metrics', 'goals'];
 
@@ -717,6 +718,7 @@ export default function Home() {
             <span className="instagram-dot">GN</span>
             <div><strong>Gui Nonato</strong><span>@gui_nonato · Instagram</span></div>
           </div>
+          <ThemeCustomizer />
           <span className="workspace-status"><i /> Meta conectada</span>
         </header>
         <div className="page-content">{content()}</div>

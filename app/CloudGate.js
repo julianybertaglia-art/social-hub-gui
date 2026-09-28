@@ -24,6 +24,11 @@ export const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
+function notifyLocalUpdate(key) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('tideplace:storage-update', { detail: { key } }));
+}
+
 function readLocalState() {
   const data = {};
 
@@ -48,11 +53,6 @@ function writeLocalState(data) {
 
 function serializeState(data) {
   return JSON.stringify(data);
-}
-
-function notifyLocalUpdate(key) {
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent('tideplace:storage-update', { detail: { key } }));
 }
 
 function isUserEditing() {
@@ -172,6 +172,302 @@ export default function CloudGate({ children }) {
 
   useEffect(() => {
     if (!supabase) {
+      setInitializing(false);
+      return undefined;
+    }
+
+    let active = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      setSession(data.session ?? null);
+      setInitializing(false);
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      setSession(nextSession);
+      if (event === 'SIGNED_OUT' || !nextSession) setReady(false);
+    });
+
+    return () => {
+      active = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!supabase || !session) {
+      setReady(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    async function initializeCloudState() {
+      setSyncStatus('Sincronizando dados...');
+
+      const { data, error } = await supabase
+        .from('content_items')
+        .select('id, description, updated_at')
+        .eq('title', '__SOCIAL_HUB_STATE__')
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (error) {
+        console.error('Erro ao carregar dados da TidePlace:', error);
+        setSyncStatus('Erro de conexão');
+        setReady(true);
+        return;
+      }
+
+      if (data) {
+        rowIdRef.current = data.id;
+
+        try {
+          const payload = JSON.parse(data.description || '{}');
+          const remoteUpdatedAt = Number(payload.updatedAt || Date.parse(data.updated_at) || 0);
+          const localUpdatedAt = Number(window.localStorage.getItem('guihub-cloud-updated-at') || 0);
+          const localState = readLocalState();
+
+          if (remoteUpdatedAt > localUpdatedAt || Object.keys(localState).length === 0) {
+            writeLocalState(payload.data);
+            window.localStorage.setItem('guihub-cloud-updated-at', String(remoteUpdatedAt));
+          }
+        } catch (parseError) {
+          console.warn('Não foi possível ler o estado salvo:', parseError);
+        }
+      } else {
+        rowIdRef.current = null;
+      }
+
+      if (cancelled) return;
+
+      setSyncStatus('Atualizando Instagram...');
+      const instagramResult = await refreshInstagramMetrics();
+      lastMetricsRefreshRef.current = Date.now();
+
+      if (cancelled) return;
+
+      const previousContentUpdate = Date.parse(
+        window.localStorage.getItem('guihub-media-performance-updated-at') || ''
+      );
+      lastContentRefreshRef.current = Number.isFinite(previousContentUpdate)
+        ? previousContentUpdate
+        : 0;
+
+      lastSnapshotRef.current = data ? serializeState(readLocalState()) : '';
+      setSyncStatus(
+        instagramResult.ok
+          ? `Sincronizado · ${instagramResult.source}`
+          : data
+            ? 'Sincronizado · Instagram indisponível'
+            : 'Preparando primeira sincronização...'
+      );
+      setReady(true);
+    }
+
+    initializeCloudState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (!supabase || !session || !ready) return undefined;
+
+    let cancelled = false;
+
+    async function updateInstagramAutomatically({ force = false } = {}) {
+      const now = Date.now();
+      const elapsed = now - lastMetricsRefreshRef.current;
+
+      if (!force && elapsed < 60 * 1000) return;
+      if (metricsRefreshInProgressRef.current) return;
+
+      metricsRefreshInProgressRef.current = true;
+      setSyncStatus('Atualizando Instagram...');
+
+      const result = await refreshInstagramMetrics();
+      lastMetricsRefreshRef.current = Date.now();
+      metricsRefreshInProgressRef.current = false;
+
+      if (cancelled) return;
+
+      setSyncStatus(
+        result.ok
+          ? `Sincronizado · ${result.source}`
+          : 'Sincronizado · Instagram indisponível'
+      );
+
+      if (result.ok && result.changed && !isUserEditing()) {
+        notifyLocalUpdate('guihub-metrics');
+      }
+    }
+
+    const intervalId = window.setInterval(
+      () => updateInstagramAutomatically({ force: true }),
+      INSTAGRAM_REFRESH_INTERVAL
+    );
+
+    function handleFocus() {
+      const elapsed = Date.now() - lastMetricsRefreshRef.current;
+      if (elapsed >= 2 * 60 * 1000) {
+        updateInstagramAutomatically();
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') handleFocus();
+    }
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [ready, session]);
+
+  useEffect(() => {
+    if (!supabase || !session || !ready) return undefined;
+
+    let cancelled = false;
+
+    async function updateContentPerformance({ force = false } = {}) {
+      const elapsed = Date.now() - lastContentRefreshRef.current;
+
+      if (!force && elapsed < CONTENT_REFRESH_INTERVAL) return;
+      if (contentRefreshInProgressRef.current) return;
+
+      contentRefreshInProgressRef.current = true;
+      const result = await refreshInstagramContentPerformance();
+      lastContentRefreshRef.current = Date.now();
+      contentRefreshInProgressRef.current = false;
+
+      if (cancelled) return;
+
+      if (result.ok) {
+        console.info('Performance dos conteúdos atualizada.', { count: result.count });
+      }
+    }
+
+    const firstRunId = window.setTimeout(() => updateContentPerformance(), 1200);
+    const intervalId = window.setInterval(
+      () => updateContentPerformance({ force: true }),
+      CONTENT_REFRESH_INTERVAL
+    );
+
+    function handleFocus() {
+      if (Date.now() - lastContentRefreshRef.current >= CONTENT_REFRESH_INTERVAL) {
+        updateContentPerformance();
+      }
+    }
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(firstRunId);
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [ready, session]);
+
+  useEffect(() => {
+    if (!supabase || !session || !ready) return undefined;
+
+    async function saveCloudState() {
+      if (saveInProgressRef.current) return;
+
+      const localState = readLocalState();
+      const snapshot = serializeState(localState);
+
+      if (snapshot === lastSnapshotRef.current) return;
+
+      saveInProgressRef.current = true;
+      setSyncStatus('Salvando...');
+
+      const updatedAt = Date.now();
+      const payload = JSON.stringify({ updatedAt, data: localState });
+
+      let result;
+
+      if (rowIdRef.current) {
+        result = await supabase
+          .from('content_items')
+          .update({ description: payload, status: 'Ativo' })
+          .eq('id', rowIdRef.current)
+          .select('id')
+          .single();
+      } else {
+        result = await supabase
+          .from('content_items')
+          .insert({
+            title: '__SOCIAL_HUB_STATE__',
+            description: payload,
+            platform: 'Sistema',
+            format: 'Estado',
+            objective: 'Sincronização',
+            audience: 'Interno',
+            status: 'Ativo',
+          })
+          .select('id')
+          .single();
+      }
+
+      if (result.error) {
+        console.error('Erro ao sincronizar a TidePlace:', result.error);
+        setSyncStatus('Erro ao salvar');
+      } else {
+        rowIdRef.current = result.data.id;
+        lastSnapshotRef.current = snapshot;
+        window.localStorage.setItem('guihub-cloud-updated-at', String(updatedAt));
+        setSyncStatus('Sincronizado');
+      }
+
+      saveInProgressRef.current = false;
+    }
+
+    const firstSaveId = window.setTimeout(saveCloudState, 250);
+    const intervalId = window.setInterval(saveCloudState, 1200);
+
+    return () => {
+      window.clearTimeout(firstSaveId);
+      window.clearInterval(intervalId);
+    };
+  }, [ready, session]);
+
+  async function handleLogin(event) {
+    event.preventDefault();
+    if (!supabase) return;
+
+    setSubmitting(true);
+    setMessage('');
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      setMessage('E-mail ou senha incorretos.');
+    }
+
+    setSubmitting(false);
+  }
+
+  async function handleLogout() {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    rowIdRef.current = null;
+    lastSnapshotRef.current = '';
+    setSession(null);
+    setReady(false);
+  }
+
+  if (!supabase) {
     return (
       <main className={styles.screen}>
         <section className={styles.statusCard}>

@@ -699,7 +699,7 @@ export default function Home() {
     <div className="app-shell">
       <aside className={`sidebar ${mobileMenu ? 'open' : ''}`}>
         <div className="brand">
-          <div className="brand-mark"><img src="/tideplace-mark.svg" alt="" /></div>
+          <div className="brand-mark"><img src="/brand/tideplace-mark.svg" alt="" /></div>
           <div className="brand-copy"><strong><b>TIDE</b>PLACE</strong><span>Flow with your audience.</span></div>
         </div>
 

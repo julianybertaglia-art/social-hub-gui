@@ -9,7 +9,7 @@
   gap: 18px !important;
   padding-right: 3px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,.12) transparent;
+  scrollbar-color: var(--border) transparent;
 }
 
 .sidebar-group {
@@ -19,7 +19,7 @@
 
 .sidebar-group-label {
   margin: 0 14px 4px;
-  color: rgba(255,255,255,.34);
+  color: #9b9295;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: .14em;
@@ -33,14 +33,14 @@
   min-height: 44px;
   padding: 12px 14px;
   border-radius: 10px;
-  color: rgba(255,255,255,.63);
+  color: #5f595b;
   text-decoration: none;
   transition: .2s ease;
 }
 
 .sidebar-nav-link:hover {
-  background: rgba(185,146,77,.15);
-  color: white;
+  background: var(--gold-soft);
+  color: var(--gold-dark);
 }
 
 .sidebar-bottom {
@@ -58,7 +58,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  margin-left: auto;
+  margin-left: 0;
   padding: 7px 10px;
   border: 1px solid #dce9df;
   border-radius: 999px;

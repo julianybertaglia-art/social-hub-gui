@@ -47,14 +47,14 @@ export default function HubFrame({ children }) {
     <div className={styles.frame}>
       <aside className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <Link href="/" className={styles.brand} onClick={() => setMenuOpen(false)}>
-          <div className={styles.brandMark}>GN</div>
-          <div>
-            <strong>GUI SOCIAL HUB</strong>
-            <span>Central estratégica</span>
+          <div className={styles.brandMark}><img src="/tideplace-mark.svg" alt="" /></div>
+          <div className={styles.brandCopy}>
+            <strong><b>TIDE</b>PLACE</strong>
+            <span>Flow with your audience.</span>
           </div>
         </Link>
 
-        <nav className={styles.nav} aria-label="Áreas do Hub">
+        <nav className={styles.nav} aria-label="Áreas da TidePlace">
           {GROUPS.map((group) => (
             <div className={styles.group} key={group.label}>
               <span className={styles.groupLabel}>{group.label}</span>

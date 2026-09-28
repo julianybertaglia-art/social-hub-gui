@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import styles from './cloudgate.module.css';
 
 const STORAGE_KEYS = [
+  'tideplace-workspace',
   'guihub-metrics',
   'guihub-posts',
   'guihub-ideas',
@@ -13,6 +14,11 @@ const STORAGE_KEYS = [
   'guihub-automations',
   'guihub-media-performance',
   'guihub-media-history',
+  'guihub-metrics:vital-decor',
+  'guihub-posts:vital-decor',
+  'guihub-ideas:vital-decor',
+  'guihub-tasks:vital-decor',
+  'guihub-goals:vital-decor',
 ];
 
 const INSTAGRAM_REFRESH_INTERVAL = 10 * 60 * 1000;

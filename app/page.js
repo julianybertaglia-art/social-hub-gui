@@ -161,14 +161,31 @@ function useStoredState(key, initialValue) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(key);
-      if (saved) setValue(JSON.parse(saved));
-    } catch (error) {
-      console.warn(`Não foi possível carregar ${key}`, error);
-    } finally {
-      setReady(true);
+    function readStoredValue() {
+      try {
+        const saved = window.localStorage.getItem(key);
+        if (saved) setValue(JSON.parse(saved));
+      } catch (error) {
+        console.warn(`Não foi possível carregar ${key}`, error);
+      } finally {
+        setReady(true);
+      }
     }
+
+    function handleStorageUpdate(event) {
+      if (event?.detail?.key && event.detail.key !== key) return;
+      if (event?.key && event.key !== key) return;
+      readStoredValue();
+    }
+
+    readStoredValue();
+    window.addEventListener('storage', handleStorageUpdate);
+    window.addEventListener('tideplace:storage-update', handleStorageUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageUpdate);
+      window.removeEventListener('tideplace:storage-update', handleStorageUpdate);
+    };
   }, [key]);
 
   useEffect(() => {

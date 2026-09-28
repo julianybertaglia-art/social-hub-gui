@@ -9,6 +9,8 @@
   --gold-dark: #751f36;
   --gold-soft: #f6eaee;
   --dark: #171417;
+  --sidebar-bg: #ffffff;
+  --topbar-bg: rgba(255,255,255,.95);
   --success: #557d62;
   --danger: #a34f4f;
   --shadow: 0 12px 35px rgba(30, 27, 21, 0.06);
@@ -205,7 +207,7 @@ button {
   flex-direction: column;
   padding: 28px 18px 20px;
   border-right: 1px solid var(--border);
-  background: #ffffff;
+  background: var(--sidebar-bg);
   color: var(--text);
 }
 
@@ -316,7 +318,7 @@ button {
   gap: 14px;
   padding: 12px 34px;
   border-bottom: 1px solid var(--border);
-  background: rgba(255,255,255,.94);
+  background: var(--topbar-bg);
   backdrop-filter: blur(14px);
 }
 

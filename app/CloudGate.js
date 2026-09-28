@@ -471,7 +471,7 @@ export default function CloudGate({ children }) {
     return (
       <main className={styles.screen}>
         <section className={styles.statusCard}>
-          <img className={styles.statusLogo} src="/tideplace-mark.svg" alt="" />
+          <img className={styles.statusLogo} src="/brand/tideplace-mark.svg" alt="" />
           <p className={styles.eyebrow}>TIDEPLACE</p>
           <h1>Configuração pendente</h1>
           <p>Verifique as variáveis do Supabase na Vercel e faça um novo deploy.</p>
@@ -484,7 +484,7 @@ export default function CloudGate({ children }) {
     return (
       <main className={styles.loadingScreen} aria-live="polite">
         <div className={styles.loadingBrand}>
-          <img src="/tideplace-mark.svg" alt="" />
+          <img src="/brand/tideplace-mark.svg" alt="" />
           <strong><b>TIDE</b>PLACE</strong>
           <span>Flow with your audience.</span>
         </div>
@@ -499,7 +499,7 @@ export default function CloudGate({ children }) {
         <section className={styles.loginShell}>
           <div className={styles.brandPanel}>
             <div className={styles.brandLockup}>
-              <img src="/tideplace-mark.svg" alt="" />
+              <img src="/brand/tideplace-mark.svg" alt="" />
               <div>
                 <strong><b>TIDE</b>PLACE</strong>
                 <span>Flow with your audience.</span>
@@ -522,7 +522,7 @@ export default function CloudGate({ children }) {
 
           <div className={styles.authPanel}>
             <div className={styles.mobileBrand}>
-              <img src="/tideplace-mark.svg" alt="" />
+              <img src="/brand/tideplace-mark.svg" alt="" />
               <strong><b>TIDE</b>PLACE</strong>
             </div>
             <p className={styles.eyebrow}>ACESSO À PLATAFORMA</p>

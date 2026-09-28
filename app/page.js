@@ -380,7 +380,7 @@ export default function Home() {
       <>
         <section className="hero-row dashboard-hero">
           <div>
-            <span className="eyebrow">PAINEL DO DIA · GUI NONATO</span>
+            <span className="eyebrow">TIDEPLACE · GUI NONATO</span>
             <h1>{greeting}, Juliany.</h1>
             <p className="subtitle">O que precisa da sua atenção, sem misturar tudo na mesma tela.</p>
           </div>
@@ -681,11 +681,11 @@ export default function Home() {
     <div className="app-shell">
       <aside className={`sidebar ${mobileMenu ? 'open' : ''}`}>
         <div className="brand">
-          <div className="brand-mark">GN</div>
-          <div><strong>GUI SOCIAL HUB</strong><span>Central estratégica</span></div>
+          <div className="brand-mark"><img src="/tideplace-mark.svg" alt="" /></div>
+          <div className="brand-copy"><strong><b>TIDE</b>PLACE</strong><span>Flow with your audience.</span></div>
         </div>
 
-        <nav className="sidebar-nav" aria-label="Áreas do Hub">
+        <nav className="sidebar-nav" aria-label="Áreas da TidePlace">
           {navGroups.map((group) => (
             <div className="sidebar-group" key={group.label}>
               <span className="sidebar-group-label">{group.label}</span>

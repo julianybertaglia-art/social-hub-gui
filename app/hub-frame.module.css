@@ -1,5 +1,5 @@
 .frame{min-height:100vh;background:var(--bg)}
-.sidebar{position:fixed;inset:0 auto 0 0;z-index:50;display:flex;width:250px;flex-direction:column;padding:28px 18px 20px;border-right:1px solid var(--border);background:#fff;color:var(--text)}
+.sidebar{position:fixed;inset:0 auto 0 0;z-index:50;display:flex;width:250px;flex-direction:column;padding:28px 18px 20px;border-right:1px solid var(--border);background:var(--sidebar-bg);color:var(--text)}
 .brand{display:flex;align-items:center;gap:12px;padding:0 8px 28px;border-bottom:1px solid var(--border);color:var(--text)!important;text-decoration:none!important}
 .brandMark{display:grid;width:44px;height:44px;flex:0 0 44px;place-items:center}.brandMark img{width:42px;height:42px;object-fit:contain}
 .brand strong,.profile strong{display:block;color:var(--text);font-size:13px;letter-spacing:.04em;text-decoration:none}.brandCopy strong{font-size:17px;letter-spacing:-.02em}.brandCopy strong b{font-weight:800}
@@ -11,7 +11,7 @@
 .icon{display:inline-grid;width:22px;place-items:center;color:var(--gold)}
 .profile{display:flex;align-items:center;gap:11px;margin-top:18px;padding:18px 8px 0;border-top:1px solid var(--border)}
 .profileDot{display:grid;width:36px;height:36px;place-items:center;border-radius:50%;background:var(--gold);color:#fff;font-weight:700}
-.main{min-height:100vh;margin-left:250px}.topbar{position:sticky;top:0;z-index:40;display:flex;min-height:72px;align-items:center;gap:14px;padding:12px 34px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.95);backdrop-filter:blur(14px)}
+.main{min-height:100vh;margin-left:250px}.topbar{position:sticky;top:0;z-index:40;display:flex;min-height:72px;align-items:center;gap:14px;padding:12px 34px;border-bottom:1px solid var(--border);background:var(--topbar-bg);backdrop-filter:blur(14px)}
 .account{display:flex;align-items:center;gap:9px}.account strong,.account span{display:block}.account strong{font-size:14px}.account span{margin-top:2px;color:var(--muted);font-size:11px}
 .instagramDot{display:grid;width:34px;height:34px;place-items:center;border:1px solid var(--border);border-radius:50%;background:var(--surface);color:var(--gold-dark);font-size:10px;font-weight:800}
 .context{margin-left:auto;text-align:right}.context span,.context strong{display:block}.context span{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.12em}.context strong{margin-top:3px;font-size:12px}

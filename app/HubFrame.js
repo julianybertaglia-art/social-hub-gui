@@ -48,7 +48,7 @@ export default function HubFrame({ children }) {
     <div className={styles.frame}>
       <aside className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <Link href="/" className={styles.brand} onClick={() => setMenuOpen(false)}>
-          <div className={styles.brandMark}><img src="/tideplace-mark.svg" alt="" /></div>
+          <div className={styles.brandMark}><img src="/brand/tideplace-mark.svg" alt="" /></div>
           <div className={styles.brandCopy}>
             <strong><b>TIDE</b>PLACE</strong>
             <span>Flow with your audience.</span>

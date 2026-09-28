@@ -41,12 +41,18 @@ function writeLocalState(data) {
   STORAGE_KEYS.forEach((key) => {
     if (typeof data[key] === 'string') {
       window.localStorage.setItem(key, data[key]);
+      notifyLocalUpdate(key);
     }
   });
 }
 
 function serializeState(data) {
   return JSON.stringify(data);
+}
+
+function notifyLocalUpdate(key) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('tideplace:storage-update', { detail: { key } }));
 }
 
 function isUserEditing() {
@@ -83,6 +89,7 @@ async function refreshInstagramMetrics() {
     window.localStorage.setItem('guihub-metrics', JSON.stringify(nextMetrics));
     window.localStorage.setItem('guihub-instagram-updated-at', payload.updatedAt || new Date().toISOString());
     window.localStorage.setItem('guihub-instagram-source', source);
+    notifyLocalUpdate('guihub-metrics');
 
     return { ok: true, changed, source };
   } catch (error) {
@@ -135,6 +142,8 @@ async function refreshInstagramContentPerformance() {
       payload.updatedAt || new Date().toISOString()
     );
     mergeDailyMediaSnapshot(payload);
+    notifyLocalUpdate('guihub-media-performance');
+    notifyLocalUpdate('guihub-media-history');
 
     return { ok: true, count: payload.items.length };
   } catch (error) {
@@ -163,322 +172,27 @@ export default function CloudGate({ children }) {
 
   useEffect(() => {
     if (!supabase) {
-      setInitializing(false);
-      return undefined;
-    }
-
-    let active = true;
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      setSession(data.session ?? null);
-      setInitializing(false);
-    });
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setReady(false);
-    });
-
-    return () => {
-      active = false;
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!supabase || !session) {
-      setReady(false);
-      return undefined;
-    }
-
-    let cancelled = false;
-
-    async function initializeCloudState() {
-      setSyncStatus('Carregando dados...');
-
-      const { data, error } = await supabase
-        .from('content_items')
-        .select('id, description, updated_at')
-        .eq('title', '__SOCIAL_HUB_STATE__')
-        .maybeSingle();
-
-      if (cancelled) return;
-
-      if (error) {
-        console.error('Erro ao carregar dados do hub:', error);
-        setSyncStatus('Erro de conexão');
-        setReady(true);
-        return;
-      }
-
-      if (data) {
-        rowIdRef.current = data.id;
-
-        try {
-          const payload = JSON.parse(data.description || '{}');
-          const remoteUpdatedAt = Number(payload.updatedAt || Date.parse(data.updated_at) || 0);
-          const localUpdatedAt = Number(window.localStorage.getItem('guihub-cloud-updated-at') || 0);
-          const localState = readLocalState();
-
-          if (remoteUpdatedAt > localUpdatedAt || Object.keys(localState).length === 0) {
-            writeLocalState(payload.data);
-            window.localStorage.setItem('guihub-cloud-updated-at', String(remoteUpdatedAt));
-          }
-        } catch (parseError) {
-          console.warn('Não foi possível ler o estado salvo:', parseError);
-        }
-      } else {
-        rowIdRef.current = null;
-      }
-
-      if (cancelled) return;
-
-      setSyncStatus('Atualizando Instagram...');
-      const instagramResult = await refreshInstagramMetrics();
-      lastMetricsRefreshRef.current = Date.now();
-
-      if (cancelled) return;
-
-      const previousContentUpdate = Date.parse(
-        window.localStorage.getItem('guihub-media-performance-updated-at') || ''
-      );
-      lastContentRefreshRef.current = Number.isFinite(previousContentUpdate)
-        ? previousContentUpdate
-        : 0;
-
-      lastSnapshotRef.current = data ? serializeState(readLocalState()) : '';
-      setSyncStatus(
-        instagramResult.ok
-          ? `Sincronizado · Instagram atualizado · ${instagramResult.source}`
-          : data
-            ? 'Sincronizado · Instagram indisponível'
-            : 'Preparando primeira sincronização...'
-      );
-      setReady(true);
-    }
-
-    initializeCloudState();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [session]);
-
-  useEffect(() => {
-    if (!supabase || !session || !ready) return undefined;
-
-    let cancelled = false;
-
-    async function updateInstagramAutomatically({ force = false } = {}) {
-      const now = Date.now();
-      const elapsed = now - lastMetricsRefreshRef.current;
-
-      if (!force && elapsed < 60 * 1000) return;
-      if (metricsRefreshInProgressRef.current) return;
-
-      metricsRefreshInProgressRef.current = true;
-      setSyncStatus('Atualizando Instagram...');
-
-      const result = await refreshInstagramMetrics();
-      lastMetricsRefreshRef.current = Date.now();
-      metricsRefreshInProgressRef.current = false;
-
-      if (cancelled) return;
-
-      setSyncStatus(
-        result.ok
-          ? `Sincronizado · Instagram atualizado automaticamente · ${result.source}`
-          : 'Sincronizado · não foi possível atualizar Instagram'
-      );
-
-      if (result.ok && result.changed && !isUserEditing()) {
-        window.location.reload();
-      }
-    }
-
-    const intervalId = window.setInterval(
-      () => updateInstagramAutomatically({ force: true }),
-      INSTAGRAM_REFRESH_INTERVAL
-    );
-
-    function handleFocus() {
-      const elapsed = Date.now() - lastMetricsRefreshRef.current;
-      if (elapsed >= 2 * 60 * 1000) {
-        updateInstagramAutomatically();
-      }
-    }
-
-    function handleVisibilityChange() {
-      if (document.visibilityState === 'visible') handleFocus();
-    }
-
-    window.addEventListener('focus', handleFocus);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-      window.removeEventListener('focus', handleFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [ready, session]);
-
-  useEffect(() => {
-    if (!supabase || !session || !ready) return undefined;
-
-    let cancelled = false;
-
-    async function updateContentPerformance({ force = false } = {}) {
-      const elapsed = Date.now() - lastContentRefreshRef.current;
-
-      if (!force && elapsed < CONTENT_REFRESH_INTERVAL) return;
-      if (contentRefreshInProgressRef.current) return;
-
-      contentRefreshInProgressRef.current = true;
-      const result = await refreshInstagramContentPerformance();
-      lastContentRefreshRef.current = Date.now();
-      contentRefreshInProgressRef.current = false;
-
-      if (cancelled) return;
-
-      if (result.ok) {
-        console.info('Performance dos conteúdos atualizada.', { count: result.count });
-      }
-    }
-
-    const firstRunId = window.setTimeout(() => updateContentPerformance(), 1200);
-    const intervalId = window.setInterval(
-      () => updateContentPerformance({ force: true }),
-      CONTENT_REFRESH_INTERVAL
-    );
-
-    function handleFocus() {
-      if (Date.now() - lastContentRefreshRef.current >= CONTENT_REFRESH_INTERVAL) {
-        updateContentPerformance();
-      }
-    }
-
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(firstRunId);
-      window.clearInterval(intervalId);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [ready, session]);
-
-  useEffect(() => {
-    if (!supabase || !session || !ready) return undefined;
-
-    async function saveCloudState() {
-      if (saveInProgressRef.current) return;
-
-      const localState = readLocalState();
-      const snapshot = serializeState(localState);
-
-      if (snapshot === lastSnapshotRef.current) return;
-
-      saveInProgressRef.current = true;
-      setSyncStatus('Salvando...');
-
-      const updatedAt = Date.now();
-      const payload = JSON.stringify({ updatedAt, data: localState });
-
-      let result;
-
-      if (rowIdRef.current) {
-        result = await supabase
-          .from('content_items')
-          .update({ description: payload, status: 'Ativo' })
-          .eq('id', rowIdRef.current)
-          .select('id')
-          .single();
-      } else {
-        result = await supabase
-          .from('content_items')
-          .insert({
-            title: '__SOCIAL_HUB_STATE__',
-            description: payload,
-            platform: 'Sistema',
-            format: 'Estado',
-            objective: 'Sincronização',
-            audience: 'Interno',
-            status: 'Ativo',
-          })
-          .select('id')
-          .single();
-      }
-
-      if (result.error) {
-        console.error('Erro ao sincronizar o hub:', result.error);
-        setSyncStatus('Erro ao salvar');
-      } else {
-        rowIdRef.current = result.data.id;
-        lastSnapshotRef.current = snapshot;
-        window.localStorage.setItem('guihub-cloud-updated-at', String(updatedAt));
-        setSyncStatus('Sincronizado');
-      }
-
-      saveInProgressRef.current = false;
-    }
-
-    const firstSaveId = window.setTimeout(saveCloudState, 250);
-    const intervalId = window.setInterval(saveCloudState, 1200);
-
-    return () => {
-      window.clearTimeout(firstSaveId);
-      window.clearInterval(intervalId);
-    };
-  }, [ready, session]);
-
-  async function handleLogin(event) {
-    event.preventDefault();
-    if (!supabase) return;
-
-    setSubmitting(true);
-    setMessage('');
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      setMessage('E-mail ou senha incorretos.');
-    }
-
-    setSubmitting(false);
-  }
-
-  async function handleLogout() {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-    rowIdRef.current = null;
-    lastSnapshotRef.current = '';
-    setSession(null);
-  }
-
-  if (!supabase) {
     return (
       <main className={styles.screen}>
-        <section className={styles.card}>
-          <div className={styles.mark}>GN</div>
-          <p className={styles.eyebrow}>CONFIGURAÇÃO PENDENTE</p>
-          <h1>O banco ainda não foi conectado.</h1>
+        <section className={styles.statusCard}>
+          <img className={styles.statusLogo} src="/tideplace-mark.svg" alt="" />
+          <p className={styles.eyebrow}>TIDEPLACE</p>
+          <h1>Configuração pendente</h1>
           <p>Verifique as variáveis do Supabase na Vercel e faça um novo deploy.</p>
         </section>
       </main>
     );
   }
 
-  if (initializing || (session && !ready)) {
+  if (initializing) {
     return (
-      <main className={styles.screen}>
-        <section className={styles.card}>
-          <div className={styles.mark}>GN</div>
-          <p className={styles.eyebrow}>GUI SOCIAL HUB</p>
-          <h1>Preparando seu painel...</h1>
-          <p>{syncStatus}</p>
-        </section>
+      <main className={styles.loadingScreen} aria-live="polite">
+        <div className={styles.loadingBrand}>
+          <img src="/tideplace-mark.svg" alt="" />
+          <strong><b>TIDE</b>PLACE</strong>
+          <span>Flow with your audience.</span>
+        </div>
+        <div className={styles.loadingLine}><span /></div>
       </main>
     );
   }
@@ -486,38 +200,69 @@ export default function CloudGate({ children }) {
   if (!session) {
     return (
       <main className={styles.screen}>
-        <section className={styles.card}>
-          <div className={styles.mark}>GN</div>
-          <p className={styles.eyebrow}>ACESSO RESTRITO</p>
-          <h1>Gui Social Hub</h1>
-          <p>Entre para acessar o calendário, as métricas e o planejamento do Instagram.</p>
+        <section className={styles.loginShell}>
+          <div className={styles.brandPanel}>
+            <div className={styles.brandLockup}>
+              <img src="/tideplace-mark.svg" alt="" />
+              <div>
+                <strong><b>TIDE</b>PLACE</strong>
+                <span>Flow with your audience.</span>
+              </div>
+            </div>
 
-          <form className={styles.form} onSubmit={handleLogin}>
-            <label>
-              E-mail
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                autoComplete="email"
-                required
-              />
-            </label>
-            <label>
-              Senha
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                autoComplete="current-password"
-                required
-              />
-            </label>
-            {message && <p className={styles.error}>{message}</p>}
-            <button type="submit" disabled={submitting}>
-              {submitting ? 'Entrando...' : 'Entrar no painel'}
-            </button>
-          </form>
+            <div className={styles.brandMessage}>
+              <span className={styles.brandKicker}>YOUR SOCIAL PLACE</span>
+              <h1>Tudo o que move sua audiência, em um só lugar.</h1>
+              <p>Conteúdo, conversas, leads e automações organizados para você acompanhar o fluxo sem perder o que importa.</p>
+            </div>
+
+            <div className={styles.brandFeatures}>
+              <span>Conteúdo</span>
+              <span>Audiência</span>
+              <span>Automação</span>
+              <span>Relacionamento</span>
+            </div>
+          </div>
+
+          <div className={styles.authPanel}>
+            <div className={styles.mobileBrand}>
+              <img src="/tideplace-mark.svg" alt="" />
+              <strong><b>TIDE</b>PLACE</strong>
+            </div>
+            <p className={styles.eyebrow}>ACESSO À PLATAFORMA</p>
+            <h2>Bem-vinda de volta.</h2>
+            <p className={styles.authIntro}>Entre para acessar sua central TidePlace.</p>
+
+            <form className={styles.form} onSubmit={handleLogin}>
+              <label>
+                E-mail
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  autoComplete="email"
+                  placeholder="seu@email.com"
+                  required
+                />
+              </label>
+              <label>
+                Senha
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  required
+                />
+              </label>
+              {message && <p className={styles.error}>{message}</p>}
+              <button type="submit" disabled={submitting}>
+                {submitting ? 'Entrando...' : 'Entrar na TidePlace'}
+              </button>
+            </form>
+            <p className={styles.securityNote}>Acesso seguro · seus dados permanecem sincronizados.</p>
+          </div>
         </section>
       </main>
     );
@@ -526,8 +271,8 @@ export default function CloudGate({ children }) {
   return (
     <>
       {children}
-      <div className={styles.syncBar}>
-        <span>{syncStatus}</span>
+      <div className={`${styles.syncBar} ${ready ? styles.syncReady : styles.syncBusy}`}>
+        <span>{ready ? syncStatus : 'Sincronizando em segundo plano...'}</span>
         <button type="button" onClick={handleLogout}>Sair</button>
       </div>
     </>

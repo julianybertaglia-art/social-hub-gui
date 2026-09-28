@@ -376,21 +376,37 @@ export default function Home() {
       })
       .catch(() => {});
 
-    Promise.all([
-      fetch('/api/instagram/profile', { cache: 'no-store' }).then((response) => response.json()),
-      fetch('/api/instagram', { cache: 'no-store' }).then((response) => response.json()),
-    ])
-      .then(([profileData, metricsData]) => {
-        const apiMetrics = metricsData?.metrics || {};
-        setInstagramConnected(Boolean(profileData?.connected));
+    Promise.allSettled([
+      fetch('/api/instagram/profile', { cache: 'no-store' })
+        .then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) throw new Error(data?.detail || data?.error || 'Falha ao carregar perfil');
+          return data;
+        }),
+      fetch('/api/instagram', { cache: 'no-store' })
+        .then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) throw new Error(data?.metaDetail || data?.error || 'Falha ao carregar métricas');
+          return data;
+        }),
+    ]).then(([profileResult, metricsResult]) => {
+      const profileData = profileResult.status === 'fulfilled' ? profileResult.value : null;
+      const metricsData = metricsResult.status === 'fulfilled' ? metricsResult.value : null;
+      const apiMetrics = metricsData?.metrics || null;
+
+      if (apiMetrics) {
         setLiveMetrics({
           ...apiMetrics,
           seguidores: profileData?.followersCount || apiMetrics.seguidores || 0,
         });
-      })
-      .catch(() => {
-        setInstagramConnected(false);
-      });
+      } else {
+        setLiveMetrics(null);
+      }
+
+      // A conta está conectada se ao menos um endpoint oficial da Meta respondeu.
+      // Assim uma falha isolada na foto/perfil não derruba as métricas do painel.
+      setInstagramConnected(Boolean(profileData?.connected || apiMetrics));
+    });
   }, [workspace.id, isGuiWorkspace]);
 
   function openTask(id) {

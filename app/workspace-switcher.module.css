@@ -241,3 +241,37 @@
     left: auto;
   }
 }
+
+.avatar,
+.optionAvatar {
+  overflow: hidden;
+}
+
+.avatar img,
+.optionAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  display: block;
+}
+
+.avatar {
+  border-color: color-mix(in srgb, var(--gold) 14%, var(--border));
+}
+
+.triggerCopy strong {
+  font-size: 14px;
+}
+
+.triggerCopy span {
+  font-size: 11px;
+}
+
+.optionCopy strong {
+  font-size: 13px;
+}
+
+.optionCopy span {
+  font-size: 11px;
+}

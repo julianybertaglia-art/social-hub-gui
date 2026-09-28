@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import styles from './hub-frame.module.css';
 import ThemeCustomizer from './ThemeCustomizer';
+import WorkspaceSwitcher, { useWorkspace } from './WorkspaceSwitcher';
 
 const GROUPS = [
   { label: 'PRINCIPAL', items: [{ href: '/', label: 'Visão geral', icon: '⌂' }] },
@@ -40,6 +41,7 @@ function pageLabel(pathname) {
 
 export default function HubFrame({ children }) {
   const pathname = usePathname();
+  const [workspace] = useWorkspace();
   const [menuOpen, setMenuOpen] = useState(false);
   const framed = pathname.startsWith('/whatsapp') || pathname.startsWith('/automacoes');
   if (!framed) return children;
@@ -93,20 +95,31 @@ export default function HubFrame({ children }) {
       <div className={styles.main}>
         <header className={styles.topbar}>
           <button type="button" className={styles.menuButton} onClick={() => setMenuOpen(true)} aria-label="Abrir menu">☰</button>
-          <div className={styles.account}>
-            <span className={styles.instagramDot}>GN</span>
-            <div>
-              <strong>Gui Nonato</strong>
-              <span>@gui_nonato · Instagram</span>
-            </div>
-          </div>
+          <WorkspaceSwitcher />
           <ThemeCustomizer />
           <div className={styles.context}>
             <span>ÁREA ATUAL</span>
             <strong>{pageLabel(pathname)}</strong>
           </div>
         </header>
-        <div className={styles.body}>{children}</div>
+        <div className={styles.body}>
+          {workspace.id === 'gui-nonato' ? children : (
+            <section className={styles.workspaceEmpty}>
+              <span className={styles.workspaceEyebrow}>WORKSPACE · {workspace.name.toUpperCase()}</span>
+              <h1>Conecte os canais desta conta.</h1>
+              <p>
+                A estrutura da TidePlace já separa esse workspace do Gui Nonato. Para CRM e automações,
+                falta conectar o Instagram e o WhatsApp da {workspace.name}; enquanto isso, os dados do Gui
+                não aparecem aqui para não misturar as contas.
+              </p>
+              <div className={styles.workspaceSteps}>
+                <span><b>1</b> Instagram</span>
+                <span><b>2</b> WhatsApp</span>
+                <span><b>3</b> Automações</span>
+              </div>
+            </section>
+          )}
+        </div>
       </div>
     </div>
   );

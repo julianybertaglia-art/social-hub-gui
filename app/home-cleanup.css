@@ -332,18 +332,6 @@
   padding: 18px;
 }
 
-.quick-stat::before {
-  content: '';
-  display: block;
-  width: 32px;
-  height: 32px;
-  margin-bottom: 13px;
-  border-radius: 10px;
-  background:
-    linear-gradient(135deg, color-mix(in srgb, var(--gold) 13%, transparent), transparent),
-    var(--surface-soft);
-  border: 1px solid color-mix(in srgb, var(--gold) 16%, var(--border));
-}
 
 .quick-stat strong {
   margin: 4px 0 4px;
@@ -356,4 +344,66 @@
 .quick-stat:hover {
   border-color: color-mix(in srgb, var(--gold) 28%, var(--border));
   box-shadow: 0 12px 30px rgba(54, 35, 41, .07);
+}
+
+/* Refinamento visual: ícones e tipografia um pouco maiores. */
+.quick-stat-icon {
+  display: grid !important;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 14px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--gold) 18%, var(--border));
+  border-radius: 11px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--gold) 11%, transparent), transparent),
+    var(--surface-soft);
+  color: var(--gold-dark);
+}
+
+.quick-stat-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.quick-stat > span:not(.quick-stat-icon) {
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.quick-stat strong {
+  font-size: 30px;
+}
+
+.quick-stat small {
+  font-size: 10.5px;
+}
+
+.sidebar nav button,
+.sidebar-nav-link {
+  font-size: 15px;
+}
+
+.sidebar-group-label {
+  font-size: 9.5px;
+}
+
+.dashboard-hero .subtitle {
+  font-size: 15px;
+}
+
+.panel-heading h2 {
+  font-size: 24px;
+  letter-spacing: -.025em;
+}
+
+.task-copy,
+.post-copy strong {
+  font-size: 13px;
+}
+
+.workspace-status-warning {
+  border-color: #edd8bc;
+  background: #fff7eb;
+  color: #946428;
 }

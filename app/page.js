@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import DetailDialog from './DetailDialog';
 import ThemeCustomizer from './ThemeCustomizer';
+import WorkspaceSwitcher, { getWorkspaceStorageKey, useWorkspace } from './WorkspaceSwitcher';
 
 const SECTION_IDS = ['dashboard', 'calendar', 'tasks', 'ideas', 'metrics', 'goals'];
 
@@ -164,9 +165,10 @@ function useStoredState(key, initialValue) {
     function readStoredValue() {
       try {
         const saved = window.localStorage.getItem(key);
-        if (saved) setValue(JSON.parse(saved));
+        setValue(saved ? JSON.parse(saved) : initialValue);
       } catch (error) {
         console.warn(`Não foi possível carregar ${key}`, error);
+        setValue(initialValue);
       } finally {
         setReady(true);
       }
@@ -178,6 +180,7 @@ function useStoredState(key, initialValue) {
       readStoredValue();
     }
 
+    setReady(false);
     readStoredValue();
     window.addEventListener('storage', handleStorageUpdate);
     window.addEventListener('tideplace:storage-update', handleStorageUpdate);
@@ -247,17 +250,34 @@ function TaskRow({ task, onToggle, onOpen }) {
 }
 
 export default function Home() {
+  const [workspace] = useWorkspace();
+  const isGuiWorkspace = workspace.id === 'gui-nonato';
   const [active, setActive] = useState('dashboard');
   const [mobileMenu, setMobileMenu] = useState(false);
   const [greeting, setGreeting] = useState('Olá');
   const [crmSummary, setCrmSummary] = useState({ total: null, newLeads: null });
   const [automationCount, setAutomationCount] = useState(1);
   const [liveMetrics, setLiveMetrics] = useState(null);
-  const [metrics, setMetrics] = useStoredState('guihub-metrics', defaultMetrics);
-  const [posts, setPosts] = useStoredState('guihub-posts', defaultPosts);
-  const [ideas, setIdeas] = useStoredState('guihub-ideas', defaultIdeas);
-  const [tasks, setTasks] = useStoredState('guihub-tasks', defaultTasks);
-  const [goals, setGoals] = useStoredState('guihub-goals', defaultGoals);
+  const [metrics, setMetrics] = useStoredState(
+    getWorkspaceStorageKey('guihub-metrics', workspace.id),
+    defaultMetrics
+  );
+  const [posts, setPosts] = useStoredState(
+    getWorkspaceStorageKey('guihub-posts', workspace.id),
+    isGuiWorkspace ? defaultPosts : []
+  );
+  const [ideas, setIdeas] = useStoredState(
+    getWorkspaceStorageKey('guihub-ideas', workspace.id),
+    isGuiWorkspace ? defaultIdeas : []
+  );
+  const [tasks, setTasks] = useStoredState(
+    getWorkspaceStorageKey('guihub-tasks', workspace.id),
+    isGuiWorkspace ? defaultTasks : []
+  );
+  const [goals, setGoals] = useStoredState(
+    getWorkspaceStorageKey('guihub-goals', workspace.id),
+    isGuiWorkspace ? defaultGoals : []
+  );
   const [ideaDraft, setIdeaDraft] = useState({ title: '', audience: '', format: 'Reel', priority: 'Média' });
   const [postDraft, setPostDraft] = useState({ date: '', time: '', format: 'Reel', title: '', objective: 'Autoridade', status: 'Ideia' });
   const [detailPath, setDetailPath] = useState([]);
@@ -280,6 +300,13 @@ export default function Home() {
       hour12: false,
     }).format(new Date()));
     setGreeting(hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite');
+
+    if (!isGuiWorkspace) {
+      setAutomationCount(0);
+      setCrmSummary({ total: 0, newLeads: 0 });
+      setLiveMetrics(null);
+      return;
+    }
 
     try {
       const stored = JSON.parse(window.localStorage.getItem('guihub-automations') || '[]');
@@ -314,7 +341,7 @@ export default function Home() {
         });
       })
       .catch(() => {});
-  }, []);
+  }, [workspace.id, isGuiWorkspace]);
 
   function openTask(id) {
     setDetailPath([{ kind: 'task', id }]);
@@ -398,7 +425,7 @@ export default function Home() {
       <>
         <section className="hero-row dashboard-hero">
           <div>
-            <span className="eyebrow">TIDEPLACE · GUI NONATO</span>
+            <span className="eyebrow">TIDEPLACE · {workspace.name.toUpperCase()}</span>
             <h1>{greeting}, Juliany.</h1>
             <p className="subtitle">O que precisa da sua atenção, sem misturar tudo na mesma tela.</p>
           </div>
@@ -731,12 +758,9 @@ export default function Home() {
       <main className="main-content">
         <header className="topbar">
           <button className="menu-button" onClick={() => setMobileMenu(true)} aria-label="Abrir menu">☰</button>
-          <div className="account-pill workspace-current">
-            <span className="instagram-dot">GN</span>
-            <div><strong>Gui Nonato</strong><span>@gui_nonato · Instagram</span></div>
-          </div>
+          <WorkspaceSwitcher />
           <ThemeCustomizer />
-          <span className="workspace-status"><i /> Meta conectada</span>
+          <span className="workspace-status"><i className={workspace.connected ? '' : 'pending'} /> {workspace.connected ? 'Meta conectada' : 'Conta sem conexão'}</span>
         </header>
         <div className="page-content">{content()}</div>
       </main>

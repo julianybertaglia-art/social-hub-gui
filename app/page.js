@@ -742,19 +742,68 @@ export default function Home() {
       ['seguidores', 'Seguidores'], ['alcance', 'Alcance'], ['visualizacoes', 'Visualizações'],
       ['visitasPerfil', 'Visitas ao perfil'], ['interacoes', 'Interações'], ['leads', 'Leads gerados'],
     ];
+
+    const officialMetrics = {
+      ...metrics,
+      ...(liveMetrics || {}),
+      leads: leadCount,
+    };
+    const hasLiveMeta = Boolean(liveMetrics);
+
     return (
       <>
-        <section className="page-heading"><div><span className="eyebrow">ANALYTICS</span><h1>Métricas do Instagram</h1><p className="subtitle">O dashboard usa os dados sincronizados pela Meta quando disponíveis. Estes campos continuam como apoio manual.</p></div></section>
+        <section className="page-heading">
+          <div>
+            <span className="eyebrow">ANALYTICS</span>
+            <h1>Métricas do Instagram</h1>
+            <p className="subtitle">
+              {hasLiveMeta
+                ? 'Dados oficiais sincronizados pela Meta. O painel atualiza automaticamente.'
+                : 'Aguardando dados da Meta. Enquanto isso, os campos abaixo funcionam como apoio manual.'}
+            </p>
+          </div>
+        </section>
+
         <section className="metrics-edit-grid">
           {fields.map(([key, label]) => (
-            <label className="metric-input-card" key={key}>
+            <label className={`metric-input-card ${hasLiveMeta && key !== 'leads' ? 'metric-live' : ''}`} key={key}>
               <span>{label}</span>
-              <input type="number" min="0" value={metrics[key]} onChange={(event) => setMetrics({ ...metrics, [key]: Number(event.target.value) })} />
-              <small>Fallback manual</small>
+              <input
+                type="number"
+                min="0"
+                value={officialMetrics[key] ?? 0}
+                readOnly={hasLiveMeta && key !== 'leads'}
+                onChange={(event) => {
+                  if (hasLiveMeta && key !== 'leads') return;
+                  setMetrics({ ...metrics, [key]: Number(event.target.value) });
+                }}
+              />
+              <small>
+                {key === 'leads'
+                  ? 'CRM TidePlace'
+                  : hasLiveMeta
+                    ? 'Meta · dado oficial'
+                    : 'Fallback manual'}
+              </small>
             </label>
           ))}
         </section>
-        <section className="panel instruction-panel"><span className="eyebrow">CONEXÃO</span><h2>Meta conectada ao Hub</h2><p className="note">Quando a API retorna os dados do perfil, a Visão geral prioriza automaticamente os números oficiais.</p></section>
+
+        <section className="panel instruction-panel">
+          <span className="eyebrow">CONEXÃO</span>
+          <h2>
+            {instagramConnected === null
+              ? 'Verificando conexão com a Meta...'
+              : instagramConnected
+                ? 'Meta conectada à TidePlace'
+                : 'Meta precisa ser reconectada'}
+          </h2>
+          <p className="note">
+            {instagramConnected
+              ? 'Os números acima vêm da integração oficial. Se a foto do perfil falhar, as métricas continuam carregando normalmente.'
+              : 'A TidePlace mantém os dados manuais disponíveis até a integração voltar a responder.'}
+          </p>
+        </section>
       </>
     );
   }

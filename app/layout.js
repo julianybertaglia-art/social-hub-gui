@@ -4,8 +4,8 @@ import CloudGate from './CloudGate';
 import HubFrame from './HubFrame';
 
 export const metadata = {
-  title: 'Gui Social Hub',
-  description: 'Central estratégica do Instagram do Gui Nonato',
+  title: 'TidePlace',
+  description: 'Flow with your audience.',
 };
 
 export default function RootLayout({ children }) {

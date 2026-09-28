@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import styles from './hub-frame.module.css';
+import ThemeCustomizer from './ThemeCustomizer';
 
 const GROUPS = [
   { label: 'PRINCIPAL', items: [{ href: '/', label: 'Visão geral', icon: '⌂' }] },
@@ -99,6 +100,7 @@ export default function HubFrame({ children }) {
               <span>@gui_nonato · Instagram</span>
             </div>
           </div>
+          <ThemeCustomizer />
           <div className={styles.context}>
             <span>ÁREA ATUAL</span>
             <strong>{pageLabel(pathname)}</strong>

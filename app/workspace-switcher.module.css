@@ -1,0 +1,243 @@
+.root {
+  position: relative;
+  min-width: 0;
+}
+
+.trigger {
+  display: flex;
+  min-width: 245px;
+  max-width: 330px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: .18s ease;
+}
+
+.trigger:hover,
+.trigger[aria-expanded='true'] {
+  border-color: var(--border);
+  background: var(--surface);
+  box-shadow: 0 7px 20px rgba(53, 36, 42, .05);
+}
+
+.avatar,
+.optionAvatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--gold-dark);
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  font-size: 10px;
+}
+
+.triggerCopy,
+.optionCopy {
+  min-width: 0;
+  flex: 1;
+}
+
+.triggerCopy strong,
+.triggerCopy span,
+.optionCopy strong,
+.optionCopy span {
+  display: block;
+}
+
+.triggerCopy strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.triggerCopy span {
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connectionDot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+}
+
+.connected {
+  background: #58a56e;
+  box-shadow: 0 0 0 4px rgba(88,165,110,.09);
+}
+
+.pending {
+  background: #c28b42;
+  box-shadow: 0 0 0 4px rgba(194,139,66,.09);
+}
+
+.chevron {
+  width: 14px;
+  flex: 0 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 0;
+  z-index: 120;
+  width: min(330px, calc(100vw - 28px));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  box-shadow: 0 24px 60px rgba(48, 31, 37, .16);
+  backdrop-filter: blur(18px);
+}
+
+.menuHeading {
+  padding: 16px 17px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.menuHeading span,
+.menuHeading strong {
+  display: block;
+}
+
+.menuHeading span {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .16em;
+}
+
+.menuHeading strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.options {
+  display: grid;
+  gap: 5px;
+  padding: 8px;
+}
+
+.option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:hover {
+  background: var(--surface-soft);
+}
+
+.selected {
+  border-color: color-mix(in srgb, var(--gold) 22%, var(--border));
+  background: var(--gold-soft);
+}
+
+.optionAvatar {
+  width: 34px;
+  height: 34px;
+  font-size: 9px;
+}
+
+.optionCopy strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.optionCopy span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.statusOk,
+.statusPending {
+  padding: 5px 7px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.statusOk {
+  background: #edf8f0;
+  color: #4f855e;
+}
+
+.statusPending {
+  background: #fff7ea;
+  color: #a06f2f;
+}
+
+.check {
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.menuFooter {
+  padding: 11px 17px 14px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .trigger {
+    min-width: 0;
+    max-width: 210px;
+    padding: 6px;
+  }
+
+  .triggerCopy span,
+  .connectionDot {
+    display: none;
+  }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .menu {
+    position: fixed;
+    top: 76px;
+    right: 14px;
+    left: auto;
+  }
+}

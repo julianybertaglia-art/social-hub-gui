@@ -50,7 +50,24 @@ export function useWorkspace() {
 export default function WorkspaceSwitcher() {
   const [workspace, setWorkspace] = useWorkspace();
   const [open, setOpen] = useState(false);
+  const [guiProfile, setGuiProfile] = useState(null);
   const rootRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch('/api/instagram/profile', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((data) => {
+        if (cancelled || !data?.profilePictureUrl) return;
+        setGuiProfile(data);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     function closeOnOutsideClick(event) {
@@ -79,7 +96,13 @@ export default function WorkspaceSwitcher() {
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        <span className={styles.avatar}>{workspace.initials}</span>
+        <span className={styles.avatar}>
+          {workspace.id === 'gui-nonato' && guiProfile?.profilePictureUrl ? (
+            <img src={guiProfile.profilePictureUrl} alt="" />
+          ) : (
+            workspace.initials
+          )}
+        </span>
         <span className={styles.triggerCopy}>
           <strong>{workspace.name}</strong>
           <span>{workspace.handle} · {workspace.platform}</span>
@@ -110,7 +133,13 @@ export default function WorkspaceSwitcher() {
                   role="option"
                   aria-selected={selected}
                 >
-                  <span className={styles.optionAvatar}>{item.initials}</span>
+                  <span className={styles.optionAvatar}>
+                    {item.id === 'gui-nonato' && guiProfile?.profilePictureUrl ? (
+                      <img src={guiProfile.profilePictureUrl} alt="" />
+                    ) : (
+                      item.initials
+                    )}
+                  </span>
                   <span className={styles.optionCopy}>
                     <strong>{item.name}</strong>
                     <span>{item.handle}</span>

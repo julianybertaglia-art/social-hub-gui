@@ -1,0 +1,19 @@
+name: Repair Instagram webhook
+
+on:
+  push:
+    branches:
+      - rebrand-tideplace
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for production route
+        run: sleep 5
+      - name: Repair Meta webhook
+        run: |
+          set -euo pipefail
+          BODY="$(curl --fail --silent --show-error -X POST             -H "x-tideplace-repair-key: tp-repair-20260929-5f08df7ab3c8"             "https://social-hub-gui.vercel.app/api/instagram/automation-repair")"
+          echo "$BODY"
+          echo "$BODY" | grep -q '"ok":true'

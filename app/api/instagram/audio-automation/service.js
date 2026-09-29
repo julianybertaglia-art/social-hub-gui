@@ -151,8 +151,19 @@ export async function ensureAppWebhookSubscription(accountId) {
     process.env.META_INSTAGRAM_WEBHOOK_URL
       || 'https://social-hub-gui.vercel.app/api/instagram/webhook'
   ).trim();
-  const appAccessToken = appId + '|' + appSecret;
   const instagramToken = String(process.env.META_INSTAGRAM_ACCESS_TOKEN || '').trim();
+  const oauthUrl = new URL('https://graph.facebook.com/oauth/access_token');
+  oauthUrl.searchParams.set('client_id', appId);
+  oauthUrl.searchParams.set('client_secret', appSecret);
+  oauthUrl.searchParams.set('grant_type', 'client_credentials');
+
+  const oauthResponse = await fetch(oauthUrl, {
+    cache: 'no-store',
+    signal: AbortSignal.timeout(15000),
+  });
+  const oauthPayload = await oauthResponse.json().catch(() => ({}));
+  const appAccessToken = String(oauthPayload?.access_token || '').trim();
+
   const body = new URLSearchParams({
     object: 'instagram',
     callback_url: callbackUrl,
@@ -162,7 +173,13 @@ export async function ensureAppWebhookSubscription(accountId) {
   });
 
   let lastError = null;
-  for (const accessToken of [appAccessToken, instagramToken].filter(Boolean)) {
+  const candidateTokens = [
+    appAccessToken,
+    appId + '|' + appSecret,
+    instagramToken,
+  ].filter(Boolean);
+
+  for (const accessToken of candidateTokens) {
     const response = await fetch(
       `https://graph.facebook.com/${API_VERSION}/${appId}/subscriptions`,
       {

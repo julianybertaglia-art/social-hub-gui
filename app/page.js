@@ -740,7 +740,7 @@ export default function Home() {
   function renderMetrics() {
     const fields = [
       ['seguidores', 'Seguidores'], ['alcance', 'Alcance'], ['visualizacoes', 'Visualizações'],
-      ['visitasPerfil', 'Visitas ao perfil'], ['interacoes', 'Interações'], ['leads', 'Leads gerados'],
+      ['interacoes', 'Interações'], ['leads', 'Leads gerados'],
     ];
 
     const officialMetrics = {

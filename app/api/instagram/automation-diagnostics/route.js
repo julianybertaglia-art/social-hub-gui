@@ -41,9 +41,8 @@ export async function GET() {
     },
     instagram: { ok: false },
     subscriptions: { ok: false, fields: [], appId: null, appName: null },
-    appCredentials: { ok: false, status: null, code: null, message: null },
-    appWebhook: { ok: false, object: null, callbackUrl: null, active: null, fields: [] },
-    database: { ok: false, stateTable: false, responseLedger: false },
+    database: { ok: false, stateTable: false, responseLedger: false, ingressLog: false },
+    webhookDelivery: { received: false, signatureValid: null, field: null, receivedAt: null },
   };
 
   if (token) {
@@ -71,49 +70,6 @@ export async function GET() {
           appName: apps[0]?.name || null,
         };
 
-        const appId = String(apps[0]?.id || '').trim();
-        if (appId && appSecret) {
-          const oauthUrl = new URL('https://graph.facebook.com/oauth/access_token');
-          oauthUrl.searchParams.set('client_id', appId);
-          oauthUrl.searchParams.set('client_secret', appSecret);
-          oauthUrl.searchParams.set('grant_type', 'client_credentials');
-
-          const oauthResponse = await fetch(oauthUrl, {
-            cache: 'no-store',
-            signal: AbortSignal.timeout(10000),
-          });
-          const oauthPayload = await oauthResponse.json().catch(() => ({}));
-          const appAccessToken = String(oauthPayload?.access_token || '').trim();
-
-          checks.appCredentials = appAccessToken
-            ? { ok: true, status: oauthResponse.status, code: null, message: null }
-            : {
-                ok: false,
-                status: oauthResponse.status,
-                code: oauthPayload?.error?.code || null,
-                message: String(oauthPayload?.error?.message || 'Credencial do App inválida').slice(0, 180),
-              };
-
-          if (appAccessToken) {
-            const response = await fetch('https://graph.facebook.com/' + API_VERSION + '/' + appId + '/subscriptions', {
-              headers: { Authorization: 'Bearer ' + appAccessToken },
-              cache: 'no-store',
-              signal: AbortSignal.timeout(10000),
-            });
-            const payload = await response.json().catch(() => ({}));
-            if (response.ok && !payload?.error) {
-              const rows = Array.isArray(payload?.data) ? payload.data : [];
-              const instagramRow = rows.find((row) => String(row?.object || '').toLowerCase() === 'instagram') || rows[0] || null;
-              checks.appWebhook = instagramRow ? {
-                ok: Boolean(instagramRow?.active),
-                object: instagramRow?.object || null,
-                callbackUrl: instagramRow?.callback_url || null,
-                active: Boolean(instagramRow?.active),
-                fields: (instagramRow?.fields || []).map((field) => typeof field === 'string' ? field : field?.name).filter(Boolean),
-              } : { ok: false, object: null, callbackUrl: null, active: null, fields: [] };
-            }
-          }
-        }
       } else {
         checks.subscriptions = {
           ok: false,
@@ -131,16 +87,29 @@ export async function GET() {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const [stateCheck, ledgerCheck] = await Promise.all([
+    const [stateCheck, ledgerCheck, ingressCheck] = await Promise.all([
       db.from('content_items').select('id').eq('title', '__SOCIAL_HUB_STATE__').limit(1),
       db.from('instagram_flow_responses').select('id').limit(1),
+      db.from('instagram_webhook_ingress')
+        .select('created_at,signature_valid,field_name')
+        .order('created_at', { ascending: false })
+        .limit(1),
     ]);
 
     checks.database = {
-      ok: !stateCheck.error && !ledgerCheck.error,
+      ok: !stateCheck.error && !ledgerCheck.error && !ingressCheck.error,
       stateTable: !stateCheck.error,
       responseLedger: !ledgerCheck.error,
+      ingressLog: !ingressCheck.error,
     };
+
+    const lastIngress = ingressCheck.data?.[0] || null;
+    checks.webhookDelivery = lastIngress ? {
+      received: true,
+      signatureValid: Boolean(lastIngress.signature_valid),
+      field: lastIngress.field_name || null,
+      receivedAt: lastIngress.created_at || null,
+    } : checks.webhookDelivery;
   }
 
   const ready =
@@ -151,8 +120,6 @@ export async function GET() {
     checks.instagram.ok &&
     String(checks.instagram.username || '').toLowerCase() === 'gui_nonato' &&
     checks.subscriptions.ok &&
-    checks.appCredentials.ok &&
-    checks.appWebhook.ok &&
     checks.database.ok;
 
   return Response.json({

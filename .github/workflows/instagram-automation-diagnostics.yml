@@ -1,0 +1,21 @@
+name: Instagram automation diagnostics
+
+on:
+  push:
+    branches:
+      - rebrand-tideplace
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Vercel preview
+        run: sleep 35
+      - name: Check TidePlace automation diagnostics
+        run: |
+          set -euo pipefail
+          URL="https://social-hub-gui-git-rebrand-tideplace-social-hub-gui.vercel.app/api/instagram/automation-diagnostics"
+          BODY="$(curl --fail --silent --show-error --retry 5 --retry-delay 8 "$URL")"
+          echo "$BODY"
+          echo "$BODY" | grep -q '"ready":true'

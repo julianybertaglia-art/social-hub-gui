@@ -287,7 +287,7 @@ export async function processFlowComments(payload, db = null) {
     const publicReply = replies.length ? replies[(Math.max(1, eventId) - 1) % replies.length] : '';
 
     try {
-      const startReplies = quickReplies(flow, flow.start);
+      const startReplies = quickReplies(flow, flow.start, { includeAudioAction: true });
       await metaPost(event.accountId + '/messages', {
         recipient: { comment_id: commentId },
         message: {

@@ -10,7 +10,15 @@ function uid(prefix) {
 }
 
 function emptyNode() {
-  return { id: uid('node'), text: '', audioPath: '', audioName: '', buttons: [] };
+  return {
+    id: uid('node'),
+    text: '',
+    audioPath: '',
+    audioName: '',
+    responseMode: 'same',
+    sharedNext: null,
+    buttons: [],
+  };
 }
 
 function emptyFlow() {
@@ -28,6 +36,7 @@ function updateNodeTree(node, nodeId, updater) {
   if (node.id === nodeId) return updater(node);
   return {
     ...node,
+    sharedNext: node.sharedNext ? updateNodeTree(node.sharedNext, nodeId, updater) : null,
     buttons: (node.buttons || []).map((button) => ({
       ...button,
       next: updateNodeTree(button.next, nodeId, updater),
@@ -41,6 +50,7 @@ function removeButtonTree(node, nodeId, buttonId) {
   }
   return {
     ...node,
+    sharedNext: node.sharedNext ? removeButtonTree(node.sharedNext, nodeId, buttonId) : null,
     buttons: (node.buttons || []).map((button) => ({
       ...button,
       next: removeButtonTree(button.next, nodeId, buttonId),
@@ -134,12 +144,24 @@ export default function AutomacoesPage() {
       if ((node.buttons || []).length >= 13) return node;
       return {
         ...node,
+        responseMode: node.responseMode || 'same',
+        sharedNext: node.sharedNext || emptyNode(),
         buttons: [
           ...(node.buttons || []),
           { id: uid('button'), label: '', next: emptyNode() },
         ],
       };
     });
+  }
+
+  function setResponseMode(flowId, nodeId, mode) {
+    patchNode(flowId, nodeId, (node) => ({
+      ...node,
+      responseMode: mode,
+      sharedNext: mode === 'same'
+        ? (node.sharedNext || node.buttons?.[0]?.next || emptyNode())
+        : node.sharedNext,
+    }));
   }
 
   function patchButton(flowId, nodeId, buttonId, patch) {

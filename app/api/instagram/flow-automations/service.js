@@ -327,15 +327,25 @@ export async function processFlowSelections(payload, db = null) {
   for (const event of events) {
     const flow = flows.find((item) => item.id === event.flowId);
     if (!flow) continue;
+
+    if (event.buttonId === '__audio__' && flow.start.audioPath) {
+      await sendAudio(db, event.accountId, event.senderId, flow.start.audioPath);
+      const branchReplies = quickReplies(flow, flow.start);
+      if (branchReplies.length) {
+        await metaPost(event.accountId + '/messages', {
+          recipient: { id: event.senderId },
+          message: {
+            text: flow.start.text || 'Agora escolha como você quer continuar:',
+            quick_replies: branchReplies,
+          },
+        });
+      }
+      handled += 1;
+      continue;
+    }
+
     const button = findButton(flow.start, event.buttonId);
     if (!button) continue;
-
-    // Áudio configurado na primeira resposta é liberado após a primeira interação,
-    // porque o Instagram exige uma conversa aberta para mídia em muitos cenários.
-    const isFirstLevel = (flow.start.buttons || []).some((item) => item.id === event.buttonId);
-    if (isFirstLevel && flow.start.audioPath) {
-      try { await sendAudio(db, event.accountId, event.senderId, flow.start.audioPath); } catch {}
-    }
     await sendNodeToRecipient(db, event.accountId, event.senderId, flow, button.next);
     handled += 1;
   }

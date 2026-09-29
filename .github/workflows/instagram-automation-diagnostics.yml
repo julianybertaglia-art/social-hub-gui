@@ -10,12 +10,12 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Wait for Vercel preview
+      - name: Wait for Vercel production
         run: sleep 35
       - name: Check TidePlace automation diagnostics
         run: |
           set -euo pipefail
-          URL="https://social-hub-gui-git-rebrand-tideplace-social-hub-gui.vercel.app/api/instagram/automation-diagnostics"
+          URL="https://social-hub-gui.vercel.app/api/instagram/automation-diagnostics"
           BODY="$(curl --fail --silent --show-error --retry 5 --retry-delay 8 "$URL")"
           echo "$BODY"
           echo "$BODY" | grep -q '"ready":true'

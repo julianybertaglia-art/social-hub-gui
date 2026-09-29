@@ -41,6 +41,7 @@ export async function GET() {
     },
     instagram: { ok: false },
     subscriptions: { ok: false, fields: [] },
+    appWebhook: { ok: false, object: null, callbackUrl: null, active: null, fields: [] },
     database: { ok: false, stateTable: false, responseLedger: false },
   };
 
@@ -58,14 +59,36 @@ export async function GET() {
     if (accountId) {
       const subscriptions = await metaGet(accountId + '/subscribed_apps', token);
       if (subscriptions.ok) {
+        const apps = Array.isArray(subscriptions.payload?.data) ? subscriptions.payload.data : [];
         const fields = [...new Set(
-          (Array.isArray(subscriptions.payload?.data) ? subscriptions.payload.data : [])
-            .flatMap((app) => Array.isArray(app?.subscribed_fields) ? app.subscribed_fields : [])
+          apps.flatMap((app) => Array.isArray(app?.subscribed_fields) ? app.subscribed_fields : [])
         )].sort();
         checks.subscriptions = {
           ok: ['comments', 'messages', 'messaging_postbacks'].every((field) => fields.includes(field)),
           fields,
         };
+
+        const appId = String(apps[0]?.id || '').trim();
+        if (appId && appSecret) {
+          const appAccessToken = appId + '|' + appSecret;
+          const response = await fetch('https://graph.facebook.com/' + API_VERSION + '/' + appId + '/subscriptions', {
+            headers: { Authorization: 'Bearer ' + appAccessToken },
+            cache: 'no-store',
+            signal: AbortSignal.timeout(10000),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (response.ok && !payload?.error) {
+            const rows = Array.isArray(payload?.data) ? payload.data : [];
+            const instagramRow = rows.find((row) => String(row?.object || '').toLowerCase() === 'instagram') || rows[0] || null;
+            checks.appWebhook = instagramRow ? {
+              ok: Boolean(instagramRow?.active),
+              object: instagramRow?.object || null,
+              callbackUrl: instagramRow?.callback_url || null,
+              active: Boolean(instagramRow?.active),
+              fields: (instagramRow?.fields || []).map((field) => typeof field === 'string' ? field : field?.name).filter(Boolean),
+            } : { ok: false, object: null, callbackUrl: null, active: null, fields: [] };
+          }
+        }
       } else {
         checks.subscriptions = {
           ok: false,

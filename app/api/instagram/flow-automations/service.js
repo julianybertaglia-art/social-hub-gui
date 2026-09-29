@@ -22,18 +22,39 @@ function cleanBase64(value) {
 }
 
 function sanitizeNode(node, depth = 0) {
-  if (depth > MAX_DEPTH) return { id: crypto.randomUUID(), text: '', audioPath: '', audioName: '', buttons: [] };
+  if (depth > MAX_DEPTH) {
+    return {
+      id: crypto.randomUUID(),
+      text: '',
+      audioPath: '',
+      audioName: '',
+      responseMode: 'same',
+      sharedNext: null,
+      buttons: [],
+    };
+  }
+
   const buttons = Array.isArray(node?.buttons) ? node.buttons.slice(0, MAX_BUTTONS) : [];
+  const responseMode = node?.responseMode === 'personalized' ? 'personalized' : 'same';
+  const sanitizedButtons = buttons.map((button) => ({
+    id: String(button?.id || crypto.randomUUID()).slice(0, 80),
+    label: String(button?.label || '').trim().slice(0, 20),
+    next: sanitizeNode(button?.next || {}, depth + 1),
+  })).filter((button) => button.label);
+
+  const legacyShared = responseMode === 'same' ? buttons[0]?.next : null;
+  const sharedSource = node?.sharedNext || legacyShared;
+
   return {
     id: String(node?.id || crypto.randomUUID()).slice(0, 80),
     text: String(node?.text || '').trim().slice(0, 1000),
     audioPath: String(node?.audioPath || '').trim().slice(0, 500),
     audioName: String(node?.audioName || '').trim().slice(0, 120),
-    buttons: buttons.map((button) => ({
-      id: String(button?.id || crypto.randomUUID()).slice(0, 80),
-      label: String(button?.label || '').trim().slice(0, 20),
-      next: sanitizeNode(button?.next || {}, depth + 1),
-    })).filter((button) => button.label),
+    responseMode,
+    sharedNext: responseMode === 'same' && sharedSource
+      ? sanitizeNode(sharedSource, depth + 1)
+      : null,
+    buttons: sanitizedButtons,
   };
 }
 
@@ -208,13 +229,25 @@ async function sendNodeToRecipient(db, accountId, recipientId, flow, node, { inc
   });
 }
 
-function findButton(node, buttonId, depth = 0) {
+function findButtonContext(node, buttonId, depth = 0) {
   if (!node || depth > MAX_DEPTH) return null;
+
   for (const button of node.buttons || []) {
-    if (button.id === buttonId) return button;
-    const nested = findButton(button.next, buttonId, depth + 1);
-    if (nested) return nested;
+    if (button.id === buttonId) return { button, parentNode: node };
   }
+
+  if (node.responseMode === 'same' && node.sharedNext) {
+    const sharedMatch = findButtonContext(node.sharedNext, buttonId, depth + 1);
+    if (sharedMatch) return sharedMatch;
+  }
+
+  if (node.responseMode === 'personalized') {
+    for (const button of node.buttons || []) {
+      const nested = findButtonContext(button.next, buttonId, depth + 1);
+      if (nested) return nested;
+    }
+  }
+
   return null;
 }
 
@@ -344,9 +377,25 @@ export async function processFlowSelections(payload, db = null) {
       continue;
     }
 
-    const button = findButton(flow.start, event.buttonId);
-    if (!button) continue;
-    await sendNodeToRecipient(db, event.accountId, event.senderId, flow, button.next);
+    const context = findButtonContext(flow.start, event.buttonId);
+    if (!context) continue;
+
+    await db.from('instagram_flow_responses').insert({
+      flow_id: flow.id,
+      flow_name: flow.name,
+      sender_id: event.senderId,
+      button_id: context.button.id,
+      button_label: context.button.label,
+      parent_node_id: context.parentNode.id,
+    });
+
+    const nextNode = context.parentNode.responseMode === 'personalized'
+      ? context.button.next
+      : context.parentNode.sharedNext;
+
+    if (nextNode) {
+      await sendNodeToRecipient(db, event.accountId, event.senderId, flow, nextNode);
+    }
     handled += 1;
   }
   return handled;

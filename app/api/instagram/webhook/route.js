@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { after } from 'next/server';
 import { extractTestMessages, processAudioTests } from '../audio-test/service';
 import { processFlowComments, processFlowSelections } from '../flow-automations/service.js';
+import { serverClient } from '../audio-automation/service.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,8 +45,25 @@ export async function GET(request) {
 export async function POST(request) {
   const rawBody = await request.text();
   const signature = request.headers.get('x-hub-signature-256');
+  const signatureValid = isValidSignature(rawBody, signature);
 
-  if (!isValidSignature(rawBody, signature)) {
+  let previewPayload = {};
+  try { previewPayload = JSON.parse(rawBody); } catch {}
+  try {
+    const entries = Array.isArray(previewPayload?.entry) ? previewPayload.entry : [];
+    const changes = entries.flatMap((entry) => Array.isArray(entry?.changes) ? entry.changes : []);
+    const fieldName = String(changes[0]?.field || '').slice(0, 80) || null;
+    const db = serverClient();
+    await db.from('instagram_webhook_ingress').insert({
+      signature_present: Boolean(signature),
+      signature_valid: signatureValid,
+      object_name: String(previewPayload?.object || '').slice(0, 80) || null,
+      field_name: fieldName,
+      event_count: entries.length,
+    });
+  } catch {}
+
+  if (!signatureValid) {
     return Response.json({ ok: false, error: 'Assinatura inválida.' }, { status: 401 });
   }
 

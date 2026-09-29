@@ -177,12 +177,22 @@ function buttonPayload(flowId, buttonId) {
   return ('TPF:' + flowId + ':' + buttonId).slice(0, 1000);
 }
 
-function quickReplies(flow, node) {
-  return (node?.buttons || []).slice(0, MAX_BUTTONS).map((button) => ({
+function quickReplies(flow, node, { includeAudioAction = false } = {}) {
+  const replies = (node?.buttons || []).slice(0, MAX_BUTTONS).map((button) => ({
     content_type: 'text',
     title: button.label,
     payload: buttonPayload(flow.id, button.id),
   }));
+
+  if (includeAudioAction && node?.audioPath) {
+    replies.unshift({
+      content_type: 'text',
+      title: 'Ouvir áudio',
+      payload: buttonPayload(flow.id, '__audio__'),
+    });
+  }
+
+  return replies.slice(0, MAX_BUTTONS);
 }
 
 async function sendNodeToRecipient(db, accountId, recipientId, flow, node, { includeAudio = true } = {}) {

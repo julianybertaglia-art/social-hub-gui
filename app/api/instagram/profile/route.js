@@ -25,13 +25,17 @@ async function fetchProductionProfileFallback() {
 }
 
 async function fetchProfile(fields) {
-  const accessToken = String(process.env.META_INSTAGRAM_ACCESS_TOKEN || '').trim();
+  const insightsToken = String(process.env.META_INSTAGRAM_INSIGHTS_ACCESS_TOKEN || '').trim();
+  const automationToken = String(process.env.META_INSTAGRAM_ACCESS_TOKEN || '').trim();
+  const useInsightsToken = Boolean(insightsToken);
+  const accessToken = useInsightsToken ? insightsToken : automationToken;
 
   if (!accessToken) {
-    return { ok: false, status: 503, error: 'META_INSTAGRAM_ACCESS_TOKEN não configurado.' };
+    return { ok: false, status: 503, error: 'Token da Meta não configurado.' };
   }
 
-  const url = new URL(`https://graph.instagram.com/${API_VERSION}/${GUI_ACCOUNT_ID}`);
+  const graphHost = useInsightsToken ? 'https://graph.facebook.com' : 'https://graph.instagram.com';
+  const url = new URL(`${graphHost}/${API_VERSION}/${GUI_ACCOUNT_ID}`);
   url.searchParams.set('fields', fields);
 
   const response = await fetch(url, {
@@ -101,7 +105,9 @@ export async function GET() {
     mediaCount: Number(profile.media_count || 0),
     accountType: 'Instagram Business',
     connected: true,
-    source: 'Meta API',
+    source: process.env.META_INSTAGRAM_INSIGHTS_ACCESS_TOKEN
+      ? 'Meta API · Facebook Login'
+      : 'Meta API · Instagram Login',
     updatedAt: new Date().toISOString(),
   });
 }

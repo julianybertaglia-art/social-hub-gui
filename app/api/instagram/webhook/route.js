@@ -1,193 +1,23 @@
 import crypto from 'node:crypto';
-import { createClient } from '@supabase/supabase-js';
 import { after } from 'next/server';
-import { processAudioTests, extractTestMessages } from '../audio-test/service';
-import {
-  extractAudioSelectionEvents,
-  processAudioSelections,
-} from '../audio-automation/service.js';
-import {
-  extractTextSelectionEvents,
-  processTextSelections,
-  processTextCommentEvent,
-} from '../text-automation/service.js';
-import {
-  findMatchingCommentRule,
-  loadLatestWebhookRules,
-  normalizeCommentText,
-} from '../comment-automations/service.js';
+import { extractTestMessages, processAudioTests } from '../audio-test/service';
+import { processFlowComments, processFlowSelections } from '../flow-automations/service.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 180;
 
-const API_VERSION = 'v26.0';
 function isValidSignature(rawBody, signatureHeader) {
   const appSecret = process.env.META_APP_SECRET;
-
   if (!appSecret || !signatureHeader?.startsWith('sha256=')) return false;
 
   const received = signatureHeader.slice('sha256='.length);
-  const expected = crypto
-    .createHmac('sha256', appSecret)
-    .update(rawBody, 'utf8')
-    .digest('hex');
-
+  const expected = crypto.createHmac('sha256', appSecret).update(rawBody, 'utf8').digest('hex');
   const receivedBuffer = Buffer.from(received, 'hex');
   const expectedBuffer = Buffer.from(expected, 'hex');
 
   if (receivedBuffer.length !== expectedBuffer.length) return false;
   return crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
-}
-
-async function loadAutomationRules() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServerKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
-
-  if (!supabaseUrl || !supabaseServerKey) {
-    console.error('Automações: chave secreta do Supabase não configurada no servidor.');
-    return [];
-  }
-
-  try {
-    const supabase = createClient(supabaseUrl, supabaseServerKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
-    return await loadLatestWebhookRules(supabase);
-  } catch (error) {
-    console.error('Automações: falha ao carregar regras do Hub.', error instanceof Error ? error.message : String(error));
-    return [];
-  }
-}
-
-function findAudioAutomationForComment(text, automations) {
-  const normalizedComment = normalizeCommentText(text);
-  return (automations || []).find((automation) => {
-    const keyword = normalizeCommentText(automation.comment_keyword);
-    return keyword && normalizedComment.includes(keyword);
-  }) || null;
-}
-
-async function metaPost(path, body) {
-  const accessToken = process.env.META_INSTAGRAM_ACCESS_TOKEN;
-
-  if (!accessToken) {
-    throw new Error('META_INSTAGRAM_ACCESS_TOKEN não configurado.');
-  }
-
-  const versions = String(path).endsWith('/messages') ? [API_VERSION, 'v25.0'] : [API_VERSION];
-  let response;
-  let result;
-  for (const version of versions) {
-    response = await fetch(
-      `https://graph.instagram.com/${version}/${path}`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-        cache: 'no-store',
-      }
-    );
-    result = await response.json().catch(() => ({}));
-    if (response.ok && !result?.error) return result;
-    if (Number(result?.error?.code) !== 1 || version === versions.at(-1)) break;
-  }
-
-  if (!response?.ok || result?.error) {
-    const message = result?.error?.message || `Erro Meta HTTP ${response.status}`;
-    throw new Error(message);
-  }
-
-  return result;
-}
-
-async function sendPrivateReply(igUserId, commentId, message) {
-  const body = {
-    recipient: { comment_id: commentId },
-    message: { text: message },
-  };
-  try {
-    return await metaPost(`${igUserId}/messages`, body);
-  } catch (error) {
-    if (!/unknown error/i.test(String(error?.message || ''))) throw error;
-    return metaPost('me/messages', body);
-  }
-}
-
-async function sendAudioPrompt(igUserId, commentId, automation) {
-  return metaPost(`${igUserId}/messages`, {
-    recipient: { comment_id: commentId },
-    message: {
-      text: automation.prompt_message,
-      quick_replies: [{
-        content_type: 'text',
-        title: automation.quick_reply_title,
-        payload: automation.quick_reply_payload,
-      }],
-    },
-  });
-}
-
-async function sendPublicReply(commentId, message) {
-  if (!message) return null;
-
-  return metaPost(`${commentId}/replies`, {
-    message,
-  });
-}
-
-function extractCommentEvents(payload) {
-  if (!Array.isArray(payload?.entry)) return [];
-
-  return payload.entry.flatMap((entry) => {
-    if (entry?.field === 'comments' && entry?.value) {
-      return [{ igUserId: entry.id, value: entry.value }];
-    }
-
-    if (Array.isArray(entry?.changes)) {
-      return entry.changes
-        .filter((change) => change?.field === 'comments' && change?.value)
-        .map((change) => ({ igUserId: entry.id, value: change.value }));
-    }
-
-    return [];
-  });
-}
-
-async function loadAudioAutomationsByAccount(events) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServerKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
-  const byAccount = new Map();
-  const accountIds = [...new Set(events.map((event) => String(event.igUserId || '')).filter((id) => /^\d+$/.test(id)))];
-
-  if (!supabaseUrl || !supabaseServerKey || !accountIds.length) return byAccount;
-
-  try {
-    const supabase = createClient(supabaseUrl, supabaseServerKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { data, error } = await supabase
-      .from('instagram_audio_automations')
-      .select('id,ig_account_id,comment_keyword,public_reply,prompt_message,quick_reply_title,quick_reply_payload,active')
-      .in('ig_account_id', accountIds)
-      .eq('active', true);
-
-    if (error) throw error;
-    for (const accountId of accountIds) {
-      byAccount.set(accountId, (data || []).filter((automation) => String(automation.ig_account_id) === accountId));
-    }
-  } catch (error) {
-    console.error('Automação de áudio ARGO: não foi possível carregar a configuração do comentário.', error instanceof Error ? error.message : String(error));
-    for (const accountId of accountIds) byAccount.set(accountId, []);
-  }
-
-  return byAccount;
 }
 
 export async function GET(request) {
@@ -198,10 +28,7 @@ export async function GET(request) {
   const verifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN;
 
   if (!verifyToken) {
-    return Response.json(
-      { ok: false, error: 'META_WEBHOOK_VERIFY_TOKEN ainda não configurado.' },
-      { status: 503 }
-    );
+    return Response.json({ ok: false, error: 'META_WEBHOOK_VERIFY_TOKEN ainda não configurado.' }, { status: 503 });
   }
 
   if (mode === 'subscribe' && token === verifyToken && challenge) {
@@ -229,110 +56,31 @@ export async function POST(request) {
     return Response.json({ ok: false, error: 'JSON inválido.' }, { status: 400 });
   }
 
+  // Mantemos somente o teste técnico de áudio. Todas as automações antigas
+  // (ARGO, MENTORIA e regras fixas) foram retiradas do runtime para recomeçar
+  // com o novo construtor visual da TidePlace.
   if (extractTestMessages(payload).length) {
     after(async () => {
       try { await processAudioTests(payload); }
-      catch { console.error('Teste de áudio: não foi possível processar a mensagem.'); }
+      catch (error) {
+        console.error('Teste de áudio: falha ao processar.', error instanceof Error ? error.message : String(error));
+      }
     });
   }
 
-  if (extractAudioSelectionEvents(payload).length) {
-    after(async () => {
-      try { await processAudioSelections(payload); }
-      catch { console.error('Automação de áudio ARGO: não foi possível processar o Direct.'); }
-    });
-  }
-
-  if (extractTextSelectionEvents(payload).length) {
-    after(async () => {
-      try { await processTextSelections(payload); }
-      catch { console.error('Automação de texto: não foi possível processar o Direct.'); }
-    });
-  }
-
-  const commentEvents = extractCommentEvents(payload);
-  const rules = commentEvents.length ? await loadAutomationRules() : [];
-  const audioAutomationsByAccount = commentEvents.length
-    ? await loadAudioAutomationsByAccount(commentEvents)
-    : new Map();
-
-  for (const event of commentEvents) {
+  after(async () => {
     try {
-      const textAutomationHandled = await processTextCommentEvent(event);
-      if (textAutomationHandled) continue;
-    } catch (error) {
-      console.error('Automação de texto: não foi possível processar o comentário.', {
-        commentId: event?.value?.id || null,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-
-    const commentId = event?.value?.id;
-    const text = event?.value?.text;
-    const username = event?.value?.from?.username;
-    const audioAutomation = findAudioAutomationForComment(
-      text,
-      audioAutomationsByAccount.get(String(event.igUserId)) || []
-    );
-    const matchingRule = audioAutomation ? null : findMatchingCommentRule(text, rules);
-
-    if (!commentId || !event.igUserId || (!audioAutomation && !matchingRule)) continue;
-    if (String(username || '').toLowerCase() === 'gui_nonato') continue;
-
-    const logPrefix = audioAutomation
-      ? 'AUDIO:ARGO'
-      : `AUTOMACAO:${normalizeCommentText(matchingRule.keyword)}`;
-    const ruleId = audioAutomation ? audioAutomation.id : matchingRule.id;
-    const publicReply = audioAutomation ? audioAutomation.public_reply : matchingRule.publicReply;
-
-    try {
-      const privateResult = audioAutomation
-        ? await sendAudioPrompt(event.igUserId, commentId, audioAutomation)
-        : await sendPrivateReply(event.igUserId, commentId, matchingRule.privateMessage);
-
-      console.info(`${logPrefix}: Direct enviado`, {
-        commentId,
-        username,
-        ruleId,
-        messageId: privateResult?.message_id || null,
-      });
-    } catch (error) {
-      console.error(`${logPrefix}: falha ao enviar Direct`, {
-        commentId,
-        username,
-        ruleId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-
-    try {
-      const publicResult = await sendPublicReply(commentId, publicReply);
-
-      if (publicReply) {
-        console.info(`${logPrefix}: resposta pública enviada`, {
-          commentId,
-          username,
-          ruleId,
-          replyId: publicResult?.id || null,
-        });
+      const [comments, selections] = await Promise.all([
+        processFlowComments(payload),
+        processFlowSelections(payload),
+      ]);
+      if (comments || selections) {
+        console.info('TIDEPLACE:FLOW', { comments, selections });
       }
     } catch (error) {
-      console.error(`${logPrefix}: falha na resposta pública`, {
-        commentId,
-        username,
-        ruleId,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      console.error('TIDEPLACE:FLOW: falha no processamento', error instanceof Error ? error.message : String(error));
     }
-  }
-
-  return Response.json({
-    ok: true,
-    status: 'EVENT_RECEIVED',
-    commentEvents: commentEvents.length,
-    activeRules: rules.length,
-    activeAudioAutomations: [...audioAutomationsByAccount.values()].flat().length,
-    audioTrigger: 'direct+comment-button',
-    textTrigger: 'direct+comment-button',
   });
+
+  return Response.json({ ok: true, status: 'EVENT_RECEIVED', engine: 'tideplace-flow-v1' });
 }

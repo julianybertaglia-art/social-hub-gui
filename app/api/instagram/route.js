@@ -255,6 +255,23 @@ function sum(rows, field) {
   return Math.round(rows.reduce((total, row) => total + Number(row?.[field] || 0), 0));
 }
 
+async function requestProductionPreviewFallback(path) {
+  if (process.env.VERCEL_ENV !== 'preview') return null;
+
+  try {
+    const response = await fetch(`https://social-hub-gui.vercel.app${path}`, {
+      cache: 'no-store',
+      headers: { 'User-Agent': 'TidePlace-Preview/1.0' },
+    });
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok || !payload) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
 async function requestWindsorMetrics() {
   const [profileRows, performanceRows] = await Promise.all([
     requestWindsor(
@@ -315,12 +332,22 @@ export async function GET() {
     } catch (windsorError) {
       console.error('Erro ao buscar métricas do Instagram:', windsorError);
 
+      const productionFallback = await requestProductionPreviewFallback('/api/instagram');
+      if (productionFallback?.metrics) {
+        return Response.json({
+          ...productionFallback,
+          source: `${productionFallback.source || 'Meta'} · produção`,
+          previewFallback: true,
+        });
+      }
+
       return Response.json(
         {
           error: 'Não foi possível atualizar as métricas pela Meta nem pelo Windsor.',
           code: 'INSTAGRAM_METRICS_UNAVAILABLE',
           metaDetail: metaError?.providerDetail || metaError?.message || undefined,
           windsorDetail: windsorError?.providerDetail || windsorError?.message || undefined,
+          previewEnvironment: process.env.VERCEL_ENV === 'preview',
         },
         { status: 502 }
       );

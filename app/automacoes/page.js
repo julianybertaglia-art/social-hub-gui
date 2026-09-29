@@ -91,6 +91,7 @@ export default function AutomacoesPage() {
         const next = Array.isArray(payload.flows) ? payload.flows : [];
         setFlows(next);
         setSelectedId(next[0]?.id || null);
+        try { window.localStorage.setItem('tideplace-instagram-flow-automations', JSON.stringify(next)); } catch {}
       })
       .catch((error) => !cancelled && setNotice(error.message))
       .finally(() => !cancelled && setLoading(false));
@@ -187,7 +188,9 @@ export default function AutomacoesPage() {
     setNotice('');
     try {
       const payload = await ownerRequest('/api/instagram/flow-automations', { flows });
-      setFlows(payload.flows || []);
+      const savedFlows = payload.flows || [];
+      setFlows(savedFlows);
+      try { window.localStorage.setItem('tideplace-instagram-flow-automations', JSON.stringify(savedFlows)); } catch {}
       setNotice('Automações salvas na Meta/TidePlace.');
     } catch (error) {
       setNotice(error.message);

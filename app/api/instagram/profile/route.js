@@ -8,6 +8,22 @@ function safeError(payload, text) {
   return String(typeof raw === 'string' ? raw : JSON.stringify(raw)).slice(0, 280);
 }
 
+async function fetchProductionProfileFallback() {
+  if (process.env.VERCEL_ENV !== 'preview') return null;
+
+  try {
+    const response = await fetch('https://social-hub-gui.vercel.app/api/instagram/profile', {
+      cache: 'no-store',
+      headers: { 'User-Agent': 'TidePlace-Preview/1.0' },
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload || payload?.error) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchProfile(fields) {
   const accessToken = String(process.env.META_INSTAGRAM_ACCESS_TOKEN || '').trim();
 
@@ -54,10 +70,21 @@ export async function GET() {
   }
 
   if (!result.ok) {
+    const productionFallback = await fetchProductionProfileFallback();
+
+    if (productionFallback) {
+      return Response.json({
+        ...productionFallback,
+        source: `${productionFallback.source || 'Meta API'} · produção`,
+        previewFallback: true,
+      });
+    }
+
     return Response.json(
       {
         error: 'Não foi possível carregar o perfil profissional do Instagram.',
         detail: result.error,
+        previewEnvironment: process.env.VERCEL_ENV === 'preview',
       },
       { status: result.status || 502 }
     );

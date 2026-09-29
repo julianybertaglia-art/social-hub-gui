@@ -32,6 +32,72 @@ function emptyFlow() {
   };
 }
 
+const IMPORTACAO_FLOW = {
+  id: 'flow-importacao-20260929',
+  name: 'Importação',
+  keyword: 'IMPORTAÇÃO',
+  publicReplies: ['Te mandei as informações no Direct 👊', 'Chamei você no Direct ✨'],
+  active: true,
+  start: {
+    id: 'node-operacao',
+    text: 'Oi! 👋 Que bom ter você por aqui.\n\nAntes de te explicar melhor sobre importação, quero entender um pouco do seu momento atual 👇\n\nHoje você já tem uma operação de vendas?',
+    audioPath: '',
+    audioName: '',
+    responseMode: 'same',
+    buttons: [
+      { id: 'btn-op-sim', label: '✅ Sim, já vendo', next: { id: 'unused-op-1', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+      { id: 'btn-op-comecando', label: '🚀 Começando agora', next: { id: 'unused-op-2', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+      { id: 'btn-op-nao', label: '❌ Ainda não vendo', next: { id: 'unused-op-3', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+    ],
+    sharedNext: {
+      id: 'node-experiencia',
+      text: 'E você já fez alguma importação anteriormente?',
+      audioPath: '',
+      audioName: '',
+      responseMode: 'same',
+      buttons: [
+        { id: 'btn-exp-sim', label: '✅ Sim, já importei', next: { id: 'unused-exp-1', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+        { id: 'btn-exp-pesquisei', label: '👀 Só pesquisei', next: { id: 'unused-exp-2', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+        { id: 'btn-exp-nunca', label: '❌ Nunca importei', next: { id: 'unused-exp-3', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+      ],
+      sharedNext: {
+        id: 'node-produto',
+        text: 'Hoje você já tem algum produto validado, que vende e que gostaria de importar?',
+        audioPath: '',
+        audioName: '',
+        responseMode: 'same',
+        buttons: [
+          { id: 'btn-prod-validado', label: '✅ Produto validado', next: { id: 'unused-prod-1', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+          { id: 'btn-prod-mente', label: '🤔 Alguns em mente', next: { id: 'unused-prod-2', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+          { id: 'btn-prod-buscando', label: '🔎 Buscando produto', next: { id: 'unused-prod-3', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+        ],
+        sharedNext: {
+          id: 'node-investimento',
+          text: 'Para eu entender melhor qual caminho faz sentido para você:\n\nQuanto você pretende investir inicialmente em uma importação?',
+          audioPath: '',
+          audioName: '',
+          responseMode: 'same',
+          buttons: [
+            { id: 'btn-inv-5', label: '💰 Até R$ 5 mil', next: { id: 'unused-inv-1', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+            { id: 'btn-inv-50', label: '💰 Até R$ 50 mil', next: { id: 'unused-inv-2', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+            { id: 'btn-inv-500', label: '💰 Até R$ 500 mil', next: { id: 'unused-inv-3', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+            { id: 'btn-inv-1m', label: '💰 R$ 1 milhão +', next: { id: 'unused-inv-4', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+          ],
+          sharedNext: {
+            id: 'node-whatsapp',
+            text: 'Obrigado pelas respostas! 🙌\n\nDeixe seu contato do WhatsApp com DDD por aqui. Em breve nossa equipe entrará em contato com você.',
+            audioPath: '',
+            audioName: '',
+            responseMode: 'same',
+            sharedNext: null,
+            buttons: [],
+          },
+        },
+      },
+    },
+  },
+};
+
 function updateNodeTree(node, nodeId, updater) {
   if (node.id === nodeId) return updater(node);
   return {
@@ -86,8 +152,8 @@ function readAsDataUrl(file) {
 }
 
 export default function AutomacoesPage() {
-  const [flows, setFlows] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
+  const [flows, setFlows] = useState([IMPORTACAO_FLOW]);
+  const [selectedId, setSelectedId] = useState(IMPORTACAO_FLOW.id);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
@@ -98,12 +164,18 @@ export default function AutomacoesPage() {
     ownerRequest('/api/instagram/flow-automations')
       .then((payload) => {
         if (cancelled) return;
-        const next = Array.isArray(payload.flows) ? payload.flows : [];
+        const serverFlows = Array.isArray(payload.flows) ? payload.flows : [];
+        const next = serverFlows.length ? serverFlows : [IMPORTACAO_FLOW];
         setFlows(next);
-        setSelectedId(next[0]?.id || null);
+        setSelectedId(next[0]?.id || IMPORTACAO_FLOW.id);
         try { window.localStorage.setItem('tideplace-instagram-flow-automations', JSON.stringify(next)); } catch {}
       })
-      .catch((error) => !cancelled && setNotice(error.message))
+      .catch((error) => {
+        if (cancelled) return;
+        setFlows([IMPORTACAO_FLOW]);
+        setSelectedId(IMPORTACAO_FLOW.id);
+        setNotice(error.message);
+      })
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
   }, []);

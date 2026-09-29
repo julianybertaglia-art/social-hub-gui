@@ -268,7 +268,7 @@ export default function AutomacoesPage() {
         <div className={styles.branchHeader}>
           <div>
             <strong>Botões de resposta</strong>
-            <span>A pessoa toca e segue para o próximo passo.</span>
+            <span>A escolha fica registrada para você consultar depois.</span>
           </div>
           <button type="button" onClick={() => addButton(flow.id, node.id)} disabled={(node.buttons || []).length >= 13}>
             + Adicionar botão
@@ -278,23 +278,60 @@ export default function AutomacoesPage() {
         {(node.buttons || []).length === 0 ? (
           <div className={styles.noButtons}>Sem botões: a automação termina depois desta resposta.</div>
         ) : (
-          <div className={styles.buttonsList}>
-            {(node.buttons || []).map((button, index) => (
-              <div className={styles.branch} key={button.id}>
-                <div className={styles.branchTitle}>
-                  <span>{String(index + 1).padStart(2, '0')}</span>
-                  <input
-                    value={button.label || ''}
-                    maxLength={20}
-                    onChange={(event) => patchButton(flow.id, node.id, button.id, { label: event.target.value })}
-                    placeholder="Texto do botão"
-                  />
-                  <button type="button" onClick={() => removeButton(flow.id, node.id, button.id)}>×</button>
+          <>
+            <div className={styles.modePicker}>
+              <button
+                type="button"
+                className={(node.responseMode || 'same') === 'same' ? styles.modeActive : ''}
+                onClick={() => setResponseMode(flow.id, node.id, 'same')}
+              >
+                <strong>Mesma resposta para todos</strong>
+                <span>Eu só quero registrar qual opção a pessoa escolheu.</span>
+              </button>
+              <button
+                type="button"
+                className={node.responseMode === 'personalized' ? styles.modeActive : ''}
+                onClick={() => setResponseMode(flow.id, node.id, 'personalized')}
+              >
+                <strong>Resposta diferente por opção</strong>
+                <span>Cada botão abre um caminho próprio.</span>
+              </button>
+            </div>
+
+            <div className={styles.buttonsList}>
+              {(node.buttons || []).map((button, index) => (
+                <div className={styles.branchCompact} key={button.id}>
+                  <div className={styles.branchTitle}>
+                    <span>{String(index + 1).padStart(2, '0')}</span>
+                    <input
+                      value={button.label || ''}
+                      maxLength={20}
+                      onChange={(event) => patchButton(flow.id, node.id, button.id, { label: event.target.value })}
+                      placeholder="Texto do botão"
+                    />
+                    <button type="button" onClick={() => removeButton(flow.id, node.id, button.id)}>×</button>
+                  </div>
+
+                  {node.responseMode === 'personalized' && (
+                    <div className={styles.personalizedBranch}>
+                      {renderNode(flow, button.next, depth + 1, 'SE ESCOLHER “' + (button.label || 'ESTA OPÇÃO') + '”')}
+                    </div>
+                  )}
                 </div>
-                {renderNode(flow, button.next, depth + 1, 'SE A PESSOA ESCOLHER “' + (button.label || 'ESTE BOTÃO') + '”')}
+              ))}
+            </div>
+
+            {(node.responseMode || 'same') === 'same' && node.sharedNext && (
+              <div className={styles.sharedResponse}>
+                <div className={styles.sharedResponseLabel}>
+                  <span>RESPOSTA ÚNICA</span>
+                  <strong>Depois de qualquer uma das opções acima</strong>
+                  <small>A opção escolhida fica salva, mas a conversa segue igual para todos.</small>
+                </div>
+                {renderNode(flow, node.sharedNext, depth + 1, 'MESMA RESPOSTA PARA TODAS AS OPÇÕES')}
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     );

@@ -40,7 +40,7 @@ export async function GET() {
       supabase: Boolean(supabaseUrl && supabaseKey),
     },
     instagram: { ok: false },
-    subscriptions: { ok: false, fields: [] },
+    subscriptions: { ok: false, fields: [], appId: null, appName: null },
     appWebhook: { ok: false, object: null, callbackUrl: null, active: null, fields: [] },
     database: { ok: false, stateTable: false, responseLedger: false },
   };
@@ -66,6 +66,8 @@ export async function GET() {
         checks.subscriptions = {
           ok: ['comments', 'messages', 'messaging_postbacks'].every((field) => fields.includes(field)),
           fields,
+          appId: String(apps[0]?.id || '') || null,
+          appName: apps[0]?.name || null,
         };
 
         const appId = String(apps[0]?.id || '').trim();

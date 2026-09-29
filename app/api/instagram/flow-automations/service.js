@@ -78,64 +78,45 @@ export function sanitizeFlows(value) {
   });
 }
 
-function parseState(description) {
-  try { return JSON.parse(description || '{}'); } catch { return {}; }
-}
-
-function flowsFromState(description) {
-  const state = parseState(description);
-  const raw = state?.data?.[FLOW_STORAGE_KEY];
-  try {
-    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    return sanitizeFlows(parsed);
-  } catch {
-    return [];
-  }
-}
-
 export async function loadOwnerFlows(db, userId) {
-  const { data: rows, error } = await db.from('content_items')
-    .select('id,description,updated_at')
-    .eq('title', STATE_TITLE)
+  const { data, error } = await db.from('instagram_flow_automations')
+    .select('flows,updated_at')
     .eq('user_id', userId)
-    .order('updated_at', { ascending: false })
-    .limit(1);
-  const row = rows?.[0];
-  if (error || !row?.id) throw flowError('Estado da TidePlace não encontrado.', 503);
-  return { row, flows: flowsFromState(row.description) };
+    .maybeSingle();
+
+  if (error) throw flowError('Não foi possível carregar as automações.', 503);
+
+  return {
+    row: data || null,
+    flows: sanitizeFlows(data?.flows || []),
+  };
 }
 
 export async function saveOwnerFlows(db, userId, value) {
   const flows = sanitizeFlows(value);
-  const { row } = await loadOwnerFlows(db, userId);
-  const state = parseState(row.description);
-  const updatedAt = Date.now();
-  const description = JSON.stringify({
-    ...state,
-    updatedAt,
-    data: {
-      ...(state?.data && typeof state.data === 'object' ? state.data : {}),
-      [FLOW_STORAGE_KEY]: JSON.stringify(flows),
-    },
-  });
+  const updatedAt = new Date().toISOString();
 
-  const { error } = await db.from('content_items')
-    .update({ description, status: 'Ativo' })
-    .eq('id', row.id)
-    .eq('user_id', userId);
+  const { error } = await db.from('instagram_flow_automations')
+    .upsert({
+      user_id: userId,
+      flows,
+      updated_at: updatedAt,
+    }, { onConflict: 'user_id' });
+
   if (error) throw flowError('Não foi possível salvar as automações.', 503);
+
   return { flows, updatedAt };
 }
 
 export async function loadLatestFlows(db) {
-  const { data, error } = await db.from('content_items')
-    .select('description')
-    .eq('title', STATE_TITLE)
+  const { data, error } = await db.from('instagram_flow_automations')
+    .select('flows')
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error || !data?.description) return [];
-  return flowsFromState(data.description);
+
+  if (error || !data) return [];
+  return sanitizeFlows(data.flows || []);
 }
 
 export async function uploadFlowAudio(db, userId, rawBase64, fileName = 'audio.m4a') {

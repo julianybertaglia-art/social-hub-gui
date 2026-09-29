@@ -11,28 +11,34 @@ const SECTION_IDS = ['dashboard', 'calendar', 'tasks', 'ideas', 'metrics', 'goal
 const navGroups = [
   {
     label: 'PRINCIPAL',
-    items: [{ id: 'dashboard', label: 'Visão geral', icon: '⌂', type: 'section' }],
-  },
-  {
-    label: 'PLANEJAMENTO',
     items: [
-      { id: 'calendar', label: 'Calendário', icon: '▦', type: 'section' },
+      { id: 'dashboard', label: 'Visão geral', icon: '⌂', type: 'section' },
       { id: 'tasks', label: 'Tarefas', icon: '✓', type: 'section' },
-      { id: 'ideas', label: 'Ideias', icon: '✦', type: 'section' },
     ],
   },
   {
-    label: 'AUDIÊNCIA',
+    label: 'INSTAGRAM',
     items: [
-      { href: '/whatsapp', label: 'CRM', icon: '◉', type: 'link' },
+      { id: 'calendar', label: 'Calendário', icon: '▦', type: 'section' },
+      { id: 'ideas', label: 'Ideias', icon: '✦', type: 'section' },
+      { id: 'metrics', label: 'Métricas', icon: '↗', type: 'section' },
+      { id: 'goals', label: 'Metas', icon: '◎', type: 'section' },
       { href: '/automacoes', label: 'Automações', icon: '⚡', type: 'link' },
     ],
   },
   {
-    label: 'ANALYTICS',
+    label: 'WHATSAPP',
     items: [
-      { id: 'metrics', label: 'Métricas', icon: '↗', type: 'section' },
-      { id: 'goals', label: 'Metas', icon: '◎', type: 'section' },
+      { href: '/whatsapp', label: 'CRM', icon: '◉', type: 'link' },
+      { href: '/whatsapp/automacoes', label: 'Automações', icon: '⚙', type: 'link' },
+      { href: '/whatsapp/campanha', label: 'Campanhas', icon: '↗', type: 'link' },
+      { href: '/whatsapp/grupos', label: 'Grupos', icon: '◎', type: 'link' },
+    ],
+  },
+  {
+    label: 'TIKTOK',
+    items: [
+      { href: '/tiktok/afiliados', label: 'Afiliados', icon: '◇', type: 'link' },
     ],
   },
 ];

@@ -8,14 +8,34 @@ function safeError(payload, text) {
   return String(typeof raw === 'string' ? raw : JSON.stringify(raw)).slice(0, 280);
 }
 
+async function fetchProductionProfileFallback() {
+  if (process.env.VERCEL_ENV !== 'preview') return null;
+
+  try {
+    const response = await fetch('https://social-hub-gui.vercel.app/api/instagram/profile', {
+      cache: 'no-store',
+      headers: { 'User-Agent': 'TidePlace-Preview/1.0' },
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload || payload?.error) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchProfile(fields) {
-  const accessToken = String(process.env.META_INSTAGRAM_ACCESS_TOKEN || '').trim();
+  const insightsToken = String(process.env.META_INSTAGRAM_INSIGHTS_ACCESS_TOKEN || '').trim();
+  const automationToken = String(process.env.META_INSTAGRAM_ACCESS_TOKEN || '').trim();
+  const useInsightsToken = Boolean(insightsToken);
+  const accessToken = useInsightsToken ? insightsToken : automationToken;
 
   if (!accessToken) {
-    return { ok: false, status: 503, error: 'META_INSTAGRAM_ACCESS_TOKEN não configurado.' };
+    return { ok: false, status: 503, error: 'Token da Meta não configurado.' };
   }
 
-  const url = new URL(`https://graph.instagram.com/${API_VERSION}/${GUI_ACCOUNT_ID}`);
+  const graphHost = useInsightsToken ? 'https://graph.facebook.com' : 'https://graph.instagram.com';
+  const url = new URL(`${graphHost}/${API_VERSION}/${GUI_ACCOUNT_ID}`);
   url.searchParams.set('fields', fields);
 
   const response = await fetch(url, {
@@ -54,10 +74,21 @@ export async function GET() {
   }
 
   if (!result.ok) {
+    const productionFallback = await fetchProductionProfileFallback();
+
+    if (productionFallback) {
+      return Response.json({
+        ...productionFallback,
+        source: `${productionFallback.source || 'Meta API'} · produção`,
+        previewFallback: true,
+      });
+    }
+
     return Response.json(
       {
         error: 'Não foi possível carregar o perfil profissional do Instagram.',
         detail: result.error,
+        previewEnvironment: process.env.VERCEL_ENV === 'preview',
       },
       { status: result.status || 502 }
     );
@@ -74,7 +105,9 @@ export async function GET() {
     mediaCount: Number(profile.media_count || 0),
     accountType: 'Instagram Business',
     connected: true,
-    source: 'Meta API',
+    source: process.env.META_INSTAGRAM_INSIGHTS_ACCESS_TOKEN
+      ? 'Meta API · Facebook Login'
+      : 'Meta API · Instagram Login',
     updatedAt: new Date().toISOString(),
   });
 }

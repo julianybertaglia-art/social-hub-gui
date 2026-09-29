@@ -115,9 +115,9 @@ export default function InfluenciadoresPage() {
         <div>
           <span className={styles.eyebrow}>VITAL DECOR · TIKTOK</span>
           <h1>Influenciadores</h1>
-          <p>O Hub pontua cada inscrição e coloca os melhores perfis primeiro.</p>
+          <p>A TidePlace pontua cada inscrição e coloca os perfis com maior aderência primeiro.</p>
         </div>
-        <Link className={styles.back} href="/whatsapp">Abrir conversas</Link>
+        <Link className={styles.back} href="/">← Visão geral</Link>
       </header>
 
       {notice && <button className={styles.notice} type="button" onClick={() => setNotice('')}>{notice} ×</button>}

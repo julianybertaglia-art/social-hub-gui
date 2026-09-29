@@ -68,16 +68,22 @@ function lastDaysRange(days = 30) {
   return { since: isoDate(since), until: isoDate(until) };
 }
 
-async function metaGet(path, params = {}) {
-  const accessToken = String(process.env.META_INSTAGRAM_ACCESS_TOKEN || '').trim();
+async function metaGet(path, params = {}, options = {}) {
+  const insightsToken = String(process.env.META_INSTAGRAM_INSIGHTS_ACCESS_TOKEN || '').trim();
+  const automationToken = String(process.env.META_INSTAGRAM_ACCESS_TOKEN || '').trim();
+  const useInsightsToken = Boolean(insightsToken);
+  const accessToken = useInsightsToken ? insightsToken : automationToken;
 
   if (!accessToken) {
-    const error = new Error('META_INSTAGRAM_ACCESS_TOKEN não configurado.');
+    const error = new Error('Token da Meta não configurado.');
     error.code = 'META_TOKEN_MISSING';
     throw error;
   }
 
-  const url = new URL(`https://graph.instagram.com/${API_VERSION}/${path}`);
+  const graphHost = useInsightsToken || options.facebookGraph
+    ? 'https://graph.facebook.com'
+    : 'https://graph.instagram.com';
+  const url = new URL(`${graphHost}/${API_VERSION}/${path}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
       url.searchParams.set(key, String(value));
@@ -129,34 +135,23 @@ function metricValue(metric, mode = 'sum') {
 
 async function requestMetaInsights() {
   const { since, until } = lastDaysRange(30);
-  const params = {
-    metric: 'reach,views,total_interactions,profile_views',
+
+  return metaGet(`${GUI_ACCOUNT_ID}/insights`, {
+    metric: 'reach,views,total_interactions',
+    period: 'day',
+    metric_type: 'total_value',
     since,
     until,
-  };
-
-  // A Meta oferece total_over_range para métricas agregadas. Caso alguma conta/versão
-  // não aceite a combinação, fazemos fallback para dados diários e somamos o período.
-  try {
-    return await metaGet(`${GUI_ACCOUNT_ID}/insights`, {
-      ...params,
-      period: 'total_over_range',
-    });
-  } catch (error) {
-    console.warn('Meta total_over_range indisponível; usando período diário.', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-
-    return metaGet(`${GUI_ACCOUNT_ID}/insights`, {
-      ...params,
-      period: 'day',
-    });
-  }
+  }, { facebookGraph: true });
 }
 
 async function requestMetaMetrics() {
   const [profileResult, insightsResult] = await Promise.allSettled([
-    metaGet(GUI_ACCOUNT_ID, { fields: 'username,followers_count,media_count' }),
+    metaGet(
+      GUI_ACCOUNT_ID,
+      { fields: 'username,name,profile_picture_url,followers_count,media_count' },
+      { facebookGraph: true }
+    ),
     requestMetaInsights(),
   ]);
 
@@ -168,29 +163,14 @@ async function requestMetaMetrics() {
   const insightRows = Array.isArray(insightsResult.value?.data) ? insightsResult.value.data : [];
   const byName = Object.fromEntries(insightRows.map((metric) => [metric?.name, metric]));
 
-  let seguidores = Math.round(Number(profile?.followers_count || 0));
-
-  if (!seguidores) {
-    try {
-      const followerPayload = await metaGet(`${GUI_ACCOUNT_ID}/insights`, {
-        metric: 'follower_count',
-        period: 'day',
-      });
-      const followerMetric = Array.isArray(followerPayload?.data) ? followerPayload.data[0] : null;
-      seguidores = metricValue(followerMetric, 'latest');
-    } catch (error) {
-      console.warn('Meta não retornou seguidores atuais.', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
+  const seguidores = Math.round(Number(profile?.followers_count || 0));
 
   const metrics = {
     seguidores,
     alcance: metricValue(byName.reach),
     visualizacoes: metricValue(byName.views),
     interacoes: metricValue(byName.total_interactions),
-    visitasPerfil: metricValue(byName.profile_views),
+    visitasPerfil: 0,
   };
 
   if (!metrics.seguidores && !metrics.alcance && !metrics.visualizacoes && !metrics.interacoes) {
@@ -255,6 +235,23 @@ function sum(rows, field) {
   return Math.round(rows.reduce((total, row) => total + Number(row?.[field] || 0), 0));
 }
 
+async function requestProductionPreviewFallback(path) {
+  if (process.env.VERCEL_ENV !== 'preview') return null;
+
+  try {
+    const response = await fetch(`https://social-hub-gui.vercel.app${path}`, {
+      cache: 'no-store',
+      headers: { 'User-Agent': 'TidePlace-Preview/1.0' },
+    });
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok || !payload) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
 async function requestWindsorMetrics() {
   const [profileRows, performanceRows] = await Promise.all([
     requestWindsor(
@@ -293,7 +290,9 @@ export async function GET() {
       account: '@gui_nonato',
       period: 'Últimos 30 dias',
       updatedAt,
-      source: 'Meta',
+      source: process.env.META_INSTAGRAM_INSIGHTS_ACCESS_TOKEN
+        ? 'Meta · Facebook Login'
+        : 'Meta · Instagram Login',
       metrics,
     });
   } catch (metaError) {
@@ -315,12 +314,22 @@ export async function GET() {
     } catch (windsorError) {
       console.error('Erro ao buscar métricas do Instagram:', windsorError);
 
+      const productionFallback = await requestProductionPreviewFallback('/api/instagram');
+      if (productionFallback?.metrics) {
+        return Response.json({
+          ...productionFallback,
+          source: `${productionFallback.source || 'Meta'} · produção`,
+          previewFallback: true,
+        });
+      }
+
       return Response.json(
         {
           error: 'Não foi possível atualizar as métricas pela Meta nem pelo Windsor.',
           code: 'INSTAGRAM_METRICS_UNAVAILABLE',
           metaDetail: metaError?.providerDetail || metaError?.message || undefined,
           windsorDetail: windsorError?.providerDetail || windsorError?.message || undefined,
+          previewEnvironment: process.env.VERCEL_ENV === 'preview',
         },
         { status: 502 }
       );

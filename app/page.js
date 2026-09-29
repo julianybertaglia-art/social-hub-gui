@@ -3,34 +3,42 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import DetailDialog from './DetailDialog';
+import ThemeCustomizer from './ThemeCustomizer';
+import WorkspaceSwitcher, { getWorkspaceStorageKey, useWorkspace } from './WorkspaceSwitcher';
 
 const SECTION_IDS = ['dashboard', 'calendar', 'tasks', 'ideas', 'metrics', 'goals'];
 
 const navGroups = [
   {
     label: 'PRINCIPAL',
-    items: [{ id: 'dashboard', label: 'Visão geral', icon: '⌂', type: 'section' }],
-  },
-  {
-    label: 'PLANEJAMENTO',
     items: [
-      { id: 'calendar', label: 'Calendário', icon: '▦', type: 'section' },
+      { id: 'dashboard', label: 'Visão geral', icon: '⌂', type: 'section' },
       { id: 'tasks', label: 'Tarefas', icon: '✓', type: 'section' },
-      { id: 'ideas', label: 'Ideias', icon: '✦', type: 'section' },
     ],
   },
   {
-    label: 'AUDIÊNCIA',
+    label: 'INSTAGRAM',
     items: [
-      { href: '/whatsapp', label: 'CRM', icon: '◉', type: 'link' },
+      { id: 'calendar', label: 'Calendário', icon: '▦', type: 'section' },
+      { id: 'ideas', label: 'Ideias', icon: '✦', type: 'section' },
+      { id: 'metrics', label: 'Métricas', icon: '↗', type: 'section' },
+      { id: 'goals', label: 'Metas', icon: '◎', type: 'section' },
       { href: '/automacoes', label: 'Automações', icon: '⚡', type: 'link' },
     ],
   },
   {
-    label: 'ANALYTICS',
+    label: 'WHATSAPP',
     items: [
-      { id: 'metrics', label: 'Métricas', icon: '↗', type: 'section' },
-      { id: 'goals', label: 'Metas', icon: '◎', type: 'section' },
+      { href: '/whatsapp', label: 'CRM', icon: '◉', type: 'link' },
+      { href: '/whatsapp/automacoes', label: 'Automações', icon: '⚙', type: 'link' },
+      { href: '/whatsapp/campanha', label: 'Campanhas', icon: '↗', type: 'link' },
+      { href: '/whatsapp/grupos', label: 'Grupos', icon: '◎', type: 'link' },
+    ],
+  },
+  {
+    label: 'TIKTOK',
+    items: [
+      { href: '/tiktok/afiliados', label: 'Afiliados', icon: '◇', type: 'link' },
     ],
   },
 ];
@@ -160,14 +168,33 @@ function useStoredState(key, initialValue) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(key);
-      if (saved) setValue(JSON.parse(saved));
-    } catch (error) {
-      console.warn(`Não foi possível carregar ${key}`, error);
-    } finally {
-      setReady(true);
+    function readStoredValue() {
+      try {
+        const saved = window.localStorage.getItem(key);
+        setValue(saved ? JSON.parse(saved) : initialValue);
+      } catch (error) {
+        console.warn(`Não foi possível carregar ${key}`, error);
+        setValue(initialValue);
+      } finally {
+        setReady(true);
+      }
     }
+
+    function handleStorageUpdate(event) {
+      if (event?.detail?.key && event.detail.key !== key) return;
+      if (event?.key && event.key !== key) return;
+      readStoredValue();
+    }
+
+    setReady(false);
+    readStoredValue();
+    window.addEventListener('storage', handleStorageUpdate);
+    window.addEventListener('tideplace:storage-update', handleStorageUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageUpdate);
+      window.removeEventListener('tideplace:storage-update', handleStorageUpdate);
+    };
   }, [key]);
 
   useEffect(() => {
@@ -202,6 +229,49 @@ function EmptyState({ children }) {
   return <div className="empty-state">{children}</div>;
 }
 
+function SummaryIcon({ type }) {
+  const paths = {
+    tasks: (
+      <>
+        <path d="M5 6.5h14" />
+        <path d="M5 12h14" />
+        <path d="M5 17.5h9" />
+        <path d="m2.8 6.5.9.9 1.7-1.9" />
+        <path d="m2.8 12 .9.9 1.7-1.9" />
+      </>
+    ),
+    content: (
+      <>
+        <rect x="4" y="3.5" width="16" height="17" rx="2.5" />
+        <path d="M8 8h8" />
+        <path d="M8 12h8" />
+        <path d="M8 16h5" />
+      </>
+    ),
+    leads: (
+      <>
+        <circle cx="9" cy="9" r="3" />
+        <path d="M3.5 19c.8-3.2 2.8-5 5.5-5s4.7 1.8 5.5 5" />
+        <path d="M17 8v6" />
+        <path d="M14 11h6" />
+      </>
+    ),
+    automations: (
+      <>
+        <path d="M13 2 5.5 13h5L9.8 22 18.5 10h-5L13 2Z" />
+      </>
+    ),
+  };
+
+  return (
+    <span className="quick-stat-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        {paths[type]}
+      </svg>
+    </span>
+  );
+}
+
 function TaskRow({ task, onToggle, onOpen }) {
   return (
     <div className={`task-row ${task.done ? 'done' : ''}`}>
@@ -229,17 +299,35 @@ function TaskRow({ task, onToggle, onOpen }) {
 }
 
 export default function Home() {
+  const [workspace] = useWorkspace();
+  const isGuiWorkspace = workspace.id === 'gui-nonato';
   const [active, setActive] = useState('dashboard');
   const [mobileMenu, setMobileMenu] = useState(false);
   const [greeting, setGreeting] = useState('Olá');
   const [crmSummary, setCrmSummary] = useState({ total: null, newLeads: null });
   const [automationCount, setAutomationCount] = useState(1);
   const [liveMetrics, setLiveMetrics] = useState(null);
-  const [metrics, setMetrics] = useStoredState('guihub-metrics', defaultMetrics);
-  const [posts, setPosts] = useStoredState('guihub-posts', defaultPosts);
-  const [ideas, setIdeas] = useStoredState('guihub-ideas', defaultIdeas);
-  const [tasks, setTasks] = useStoredState('guihub-tasks', defaultTasks);
-  const [goals, setGoals] = useStoredState('guihub-goals', defaultGoals);
+  const [instagramConnected, setInstagramConnected] = useState(null);
+  const [metrics, setMetrics] = useStoredState(
+    getWorkspaceStorageKey('guihub-metrics', workspace.id),
+    defaultMetrics
+  );
+  const [posts, setPosts] = useStoredState(
+    getWorkspaceStorageKey('guihub-posts', workspace.id),
+    isGuiWorkspace ? defaultPosts : []
+  );
+  const [ideas, setIdeas] = useStoredState(
+    getWorkspaceStorageKey('guihub-ideas', workspace.id),
+    isGuiWorkspace ? defaultIdeas : []
+  );
+  const [tasks, setTasks] = useStoredState(
+    getWorkspaceStorageKey('guihub-tasks', workspace.id),
+    isGuiWorkspace ? defaultTasks : []
+  );
+  const [goals, setGoals] = useStoredState(
+    getWorkspaceStorageKey('guihub-goals', workspace.id),
+    isGuiWorkspace ? defaultGoals : []
+  );
   const [ideaDraft, setIdeaDraft] = useState({ title: '', audience: '', format: 'Reel', priority: 'Média' });
   const [postDraft, setPostDraft] = useState({ date: '', time: '', format: 'Reel', title: '', objective: 'Autoridade', status: 'Ideia' });
   const [detailPath, setDetailPath] = useState([]);
@@ -263,6 +351,16 @@ export default function Home() {
     }).format(new Date()));
     setGreeting(hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite');
 
+    if (!isGuiWorkspace) {
+      setAutomationCount(0);
+      setCrmSummary({ total: 0, newLeads: 0 });
+      setLiveMetrics(null);
+      setInstagramConnected(false);
+      return;
+    }
+
+    setInstagramConnected(null);
+
     try {
       const stored = JSON.parse(window.localStorage.getItem('guihub-automations') || '[]');
       const activeRules = Array.isArray(stored)
@@ -284,19 +382,38 @@ export default function Home() {
       })
       .catch(() => {});
 
-    Promise.all([
-      fetch('/api/instagram/profile', { cache: 'no-store' }).then((response) => response.json()),
-      fetch('/api/instagram', { cache: 'no-store' }).then((response) => response.json()),
-    ])
-      .then(([profileData, metricsData]) => {
-        const apiMetrics = metricsData?.metrics || {};
+    Promise.allSettled([
+      fetch('/api/instagram/profile', { cache: 'no-store' })
+        .then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) throw new Error(data?.detail || data?.error || 'Falha ao carregar perfil');
+          return data;
+        }),
+      fetch('/api/instagram', { cache: 'no-store' })
+        .then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) throw new Error(data?.metaDetail || data?.error || 'Falha ao carregar métricas');
+          return data;
+        }),
+    ]).then(([profileResult, metricsResult]) => {
+      const profileData = profileResult.status === 'fulfilled' ? profileResult.value : null;
+      const metricsData = metricsResult.status === 'fulfilled' ? metricsResult.value : null;
+      const apiMetrics = metricsData?.metrics || null;
+
+      if (apiMetrics) {
         setLiveMetrics({
           ...apiMetrics,
           seguidores: profileData?.followersCount || apiMetrics.seguidores || 0,
         });
-      })
-      .catch(() => {});
-  }, []);
+      } else {
+        setLiveMetrics(null);
+      }
+
+      // A conta está conectada se ao menos um endpoint oficial da Meta respondeu.
+      // Assim uma falha isolada na foto/perfil não derruba as métricas do painel.
+      setInstagramConnected(Boolean(profileData?.connected || apiMetrics));
+    });
+  }, [workspace.id, isGuiWorkspace]);
 
   function openTask(id) {
     setDetailPath([{ kind: 'task', id }]);
@@ -380,7 +497,7 @@ export default function Home() {
       <>
         <section className="hero-row dashboard-hero">
           <div>
-            <span className="eyebrow">PAINEL DO DIA · GUI NONATO</span>
+            <span className="eyebrow">TIDEPLACE · {workspace.name.toUpperCase()}</span>
             <h1>{greeting}, Juliany.</h1>
             <p className="subtitle">O que precisa da sua atenção, sem misturar tudo na mesma tela.</p>
           </div>
@@ -389,21 +506,25 @@ export default function Home() {
 
         <section className="quick-stats" aria-label="Resumo do dia">
           <button type="button" className="quick-stat" onClick={() => goTo('tasks')}>
+            <SummaryIcon type="tasks" />
             <span>Tarefas pendentes</span>
             <strong>{pendingTasks.length}</strong>
             <small>{highPriorityCount ? `${highPriorityCount} de alta prioridade` : 'Nenhuma urgente'}</small>
           </button>
           <button type="button" className="quick-stat" onClick={() => goTo('calendar')}>
+            <SummaryIcon type="content" />
             <span>Conteúdos programados</span>
             <strong>{scheduledPosts.length}</strong>
             <small>{contentInProduction ? `${contentInProduction} em produção` : 'Tudo encaminhado'}</small>
           </button>
           <Link className="quick-stat" href="/whatsapp">
+            <SummaryIcon type="leads" />
             <span>Leads no CRM</span>
             <strong>{formatNumber(leadCount)}</strong>
             <small>{crmSummary.newLeads === null ? 'Carregando CRM…' : `${crmSummary.newLeads} novos`}</small>
           </Link>
           <Link className="quick-stat" href="/automacoes">
+            <SummaryIcon type="automations" />
             <span>Automações ativas</span>
             <strong>{automationCount}</strong>
             <small>Direct e comentários</small>
@@ -625,21 +746,70 @@ export default function Home() {
   function renderMetrics() {
     const fields = [
       ['seguidores', 'Seguidores'], ['alcance', 'Alcance'], ['visualizacoes', 'Visualizações'],
-      ['visitasPerfil', 'Visitas ao perfil'], ['interacoes', 'Interações'], ['leads', 'Leads gerados'],
+      ['interacoes', 'Interações'], ['leads', 'Leads gerados'],
     ];
+
+    const officialMetrics = {
+      ...metrics,
+      ...(liveMetrics || {}),
+      leads: leadCount,
+    };
+    const hasLiveMeta = Boolean(liveMetrics);
+
     return (
       <>
-        <section className="page-heading"><div><span className="eyebrow">ANALYTICS</span><h1>Métricas do Instagram</h1><p className="subtitle">O dashboard usa os dados sincronizados pela Meta quando disponíveis. Estes campos continuam como apoio manual.</p></div></section>
+        <section className="page-heading">
+          <div>
+            <span className="eyebrow">ANALYTICS</span>
+            <h1>Métricas do Instagram</h1>
+            <p className="subtitle">
+              {hasLiveMeta
+                ? 'Dados oficiais sincronizados pela Meta. O painel atualiza automaticamente.'
+                : 'Aguardando dados da Meta. Enquanto isso, os campos abaixo funcionam como apoio manual.'}
+            </p>
+          </div>
+        </section>
+
         <section className="metrics-edit-grid">
           {fields.map(([key, label]) => (
-            <label className="metric-input-card" key={key}>
+            <label className={`metric-input-card ${hasLiveMeta && key !== 'leads' ? 'metric-live' : ''}`} key={key}>
               <span>{label}</span>
-              <input type="number" min="0" value={metrics[key]} onChange={(event) => setMetrics({ ...metrics, [key]: Number(event.target.value) })} />
-              <small>Fallback manual</small>
+              <input
+                type="number"
+                min="0"
+                value={officialMetrics[key] ?? 0}
+                readOnly={hasLiveMeta && key !== 'leads'}
+                onChange={(event) => {
+                  if (hasLiveMeta && key !== 'leads') return;
+                  setMetrics({ ...metrics, [key]: Number(event.target.value) });
+                }}
+              />
+              <small>
+                {key === 'leads'
+                  ? 'CRM TidePlace'
+                  : hasLiveMeta
+                    ? 'Meta · dado oficial'
+                    : 'Fallback manual'}
+              </small>
             </label>
           ))}
         </section>
-        <section className="panel instruction-panel"><span className="eyebrow">CONEXÃO</span><h2>Meta conectada ao Hub</h2><p className="note">Quando a API retorna os dados do perfil, a Visão geral prioriza automaticamente os números oficiais.</p></section>
+
+        <section className="panel instruction-panel">
+          <span className="eyebrow">CONEXÃO</span>
+          <h2>
+            {instagramConnected === null
+              ? 'Verificando conexão com a Meta...'
+              : instagramConnected
+                ? 'Meta conectada à TidePlace'
+                : 'Meta precisa ser reconectada'}
+          </h2>
+          <p className="note">
+            {instagramConnected
+              ? 'Os números acima vêm da integração oficial. Se a foto do perfil falhar, as métricas continuam carregando normalmente.'
+              : 'A TidePlace mantém os dados manuais disponíveis até a integração voltar a responder.'}
+          </p>
+        </section>
       </>
     );
   }
@@ -681,11 +851,11 @@ export default function Home() {
     <div className="app-shell">
       <aside className={`sidebar ${mobileMenu ? 'open' : ''}`}>
         <div className="brand">
-          <div className="brand-mark">GN</div>
-          <div><strong>GUI SOCIAL HUB</strong><span>Central estratégica</span></div>
+          <div className="brand-mark"><img src="/brand/tideplace-mark.svg" alt="" /></div>
+          <div className="brand-copy"><strong><b>TIDE</b>PLACE</strong><span>Flow with your audience.</span></div>
         </div>
 
-        <nav className="sidebar-nav" aria-label="Áreas do Hub">
+        <nav className="sidebar-nav" aria-label="Áreas da TidePlace">
           {navGroups.map((group) => (
             <div className="sidebar-group" key={group.label}>
               <span className="sidebar-group-label">{group.label}</span>
@@ -713,11 +883,18 @@ export default function Home() {
       <main className="main-content">
         <header className="topbar">
           <button className="menu-button" onClick={() => setMobileMenu(true)} aria-label="Abrir menu">☰</button>
-          <div className="account-pill workspace-current">
-            <span className="instagram-dot">GN</span>
-            <div><strong>Gui Nonato</strong><span>@gui_nonato · Instagram</span></div>
-          </div>
-          <span className="workspace-status"><i /> Meta conectada</span>
+          <WorkspaceSwitcher />
+          <ThemeCustomizer />
+          <span className={`workspace-status ${instagramConnected === false ? 'workspace-status-warning' : ''}`}>
+            <i className={instagramConnected === false ? 'pending' : ''} />
+            {workspace.id !== 'gui-nonato'
+              ? 'Conta sem conexão'
+              : instagramConnected === null
+                ? 'Verificando Meta...'
+                : instagramConnected
+                  ? 'Meta conectada'
+                  : 'Reconectar Meta'}
+          </span>
         </header>
         <div className="page-content">{content()}</div>
       </main>

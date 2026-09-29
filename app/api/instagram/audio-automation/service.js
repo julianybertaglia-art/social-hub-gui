@@ -133,80 +133,6 @@ export async function getSubscriptionStatus(accountId) {
   };
 }
 
-export async function ensureAppWebhookSubscription(accountId) {
-  const appSecret = String(process.env.META_APP_SECRET || '').trim();
-  const verifyToken = String(process.env.META_WEBHOOK_VERIFY_TOKEN || '').trim();
-  if (!appSecret || !verifyToken) {
-    throw automationError('Faltam credenciais do webhook da Meta.', 503);
-  }
-
-  const accountSubscriptions = await metaRequest(`${accountId}/subscribed_apps`);
-  const apps = Array.isArray(accountSubscriptions?.data) ? accountSubscriptions.data : [];
-  const appId = String(apps[0]?.id || '').trim();
-  if (!/^\d+$/.test(appId)) {
-    throw automationError('Não foi possível identificar o App da Meta conectado ao Instagram.', 502);
-  }
-
-  const callbackUrl = String(
-    process.env.META_INSTAGRAM_WEBHOOK_URL
-      || 'https://social-hub-gui.vercel.app/api/instagram/webhook'
-  ).trim();
-  const instagramToken = String(process.env.META_INSTAGRAM_ACCESS_TOKEN || '').trim();
-  const oauthUrl = new URL('https://graph.facebook.com/oauth/access_token');
-  oauthUrl.searchParams.set('client_id', appId);
-  oauthUrl.searchParams.set('client_secret', appSecret);
-  oauthUrl.searchParams.set('grant_type', 'client_credentials');
-
-  const oauthResponse = await fetch(oauthUrl, {
-    cache: 'no-store',
-    signal: AbortSignal.timeout(15000),
-  });
-  const oauthPayload = await oauthResponse.json().catch(() => ({}));
-  const appAccessToken = String(oauthPayload?.access_token || '').trim();
-
-  const body = new URLSearchParams({
-    object: 'instagram',
-    callback_url: callbackUrl,
-    verify_token: verifyToken,
-    fields: 'comments,messages,messaging_postbacks',
-    include_values: 'true',
-  });
-
-  let lastError = null;
-  const candidateTokens = [
-    appAccessToken,
-    appId + '|' + appSecret,
-    instagramToken,
-  ].filter(Boolean);
-
-  for (const accessToken of candidateTokens) {
-    const response = await fetch(
-      `https://graph.facebook.com/${API_VERSION}/${appId}/subscriptions`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: 'Bearer ' + accessToken,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: body.toString(),
-        cache: 'no-store',
-        signal: AbortSignal.timeout(15000),
-      }
-    );
-    const result = await response.json().catch(() => ({}));
-    if (response.ok && !result?.error && result?.success === true) {
-      return { appId, callbackUrl, active: true };
-    }
-    lastError = { result, accessToken };
-  }
-
-  const detail = safeDetail(lastError?.result?.error || {}, lastError?.accessToken || '');
-  throw automationError(
-    'A Meta não conseguiu ativar o callback do Instagram.' + (detail ? ' ' + detail : ''),
-    502
-  );
-}
-
 export async function ensureSubscription(accountId) {
   const current = await getSubscriptionStatus(accountId);
   const fields = new Set(current.fields);
@@ -222,8 +148,7 @@ export async function ensureSubscription(accountId) {
     throw automationError('O Instagram não confirmou o recebimento de mensagens do Direct.', 502);
   }
 
-  const appWebhook = await ensureAppWebhookSubscription(accountId);
-  return { fields: [...fields], connected: true, appWebhook };
+  return { fields: [...fields], connected: true };
 }
 
 export async function setAutomationActive(db, userId, active) {

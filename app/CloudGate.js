@@ -201,6 +201,8 @@ export default function CloudGate({ children }) {
         .from('content_items')
         .select('id, description, updated_at')
         .eq('title', '__SOCIAL_HUB_STATE__')
+        .eq('user_id', session.user.id)
+        .limit(1)
         .maybeSingle();
 
       if (cancelled) return;

@@ -152,6 +152,7 @@ export async function ensureAppWebhookSubscription(accountId) {
       || 'https://social-hub-gui.vercel.app/api/instagram/webhook'
   ).trim();
   const appAccessToken = appId + '|' + appSecret;
+  const instagramToken = String(process.env.META_INSTAGRAM_ACCESS_TOKEN || '').trim();
   const body = new URLSearchParams({
     object: 'instagram',
     callback_url: callbackUrl,
@@ -160,30 +161,33 @@ export async function ensureAppWebhookSubscription(accountId) {
     include_values: 'true',
   });
 
-  const response = await fetch(
-    `https://graph.facebook.com/${API_VERSION}/${appId}/subscriptions`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: 'Bearer ' + appAccessToken,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: body.toString(),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(15000),
-    }
-  );
-  const result = await response.json().catch(() => ({}));
-
-  if (!response.ok || result?.error || result?.success !== true) {
-    const detail = safeDetail(result?.error || {}, appAccessToken);
-    throw automationError(
-      'A Meta não conseguiu ativar o callback do Instagram.' + (detail ? ' ' + detail : ''),
-      502
+  let lastError = null;
+  for (const accessToken of [appAccessToken, instagramToken].filter(Boolean)) {
+    const response = await fetch(
+      `https://graph.facebook.com/${API_VERSION}/${appId}/subscriptions`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: body.toString(),
+        cache: 'no-store',
+        signal: AbortSignal.timeout(15000),
+      }
     );
+    const result = await response.json().catch(() => ({}));
+    if (response.ok && !result?.error && result?.success === true) {
+      return { appId, callbackUrl, active: true };
+    }
+    lastError = { result, accessToken };
   }
 
-  return { appId, callbackUrl, active: true };
+  const detail = safeDetail(lastError?.result?.error || {}, lastError?.accessToken || '');
+  throw automationError(
+    'A Meta não conseguiu ativar o callback do Instagram.' + (detail ? ' ' + detail : ''),
+    502
+  );
 }
 
 export async function ensureSubscription(accountId) {

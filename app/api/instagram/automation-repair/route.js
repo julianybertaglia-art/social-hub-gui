@@ -29,6 +29,7 @@ export async function POST(request) {
     return Response.json({
       ok: false,
       error: String(error?.message || 'Falha na reparação.').slice(0, 300),
-    }, { status: error?.status || 500 });
+      status: error?.status || 500,
+    });
   }
 }

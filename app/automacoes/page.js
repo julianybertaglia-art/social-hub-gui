@@ -59,6 +59,7 @@ export default function AutomacoesPage() {
   const [recovering, setRecovering] = useState(false);
   const [recoveryMessage, setRecoveryMessage] = useState('');
   const [hydrated, setHydrated] = useState(false);
+  const [activeTool, setActiveTool] = useState('comments');
 
   useEffect(() => {
     let cancelled = false;
@@ -221,154 +222,165 @@ export default function AutomacoesPage() {
     <main className={styles.page}>
       <header className={styles.header}>
         <div>
-          <span className={styles.eyebrow}>INSTAGRAM + WHATSAPP</span>
-          <h1>Automações</h1>
-          <p>Gerencie os fluxos automáticos do Instagram e do atendimento oficial pelo WhatsApp.</p>
+          <span className={styles.eyebrow}>INSTAGRAM</span>
+          <h1>Automações do Instagram</h1>
+          <p>Comentários, Direct e fluxos automáticos organizados por função — sem misturar com WhatsApp.</p>
         </div>
-        <Link className={styles.backButton} href="/">← Voltar ao Hub</Link>
+        <span className={styles.accountBadge}><i /> @gui_nonato</span>
       </header>
 
       <section className={styles.statusGrid}>
         <article className={styles.statusCard}>
           <span>Conta profissional</span>
           <strong>Conectada</strong>
-          <small>@gui_nonato</small>
+          <small>Instagram Business</small>
         </article>
         <article className={styles.statusCard}>
-          <span>Regras por comentário ativas</span>
-          <strong>{activeCount} de 3</strong>
-          <small>Você pode deixar até três regras prontas</small>
+          <span>Regras por comentário</span>
+          <strong>{activeCount} ativas</strong>
+          <small>Direct automático por palavra-chave</small>
         </article>
         <article className={styles.statusCard}>
-          <span>Envio automático</span>
-          <strong>{connected === null ? 'Verificando' : connected ? 'Conectado' : 'Atenção'}</strong>
-          <small>{connected ? 'Webhook oficial da Meta ativo' : 'Salve as regras para reparar a conexão'}</small>
+          <span>Webhook</span>
+          <strong>{connected === null ? 'Verificando' : connected ? 'Online' : 'Atenção'}</strong>
+          <small>{connected ? 'Eventos chegando pela Meta' : 'Salve as regras para reparar a conexão'}</small>
         </article>
       </section>
 
-      <section className={styles.whatsappAutomation}>
-        <div>
-          <span className={styles.eyebrow}>WHATSAPP · VITAL DECOR</span>
-          <h2>Menu de atendimento e triagem de influenciadores</h2>
-          <p>Todo novo contato escolhe o assunto. Criadores do TikTok recebem o formulário, são pontuados automaticamente e entram na fila por aderência.</p>
-          <div className={styles.whatsappTopics} aria-label="Assuntos do menu automático">
-            <span>Imersão</span>
-            <span>Mercado Livre</span>
-            <span>Importação</span>
-            <span>Mentoria</span>
-            <span>Afiliado TikTok Vital</span>
-            <span>Outro assunto</span>
-          </div>
-        </div>
-        <div className={styles.whatsappActions}>
-          <strong><i aria-hidden="true" /> Automação ativa</strong>
-          <Link href="/whatsapp/influenciadores">Ver influenciadores</Link>
-          <Link href="/whatsapp">Abrir conversas</Link>
-        </div>
-      </section>
-
-      <ArgoAudioAutomation />
-
-      <AudioTest />
-
-      <section className={styles.rulesWrap}>
-        {rules.map((rule, index) => (
-          <article className={styles.panel} key={rule.id}>
-            <div className={styles.panelHeading}>
-              <div>
-                <span className={styles.eyebrow}>AUTOMAÇÃO {index + 1}</span>
-                <h2>{rule.name || `Automação ${index + 1}`}</h2>
-              </div>
-              <label className={styles.switchRow}>
-                <span>{rule.active ? 'Ativa' : 'Pausada'}</span>
-                <input
-                  type="checkbox"
-                  checked={rule.active}
-                  disabled={isArgoKeyword(rule.keyword)}
-                  onChange={(event) => updateRule(index, 'active', event.target.checked)}
-                />
-                <i aria-hidden="true" />
-              </label>
-            </div>
-
-            {index === 0 && (
-              <div className={styles.notice}>
-                Esta é a automação que já testamos com IMERSÃO. Você pode editar o texto e salvar normalmente.
-              </div>
-            )}
-            {isArgoKeyword(rule.keyword) && (
-              <div className={styles.notice}>ARGO agora funciona no Direct, pelo fluxo de áudio acima. Esta regra por comentário está desativada.</div>
-            )}
-
-            <div className={styles.formGrid}>
-              <label>
-                Nome da automação
-                <input
-                  value={rule.name}
-                  onChange={(event) => updateRule(index, 'name', event.target.value)}
-                  placeholder="Ex.: Leads — Mentoria"
-                />
-              </label>
-
-              <label>
-                Palavra-chave
-                <input
-                  value={rule.keyword}
-                  onChange={(event) => updateRule(index, 'keyword', event.target.value.toUpperCase())}
-                  placeholder="Ex.: MENTORIA"
-                />
-              </label>
-
-              <label className={styles.fullField}>
-                Resposta pública no comentário
-                <input
-                  value={rule.publicReply}
-                  onChange={(event) => updateRule(index, 'publicReply', event.target.value)}
-                  placeholder="Ex.: Te chamei no Direct 👊"
-                />
-              </label>
-
-              <label className={styles.fullField}>
-                Mensagem enviada no Direct
-                <textarea
-                  rows="9"
-                  value={rule.privateMessage}
-                  onChange={(event) => updateRule(index, 'privateMessage', event.target.value)}
-                  placeholder="Escreva aqui a mensagem automática..."
-                />
-              </label>
-
-              <label className={styles.fullField}>
-                Tag do lead
-                <input
-                  value={rule.tag}
-                  onChange={(event) => updateRule(index, 'tag', event.target.value)}
-                  placeholder="Ex.: Interesse — Mentoria"
-                />
-              </label>
-            </div>
-
-            {index > 0 && (
-              <button className={styles.clearButton} type="button" onClick={() => resetRule(index)}>
-                Limpar esta automação
-              </button>
-            )}
-          </article>
-        ))}
-      </section>
-
-      <section className={styles.saveDock}>
-        <div>
-          <strong>{recoveryMessage || saveError || (hydrated ? 'As alterações são salvas no servidor e na Meta.' : 'Carregando configurações...')}</strong>
-          <span>{saveError ? 'Tente salvar novamente.' : 'Você também pode recuperar comentários do conteúdo mais recente.'}</span>
-        </div>
-        <button className={styles.clearButton} type="button" onClick={recoverLatestComments} disabled={!hydrated || recovering || saving}>
-          {recovering ? 'Verificando comentários…' : 'Recuperar comentários pendentes'}
+      <nav className={styles.toolTabs} aria-label="Ferramentas de automação do Instagram">
+        <button type="button" className={activeTool === 'comments' ? styles.toolTabActive : ''} onClick={() => setActiveTool('comments')}>
+          <span>01</span>
+          <div><strong>Comentários → Direct</strong><small>Palavra-chave e resposta automática</small></div>
         </button>
-        <button className={styles.saveButton} type="button" onClick={saveRules} disabled={!hydrated || saving}>
-          {saving ? 'Salvando e conectando…' : saved ? 'Configurações salvas ✓' : 'Salvar as 3 automações'}
+        <button type="button" className={activeTool === 'argo' ? styles.toolTabActive : ''} onClick={() => setActiveTool('argo')}>
+          <span>02</span>
+          <div><strong>Direct ARGO</strong><small>Fluxo automático com áudio</small></div>
         </button>
-      </section>
+        <button type="button" className={activeTool === 'audio' ? styles.toolTabActive : ''} onClick={() => setActiveTool('audio')}>
+          <span>03</span>
+          <div><strong>Teste de áudio</strong><small>Validação antes de ativar</small></div>
+        </button>
+      </nav>
+
+      {activeTool === 'argo' && <ArgoAudioAutomation />}
+      {activeTool === 'audio' && <AudioTest />}
+
+      {activeTool === 'comments' && (
+        <>
+          <section className={styles.sectionIntro}>
+            <div>
+              <span className={styles.eyebrow}>COMENTÁRIOS</span>
+              <h2>Regras por palavra-chave</h2>
+              <p>Quando alguém comenta uma palavra ativa, a TidePlace responde publicamente e envia a mensagem definida no Direct.</p>
+            </div>
+            <button className={styles.recoverButton} type="button" onClick={recoverLatestComments} disabled={!hydrated || recovering || saving}>
+              {recovering ? 'Verificando…' : 'Recuperar pendentes'}
+            </button>
+          </section>
+
+          {recoveryMessage && <div className={styles.feedback}>{recoveryMessage}</div>}
+          {saveError && <div className={styles.feedback + ' ' + styles.feedbackError}>{saveError}</div>}
+
+          <section className={styles.rulesWrap}>
+            {rules.map((rule, index) => (
+              <article className={styles.panel} key={rule.id}>
+                <div className={styles.panelHeading}>
+                  <div className={styles.ruleTitle}>
+                    <span className={styles.ruleNumber}>{String(index + 1).padStart(2, '0')}</span>
+                    <div>
+                      <span className={styles.eyebrow}>AUTOMAÇÃO</span>
+                      <h2>{rule.name || ('Automação ' + (index + 1))}</h2>
+                    </div>
+                  </div>
+                  <label className={styles.switchRow}>
+                    <span>{rule.active ? 'Ativa' : 'Pausada'}</span>
+                    <input
+                      type="checkbox"
+                      checked={rule.active}
+                      disabled={isArgoKeyword(rule.keyword)}
+                      onChange={(event) => updateRule(index, 'active', event.target.checked)}
+                    />
+                    <i aria-hidden="true" />
+                  </label>
+                </div>
+
+                {index === 0 && (
+                  <div className={styles.notice}>
+                    Esta é a regra que já usamos para IMERSÃO. Você pode atualizar o texto sem criar outro fluxo.
+                  </div>
+                )}
+                {isArgoKeyword(rule.keyword) && (
+                  <div className={styles.notice}>ARGO agora usa o fluxo próprio de Direct + áudio. Esta regra por comentário fica pausada.</div>
+                )}
+
+                <div className={styles.formGrid}>
+                  <label>
+                    Nome
+                    <input
+                      value={rule.name}
+                      onChange={(event) => updateRule(index, 'name', event.target.value)}
+                      placeholder="Ex.: Leads — Mentoria"
+                    />
+                  </label>
+
+                  <label>
+                    Palavra-chave
+                    <input
+                      value={rule.keyword}
+                      onChange={(event) => updateRule(index, 'keyword', event.target.value.toUpperCase())}
+                      placeholder="Ex.: MENTORIA"
+                    />
+                  </label>
+
+                  <label className={styles.fullField}>
+                    Resposta pública
+                    <input
+                      value={rule.publicReply}
+                      onChange={(event) => updateRule(index, 'publicReply', event.target.value)}
+                      placeholder="Ex.: Te chamei no Direct 👊"
+                    />
+                  </label>
+
+                  <label className={styles.fullField}>
+                    Mensagem no Direct
+                    <textarea
+                      rows="7"
+                      value={rule.privateMessage}
+                      onChange={(event) => updateRule(index, 'privateMessage', event.target.value)}
+                      placeholder="Escreva aqui a mensagem automática..."
+                    />
+                  </label>
+
+                  <label className={styles.fullField}>
+                    Tag do lead
+                    <input
+                      value={rule.tag}
+                      onChange={(event) => updateRule(index, 'tag', event.target.value)}
+                      placeholder="Ex.: Interesse — Mentoria"
+                    />
+                  </label>
+                </div>
+
+                {index > 0 && (
+                  <button className={styles.clearButton} type="button" onClick={() => resetRule(index)}>
+                    Limpar automação
+                  </button>
+                )}
+              </article>
+            ))}
+          </section>
+
+          <section className={styles.saveDock}>
+            <div>
+              <strong>{saved ? 'Configurações salvas ✓' : 'Alterações das regras do Instagram'}</strong>
+              <span>{hydrated ? 'Salve para publicar as mudanças no servidor.' : 'Carregando configurações...'}</span>
+            </div>
+            <button className={styles.saveButton} type="button" onClick={saveRules} disabled={!hydrated || saving}>
+              {saving ? 'Salvando…' : saved ? 'Salvo' : 'Salvar automações'}
+            </button>
+          </section>
+        </>
+      )}
     </main>
   );
 }

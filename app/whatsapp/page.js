@@ -69,6 +69,7 @@ export default function WhatsAppPage() {
   const [contacts, setContacts] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [aiSuggestion, setAiSuggestion] = useState(null);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [draft, setDraft] = useState('');
@@ -102,12 +103,14 @@ export default function WhatsAppPage() {
   const loadMessages = useCallback(async (contactId) => {
     if (!contactId) {
       setMessages([]);
+      setAiSuggestion(null);
       return;
     }
     const response = await fetch('/api/whatsapp/conversations?contact=' + encodeURIComponent(contactId), { cache: 'no-store' });
     const data = await response.json();
     if (!response.ok) throw new Error(data?.error || 'Não foi possível carregar a conversa.');
     setMessages(data.messages || []);
+    setAiSuggestion(data.aiSuggestion || null);
     if (data.contacts) setContacts(data.contacts);
   }, []);
 
@@ -409,6 +412,37 @@ export default function WhatsAppPage() {
                   </div>
                 ))}
               </div>
+
+              {aiSuggestion && (
+                <div className={styles.aiSuggestion}>
+                  <div className={styles.aiSuggestionTop}>
+                    <div>
+                      <span>✨ COPILOTO IA</span>
+                      <strong>
+                        {aiSuggestion.should_escalate
+                          ? 'A IA recomenda que você assuma agora'
+                          : 'Resposta sugerida'}
+                      </strong>
+                    </div>
+                    {aiSuggestion.confidence !== null && aiSuggestion.confidence !== undefined && (
+                      <small>{Math.round(Number(aiSuggestion.confidence) * 100)}% de confiança</small>
+                    )}
+                  </div>
+                  {aiSuggestion.should_escalate ? (
+                    <p>{aiSuggestion.escalation_reason || 'Esse lead chegou a uma etapa que precisa da Juliany.'}</p>
+                  ) : (
+                    <>
+                      <p>{aiSuggestion.reply_text}</p>
+                      <button
+                        type="button"
+                        onClick={() => setDraft(aiSuggestion.reply_text || '')}
+                      >
+                        Usar esta resposta
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
 
               <form className={styles.composer} onSubmit={sendMessage}>
                 <textarea

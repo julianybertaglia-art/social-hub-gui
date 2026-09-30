@@ -1,5 +1,6 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// redeploy-gemini-main
 
 export async function GET() {
   const geminiKey = String(process.env.GEMINI_API_KEY || '').trim();

@@ -305,6 +305,7 @@ async function claimEvent(db, event, flow) {
     comment_text: String(event?.value?.text || ''),
     matched_rule_id: flow.id,
     matched_keyword: flow.keyword,
+    media_id: String(event?.value?.media?.id || event?.value?.media_id || ''),
     private_status: 'processing',
     public_status: 'processing',
   }).select('id').maybeSingle();
@@ -342,10 +343,31 @@ export async function processFlowComments(payload, db = null) {
     // demorar, a confirmação visível no comentário é processada primeiro.
     if (publicReply) {
       try {
-        await metaPost(commentId + '/replies', { message: publicReply });
-        await updateEvent(db, eventId, { public_status: 'sent' });
+        const publicMessage = username
+          ? '@' + username.replace(/^@/, '') + ' ' + publicReply
+          : publicReply;
+        const createdReply = await metaPost(commentId + '/replies', { message: publicMessage });
+        const publicReplyId = String(createdReply?.id || '');
+
+        if (publicReplyId) {
+          try {
+            await metaPost(publicReplyId, { hide: false });
+          } catch {
+            // A resposta do proprietário já deve ficar pública; este passo é apenas uma garantia extra.
+          }
+        }
+
+        await updateEvent(db, eventId, {
+          public_status: 'sent',
+          public_reply_id: publicReplyId || null,
+          public_delivery_mode: 'threaded_mention',
+        });
       } catch (error) {
-        await updateEvent(db, eventId, { public_status: 'failed', public_error: String(error?.message || '').slice(0, 300) });
+        await updateEvent(db, eventId, {
+          public_status: 'failed',
+          public_error: String(error?.message || '').slice(0, 300),
+          public_delivery_mode: 'threaded_mention',
+        });
       }
     } else {
       await updateEvent(db, eventId, { public_status: 'skipped' });

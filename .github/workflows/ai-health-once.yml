@@ -1,0 +1,19 @@
+name: AI Health Once
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  ai-health:
+    if: contains(github.event.head_commit.message, 'Teste CI do AI Gateway')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Vercel
+        run: sleep 45
+      - name: Check AI Gateway through production
+        run: |
+          set -e
+          RESPONSE="$(curl -fsS --retry 5 --retry-delay 8 https://social-hub-gui.vercel.app/api/whatsapp/ai-health)"
+          echo "$RESPONSE"
+          echo "$RESPONSE" | grep -q '"ok":true'

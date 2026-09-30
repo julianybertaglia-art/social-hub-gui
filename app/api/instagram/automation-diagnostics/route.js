@@ -43,7 +43,7 @@ export async function GET() {
     subscriptions: { ok: false, fields: [], appId: null, appName: null },
     database: { ok: false, stateTable: false, responseLedger: false, ingressLog: false },
     webhookDelivery: { received: false, signatureValid: null, field: null, receivedAt: null },
-    lastAutomation: { found: false, publicStatus: null, privateStatus: null, publicReplyVisible: null, replyCount: null },
+    lastAutomation: { found: false, publicStatus: null, privateStatus: null, publicReplyVisible: null, replyCount: null, replyCheckError: null },
   };
 
   if (token) {
@@ -124,6 +124,7 @@ export async function GET() {
         privateStatus: lastEvent.private_status || null,
         publicReplyVisible: null,
         replyCount: null,
+        replyCheckError: null,
       };
 
       const comment = await metaGet(
@@ -139,6 +140,12 @@ export async function GET() {
           String(reply?.from?.username || reply?.username || '').toLowerCase() === 'gui_nonato'
           && expected.includes(String(reply?.text || '').trim())
         ));
+      } else {
+        checks.lastAutomation.replyCheckError = {
+          status: comment.status || null,
+          code: comment.code || null,
+          message: comment.message || null,
+        };
       }
     }
   }

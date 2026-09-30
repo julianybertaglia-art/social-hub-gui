@@ -43,6 +43,7 @@ export async function GET() {
     subscriptions: { ok: false, fields: [], appId: null, appName: null },
     database: { ok: false, stateTable: false, responseLedger: false, ingressLog: false },
     webhookDelivery: { received: false, signatureValid: null, field: null, receivedAt: null },
+    lastAutomation: { found: false, publicStatus: null, privateStatus: null, publicReplyVisible: null, replyCount: null },
   };
 
   if (token) {
@@ -87,11 +88,15 @@ export async function GET() {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const [stateCheck, ledgerCheck, ingressCheck] = await Promise.all([
+    const [stateCheck, ledgerCheck, ingressCheck, eventCheck] = await Promise.all([
       db.from('content_items').select('id').eq('title', '__SOCIAL_HUB_STATE__').limit(1),
       db.from('instagram_flow_responses').select('id').limit(1),
       db.from('instagram_webhook_ingress')
         .select('created_at,signature_valid,field_name')
+        .order('created_at', { ascending: false })
+        .limit(1),
+      db.from('instagram_automation_events')
+        .select('comment_id,private_status,public_status')
         .order('created_at', { ascending: false })
         .limit(1),
     ]);
@@ -110,6 +115,32 @@ export async function GET() {
       field: lastIngress.field_name || null,
       receivedAt: lastIngress.created_at || null,
     } : checks.webhookDelivery;
+
+    const lastEvent = eventCheck.data?.[0] || null;
+    if (lastEvent?.comment_id) {
+      checks.lastAutomation = {
+        found: true,
+        publicStatus: lastEvent.public_status || null,
+        privateStatus: lastEvent.private_status || null,
+        publicReplyVisible: null,
+        replyCount: null,
+      };
+
+      const comment = await metaGet(
+        String(lastEvent.comment_id) + '?fields=id,replies.limit(50){id,text,from,username}',
+        token
+      );
+
+      if (comment.ok) {
+        const replies = Array.isArray(comment.payload?.replies?.data) ? comment.payload.replies.data : [];
+        const expected = ['Te mandei as informações no Direct 👊', 'Chamei você no Direct ✨'];
+        checks.lastAutomation.replyCount = replies.length;
+        checks.lastAutomation.publicReplyVisible = replies.some((reply) => (
+          String(reply?.from?.username || reply?.username || '').toLowerCase() === 'gui_nonato'
+          && expected.includes(String(reply?.text || '').trim())
+        ));
+      }
+    }
   }
 
   const ready =

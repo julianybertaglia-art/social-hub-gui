@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { getSupabaseAdmin, messageBody, normalizeWaId, upsertWhatsAppContact } from '../lib';
+import { getSupabaseAdmin, messageBody, normalizeWaId, upsertWhatsAppContact, sendWhatsAppText } from '../lib';
 import { processWhatsAppAutomation } from '../automation';
 import { processWhatsAppAi } from '../ai';
 
@@ -126,6 +126,42 @@ async function handleMessages(supabase, value, origin) {
         await processWhatsAppAi(supabase, { contact, message, automationResult });
       } catch (aiError) {
         console.error('WhatsApp AI:', aiError);
+
+        const aiErrorMessage = String(aiError?.message || aiError || 'Erro desconhecido na IA').slice(0, 1200);
+        await supabase
+          .from('whatsapp_automation_events')
+          .update({
+            status: 'ai_error',
+            error_message: aiErrorMessage,
+            processed_at: new Date().toISOString(),
+          })
+          .eq('message_id', message?.id || '')
+          .eq('contact_id', contact.id);
+
+        try {
+          const fallbackText = 'Entendi. E hoje, qual é o principal ponto que mais está travando esse crescimento: margem/produto, anúncios, operação ou outra coisa?';
+          const fallbackResult = await sendWhatsAppText({ to: contact.wa_id, text: fallbackText });
+          const fallbackMessageId = fallbackResult?.messages?.[0]?.id || null;
+          const now = new Date().toISOString();
+
+          await supabase.from('whatsapp_messages').insert({
+            meta_message_id: fallbackMessageId,
+            contact_id: contact.id,
+            direction: 'outbound',
+            message_type: 'text',
+            body: fallbackText,
+            status: 'sent',
+            raw_payload: { ...fallbackResult, ai_fallback: true, ai_error: aiErrorMessage },
+            sent_at: now,
+          });
+
+          await supabase.from('whatsapp_contacts').update({
+            last_message_at: now,
+            updated_at: now,
+          }).eq('id', contact.id);
+        } catch (fallbackError) {
+          console.error('WhatsApp AI fallback:', fallbackError);
+        }
       }
     } catch (automationError) {
       console.error('WhatsApp menu automation:', automationError);

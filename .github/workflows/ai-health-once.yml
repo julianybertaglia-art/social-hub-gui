@@ -6,7 +6,7 @@ on:
 
 jobs:
   ai-health:
-    if: contains(github.event.head_commit.message, 'Teste CI do AI Gateway')
+    if: contains(github.event.head_commit.message, 'Teste CI do AI Gateway') || contains(github.event.head_commit.message, 'Verifica AI Gateway')
     runs-on: ubuntu-latest
     steps:
       - name: Wait for Vercel

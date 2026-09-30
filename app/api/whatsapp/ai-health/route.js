@@ -4,7 +4,14 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const token = String(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || '').trim();
   if (!token) {
-    return Response.json({ ok: false, auth: false, error: 'AI Gateway sem credencial.' }, { status: 503 });
+    return Response.json({
+      ok: false,
+      auth: false,
+      hasAiGatewayKey: Boolean(process.env.AI_GATEWAY_API_KEY),
+      hasVercelOidc: Boolean(process.env.VERCEL_OIDC_TOKEN),
+      hasOpenAiKey: Boolean(process.env.OPENAI_API_KEY),
+      error: 'AI Gateway sem credencial.'
+    }, { status: 503 });
   }
 
   try {

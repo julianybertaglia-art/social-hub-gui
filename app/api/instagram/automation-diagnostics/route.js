@@ -134,32 +134,53 @@ export async function GET() {
         );
 
         if (comments.ok) {
-          const matchedComment = (comments.payload?.data || []).find(
-            (comment) => String(comment?.id || '') === String(lastEvent.comment_id)
-          ) || null;
+          const allComments = comments.payload?.data || [];
+          const publicId = String(lastEvent.public_reply_id || '');
 
-          if (matchedComment) {
-            const replies = Array.isArray(matchedComment?.replies?.data) ? matchedComment.replies.data : [];
-            checks.lastAutomation.replyCount = replies.length;
-            checks.lastAutomation.publicReplyVisible = replies.some((reply) => (
-              String(reply?.id || '') === String(lastEvent.public_reply_id || '')
-            ));
-            checks.lastAutomation.replyHidden = replies
-              .filter((reply) => String(reply?.id || '') === String(lastEvent.public_reply_id || ''))
-              .map((reply) => Boolean(reply?.hidden))[0] ?? null;
-            checks.lastAutomation.replyTexts = replies.map((reply) => ({
-              id: String(reply?.id || ''),
-              text: String(reply?.text || '').slice(0, 120),
-              hidden: Boolean(reply?.hidden),
-              username: String(reply?.from?.username || reply?.username || ''),
-            }));
-            checks.lastAutomation.replyCheckError = null;
-          } else {
-            checks.lastAutomation.replyCheckError = {
+          if (lastEvent.public_delivery_mode === 'top_level_mention') {
+            const publicComment = allComments.find((comment) => String(comment?.id || '') === publicId) || null;
+            checks.lastAutomation.replyCount = publicComment ? 1 : 0;
+            checks.lastAutomation.publicReplyVisible = Boolean(publicComment);
+            checks.lastAutomation.replyHidden = publicComment ? Boolean(publicComment?.hidden) : null;
+            checks.lastAutomation.replyTexts = publicComment ? [{
+              id: String(publicComment?.id || ''),
+              text: String(publicComment?.text || '').slice(0, 120),
+              hidden: Boolean(publicComment?.hidden),
+              username: String(publicComment?.from?.username || publicComment?.username || ''),
+            }] : [];
+            checks.lastAutomation.replyCheckError = publicComment ? null : {
               status: 404,
               code: null,
-              message: 'Comentário não apareceu na listagem da mídia.',
+              message: 'Resposta pública não apareceu na listagem da mídia.',
             };
+          } else {
+            const matchedComment = allComments.find(
+              (comment) => String(comment?.id || '') === String(lastEvent.comment_id)
+            ) || null;
+
+            if (matchedComment) {
+              const replies = Array.isArray(matchedComment?.replies?.data) ? matchedComment.replies.data : [];
+              checks.lastAutomation.replyCount = replies.length;
+              checks.lastAutomation.publicReplyVisible = replies.some((reply) => (
+                String(reply?.id || '') === publicId
+              ));
+              checks.lastAutomation.replyHidden = replies
+                .filter((reply) => String(reply?.id || '') === publicId)
+                .map((reply) => Boolean(reply?.hidden))[0] ?? null;
+              checks.lastAutomation.replyTexts = replies.map((reply) => ({
+                id: String(reply?.id || ''),
+                text: String(reply?.text || '').slice(0, 120),
+                hidden: Boolean(reply?.hidden),
+                username: String(reply?.from?.username || reply?.username || ''),
+              }));
+              checks.lastAutomation.replyCheckError = null;
+            } else {
+              checks.lastAutomation.replyCheckError = {
+                status: 404,
+                code: null,
+                message: 'Comentário não apareceu na listagem da mídia.',
+              };
+            }
           }
         } else {
           checks.lastAutomation.replyCheckError = {

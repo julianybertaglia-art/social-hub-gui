@@ -271,7 +271,9 @@ export default function AutomacoesPage() {
       .then((payload) => {
         if (cancelled) return;
         const serverFlows = Array.isArray(payload.flows) ? payload.flows : [];
-        const next = mergeKnownFlows(serverFlows);
+        const next = serverFlows.length
+          ? serverFlows
+          : [IMPORTACAO_FLOW, MENTORIA_FLOW, FORNECEDORES_FLOW];
         setFlows(next);
         setSelectedId(next.find((flow) => flow.id === FORNECEDORES_FLOW.id)?.id || next[0]?.id || IMPORTACAO_FLOW.id);
         try { window.localStorage.setItem('tideplace-instagram-flow-automations', JSON.stringify(next)); } catch {}
@@ -388,11 +390,13 @@ export default function AutomacoesPage() {
     setSaving(true);
     setNotice('');
     try {
-      const payload = await ownerRequest('/api/instagram/flow-automations', { flows });
-      const savedFlows = payload.flows || [];
+      await ownerRequest('/api/instagram/flow-automations', { flows });
+      const verified = await ownerRequest('/api/instagram/flow-automations');
+      const savedFlows = Array.isArray(verified.flows) ? verified.flows : [];
+      if (!savedFlows.length) throw new Error('O TidePlace não conseguiu confirmar as alterações salvas.');
       setFlows(savedFlows);
       try { window.localStorage.setItem('tideplace-instagram-flow-automations', JSON.stringify(savedFlows)); } catch {}
-      setNotice('Automações salvas na Meta/TidePlace.');
+      setNotice('Salvo e confirmado no TidePlace.');
     } catch (error) {
       setNotice(error.message);
     } finally {

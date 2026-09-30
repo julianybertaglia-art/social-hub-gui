@@ -259,7 +259,7 @@ function readAsDataUrl(file) {
 
 export default function AutomacoesPage() {
   const [flows, setFlows] = useState(() => [IMPORTACAO_FLOW, MENTORIA_FLOW, FORNECEDORES_FLOW]);
-  const [selectedId, setSelectedId] = useState(IMPORTACAO_FLOW.id);
+  const [selectedId, setSelectedId] = useState(FORNECEDORES_FLOW.id);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
@@ -273,14 +273,14 @@ export default function AutomacoesPage() {
         const serverFlows = Array.isArray(payload.flows) ? payload.flows : [];
         const next = mergeKnownFlows(serverFlows);
         setFlows(next);
-        setSelectedId(next[0]?.id || IMPORTACAO_FLOW.id);
+        setSelectedId(next.find((flow) => flow.id === FORNECEDORES_FLOW.id)?.id || next[0]?.id || IMPORTACAO_FLOW.id);
         try { window.localStorage.setItem('tideplace-instagram-flow-automations', JSON.stringify(next)); } catch {}
       })
       .catch((error) => {
         if (cancelled) return;
         const next = [IMPORTACAO_FLOW, MENTORIA_FLOW, FORNECEDORES_FLOW];
         setFlows(next);
-        setSelectedId(IMPORTACAO_FLOW.id);
+        setSelectedId(FORNECEDORES_FLOW.id);
         setNotice(error.message);
       })
       .finally(() => !cancelled && setLoading(false));

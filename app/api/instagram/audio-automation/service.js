@@ -31,6 +31,18 @@ export async function authorizedOwner(request, db) {
   const { data, error } = await db.auth.getUser(token);
   if (error || !data?.user?.id) throw automationError('Sua sessão expirou. Entre novamente no Hub.', 401);
 
+  // Caminho rápido: o dono atual já possui o registro oficial de automações.
+  // Evita depender de content_items, que pode sofrer timeout e impedir GET/POST
+  // mesmo quando a sessão está válida.
+  const { data: flowOwner, error: flowOwnerError } = await db
+    .from('instagram_flow_automations')
+    .select('user_id')
+    .eq('user_id', data.user.id)
+    .maybeSingle();
+
+  if (!flowOwnerError && flowOwner?.user_id) return data.user.id;
+
+  // Compatibilidade para a primeira configuração de uma conta.
   const { data: states, error: stateError } = await db.from('content_items')
     .select('id')
     .eq('title', '__SOCIAL_HUB_STATE__')

@@ -105,6 +105,7 @@ export async function GET(request) {
   );
 
   let messages = [];
+  let aiSuggestion = null;
   if (contactId) {
     const { data, error } = await supabase
       .from('whatsapp_messages')
@@ -117,9 +118,23 @@ export async function GET(request) {
       return Response.json({ ok: false, error: error.message }, { status: 500 });
     }
     messages = data || [];
+
+    const { data: suggestion, error: suggestionError } = await supabase
+      .from('whatsapp_ai_suggestions')
+      .select('id,reply_text,intent,lead_temperature,confidence,should_escalate,escalation_reason,suggested_stage,suggested_tags,created_at,used')
+      .eq('contact_id', contactId)
+      .or('used.is.null,used.eq.false')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (suggestionError) {
+      return Response.json({ ok: false, error: suggestionError.message }, { status: 500 });
+    }
+    aiSuggestion = suggestion || null;
   }
 
-  return Response.json({ ok: true, contacts: enrichedContacts, messages });
+  return Response.json({ ok: true, contacts: enrichedContacts, messages, aiSuggestion });
 }
 
 export async function PATCH(request) {

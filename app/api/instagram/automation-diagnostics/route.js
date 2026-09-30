@@ -127,24 +127,43 @@ export async function GET() {
         replyCheckError: null,
       };
 
-      const comment = await metaGet(
-        String(lastEvent.comment_id) + '/replies?fields=id,text,from,username&limit=50',
+      const media = await metaGet(
+        String(checks.instagram.accountId) + '/media?fields=id&limit=10',
         token
       );
 
-      if (comment.ok) {
-        const replies = Array.isArray(comment.payload?.data) ? comment.payload.data : [];
-        const expected = ['Te mandei as informações no Direct 👊', 'Chamei você no Direct ✨'];
-        checks.lastAutomation.replyCount = replies.length;
-        checks.lastAutomation.publicReplyVisible = replies.some((reply) => (
-          String(reply?.from?.username || reply?.username || '').toLowerCase() === 'gui_nonato'
-          && expected.includes(String(reply?.text || '').trim())
-        ));
+      if (media.ok) {
+        let matchedComment = null;
+        for (const item of (media.payload?.data || [])) {
+          const comments = await metaGet(
+            String(item.id) + '/comments?fields=id,text,replies.limit(50){id,text,from,username}&limit=100',
+            token
+          );
+          if (!comments.ok) continue;
+          matchedComment = (comments.payload?.data || []).find((comment) => String(comment?.id || '') === String(lastEvent.comment_id)) || null;
+          if (matchedComment) break;
+        }
+
+        if (matchedComment) {
+          const replies = Array.isArray(matchedComment?.replies?.data) ? matchedComment.replies.data : [];
+          const expected = ['Te mandei as informações no Direct 👊', 'Chamei você no Direct ✨'];
+          checks.lastAutomation.replyCount = replies.length;
+          checks.lastAutomation.publicReplyVisible = replies.some((reply) => (
+            expected.includes(String(reply?.text || '').trim())
+          ));
+          checks.lastAutomation.replyCheckError = null;
+        } else {
+          checks.lastAutomation.replyCheckError = {
+            status: 404,
+            code: null,
+            message: 'Comentário não encontrado entre as mídias recentes.',
+          };
+        }
       } else {
         checks.lastAutomation.replyCheckError = {
-          status: comment.status || null,
-          code: comment.code || null,
-          message: comment.message || null,
+          status: media.status || null,
+          code: media.code || null,
+          message: media.message || null,
         };
       }
     }

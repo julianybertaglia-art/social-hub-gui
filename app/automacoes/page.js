@@ -309,11 +309,8 @@ export default function AutomacoesPage() {
   useEffect(() => {
     let cancelled = false;
 
-    loadFlowsDirect()
-      .catch(async () => {
-        const payload = await ownerRequest('/api/instagram/flow-automations');
-        return Array.isArray(payload.flows) ? payload.flows : [];
-      })
+    ownerRequest('/api/instagram/flow-automations')
+      .then((payload) => Array.isArray(payload.flows) ? payload.flows : [])
       .then((storedFlows) => {
         if (cancelled) return;
         const next = storedFlows.length
@@ -436,15 +433,23 @@ export default function AutomacoesPage() {
     setSaving(true);
     setNotice('');
     try {
-      const savedFlows = await saveFlowsDirect(flows);
-      setFlows(savedFlows);
-      try { window.localStorage.setItem('tideplace-instagram-flow-automations', JSON.stringify(savedFlows)); } catch {}
+      // Uma única fonte de verdade: o mesmo endpoint que o runtime usa.
+      const saved = await ownerRequest('/api/instagram/flow-automations', { flows });
+      const savedFlows = Array.isArray(saved?.flows) ? saved.flows : [];
 
-      // A assinatura da Meta já está ativa; esta chamada é só uma confirmação extra
-      // e não pode mais impedir o salvamento dos textos no TidePlace.
-      ownerRequest('/api/instagram/flow-automations', { flows: savedFlows }).catch(() => {});
+      // Relê imediatamente do servidor. O TidePlace só mostra "salvo" se
+      // aquilo que voltou do banco for exatamente o que acabou de ser gravado.
+      const verified = await ownerRequest('/api/instagram/flow-automations');
+      const verifiedFlows = Array.isArray(verified?.flows) ? verified.flows : [];
 
-      setNotice('Salvo e confirmado no TidePlace.');
+      if (JSON.stringify(savedFlows) !== JSON.stringify(verifiedFlows)) {
+        throw new Error('A alteração não ficou persistida. Tente salvar novamente.');
+      }
+
+      setFlows(verifiedFlows);
+      try { window.localStorage.setItem('tideplace-instagram-flow-automations', JSON.stringify(verifiedFlows)); } catch {}
+
+      setNotice('Salvo de verdade ✓');
     } catch (error) {
       setNotice(error.message);
     } finally {

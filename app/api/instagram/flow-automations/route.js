@@ -45,7 +45,13 @@ export async function POST(request) {
 
     if (saved.flows.some((flow) => flow.active)) {
       const accountId = '17841401155694295';
-      await ensureSubscription(accountId);
+      try {
+        await ensureSubscription(accountId);
+      } catch (error) {
+        // A assinatura da Meta não pode transformar um salvamento já persistido
+        // em falso erro para a interface.
+        console.warn('TIDEPLACE:FLOW subscription check failed after save', error instanceof Error ? error.message : String(error));
+      }
     }
 
     return json(saved);

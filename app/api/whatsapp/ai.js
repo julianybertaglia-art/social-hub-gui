@@ -311,6 +311,137 @@ async function sendAndStoreAiReply(supabase, contact, suggestion) {
   return result;
 }
 
+
+async function sendAndStoreSystemText(supabase, contact, text, suggestionId = null) {
+  const safeText = String(text || '').trim();
+  if (!safeText) return null;
+
+  const result = await sendWhatsAppText({ to: contact.wa_id, text: safeText });
+  const messageId = result?.messages?.[0]?.id || null;
+  const now = new Date().toISOString();
+
+  const { error } = await supabase.from('whatsapp_messages').insert({
+    meta_message_id: messageId,
+    contact_id: contact.id,
+    direction: 'outbound',
+    message_type: 'text',
+    body: safeText,
+    status: 'sent',
+    raw_payload: { ...result, tide_ai: true, suggestion_id: suggestionId, standardized_flow: true },
+    sent_at: now,
+  });
+  if (error && error.code !== '23505') throw error;
+
+  await supabase.from('whatsapp_contacts').update({
+    last_message_at: now,
+    updated_at: now,
+  }).eq('id', contact.id);
+
+  return result;
+}
+
+async function sendAndStoreMentoriaPresentation(supabase, contact, suggestionId = null) {
+  const filename = 'Apresentacao Mentoria Gui Nonato.pdf';
+  const result = await sendWhatsAppDocumentByUrl({
+    to: contact.wa_id,
+    documentUrl: MENTORIA_PRESENTATION_URL,
+    filename,
+    caption: 'Separei uma apresentação rápida com os principais entregáveis da mentoria 👆',
+  });
+  const messageId = result?.messages?.[0]?.id || null;
+  const now = new Date().toISOString();
+
+  const { error } = await supabase.from('whatsapp_messages').insert({
+    meta_message_id: messageId,
+    contact_id: contact.id,
+    direction: 'outbound',
+    message_type: 'document',
+    body: filename,
+    status: 'sent',
+    raw_payload: {
+      ...result,
+      tide_ai: true,
+      suggestion_id: suggestionId,
+      standardized_flow: true,
+      document_url: MENTORIA_PRESENTATION_URL,
+    },
+    sent_at: now,
+  });
+  if (error && error.code !== '23505') throw error;
+
+  await supabase.from('whatsapp_contacts').update({
+    last_message_at: now,
+    updated_at: now,
+  }).eq('id', contact.id);
+
+  return result;
+}
+
+async function setAutomationState(supabase, contactId, state) {
+  const now = new Date().toISOString();
+  const { error } = await supabase.from('whatsapp_automation_sessions').update({
+    state,
+    last_interaction_at: now,
+    updated_at: now,
+  }).eq('contact_id', contactId);
+  if (error) throw error;
+}
+
+async function markSuggestionUsed(supabase, suggestion, finalText) {
+  const now = new Date().toISOString();
+  await supabase.from('whatsapp_ai_suggestions').update({
+    used: true,
+    final_text: String(finalText || '').slice(0, 4000),
+    feedback_at: now,
+  }).eq('id', suggestion.id);
+}
+
+async function executeMentoriaAction(supabase, { contact, suggestion, decision }) {
+  const action = String(decision?.next_action || 'none');
+
+  if (action === 'send_mentoria_presentation_and_ask_availability') {
+    await sendAndStoreMentoriaPresentation(supabase, contact, suggestion.id);
+    await sendAndStoreSystemText(supabase, contact, MENTORIA_CALL_INVITE, suggestion.id);
+    await setAutomationState(supabase, contact.id, 'ai_waiting_call_availability');
+    await markSuggestionUsed(supabase, suggestion, '[PDF da mentoria enviado]\n\n' + MENTORIA_CALL_INVITE);
+    return { handled: true, action: 'ai_mentoria_presentation_sent' };
+  }
+
+  if (action === 'send_price_and_confirm_call') {
+    await sendAndStoreSystemText(supabase, contact, MENTORIA_PRICE_CONFIRMATION, suggestion.id);
+    await setAutomationState(supabase, contact.id, 'ai_waiting_call_confirmation');
+    await markSuggestionUsed(supabase, suggestion, MENTORIA_PRICE_CONFIRMATION);
+    return { handled: true, action: 'ai_mentoria_price_sent' };
+  }
+
+  if (action === 'answer_price_now') {
+    await sendAndStoreSystemText(supabase, contact, MENTORIA_PRICE_ON_REQUEST, suggestion.id);
+    await sendAndStoreMentoriaPresentation(supabase, contact, suggestion.id);
+    await sendAndStoreSystemText(supabase, contact, MENTORIA_CALL_INVITE, suggestion.id);
+    await setAutomationState(supabase, contact.id, 'ai_waiting_call_availability');
+    await markSuggestionUsed(
+      supabase,
+      suggestion,
+      MENTORIA_PRICE_ON_REQUEST + '\n\n[PDF da mentoria enviado]\n\n' + MENTORIA_CALL_INVITE
+    );
+    return { handled: true, action: 'ai_mentoria_price_on_request_sent' };
+  }
+
+  if (action === 'escalate_agendamento') {
+    const text = 'Perfeito 😊 Vou alinhar essa disponibilidade com o Gui e te confirmo o horário por aqui.';
+    await sendAndStoreSystemText(supabase, contact, text, suggestion.id);
+    await setAutomationState(supabase, contact.id, 'awaiting_human');
+    await supabase.from('whatsapp_contacts').update({
+      stage: 'Agendar com Gui',
+      updated_at: new Date().toISOString(),
+    }).eq('id', contact.id);
+    await markSuggestionUsed(supabase, suggestion, text);
+    return { handled: true, action: 'ai_mentoria_escalated' };
+  }
+
+  return null;
+}
+
 export async function processWhatsAppAi(supabase, { contact, message, automationResult }) {
   if (automationResult?.reason !== 'ongoing_conversation') return { handled: false, reason: 'automation_owned' };
   if (message?.type !== 'text') return { handled: false, reason: 'unsupported_message_type' };

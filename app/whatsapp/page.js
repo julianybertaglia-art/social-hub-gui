@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from './whatsapp.module.css';
 
-const STAGES = ['Novo lead', 'Conversando', 'Interessado', 'Link enviado', 'Venda', 'Perdido'];
+const STAGES = ['Novo lead', 'Conversando', 'Interessado', 'Agendar com Gui', 'Link enviado', 'Venda', 'Perdido'];
 const SMART_FILTERS = [
   { id: 'all', label: 'Todos' },
   { id: 'reply', label: 'Para responder' },
   { id: 'followup', label: 'Para chamar' },
   { id: 'hot', label: 'Quentes' },
+  { id: 'schedule', label: '🔥 Agendar com Gui' },
   { id: 'imersao', label: 'Imersão' },
   { id: 'mentoria', label: 'Mentoria' },
   { id: 'argo', label: 'ARGO' },
@@ -43,6 +44,7 @@ function matchesFilter(contact, filter) {
   if (filter === 'reply') return Boolean(contact.needs_reply);
   if (filter === 'followup') return Boolean(contact.needs_follow_up);
   if (filter === 'hot') return contact.smart_priority === 'high';
+  if (filter === 'schedule') return contact.stage === 'Agendar com Gui';
 
   const categories = contact.smart_categories || [];
   if (filter === 'imersao') return categories.includes('Imersão');
@@ -55,6 +57,7 @@ function matchesFilter(contact, filter) {
 
 function contactAction(contact) {
   if (!contact) return 'Selecione um lead';
+  if (contact.stage === 'Agendar com Gui') return '🔥 Assumir e agendar com o Gui';
   if (contact.needs_reply) return 'Responder agora';
   if (contact.needs_follow_up) return 'Fazer follow-up';
   if (contact.smart_priority === 'high') return 'Lead quente — acompanhar de perto';

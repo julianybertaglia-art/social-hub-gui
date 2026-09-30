@@ -436,3 +436,29 @@ export async function sendWhatsAppVoiceByUrl({ to, audioUrl }) {
     },
   });
 }
+
+
+export async function sendWhatsAppDocumentByUrl({ to, documentUrl, filename = 'Mentoria Gui Nonato.pdf', caption = '' }) {
+  let url;
+  try {
+    url = new URL(String(documentUrl || '').trim());
+  } catch {
+    throw new Error('URL do documento inválida.');
+  }
+
+  if (url.protocol !== 'https:') {
+    throw new Error('Para documento do WhatsApp, use um arquivo HTTPS.');
+  }
+
+  return postWhatsAppMessage({
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: normalizeWaId(to),
+    type: 'document',
+    document: {
+      link: url.href,
+      filename: String(filename || 'documento.pdf').slice(0, 240),
+      ...(caption ? { caption: String(caption).slice(0, 1024) } : {}),
+    },
+  });
+}

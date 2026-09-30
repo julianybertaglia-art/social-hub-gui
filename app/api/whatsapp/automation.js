@@ -7,11 +7,6 @@ import { sendWhatsAppReplyButtons } from './reply-buttons.js';
 
 export const WHATSAPP_MENU_ROWS = [
   {
-    id: 'topic_imersao',
-    title: 'Imersão Ecommerce',
-    description: 'Informações e ingressos do evento',
-  },
-  {
     id: 'topic_mercado_livre',
     title: 'Quero aprender a vender',
     description: 'no Mercado Livre',

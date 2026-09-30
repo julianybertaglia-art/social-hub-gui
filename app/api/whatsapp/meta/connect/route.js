@@ -3,7 +3,7 @@ import { getSupabaseAdmin, WHATSAPP_API_VERSION } from '../../lib';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const META_APP_ID = process.env.META_APP_ID || '1975149819862842';
+const META_APP_ID = process.env.META_WHATSAPP_APP_ID || process.env.META_APP_ID || '1975149819862842';
 
 async function graphJson(url, options = {}) {
   const response = await fetch(url, {
@@ -22,8 +22,8 @@ async function graphJson(url, options = {}) {
 }
 
 async function exchangeCode(code) {
-  const appSecret = process.env.META_APP_SECRET;
-  if (!appSecret) throw new Error('META_APP_SECRET não configurado no servidor.');
+  const appSecret = process.env.META_WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;
+  if (!appSecret) throw new Error('Segredo do app da Meta para o WhatsApp não configurado no servidor.');
 
   const body = new URLSearchParams({
     client_id: META_APP_ID,

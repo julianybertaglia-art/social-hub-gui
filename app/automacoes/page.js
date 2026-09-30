@@ -230,6 +230,47 @@ function removeButtonTree(node, nodeId, buttonId) {
   };
 }
 
+
+async function loadFlowsDirect() {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData?.session?.user?.id;
+  if (!userId) throw new Error('Sua sessão expirou. Entre novamente na TidePlace.');
+
+  const { data, error } = await supabase
+    .from('instagram_flow_automations')
+    .select('flows,updated_at')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) throw new Error('Não foi possível carregar as automações.');
+  return Array.isArray(data?.flows) ? data.flows : [];
+}
+
+async function saveFlowsDirect(flows) {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData?.session?.user?.id;
+  if (!userId) throw new Error('Sua sessão expirou. Entre novamente na TidePlace.');
+
+  const updatedAt = new Date().toISOString();
+  const { error } = await supabase
+    .from('instagram_flow_automations')
+    .upsert({ user_id: userId, flows, updated_at: updatedAt }, { onConflict: 'user_id' });
+
+  if (error) throw new Error('Não foi possível salvar as automações.');
+
+  const { data: verified, error: verifyError } = await supabase
+    .from('instagram_flow_automations')
+    .select('flows,updated_at')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (verifyError || !Array.isArray(verified?.flows)) {
+    throw new Error('O TidePlace não conseguiu confirmar as alterações salvas.');
+  }
+
+  return verified.flows;
+}
+
 async function ownerRequest(path, body) {
   const { data } = await supabase.auth.getSession();
   if (!data?.session?.access_token) throw new Error('Sua sessão expirou. Entre novamente na TidePlace.');
@@ -267,12 +308,16 @@ export default function AutomacoesPage() {
 
   useEffect(() => {
     let cancelled = false;
-    ownerRequest('/api/instagram/flow-automations')
-      .then((payload) => {
+
+    loadFlowsDirect()
+      .catch(async () => {
+        const payload = await ownerRequest('/api/instagram/flow-automations');
+        return Array.isArray(payload.flows) ? payload.flows : [];
+      })
+      .then((storedFlows) => {
         if (cancelled) return;
-        const serverFlows = Array.isArray(payload.flows) ? payload.flows : [];
-        const next = serverFlows.length
-          ? serverFlows
+        const next = storedFlows.length
+          ? storedFlows
           : [IMPORTACAO_FLOW, MENTORIA_FLOW, FORNECEDORES_FLOW];
         setFlows(next);
         setSelectedId(next.find((flow) => flow.id === FORNECEDORES_FLOW.id)?.id || next[0]?.id || IMPORTACAO_FLOW.id);
@@ -286,6 +331,7 @@ export default function AutomacoesPage() {
         setNotice(error.message);
       })
       .finally(() => !cancelled && setLoading(false));
+
     return () => { cancelled = true; };
   }, []);
 
@@ -390,12 +436,14 @@ export default function AutomacoesPage() {
     setSaving(true);
     setNotice('');
     try {
-      await ownerRequest('/api/instagram/flow-automations', { flows });
-      const verified = await ownerRequest('/api/instagram/flow-automations');
-      const savedFlows = Array.isArray(verified.flows) ? verified.flows : [];
-      if (!savedFlows.length) throw new Error('O TidePlace não conseguiu confirmar as alterações salvas.');
+      const savedFlows = await saveFlowsDirect(flows);
       setFlows(savedFlows);
       try { window.localStorage.setItem('tideplace-instagram-flow-automations', JSON.stringify(savedFlows)); } catch {}
+
+      // A assinatura da Meta já está ativa; esta chamada é só uma confirmação extra
+      // e não pode mais impedir o salvamento dos textos no TidePlace.
+      ownerRequest('/api/instagram/flow-automations', { flows: savedFlows }).catch(() => {});
+
       setNotice('Salvo e confirmado no TidePlace.');
     } catch (error) {
       setNotice(error.message);

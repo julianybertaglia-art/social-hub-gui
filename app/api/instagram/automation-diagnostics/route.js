@@ -127,12 +127,12 @@ export async function GET() {
       };
 
       const comment = await metaGet(
-        String(lastEvent.comment_id) + '?fields=id,replies.limit(50){id,text,from,username}',
+        String(lastEvent.comment_id) + '/replies?fields=id,text,from,username&limit=50',
         token
       );
 
       if (comment.ok) {
-        const replies = Array.isArray(comment.payload?.replies?.data) ? comment.payload.replies.data : [];
+        const replies = Array.isArray(comment.payload?.data) ? comment.payload.data : [];
         const expected = ['Te mandei as informações no Direct 👊', 'Chamei você no Direct ✨'];
         checks.lastAutomation.replyCount = replies.length;
         checks.lastAutomation.publicReplyVisible = replies.some((reply) => (

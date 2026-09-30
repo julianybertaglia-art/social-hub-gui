@@ -1,7 +1,17 @@
-import { sendWhatsAppText } from './lib.js';
+import { sendWhatsAppText, sendWhatsAppDocumentByUrl } from './lib.js';
 
 const SALES_TOPICS = new Set(['Mentoria', 'Mercado Livre']);
 const ALLOWED_STAGES = new Set(['Novo lead', 'Conversando', 'Interessado', 'Agendar com Gui', 'Link enviado', 'Venda', 'Perdido']);
+const AI_SESSION_STATES = new Set(['routed', 'ai_waiting_call_availability', 'ai_waiting_call_confirmation']);
+const MENTORIA_PRESENTATION_URL = String(
+  process.env.MENTORIA_PRESENTATION_URL || 'https://social-hub-gui.vercel.app/mentoria-gui-nonato.pdf'
+).trim();
+
+const MENTORIA_CALL_INVITE = 'Antes de qualquer decisão, o Gui gosta de fazer uma call para entender melhor o momento da sua operação, tirar suas dúvidas, alinhar expectativas e já começar a desenhar um plano estratégico para os próximos meses.\n\nQue dia e período você teria disponibilidade para essa call? Pode me falar, por exemplo, terça à tarde ou quarta de manhã.';
+
+const MENTORIA_PRICE_CONFIRMATION = 'Perfeito 😊 Antes de eu seguir com o agendamento, gosto de deixar o investimento bem transparente para você já entrar na call sabendo de tudo. Assim, a conversa com o Gui fica realmente focada na sua operação, nas suas dúvidas e em entender se faz sentido avançar.\n\nHoje o investimento na mentoria é de R$ 12.000 no Pix ou R$ 15.000 parcelado em até 10x.\n\nA call com o Gui é sem compromisso. Sabendo desses valores, podemos seguir com o agendamento?';
+
+const MENTORIA_PRICE_ON_REQUEST = 'Claro. Hoje o investimento na mentoria é de R$ 12.000 no Pix ou R$ 15.000 parcelado em até 10x.';
 
 function safeJson(text) {
   const raw = String(text || '').trim();

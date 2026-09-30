@@ -71,7 +71,7 @@ const TOPICS = {
   topic_mercado_livre: {
     topic: 'Mercado Livre',
     tag: 'Interesse — Começar no Mercado Livre',
-    text: 'Que bom! Para eu te direcionar melhor, me conta em uma frase: você já tem um produto para vender ou ainda está procurando por onde começar?',
+    text: 'Legal 😊 Antes de eu te indicar qualquer coisa, quero entender um pouquinho do seu momento. Hoje você trabalha CLT ou já tem algum negócio/atividade por conta própria?',
   },
   topic_importacao: {
     topic: 'Importação',
@@ -81,7 +81,7 @@ const TOPICS = {
   topic_mentoria: {
     topic: 'Mentoria',
     tag: 'Interesse — Mentoria',
-    text: 'Perfeito. Para eu verificar se a mentoria faz sentido para o seu momento, me responda: o que você vende, quanto fatura por mês hoje e qual é o seu maior gargalo?',
+    text: 'Perfeito 😊 Antes de eu te explicar como funciona, quero entender melhor o seu momento. O que fez você buscar um acompanhamento mais de perto agora?',
   },
   topic_other: {
     topic: 'Outro assunto',

@@ -385,6 +385,18 @@ export async function POST(request) {
 
     if (error) throw error;
 
+    if (!wantsVoice) {
+      await supabase
+        .from('whatsapp_ai_suggestions')
+        .update({
+          used: true,
+          final_text: text,
+          feedback_at: now,
+        })
+        .eq('contact_id', contact.id)
+        .or('used.is.null,used.eq.false');
+    }
+
     return Response.json({
       ok: true,
       messageId,

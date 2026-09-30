@@ -119,16 +119,22 @@ async function metaGet(path, params = {}, options = {}) {
 }
 
 function metricValue(metric, mode = 'sum') {
-  const totalValue = Number(metric?.total_value?.value);
-  if (Number.isFinite(totalValue)) return Math.round(totalValue);
+  if (!metric) return null;
+
+  const rawTotal = metric?.total_value?.value;
+  if (rawTotal !== null && rawTotal !== undefined && rawTotal !== '') {
+    const totalValue = Number(rawTotal);
+    if (Number.isFinite(totalValue)) return Math.round(totalValue);
+  }
 
   const values = Array.isArray(metric?.values)
     ? metric.values
-      .map((item) => Number(item?.value))
+      .filter((item) => item?.value !== null && item?.value !== undefined && item?.value !== '')
+      .map((item) => Number(item.value))
       .filter((value) => Number.isFinite(value))
     : [];
 
-  if (!values.length) return 0;
+  if (!values.length) return null;
   if (mode === 'latest') return Math.round(values[values.length - 1]);
   return Math.round(values.reduce((total, value) => total + value, 0));
 }
@@ -163,17 +169,28 @@ async function requestMetaMetrics() {
   const insightRows = Array.isArray(insightsResult.value?.data) ? insightsResult.value.data : [];
   const byName = Object.fromEntries(insightRows.map((metric) => [metric?.name, metric]));
 
-  const seguidores = Math.round(Number(profile?.followers_count || 0));
+  const rawFollowers = profile?.followers_count;
+  const seguidores = rawFollowers !== null && rawFollowers !== undefined && rawFollowers !== ''
+    && Number.isFinite(Number(rawFollowers))
+    ? Math.round(Number(rawFollowers))
+    : null;
 
   const metrics = {
     seguidores,
     alcance: metricValue(byName.reach),
     visualizacoes: metricValue(byName.views),
     interacoes: metricValue(byName.total_interactions),
-    visitasPerfil: 0,
+    visitasPerfil: null,
   };
 
-  if (!metrics.seguidores && !metrics.alcance && !metrics.visualizacoes && !metrics.interacoes) {
+  const hasUsableMetric = [
+    metrics.seguidores,
+    metrics.alcance,
+    metrics.visualizacoes,
+    metrics.interacoes,
+  ].some((value) => value !== null && value !== undefined && Number.isFinite(Number(value)));
+
+  if (!hasUsableMetric) {
     const error = new Error('A Meta não retornou métricas utilizáveis da conta.');
     error.code = 'META_NO_DATA';
     throw error;

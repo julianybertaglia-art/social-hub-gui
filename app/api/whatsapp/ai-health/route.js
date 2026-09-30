@@ -1,17 +1,51 @@
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-// redeploy-ai-gateway
 
 export async function GET() {
+  const geminiKey = String(process.env.GEMINI_API_KEY || '').trim();
+
+  if (geminiKey) {
+    try {
+      const response = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
+        {
+          method: 'POST',
+          headers: {
+            'x-goog-api-key': geminiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: 'Responda somente OK.' }] }],
+            generationConfig: { maxOutputTokens: 20, thinkingConfig: { thinkingLevel: 'low' } },
+          }),
+          cache: 'no-store',
+          signal: AbortSignal.timeout(20000),
+        }
+      );
+      const payload = await response.json().catch(() => ({}));
+      return Response.json({
+        ok: response.ok,
+        provider: 'gemini',
+        auth: true,
+        status: response.status,
+        answer: payload?.candidates?.[0]?.content?.parts?.map((part) => part?.text || '').join('') || null,
+        error: payload?.error?.message || null,
+      }, { status: response.ok ? 200 : 502 });
+    } catch (error) {
+      return Response.json({ ok: false, provider: 'gemini', auth: true, error: error?.message || 'Falha no teste.' }, { status: 500 });
+    }
+  }
+
   const token = String(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || '').trim();
   if (!token) {
     return Response.json({
       ok: false,
       auth: false,
+      provider: null,
+      hasGeminiKey: false,
       hasAiGatewayKey: Boolean(process.env.AI_GATEWAY_API_KEY),
       hasVercelOidc: Boolean(process.env.VERCEL_OIDC_TOKEN),
-      hasOpenAiKey: Boolean(process.env.OPENAI_API_KEY),
-      error: 'AI Gateway sem credencial.'
+      error: 'Nenhum provedor de IA configurado.'
     }, { status: 503 });
   }
 
@@ -35,13 +69,13 @@ export async function GET() {
     const payload = await response.json().catch(() => ({}));
     return Response.json({
       ok: response.ok,
+      provider: 'vercel',
       auth: true,
       status: response.status,
-      model: payload?.model || null,
       answer: payload?.choices?.[0]?.message?.content || null,
       error: payload?.error?.message || null,
     }, { status: response.ok ? 200 : 502 });
   } catch (error) {
-    return Response.json({ ok: false, auth: true, error: error?.message || 'Falha no teste.' }, { status: 500 });
+    return Response.json({ ok: false, provider: 'vercel', auth: true, error: error?.message || 'Falha no teste.' }, { status: 500 });
   }
 }

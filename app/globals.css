@@ -995,6 +995,15 @@ textarea {
   font-size: 12px;
 }
 
+.metric-input-card > strong {
+  display: block;
+  margin: 13px 0 8px;
+  color: var(--text);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 30px;
+  font-weight: 500;
+}
+
 .metric-input-card input {
   margin: 13px 0 8px;
   border: 0;

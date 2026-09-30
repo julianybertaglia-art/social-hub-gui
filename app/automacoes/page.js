@@ -97,6 +97,66 @@ const IMPORTACAO_FLOW = {
   },
 };
 
+const MENTORIA_FLOW = {
+  id: 'flow-mentoria-20260930-v2',
+  name: 'Mentoria',
+  keyword: 'MENTORIA',
+  publicReplies: ['Te chamei no Direct 👊', 'Acabei de te mandar uma mensagem no Direct ✨'],
+  active: true,
+  start: {
+    id: 'node-mentoria-inicio',
+    text: 'Fala! 👊 Eu consigo te ajudar tanto se você está começando do zero quanto se já tem uma operação e quer crescer ainda mais.\n\nPra eu te direcionar da melhor forma, qual é o seu momento hoje?',
+    audioPath: '',
+    audioName: '',
+    audioBucket: 'instagram-flow-audio',
+    responseMode: 'personalized',
+    sharedNext: null,
+    buttons: [
+      {
+        id: 'btn-mentoria-ja-vendo',
+        label: 'Já vendo · Mentoria',
+        next: {
+          id: 'node-mentoria-seller',
+          text: 'Se quiser entender melhor como funciona a mentoria e ver se faz sentido para o seu momento, fala com a minha equipe 👊\n\n📲 WhatsApp: (11) 92399-0244\nhttps://wa.me/5511923990244',
+          audioPath: 'd3db0981-1179-459e-9449-9e97232f6632/9edc7844-3f0a-4bb6-b71a-e2e7cb7d2331.m4a',
+          audioName: 'mentoria-gui.m4a',
+          audioBucket: 'instagram-audio-tests',
+          responseMode: 'same',
+          sharedNext: null,
+          buttons: [],
+        },
+      },
+      {
+        id: 'btn-mentoria-comecar',
+        label: 'Quero começar',
+        next: {
+          id: 'node-mentoria-iniciante',
+          text: 'Se você ainda está começando, eu tenho um treinamento completo pensado para quem quer iniciar do zero no Mercado Livre e construir a operação do jeito certo. 👊\n\nVocê pode conhecer o treinamento aqui:\nhttps://guilhermenonato.com.br/destravando-o-mercado-livre/\n\nSe quiser falar com a minha equipe e tirar alguma dúvida:\n📲 WhatsApp: (11) 92399-0244\nhttps://wa.me/5511923990244',
+          audioPath: '',
+          audioName: '',
+          audioBucket: 'instagram-flow-audio',
+          responseMode: 'same',
+          sharedNext: null,
+          buttons: [],
+        },
+      },
+    ],
+  },
+};
+
+function mergeKnownFlows(serverFlows) {
+  const result = Array.isArray(serverFlows) ? [...serverFlows] : [];
+  const known = [IMPORTACAO_FLOW, MENTORIA_FLOW];
+
+  for (const fallback of known) {
+    if (!result.some((flow) => flow?.id === fallback.id || (flow?.name === fallback.name && flow?.keyword === fallback.keyword))) {
+      result.push(fallback);
+    }
+  }
+
+  return result;
+}
+
 function updateNodeTree(node, nodeId, updater) {
   if (node.id === nodeId) return updater(node);
   return {
@@ -151,7 +211,7 @@ function readAsDataUrl(file) {
 }
 
 export default function AutomacoesPage() {
-  const [flows, setFlows] = useState([IMPORTACAO_FLOW]);
+  const [flows, setFlows] = useState(() => [IMPORTACAO_FLOW, MENTORIA_FLOW]);
   const [selectedId, setSelectedId] = useState(IMPORTACAO_FLOW.id);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -164,14 +224,15 @@ export default function AutomacoesPage() {
       .then((payload) => {
         if (cancelled) return;
         const serverFlows = Array.isArray(payload.flows) ? payload.flows : [];
-        const next = serverFlows.length ? serverFlows : [IMPORTACAO_FLOW];
+        const next = mergeKnownFlows(serverFlows);
         setFlows(next);
         setSelectedId(next[0]?.id || IMPORTACAO_FLOW.id);
         try { window.localStorage.setItem('tideplace-instagram-flow-automations', JSON.stringify(next)); } catch {}
       })
       .catch((error) => {
         if (cancelled) return;
-        setFlows([IMPORTACAO_FLOW]);
+        const next = [IMPORTACAO_FLOW, MENTORIA_FLOW];
+        setFlows(next);
         setSelectedId(IMPORTACAO_FLOW.id);
         setNotice(error.message);
       })

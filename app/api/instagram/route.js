@@ -113,16 +113,22 @@ async function metaGet(path, params = {}) {
 }
 
 function metricValue(metric, mode = 'sum') {
-  const totalValue = Number(metric?.total_value?.value);
-  if (Number.isFinite(totalValue)) return Math.round(totalValue);
+  if (!metric) return null;
+
+  const rawTotal = metric?.total_value?.value;
+  if (rawTotal !== null && rawTotal !== undefined && rawTotal !== '') {
+    const totalValue = Number(rawTotal);
+    if (Number.isFinite(totalValue)) return Math.round(totalValue);
+  }
 
   const values = Array.isArray(metric?.values)
     ? metric.values
-      .map((item) => Number(item?.value))
+      .filter((item) => item?.value !== null && item?.value !== undefined && item?.value !== '')
+      .map((item) => Number(item.value))
       .filter((value) => Number.isFinite(value))
     : [];
 
-  if (!values.length) return 0;
+  if (!values.length) return null;
   if (mode === 'latest') return Math.round(values[values.length - 1]);
   return Math.round(values.reduce((total, value) => total + value, 0));
 }
@@ -168,9 +174,13 @@ async function requestMetaMetrics() {
   const insightRows = Array.isArray(insightsResult.value?.data) ? insightsResult.value.data : [];
   const byName = Object.fromEntries(insightRows.map((metric) => [metric?.name, metric]));
 
-  let seguidores = Math.round(Number(profile?.followers_count || 0));
+  const rawFollowers = profile?.followers_count;
+  let seguidores = rawFollowers !== null && rawFollowers !== undefined && rawFollowers !== ''
+    && Number.isFinite(Number(rawFollowers))
+    ? Math.round(Number(rawFollowers))
+    : null;
 
-  if (!seguidores) {
+  if (seguidores === null) {
     try {
       const followerPayload = await metaGet(`${GUI_ACCOUNT_ID}/insights`, {
         metric: 'follower_count',
@@ -193,7 +203,15 @@ async function requestMetaMetrics() {
     visitasPerfil: metricValue(byName.profile_views),
   };
 
-  if (!metrics.seguidores && !metrics.alcance && !metrics.visualizacoes && !metrics.interacoes) {
+  const hasUsableMetric = [
+    metrics.seguidores,
+    metrics.alcance,
+    metrics.visualizacoes,
+    metrics.interacoes,
+    metrics.visitasPerfil,
+  ].some((value) => value !== null && value !== undefined && Number.isFinite(Number(value)));
+
+  if (!hasUsableMetric) {
     const error = new Error('A Meta não retornou métricas utilizáveis da conta.');
     error.code = 'META_NO_DATA';
     throw error;
@@ -247,12 +265,22 @@ async function requestWindsor(fields, datePreset) {
   return guiRows.length ? guiRows : rows;
 }
 
+function numericValues(rows, field) {
+  return rows
+    .map((row) => row?.[field])
+    .filter((value) => value !== null && value !== undefined && value !== '')
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value));
+}
+
 function highest(rows, field) {
-  return Math.round(Math.max(0, ...rows.map((row) => Number(row?.[field] || 0))));
+  const values = numericValues(rows, field);
+  return values.length ? Math.round(Math.max(...values)) : null;
 }
 
 function sum(rows, field) {
-  return Math.round(rows.reduce((total, row) => total + Number(row?.[field] || 0), 0));
+  const values = numericValues(rows, field);
+  return values.length ? Math.round(values.reduce((total, value) => total + value, 0)) : null;
 }
 
 async function requestWindsorMetrics() {
@@ -272,9 +300,11 @@ async function requestWindsorMetrics() {
     alcance: sum(performanceRows, 'reach'),
     visualizacoes: sum(performanceRows, 'views'),
     interacoes: sum(performanceRows, 'total_interactions'),
+    visitasPerfil: null,
   };
 
-  if (!metrics.seguidores && !metrics.alcance && !metrics.visualizacoes) {
+  if ([metrics.seguidores, metrics.alcance, metrics.visualizacoes, metrics.interacoes]
+    .every((value) => value === null || value === undefined)) {
     const error = new Error('O Windsor não retornou métricas da conta do Gui.');
     error.code = 'NO_DATA';
     throw error;

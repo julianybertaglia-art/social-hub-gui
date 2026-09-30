@@ -96,7 +96,7 @@ export async function GET() {
         .order('created_at', { ascending: false })
         .limit(1),
       db.from('instagram_automation_events')
-        .select('comment_id,media_id,public_reply_id,private_status,public_status')
+        .select('comment_id,media_id,public_reply_id,public_delivery_mode,private_status,public_status')
         .order('created_at', { ascending: false })
         .limit(1),
     ]);

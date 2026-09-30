@@ -3,7 +3,7 @@ import { getMetaCredentials, getSupabaseAdmin, isMetaRateLimitCode, WHATSAPP_API
 export const dynamic = 'force-dynamic';
 
 const DEFAULT_WABA_ID = '2367783123681402';
-const APP_ID = process.env.META_APP_ID || '1975149819862842';
+const APP_ID = process.env.META_WHATSAPP_APP_ID || process.env.META_APP_ID || '1975149819862842';
 const ENSURE_INTERVAL_MS = 5 * 60 * 1000;
 const AUTH_INTERVAL_MS = 2 * 60 * 1000;
 let lastEnsureAt = 0;
@@ -80,7 +80,7 @@ async function tryRecoverEnvironmentToken(meta) {
     return { recovered: false, skipped: true, reason: 'not_environment_token' };
   }
 
-  const appSecret = String(process.env.META_APP_SECRET || '').trim();
+  const appSecret = String(process.env.META_WHATSAPP_APP_SECRET || process.env.META_APP_SECRET || '').trim();
   if (!APP_ID || !appSecret) {
     return { recovered: false, skipped: true, reason: 'missing_app_credentials' };
   }
@@ -223,7 +223,7 @@ export async function GET(request) {
     process.env.META_WHATSAPP_VERIFY_TOKEN || process.env.META_WEBHOOK_VERIFY_TOKEN || ''
   ).trim();
   const hasVerifyToken = Boolean(verifyToken);
-  const hasAppSecret = Boolean(process.env.META_APP_SECRET);
+  const hasAppSecret = Boolean(process.env.META_WHATSAPP_APP_SECRET || process.env.META_APP_SECRET);
 
   let auth = hasAccessToken && hasPhoneNumberId
     ? await validateMetaAuthentication(meta)

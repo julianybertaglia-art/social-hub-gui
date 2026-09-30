@@ -128,7 +128,7 @@ export async function GET() {
       };
 
       const media = await metaGet(
-        String(checks.instagram.accountId) + '/media?fields=id&limit=10',
+        String(checks.instagram.accountId) + '/media?fields=id&limit=50',
         token
       );
 

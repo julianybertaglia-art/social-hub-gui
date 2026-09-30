@@ -197,8 +197,46 @@ function quickReplies(flow, node, { includeAudioAction = false } = {}) {
   return replies.slice(0, MAX_BUTTONS);
 }
 
+function buttonTemplate(flow, node, { includeAudioAction = false } = {}) {
+  const buttons = (node?.buttons || []).slice(0, 3).map((button) => ({
+    type: 'postback',
+    title: button.label,
+    payload: buttonPayload(flow.id, button.id),
+  }));
+
+  if (includeAudioAction && node?.audioPath) {
+    buttons.unshift({
+      type: 'postback',
+      title: 'Ouvir áudio',
+      payload: buttonPayload(flow.id, '__audio__'),
+    });
+  }
+
+  if (!buttons.length || buttons.length > 3) return null;
+
+  return {
+    attachment: {
+      type: 'template',
+      payload: {
+        template_type: 'button',
+        text: node?.text || 'Escolha uma opção:',
+        buttons,
+      },
+    },
+  };
+}
+
 async function sendNodeToRecipient(db, accountId, recipientId, flow, node, { includeAudio = true } = {}) {
   if (includeAudio && node?.audioPath) await sendAudio(db, accountId, recipientId, node.audioPath);
+
+  const template = (node?.buttons || []).length <= 3 ? buttonTemplate(flow, node) : null;
+  if (template) {
+    return metaPost(accountId + '/messages', {
+      recipient: { id: recipientId },
+      message: template,
+    });
+  }
+
   const replies = quickReplies(flow, node);
   if (!node?.text && !replies.length) return null;
   return metaPost(accountId + '/messages', {
@@ -301,10 +339,13 @@ export async function processFlowComments(payload, db = null) {
     const publicReply = replies.length ? replies[(Math.max(1, eventId) - 1) % replies.length] : '';
 
     try {
-      const startReplies = quickReplies(flow, flow.start, { includeAudioAction: true });
+      const startTemplate = (flow.start?.buttons || []).length <= 3
+        ? buttonTemplate(flow, flow.start, { includeAudioAction: true })
+        : null;
+      const startReplies = startTemplate ? [] : quickReplies(flow, flow.start, { includeAudioAction: true });
       await metaPost(event.accountId + '/messages', {
         recipient: { comment_id: commentId },
-        message: {
+        message: startTemplate || {
           text: flow.start.text || (flow.start.audioPath ? 'Toque abaixo para continuar e ouvir o áudio.' : 'Escolha uma opção:'),
           ...(startReplies.length ? { quick_replies: startReplies } : {}),
         },
@@ -344,11 +385,12 @@ export async function processFlowSelections(payload, db = null) {
 
     if (event.buttonId === '__audio__' && flow.start.audioPath) {
       await sendAudio(db, event.accountId, event.senderId, flow.start.audioPath);
-      const branchReplies = quickReplies(flow, flow.start);
-      if (branchReplies.length) {
+      const branchTemplate = (flow.start?.buttons || []).length <= 3 ? buttonTemplate(flow, flow.start) : null;
+      const branchReplies = branchTemplate ? [] : quickReplies(flow, flow.start);
+      if (branchTemplate || branchReplies.length) {
         await metaPost(event.accountId + '/messages', {
           recipient: { id: event.senderId },
-          message: {
+          message: branchTemplate || {
             text: flow.start.text || 'Agora escolha como você quer continuar:',
             quick_replies: branchReplies,
           },

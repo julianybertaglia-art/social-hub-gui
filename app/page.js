@@ -216,6 +216,15 @@ function formatNumber(value) {
   }).format(number);
 }
 
+function formatMetric(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '—';
+  return new Intl.NumberFormat('pt-BR', {
+    notation: number >= 10000 ? 'compact' : 'standard',
+  }).format(number);
+}
+
 function Progress({ current, target }) {
   const percent = Math.min(100, Math.round((Number(current) / Math.max(1, Number(target))) * 100));
   return (
@@ -402,8 +411,11 @@ export default function Home() {
 
       if (apiMetrics) {
         setLiveMetrics({
-          ...apiMetrics,
-          seguidores: profileData?.followersCount || apiMetrics.seguidores || 0,
+          seguidores: profileData?.followersCount ?? apiMetrics.seguidores ?? null,
+          alcance: apiMetrics.alcance ?? null,
+          visualizacoes: apiMetrics.visualizacoes ?? null,
+          visitasPerfil: apiMetrics.visitasPerfil ?? null,
+          interacoes: apiMetrics.interacoes ?? null,
         });
       } else {
         setLiveMetrics(null);
@@ -468,8 +480,14 @@ export default function Home() {
   const totalContent = posts.length;
   const authorityContent = posts.filter((post) => post.objective === 'Autoridade').length;
   const conversionContent = posts.filter((post) => post.objective === 'Conversão').length;
-  const currentMetrics = liveMetrics || metrics;
-  const leadCount = crmSummary.total ?? metrics.leads;
+  const currentMetrics = liveMetrics || {
+    seguidores: metrics.seguidores || null,
+    alcance: metrics.alcance || null,
+    visualizacoes: metrics.visualizacoes || null,
+    visitasPerfil: metrics.visitasPerfil || null,
+    interacoes: metrics.interacoes || null,
+  };
+  const leadCount = crmSummary.total;
 
   function renderDashboard() {
     const attentionItems = [
@@ -520,7 +538,7 @@ export default function Home() {
           <Link className="quick-stat" href="/whatsapp">
             <SummaryIcon type="leads" />
             <span>Leads no CRM</span>
-            <strong>{formatNumber(leadCount)}</strong>
+            <strong>{formatMetric(leadCount)}</strong>
             <small>{crmSummary.newLeads === null ? 'Carregando CRM…' : `${crmSummary.newLeads} novos`}</small>
           </Link>
           <Link className="quick-stat" href="/automacoes">
@@ -625,10 +643,10 @@ export default function Home() {
                 <button className="text-button" onClick={() => goTo('metrics')}>Ver métricas</button>
               </div>
               <div className="performance-mini-grid">
-                <div><span>Seguidores</span><strong>{formatNumber(currentMetrics.seguidores)}</strong></div>
-                <div><span>Alcance 30d</span><strong>{formatNumber(currentMetrics.alcance)}</strong></div>
-                <div><span>Interações</span><strong>{formatNumber(currentMetrics.interacoes)}</strong></div>
-                <div><span>Visitas ao perfil</span><strong>{formatNumber(currentMetrics.visitasPerfil)}</strong></div>
+                <div><span>Seguidores</span><strong>{formatMetric(currentMetrics.seguidores)}</strong></div>
+                <div><span>Alcance 30d</span><strong>{formatMetric(currentMetrics.alcance)}</strong></div>
+                <div><span>Interações</span><strong>{formatMetric(currentMetrics.interacoes)}</strong></div>
+                <div><span>Visitas ao perfil</span><strong>{formatMetric(currentMetrics.visitasPerfil)}</strong></div>
               </div>
             </article>
           </aside>
@@ -745,16 +763,13 @@ export default function Home() {
 
   function renderMetrics() {
     const fields = [
-      ['seguidores', 'Seguidores'], ['alcance', 'Alcance'], ['visualizacoes', 'Visualizações'],
-      ['interacoes', 'Interações'], ['leads', 'Leads gerados'],
+      { key: 'seguidores', label: 'Seguidores', value: currentMetrics.seguidores, source: 'Meta' },
+      { key: 'alcance', label: 'Alcance · 30 dias', value: currentMetrics.alcance, source: 'Meta' },
+      { key: 'visualizacoes', label: 'Visualizações · 30 dias', value: currentMetrics.visualizacoes, source: 'Meta' },
+      { key: 'visitasPerfil', label: 'Visitas ao perfil · 30 dias', value: currentMetrics.visitasPerfil, source: 'Meta' },
+      { key: 'interacoes', label: 'Interações · 30 dias', value: currentMetrics.interacoes, source: 'Meta' },
+      { key: 'leads', label: 'Leads no CRM', value: crmSummary.total, source: 'CRM' },
     ];
-
-    const officialMetrics = {
-      ...metrics,
-      ...(liveMetrics || {}),
-      leads: leadCount,
-    };
-    const hasLiveMeta = Boolean(liveMetrics);
 
     return (
       <>
@@ -762,36 +777,17 @@ export default function Home() {
           <div>
             <span className="eyebrow">ANALYTICS</span>
             <h1>Métricas do Instagram</h1>
-            <p className="subtitle">
-              {hasLiveMeta
-                ? 'Dados oficiais sincronizados pela Meta. O painel atualiza automaticamente.'
-                : 'Aguardando dados da Meta. Enquanto isso, os campos abaixo funcionam como apoio manual.'}
-            </p>
+            <p className="subtitle">Dados oficiais da Meta e do CRM. Quando a fonte não entrega uma métrica, o Tide mostra “—” em vez de transformar ausência de dado em zero.</p>
           </div>
         </section>
 
         <section className="metrics-edit-grid">
-          {fields.map(([key, label]) => (
-            <label className={`metric-input-card ${hasLiveMeta && key !== 'leads' ? 'metric-live' : ''}`} key={key}>
+          {fields.map(({ key, label, value, source }) => (
+            <article className="metric-input-card" key={key}>
               <span>{label}</span>
-              <input
-                type="number"
-                min="0"
-                value={officialMetrics[key] ?? 0}
-                readOnly={hasLiveMeta && key !== 'leads'}
-                onChange={(event) => {
-                  if (hasLiveMeta && key !== 'leads') return;
-                  setMetrics({ ...metrics, [key]: Number(event.target.value) });
-                }}
-              />
-              <small>
-                {key === 'leads'
-                  ? 'CRM TidePlace'
-                  : hasLiveMeta
-                    ? 'Meta · dado oficial'
-                    : 'Fallback manual'}
-              </small>
-            </label>
+              <strong>{formatMetric(value)}</strong>
+              <small>{value === null || value === undefined ? 'Não disponível pela fonte' : source}</small>
+            </article>
           ))}
         </section>
 
@@ -801,13 +797,13 @@ export default function Home() {
             {instagramConnected === null
               ? 'Verificando conexão com a Meta...'
               : instagramConnected
-                ? 'Meta conectada à TidePlace'
+                ? 'Meta + CRM conectados ao TidePlace'
                 : 'Meta precisa ser reconectada'}
           </h2>
           <p className="note">
             {instagramConnected
-              ? 'Os números acima vêm da integração oficial. Se a foto do perfil falhar, as métricas continuam carregando normalmente.'
-              : 'A TidePlace mantém os dados manuais disponíveis até a integração voltar a responder.'}
+              ? 'Zero agora só aparece quando a fonte realmente retorna zero. Dados ausentes aparecem como “—”. Os leads são puxados automaticamente do CRM.'
+              : 'A TidePlace mantém o painel disponível e identifica como indisponíveis as métricas que a Meta não retornar.'}
           </p>
         </section>
       </>

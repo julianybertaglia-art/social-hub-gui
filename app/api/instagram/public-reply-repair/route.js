@@ -40,19 +40,18 @@ export async function POST(request) {
     const target = matches[0];
     if (!target) return Response.json({ ok: false, stage: 'find_comment', error: 'Nenhum comentário IMPORTAÇÃO recente encontrado.' });
 
-    const already = (target.comment?.replies?.data || []).some((reply) => (
-      author(reply) === 'gui_nonato'
-      || /direct/i.test(String(reply?.text || ''))
-    ));
-    if (already) {
-      return Response.json({ ok: true, stage: 'already_replied', commentFound: true });
-    }
-
     try {
       const result = await metaRequest(target.comment.id + '/replies', {
-        message: 'Te mandei as informações no Direct 👊',
+        message: 'Chamei você no Direct ✨',
       });
-      return Response.json({ ok: true, stage: 'replied', commentFound: true, result: Boolean(result) });
+      return Response.json({
+        ok: true,
+        stage: 'replied',
+        commentFound: true,
+        commentTimestamp: target.comment?.timestamp || null,
+        previousReplyCount: Array.isArray(target.comment?.replies?.data) ? target.comment.replies.data.length : 0,
+        result: Boolean(result),
+      });
     } catch (error) {
       return Response.json({
         ok: false,

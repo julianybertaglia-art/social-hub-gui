@@ -144,9 +144,56 @@ const MENTORIA_FLOW = {
   },
 };
 
+const FORNECEDORES_FLOW = {
+  id: 'flow-fornecedores-20260930',
+  name: 'Fornecedores',
+  keyword: 'FORNECEDORES',
+  publicReplies: ['Te chamei no Direct 👊', 'Acabei de te mandar uma mensagem no Direct ✨'],
+  active: true,
+  start: {
+    id: 'node-fornecedores-inicio',
+    text: 'Fala! 👊 Eu consigo te ajudar tanto se você está começando do zero quanto se já tem uma operação e quer crescer ainda mais.\n\nPra eu te direcionar da melhor forma, qual é o seu momento hoje?',
+    audioPath: '',
+    audioName: '',
+    audioBucket: 'instagram-flow-audio',
+    responseMode: 'personalized',
+    sharedNext: null,
+    buttons: [
+      {
+        id: 'btn-fornecedores-ja-vendo',
+        label: 'Já vendo · Mentoria',
+        next: {
+          id: 'node-fornecedores-seller',
+          text: 'Se quiser entender melhor como funciona a mentoria e ver se faz sentido para o seu momento, fala com a minha equipe 👊\n\n📲 WhatsApp: (11) 92399-0244\nhttps://wa.me/5511923990244',
+          audioPath: 'd3db0981-1179-459e-9449-9e97232f6632/9edc7844-3f0a-4bb6-b71a-e2e7cb7d2331.m4a',
+          audioName: 'mentoria-gui.m4a',
+          audioBucket: 'instagram-audio-tests',
+          responseMode: 'same',
+          sharedNext: null,
+          buttons: [],
+        },
+      },
+      {
+        id: 'btn-fornecedores-comecar',
+        label: 'Quero começar',
+        next: {
+          id: 'node-fornecedores-iniciante',
+          text: 'Se você ainda está começando, eu tenho um treinamento completo pensado para quem quer iniciar do zero no Mercado Livre e construir a operação do jeito certo. 👊\n\nVocê pode conhecer o treinamento aqui:\nhttps://guilhermenonato.com.br/destravando-o-mercado-livre/\n\nSe quiser falar com a minha equipe e tirar alguma dúvida:\n📲 WhatsApp: (11) 92399-0244\nhttps://wa.me/5511923990244',
+          audioPath: '',
+          audioName: '',
+          audioBucket: 'instagram-flow-audio',
+          responseMode: 'same',
+          sharedNext: null,
+          buttons: [],
+        },
+      },
+    ],
+  },
+};
+
 function mergeKnownFlows(serverFlows) {
   const result = Array.isArray(serverFlows) ? [...serverFlows] : [];
-  const known = [IMPORTACAO_FLOW, MENTORIA_FLOW];
+  const known = [IMPORTACAO_FLOW, MENTORIA_FLOW, FORNECEDORES_FLOW];
 
   for (const fallback of known) {
     if (!result.some((flow) => flow?.id === fallback.id || (flow?.name === fallback.name && flow?.keyword === fallback.keyword))) {
@@ -211,7 +258,7 @@ function readAsDataUrl(file) {
 }
 
 export default function AutomacoesPage() {
-  const [flows, setFlows] = useState(() => [IMPORTACAO_FLOW, MENTORIA_FLOW]);
+  const [flows, setFlows] = useState(() => [IMPORTACAO_FLOW, MENTORIA_FLOW, FORNECEDORES_FLOW]);
   const [selectedId, setSelectedId] = useState(IMPORTACAO_FLOW.id);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -231,7 +278,7 @@ export default function AutomacoesPage() {
       })
       .catch((error) => {
         if (cancelled) return;
-        const next = [IMPORTACAO_FLOW, MENTORIA_FLOW];
+        const next = [IMPORTACAO_FLOW, MENTORIA_FLOW, FORNECEDORES_FLOW];
         setFlows(next);
         setSelectedId(IMPORTACAO_FLOW.id);
         setNotice(error.message);

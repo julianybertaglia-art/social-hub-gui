@@ -123,7 +123,7 @@ MENTORIA
 - Investimento atual: R$ 12.000 no Pix ou R$ 15.000 parcelado em até 10x.
 - NÃO revele o investimento espontaneamente enquanto o estado for "routed".
 - Exceção: se o lead perguntar diretamente preço, valor, investimento ou quanto custa, use next_action="answer_price_now".
-- Quando já houver contexto suficiente sobre o negócio e a principal necessidade do lead, NÃO escreva o preço. Use next_action="send_mentoria_presentation_and_ask_availability". O sistema enviará o PDF com os entregáveis e depois explicará a call.
+- Quando já houver contexto suficiente sobre o negócio e a principal necessidade do lead, NÃO escreva o preço. Use next_action="send_mentoria_presentation_and_ask_availability". Considere que já há contexto suficiente quando o lead informou pelo menos a principal necessidade/objetivo e uma noção de faturamento ou estágio da operação. O sistema enviará o PDF com os entregáveis e depois explicará a call.
 - A call acontece ANTES de qualquer decisão: o Gui usa a conversa para entender o momento da operação, tirar dúvidas, alinhar expectativas e começar a desenhar um plano estratégico para os próximos meses.
 - Quando o estado for "ai_waiting_call_availability" e o lead informar um dia, horário ou período em que pode fazer a call, use next_action="send_price_and_confirm_call".
 - O preço deve ser apresentado depois da disponibilidade e antes da confirmação final do agendamento. A mensagem de preço será enviada pelo sistema.
@@ -450,7 +450,7 @@ export async function processWhatsAppAi(supabase, { contact, message, automation
   if (!agent) return { handled: false, reason: 'ai_off' };
 
   const session = await currentSession(supabase, contact.id);
-  if (!session || session.state !== 'routed' || !SALES_TOPICS.has(session.current_topic)) {
+  if (!session || !AI_SESSION_STATES.has(session.state) || !SALES_TOPICS.has(session.current_topic)) {
     return { handled: false, reason: 'out_of_scope' };
   }
 
@@ -471,7 +471,7 @@ export async function processWhatsAppAi(supabase, { contact, message, automation
   const knowledge = await knowledgeBase(supabase, agent.user_id);
   const decision = await callAi({
     model: agent.model,
-    system: systemPrompt({ agent, topic: session.current_topic, knowledge }),
+    system: systemPrompt({ agent, topic: session.current_topic, state: session.state, knowledge }),
     history: formatHistory(history),
   });
 
@@ -486,9 +486,23 @@ export async function processWhatsAppAi(supabase, { contact, message, automation
 
   const confidence = clampConfidence(decision.confidence);
   const shouldEscalate = Boolean(decision.should_escalate);
-  if (agent.mode === 'auto' && !shouldEscalate && confidence >= Number(agent.auto_send_min_confidence || 0.9)) {
-    await sendAndStoreAiReply(supabase, contact, suggestion);
-    return { handled: true, action: 'ai_auto_sent', suggestionId: suggestion.id };
+
+  if (agent.mode === 'auto' && confidence >= Number(agent.auto_send_min_confidence || 0.9)) {
+    if (session.current_topic === 'Mentoria') {
+      const mentoriaAction = await executeMentoriaAction(supabase, {
+        contact,
+        suggestion,
+        decision,
+      });
+      if (mentoriaAction) {
+        return { ...mentoriaAction, suggestionId: suggestion.id, confidence };
+      }
+    }
+
+    if (!shouldEscalate) {
+      await sendAndStoreAiReply(supabase, contact, suggestion);
+      return { handled: true, action: 'ai_auto_sent', suggestionId: suggestion.id };
+    }
   }
 
   return {

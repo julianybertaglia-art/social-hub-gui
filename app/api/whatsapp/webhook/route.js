@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 function isValidSignature(rawBody, signatureHeader) {
-  const appSecret = process.env.META_APP_SECRET;
+  const appSecret = process.env.META_WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;
   if (!appSecret || !signatureHeader?.startsWith('sha256=')) return false;
 
   const received = signatureHeader.slice('sha256='.length);

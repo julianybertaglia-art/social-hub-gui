@@ -1,0 +1,16 @@
+name: Inspect Instagram comment
+
+on:
+  push:
+    branches:
+      - rebrand-tideplace
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect comment
+        run: |
+          set -euo pipefail
+          BODY="$(curl --silent --show-error -X POST             -H "x-tideplace-inspect-key: tp-inspect-comment-20260930"             "https://social-hub-gui.vercel.app/api/instagram/comment-inspect")"
+          echo "$BODY"

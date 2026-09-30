@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 180;
 
 function isValidSignature(rawBody, signatureHeader) {
-  const appSecret = process.env.META_APP_SECRET;
+  const appSecret = process.env.META_INSTAGRAM_APP_SECRET || process.env.META_APP_SECRET;
   if (!appSecret || !signatureHeader?.startsWith('sha256=')) return false;
 
   const received = signatureHeader.slice('sha256='.length);

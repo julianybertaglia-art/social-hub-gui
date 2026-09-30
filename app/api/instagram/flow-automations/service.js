@@ -28,6 +28,7 @@ function sanitizeNode(node, depth = 0) {
       text: '',
       audioPath: '',
       audioName: '',
+      audioBucket: AUDIO_BUCKET,
       responseMode: 'same',
       sharedNext: null,
       buttons: [],
@@ -50,6 +51,7 @@ function sanitizeNode(node, depth = 0) {
     text: String(node?.text || '').trim().slice(0, 1000),
     audioPath: String(node?.audioPath || '').trim().slice(0, 500),
     audioName: String(node?.audioName || '').trim().slice(0, 120),
+    audioBucket: String(node?.audioBucket || AUDIO_BUCKET).trim().slice(0, 120),
     responseMode,
     sharedNext: responseMode === 'same' && sharedSource
       ? sanitizeNode(sharedSource, depth + 1)
@@ -165,9 +167,10 @@ async function metaPost(path, body) {
   return result;
 }
 
-async function sendAudio(db, accountId, recipientId, audioPath) {
+async function sendAudio(db, accountId, recipientId, audioPath, audioBucket = AUDIO_BUCKET) {
   if (!audioPath) return null;
-  const { data, error } = await db.storage.from(AUDIO_BUCKET).createSignedUrl(audioPath, 600);
+  const bucket = String(audioBucket || AUDIO_BUCKET).trim() || AUDIO_BUCKET;
+  const { data, error } = await db.storage.from(bucket).createSignedUrl(audioPath, 600);
   if (error || !data?.signedUrl) throw flowError('Não foi possível preparar o áudio da automação.', 503);
   return metaPost(accountId + '/messages', {
     recipient: { id: recipientId },
@@ -227,7 +230,7 @@ function buttonTemplate(flow, node, { includeAudioAction = false } = {}) {
 }
 
 async function sendNodeToRecipient(db, accountId, recipientId, flow, node, { includeAudio = true } = {}) {
-  if (includeAudio && node?.audioPath) await sendAudio(db, accountId, recipientId, node.audioPath);
+  if (includeAudio && node?.audioPath) await sendAudio(db, accountId, recipientId, node.audioPath, node.audioBucket);
 
   const template = (node?.buttons || []).length <= 3 ? buttonTemplate(flow, node) : null;
   if (template) {
@@ -408,7 +411,14 @@ export async function processFlowSelections(payload, db = null) {
     if (!flow) continue;
 
     if (event.buttonId === '__audio__' && flow.start.audioPath) {
-      await sendAudio(db, event.accountId, event.senderId, flow.start.audioPath);
+      await sendAudio(db, event.accountId, event.senderId, flow.start.audioPath, flow.start.audioBucket);
+
+      if (flow.start.sharedNext) {
+        await sendNodeToRecipient(db, event.accountId, event.senderId, flow, flow.start.sharedNext);
+        handled += 1;
+        continue;
+      }
+
       const branchTemplate = (flow.start?.buttons || []).length <= 3 ? buttonTemplate(flow, flow.start) : null;
       const branchReplies = branchTemplate ? [] : quickReplies(flow, flow.start);
       if (branchTemplate || branchReplies.length) {

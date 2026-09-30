@@ -38,7 +38,9 @@ export async function POST(request) {
 
     matches.sort((a, b) => Date.parse(b.comment?.timestamp || 0) - Date.parse(a.comment?.timestamp || 0));
     const target = matches[0];
-    if (!target) return Response.json({ ok: false, stage: 'find_comment', error: 'Nenhum comentário IMPORTAÇÃO recente encontrado.' });
+    if (!target) {
+      return Response.json({ ok: false, stage: 'find_comment', error: 'Nenhum comentário IMPORTAÇÃO recente encontrado.' });
+    }
 
     return Response.json({
       ok: true,
@@ -50,14 +52,6 @@ export async function POST(request) {
         text: String(reply?.text || '').slice(0, 120),
       })),
     });
-    } catch (error) {
-      return Response.json({
-        ok: false,
-        stage: 'reply',
-        commentFound: true,
-        error: String(error?.message || 'Falha ao responder').slice(0, 300),
-      });
-    }
   } catch (error) {
     return Response.json({
       ok: false,

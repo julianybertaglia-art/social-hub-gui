@@ -373,33 +373,25 @@ export async function processFlowComments(payload, db = null) {
     // Prioriza a resposta pública. Assim, mesmo se o envio do Direct
     // demorar, a confirmação visível no comentário é processada primeiro.
     if (publicReply) {
-      const mediaId = String(event?.value?.media?.id || event?.value?.media_id || '');
       try {
-        const publicMessage = username
-          ? '@' + username.replace(/^@/, '') + ' ' + publicReply
-          : publicReply;
-
-        // O endpoint de reply encadeado estava aceitando a chamada e devolvendo
-        // um ID, mas a resposta não aparecia no Instagram. Para garantir
-        // visibilidade, publicamos a resposta no próprio post com @menção ao
-        // autor do comentário.
-        const createdReply = mediaId
-          ? await metaPost(mediaId + '/comments', { message: publicMessage })
-          : await metaPost(commentId + '/replies', { message: publicMessage });
-
+        // Responde diretamente ao comentário original. Esse é o formato
+        // correto da API do Instagram para uma resposta pública encadeada.
+        const createdReply = await metaPost(commentId + '/replies', {
+          message: publicReply,
+        });
         const publicReplyId = String(createdReply?.id || '');
 
         await updateEvent(db, eventId, {
           public_status: 'sent',
           public_reply_id: publicReplyId || null,
-          public_delivery_mode: mediaId ? 'top_level_mention' : 'threaded_mention_fallback',
+          public_delivery_mode: 'threaded_reply',
           public_error: null,
         });
       } catch (error) {
         await updateEvent(db, eventId, {
           public_status: 'failed',
           public_error: String(error?.message || '').slice(0, 300),
-          public_delivery_mode: mediaId ? 'top_level_mention' : 'threaded_mention_fallback',
+          public_delivery_mode: 'threaded_reply',
         });
       }
     } else {

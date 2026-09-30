@@ -33,7 +33,7 @@ export async function GET() {
     verifyToken: Boolean(
       process.env.META_WHATSAPP_VERIFY_TOKEN || process.env.META_WEBHOOK_VERIFY_TOKEN
     ),
-    appSecret: Boolean(process.env.META_APP_SECRET),
+    appSecret: Boolean(process.env.META_WHATSAPP_APP_SECRET || process.env.META_APP_SECRET),
     wabaId: Boolean(wabaId),
     legacyBridgeDisabled: true,
   };

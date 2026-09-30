@@ -241,7 +241,7 @@ export default function Home() {
   const [active, setActive] = useState('dashboard');
   const [mobileMenu, setMobileMenu] = useState(false);
   const [greeting, setGreeting] = useState('Olá');
-  const [crmSummary, setCrmSummary] = useState({ total: null, newLeads: null });
+  const [crmSummary, setCrmSummary] = useState({ total: null, newLeads: null, readyToSchedule: 0 });
   const [automationCount, setAutomationCount] = useState(1);
   const [liveMetrics, setLiveMetrics] = useState(null);
   const [metrics, setMetrics] = useStoredState('guihub-metrics', defaultMetrics);
@@ -289,6 +289,7 @@ export default function Home() {
         setCrmSummary({
           total: contacts.length,
           newLeads: contacts.filter((contact) => contact.stage === 'Novo lead').length,
+          readyToSchedule: contacts.filter((contact) => contact.stage === 'Agendar com Gui').length,
         });
       })
       .catch(() => {});
@@ -374,6 +375,12 @@ export default function Home() {
 
   function renderDashboard() {
     const attentionItems = [
+      ...(crmSummary.readyToSchedule ? [{
+        title: crmSummary.readyToSchedule === 1 ? '🔥 1 lead pronto para agendar com o Gui' : `🔥 ${crmSummary.readyToSchedule} leads prontos para agendar com o Gui`,
+        text: 'Assuma a conversa, pergunte a disponibilidade do lead e alinhe o horário diretamente com o Gui.',
+        tone: 'warning',
+        href: '/whatsapp',
+      }] : []),
       {
         title: highPriorityCount ? `${highPriorityCount} ${highPriorityCount === 1 ? 'tarefa de alta prioridade' : 'tarefas de alta prioridade'}` : 'Prioridades sob controle',
         text: highPriorityCount ? 'Vale resolver essas tarefas antes de abrir novas frentes.' : 'Nenhuma tarefa urgente pendente agora.',

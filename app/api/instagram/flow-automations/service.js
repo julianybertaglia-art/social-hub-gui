@@ -88,9 +88,37 @@ export async function loadOwnerFlows(db, userId) {
 
   if (error) throw flowError('Não foi possível carregar as automações.', 503);
 
+  if (data) {
+    return {
+      row: data,
+      flows: sanitizeFlows(data.flows || []),
+    };
+  }
+
+  // O workspace do TidePlace usa uma única conta do Instagram. Se a sessão
+  // autenticada mudou, reaproveita o último conjunto persistido em vez de
+  // mostrar apenas o fallback local da interface.
+  const { data: latest, error: latestError } = await db.from('instagram_flow_automations')
+    .select('flows,updated_at')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (latestError) throw flowError('Não foi possível carregar as automações.', 503);
+
+  const flows = sanitizeFlows(latest?.flows || []);
+
+  if (latest && flows.length) {
+    await db.from('instagram_flow_automations').upsert({
+      user_id: userId,
+      flows,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+  }
+
   return {
-    row: data || null,
-    flows: sanitizeFlows(data?.flows || []),
+    row: latest || null,
+    flows,
   };
 }
 

@@ -70,10 +70,17 @@ async function knowledgeBase(supabase, userId) {
   return data || [];
 }
 
+function redactPersonalData(value) {
+  return String(value || '')
+    .replace(/\b[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g, '[email oculto]')
+    .replace(/(?<!\d)(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?9?\d{4}[-.\s]?\d{4}(?!\d)/g, '[telefone oculto]')
+    .replace(/\b\d{3}\.\d{3}\.\d{3}-?\d{2}\b/g, '[CPF oculto]');
+}
+
 function formatHistory(rows) {
   return rows.map((row) => {
     const who = row.direction === 'outbound' ? 'Juliany' : 'Lead';
-    return who + ': ' + String(row.body || '[' + row.message_type + ']').slice(0, 1800);
+    return who + ': ' + redactPersonalData(String(row.body || '[' + row.message_type + ']').slice(0, 1800));
   }).join('\n');
 }
 
@@ -136,9 +143,53 @@ Responda APENAS JSON válido neste formato:
 }`;
 }
 
-async function callGateway({ model, system, history }) {
+async function callAi({ model, system, history }) {
+  const geminiKey = String(process.env.GEMINI_API_KEY || '').trim();
+
+  if (geminiKey) {
+    const geminiModel = model && String(model).startsWith('gemini-')
+      ? model
+      : 'gemini-3.6-flash';
+
+    const response = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(geminiModel) + ':generateContent',
+      {
+        method: 'POST',
+        headers: {
+          'x-goog-api-key': geminiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: system }],
+          },
+          contents: [{
+            role: 'user',
+            parts: [{ text: 'Conversa até agora:\n' + history + '\n\nGere somente o JSON da próxima ação.' }],
+          }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            maxOutputTokens: 900,
+            thinkingConfig: { thinkingLevel: 'low' },
+          },
+        }),
+        cache: 'no-store',
+        signal: AbortSignal.timeout(30000),
+      }
+    );
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.error?.message || 'Gemini API HTTP ' + response.status);
+    }
+    const text = payload?.candidates?.[0]?.content?.parts
+      ?.map((part) => part?.text || '')
+      .join('') || '';
+    return safeJson(text);
+  }
+
   const token = String(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || '').trim();
-  if (!token) throw new Error('AI Gateway ainda não autenticado no Vercel.');
+  if (!token) throw new Error('Nenhum provedor de IA configurado. Adicione GEMINI_API_KEY.');
 
   const response = await fetch('https://ai-gateway.vercel.sh/v1/chat/completions', {
     method: 'POST',
@@ -266,7 +317,7 @@ export async function processWhatsAppAi(supabase, { contact, message, automation
   }
 
   const knowledge = await knowledgeBase(supabase, agent.user_id);
-  const decision = await callGateway({
+  const decision = await callAi({
     model: agent.model,
     system: systemPrompt({ agent, topic: session.current_topic, knowledge }),
     history: formatHistory(history),

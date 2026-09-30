@@ -78,10 +78,9 @@ const IMPORTACAO_FLOW = {
           audioName: '',
           responseMode: 'same',
           buttons: [
-            { id: 'btn-inv-5', label: '💰 Até R$ 5 mil', next: { id: 'unused-inv-1', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
-            { id: 'btn-inv-50', label: '💰 Até R$ 50 mil', next: { id: 'unused-inv-2', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
-            { id: 'btn-inv-500', label: '💰 Até R$ 500 mil', next: { id: 'unused-inv-3', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
-            { id: 'btn-inv-1m', label: '💰 R$ 1 milhão +', next: { id: 'unused-inv-4', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+            { id: 'btn-inv-5', label: 'Até R$ 5 mil', next: { id: 'unused-inv-1', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+            { id: 'btn-inv-100', label: 'Até R$ 100 mil', next: { id: 'unused-inv-2', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
+            { id: 'btn-inv-500mais', label: 'Mais de R$ 500 mil', next: { id: 'unused-inv-3', text: '', audioPath: '', audioName: '', responseMode: 'same', sharedNext: null, buttons: [] } },
           ],
           sharedNext: {
             id: 'node-whatsapp',

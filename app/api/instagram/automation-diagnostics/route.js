@@ -96,7 +96,7 @@ export async function GET() {
         .order('created_at', { ascending: false })
         .limit(1),
       db.from('instagram_automation_events')
-        .select('comment_id,private_status,public_status')
+        .select('comment_id,media_id,public_reply_id,private_status,public_status')
         .order('created_at', { ascending: false })
         .limit(1),
     ]);
@@ -127,43 +127,52 @@ export async function GET() {
         replyCheckError: null,
       };
 
-      const media = await metaGet(
-        String(checks.instagram.accountId) + '/media?fields=id&limit=50',
-        token
-      );
+      if (lastEvent.media_id) {
+        const comments = await metaGet(
+          String(lastEvent.media_id) + '/comments?fields=id,text,hidden,from,username,replies.limit(50){id,text,hidden,from,username}&limit=100',
+          token
+        );
 
-      if (media.ok) {
-        let matchedComment = null;
-        for (const item of (media.payload?.data || [])) {
-          const comments = await metaGet(
-            String(item.id) + '/comments?fields=id,text,replies.limit(50){id,text,from,username}&limit=100',
-            token
-          );
-          if (!comments.ok) continue;
-          matchedComment = (comments.payload?.data || []).find((comment) => String(comment?.id || '') === String(lastEvent.comment_id)) || null;
-          if (matchedComment) break;
-        }
+        if (comments.ok) {
+          const matchedComment = (comments.payload?.data || []).find(
+            (comment) => String(comment?.id || '') === String(lastEvent.comment_id)
+          ) || null;
 
-        if (matchedComment) {
-          const replies = Array.isArray(matchedComment?.replies?.data) ? matchedComment.replies.data : [];
-          const expected = ['Te mandei as informações no Direct 👊', 'Chamei você no Direct ✨'];
-          checks.lastAutomation.replyCount = replies.length;
-          checks.lastAutomation.publicReplyVisible = replies.some((reply) => (
-            expected.includes(String(reply?.text || '').trim())
-          ));
-          checks.lastAutomation.replyCheckError = null;
+          if (matchedComment) {
+            const replies = Array.isArray(matchedComment?.replies?.data) ? matchedComment.replies.data : [];
+            checks.lastAutomation.replyCount = replies.length;
+            checks.lastAutomation.publicReplyVisible = replies.some((reply) => (
+              String(reply?.id || '') === String(lastEvent.public_reply_id || '')
+            ));
+            checks.lastAutomation.replyHidden = replies
+              .filter((reply) => String(reply?.id || '') === String(lastEvent.public_reply_id || ''))
+              .map((reply) => Boolean(reply?.hidden))[0] ?? null;
+            checks.lastAutomation.replyTexts = replies.map((reply) => ({
+              id: String(reply?.id || ''),
+              text: String(reply?.text || '').slice(0, 120),
+              hidden: Boolean(reply?.hidden),
+              username: String(reply?.from?.username || reply?.username || ''),
+            }));
+            checks.lastAutomation.replyCheckError = null;
+          } else {
+            checks.lastAutomation.replyCheckError = {
+              status: 404,
+              code: null,
+              message: 'Comentário não apareceu na listagem da mídia.',
+            };
+          }
         } else {
           checks.lastAutomation.replyCheckError = {
-            status: 404,
-            code: null,
-            message: 'Comentário não encontrado entre as mídias recentes.',
+            status: comments.status || null,
+            code: comments.code || null,
+            message: comments.message || null,
           };
         }
       } else {
         checks.lastAutomation.replyCheckError = {
-          status: media.status || null,
-          code: media.code || null,
-          message: media.message || null,
+          status: 404,
+          code: null,
+          message: 'Evento antigo sem media_id para conferência.',
         };
       }
     }

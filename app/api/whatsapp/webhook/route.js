@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { getSupabaseAdmin, messageBody, normalizeWaId, upsertWhatsAppContact } from '../lib';
 import { processWhatsAppAutomation } from '../automation';
+import { processWhatsAppAi } from '../ai';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -120,7 +121,12 @@ async function handleMessages(supabase, value, origin) {
     });
 
     try {
-      await processWhatsAppAutomation(supabase, { contact, message, origin });
+      const automationResult = await processWhatsAppAutomation(supabase, { contact, message, origin });
+      try {
+        await processWhatsAppAi(supabase, { contact, message, automationResult });
+      } catch (aiError) {
+        console.error('WhatsApp AI:', aiError);
+      }
     } catch (automationError) {
       console.error('WhatsApp menu automation:', automationError);
     }

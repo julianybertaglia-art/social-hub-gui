@@ -338,6 +338,19 @@ export async function processFlowComments(payload, db = null) {
     const replies = flow.publicReplies.filter(Boolean);
     const publicReply = replies.length ? replies[(Math.max(1, eventId) - 1) % replies.length] : '';
 
+    // Prioriza a resposta pública. Assim, mesmo se o envio do Direct
+    // demorar, a confirmação visível no comentário é processada primeiro.
+    if (publicReply) {
+      try {
+        await metaPost(commentId + '/replies', { message: publicReply });
+        await updateEvent(db, eventId, { public_status: 'sent' });
+      } catch (error) {
+        await updateEvent(db, eventId, { public_status: 'failed', public_error: String(error?.message || '').slice(0, 300) });
+      }
+    } else {
+      await updateEvent(db, eventId, { public_status: 'skipped' });
+    }
+
     try {
       const startTemplate = (flow.start?.buttons || []).length <= 3
         ? buttonTemplate(flow, flow.start, { includeAudioAction: true })
@@ -353,17 +366,6 @@ export async function processFlowComments(payload, db = null) {
       await updateEvent(db, eventId, { private_status: 'sent' });
     } catch (error) {
       await updateEvent(db, eventId, { private_status: 'failed', private_error: String(error?.message || '').slice(0, 300) });
-    }
-
-    if (publicReply) {
-      try {
-        await metaPost(commentId + '/replies', { message: publicReply });
-        await updateEvent(db, eventId, { public_status: 'sent' });
-      } catch (error) {
-        await updateEvent(db, eventId, { public_status: 'failed', public_error: String(error?.message || '').slice(0, 300) });
-      }
-    } else {
-      await updateEvent(db, eventId, { public_status: 'skipped' });
     }
     handled += 1;
   }

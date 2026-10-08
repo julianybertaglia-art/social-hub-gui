@@ -10,7 +10,6 @@ import {
   isReplyToBusiness,
   requestsMainMenu,
   shouldSendInitialMenu,
-  WELCOME_MENU_BUTTON_GROUPS,
   WHATSAPP_MENU_ROWS,
 } from '../app/api/whatsapp/automation.js';
 import { influencerFormHtml } from '../app/parcerias/vital-influenciadores/html.js';
@@ -30,7 +29,7 @@ const baseApplication = {
   averageComments: '30',
   postsPerWeek: '5',
   brazilAudiencePercent: '85',
-  affiliateExperience: 'yes',
+  affiliateExperience: 'no',
   liveExperience: 'yes',
   contentCommitment: 'yes',
   topVideo1: 'https://www.tiktok.com/@criadora/video/123456789',
@@ -39,9 +38,9 @@ const baseApplication = {
   consent: 'yes',
 };
 
-test('the WhatsApp list fits Meta limits and exposes the six requested topics', () => {
-  assert.equal(WHATSAPP_MENU_ROWS.length, 6);
-  assert.equal(new Set(WHATSAPP_MENU_ROWS.map((row) => row.id)).size, 6);
+test('the WhatsApp list fits Meta limits and exposes the five current topics', () => {
+  assert.equal(WHATSAPP_MENU_ROWS.length, 5);
+  assert.equal(new Set(WHATSAPP_MENU_ROWS.map((row) => row.id)).size, 5);
   for (const row of WHATSAPP_MENU_ROWS) {
     assert.ok(row.title.length <= 24, row.title);
     assert.ok(row.description.length <= 72, row.description);
@@ -49,25 +48,17 @@ test('the WhatsApp list fits Meta limits and exposes the six requested topics', 
   assert.ok(WHATSAPP_MENU_ROWS.some((row) => row.id === 'topic_influencer'));
 });
 
-test('welcome options are exposed as two groups of visible reply buttons', () => {
-  assert.equal(WELCOME_MENU_BUTTON_GROUPS.length, 2);
-  const buttons = WELCOME_MENU_BUTTON_GROUPS.flat();
-  assert.equal(buttons.length, 6);
-  assert.equal(new Set(buttons.map((button) => button.id)).size, 6);
-  assert.deepEqual(
-    new Set(buttons.map((button) => button.id)),
-    new Set(WHATSAPP_MENU_ROWS.map((row) => row.id))
-  );
-  for (const group of WELCOME_MENU_BUTTON_GROUPS) {
-    assert.ok(group.length <= 3);
-    for (const button of group) assert.ok(button.title.length <= 20, button.title);
-  }
-});
-
-test('welcome menu is only sent on the first spontaneous contact', () => {
+test('a first CRM message cannot trigger a greeting without verified inbound-first origin', () => {
   assert.equal(shouldSendInitialMenu({
     message: { text: { body: 'Oi' } },
     messageCount: 1,
+  }), false);
+
+  // Only an independently verified inbound-first conversation may qualify.
+  assert.equal(shouldSendInitialMenu({
+    message: { text: { body: 'Oi' } },
+    messageCount: 1,
+    inboundOriginVerified: true,
   }), true);
 
   assert.equal(shouldSendInitialMenu({

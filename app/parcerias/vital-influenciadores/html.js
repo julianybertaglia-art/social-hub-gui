@@ -45,7 +45,7 @@ export function influencerFormHtml({ token = '', values = {}, error = '', succes
       <div><div class="brand"><img src="/vital-decor-logo.png" alt="Vital Decor"></div><h1>Crie, indique e cresça com a gente.</h1><p>Conte um pouco sobre seu perfil no TikTok. A inscrição leva cerca de 3 minutos e nos ajuda a encontrar criadores com conteúdo que combina com a Vital.</p></div>
       <div class="badge"><b>3 min</b><span>formulário rápido</span></div>
     </section>
-    <form method="post" action="/parcerias/vital-influenciadores" autocomplete="on">
+    <form method="post" action="/parcerias/vital-influenciadores" enctype="multipart/form-data" autocomplete="on">
       <input type="hidden" name="token" value="${escapeHtml(token)}">
       <label class="hp" aria-hidden="true">Não preencha<input name="company_site" tabindex="-1" autocomplete="off"></label>
       ${error ? `<div class="error">${escapeHtml(error)}</div>` : ''}
@@ -64,8 +64,14 @@ export function influencerFormHtml({ token = '', values = {}, error = '', succes
         <label>Média de comentários<input name="averageComments" type="number" min="0" max="1000000000" required inputmode="numeric" value="${v('averageComments')}"></label>
         <label>Quantos vídeos publica por semana?<input name="postsPerWeek" type="number" min="0" max="100" required inputmode="numeric" value="${v('postsPerWeek')}"></label>
         <label>% aproximada do público no Brasil<input name="brazilAudiencePercent" type="number" min="0" max="100" required inputmode="numeric" value="${v('brazilAudiencePercent')}"></label>
-        <label>Já vendeu como afiliado?<select name="affiliateExperience" required><option value="">Selecione</option>${option('yes','Sim',values.affiliateExperience)}${option('no','Ainda não',values.affiliateExperience)}</select></label>
+        <label>Já gerou vendas como afiliado no TikTok Shop?<select name="affiliateExperience" required><option value="">Selecione</option>${option('yes','Sim',values.affiliateExperience)}${option('no','Ainda não',values.affiliateExperience)}</select></label>
         <label>Já fez live de vendas?<select name="liveExperience" required><option value="">Selecione</option>${option('yes','Sim',values.liveExperience)}${option('no','Ainda não',values.liveExperience)}</select></label>
+      </div></fieldset>
+      <fieldset><legend>Resultados com vendas</legend><span class="help">Se você já vende pelo TikTok Shop, queremos entender seu resultado real. Não precisa mostrar dados bancários nem informações pessoais.</span><div class="grid">
+        <label>Vendas nos últimos 30 dias<select name="salesLast30dRange"><option value="">Selecione</option>${option('none','Ainda não tive vendas',values.salesLast30dRange)}${option('up_to_1k','Até R$ 1 mil',values.salesLast30dRange)}${option('1k_5k','R$ 1 mil a R$ 5 mil',values.salesLast30dRange)}${option('5k_20k','R$ 5 mil a R$ 20 mil',values.salesLast30dRange)}${option('20k_50k','R$ 20 mil a R$ 50 mil',values.salesLast30dRange)}${option('50k_plus','Mais de R$ 50 mil',values.salesLast30dRange)}</select></label>
+        <label>Pedidos nos últimos 30 dias<input name="salesOrdersLast30d" type="number" min="0" max="1000000" inputmode="numeric" value="${v('salesOrdersLast30d')}"></label>
+        <label class="full">Print do painel de vendas do TikTok Shop<input name="salesProof" type="file" accept="image/jpeg,image/png,image/webp"></label>
+        <span class="help full">Se você marcou que já gerou vendas como afiliado, envie um print mostrando os resultados dos últimos 30 dias. Pode ocultar nome, saldo ou qualquer dado pessoal. Formatos: JPG, PNG ou WebP, até 4 MB.</span>
       </div></fieldset>
       <fieldset><legend>Seu conteúdo</legend><span class="help">Mande os vídeos que melhor representam seu jeito de criar e vender.</span><div class="grid">
         <label class="full">Link do seu melhor vídeo<input name="topVideo1" type="url" required maxlength="300" placeholder="Link de um vídeo no TikTok" value="${v('topVideo1')}"></label>

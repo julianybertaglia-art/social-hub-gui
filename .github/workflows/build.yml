@@ -28,5 +28,8 @@ jobs:
       - name: Verificar saudação e atendimento WhatsApp
         run: node --test tests/whatsapp-influencer-automation.test.mjs
 
+      - name: Testar retorno à guia sem carregamento
+        run: node --test tests/tideplace-tab-resume.test.mjs
+
       - name: Testar build
         run: npm run build

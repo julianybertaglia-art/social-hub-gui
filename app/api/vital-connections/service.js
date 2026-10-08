@@ -1,6 +1,6 @@
 import { getSupabaseAdmin, getMetaCredentials, WHATSAPP_API_VERSION } from '../whatsapp/lib';
 import { WORKSPACE, GUI_INSTAGRAM_ID, SESSION_TTL_MS, fail, publicCandidate,
-  selectCandidate, validAppToken, safePhoneId, publicConnection } from './helpers.mjs';
+  selectCandidate, validAppToken, safePhoneId, publicConnection, bearerToken, connectionOwner } from './helpers.mjs';
 
 export const APP_ID = process.env.META_WHATSAPP_APP_ID || process.env.META_APP_ID || '1975149819862842';
 const APP_SECRET = process.env.META_WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;
@@ -9,16 +9,9 @@ const SESSIONS = 'workspace_meta_connection_sessions';
 const PAGE_FIELDS = 'id,username,name,profile_picture_url,followers_count,media_count';
 
 export async function authorize(request) {
-  const token = request.headers.get('authorization')?.match(/^Bearer (\S+)$/i)?.[1];
-  if (!token) throw fail('Entre no TidePlace para acessar as conexões.', 401);
+  const token = bearerToken(request);
   const db = getSupabaseAdmin();
-  const { data, error } = await db.auth.getUser(token);
-  if (error || !data?.user?.id) throw fail('Sua sessão expirou. Entre novamente no TidePlace.', 401);
-  const { data: state, error: stateError } = await db.from('content_items')
-    .select('id').eq('title', '__SOCIAL_HUB_STATE__').eq('user_id', data.user.id).maybeSingle();
-  if (stateError) throw fail('Não foi possível verificar seu acesso.', 503);
-  if (!state) throw fail('Esta conta não tem acesso ao TidePlace.', 403);
-  return { db, ownerId: data.user.id };
+  return { db, ownerId: await connectionOwner(db, token) };
 }
 
 export async function graph(path, token, options = {}) {

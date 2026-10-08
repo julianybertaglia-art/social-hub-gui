@@ -8,6 +8,22 @@ export function fail(message, status = 400) {
   return Object.assign(new Error(message), { status });
 }
 
+export function bearerToken(request) {
+  const token = request.headers.get('authorization')?.match(/^Bearer (\S+)$/i)?.[1];
+  if (!token) throw fail('Entre no TidePlace para acessar as conexões.', 401);
+  return token;
+}
+
+export async function connectionOwner(db, token) {
+  const { data, error } = await db.auth.getUser(token);
+  if (error || !data?.user?.id) throw fail('Sua sessão expirou. Entre novamente no TidePlace.', 401);
+  const { data: state, error: stateError } = await db.from('content_items')
+    .select('id').eq('title', '__SOCIAL_HUB_STATE__').eq('user_id', data.user.id).limit(1).maybeSingle();
+  if (stateError) throw fail('Não foi possível verificar seu acesso.', 503);
+  if (!state) throw fail('Esta conta não tem acesso ao TidePlace.', 403);
+  return data.user.id;
+}
+
 export function publicCandidate(item) {
   return {
     id: item.id,

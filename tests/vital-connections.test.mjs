@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { WORKSPACE, GUI_INSTAGRAM_ID, publicCandidate, publicConnection, selectCandidate,
-  validAppToken, safePhoneId, validWebhookSignature, webhookDestination } from '../app/api/vital-connections/helpers.mjs';
+  validAppToken, safePhoneId, validWebhookSignature, webhookDestination, bearerToken, connectionOwner } from '../app/api/vital-connections/helpers.mjs';
 import { saveWorkspaceMessages, dispatchWorkspaceWebhook } from '../app/api/vital-connections/webhook.mjs';
 
 const now = 1791467000000;
@@ -14,6 +14,34 @@ const connection = { id: 'vital-connection', owner_user_id: 'owner', workspace_i
 const primary = { phoneNumberId: '111111', wabaId: '999999' };
 const event = (phone, waba = '999999') => ({ wabaId: waba, field: 'messages',
   value: { metadata: { phone_number_id: phone }, messages: [] } });
+
+test('verified owners with multiple saved Hub states can connect; other users cannot', async () => {
+  const states = Array.from({ length: 199 }, (_, id) => ({ id, user_id: 'owner', title: '__SOCIAL_HUB_STATE__' }));
+  let user = 'owner';
+  let authCalls = 0;
+  const db = {
+    auth: { async getUser(token) { authCalls++; return token === 'valid-session'
+      ? { data: { user: { id: user } } } : { error: new Error('invalid') }; } },
+    from(table) {
+      assert.equal(table, 'content_items');
+      let rows = states;
+      const query = {
+        select() { return query; },
+        eq(key, value) { rows = rows.filter((row) => row[key] === value); return query; },
+        limit(n) { rows = rows.slice(0, n); return query; },
+        async maybeSingle() { return rows.length > 1 ? { error: new Error('multiple records') }
+          : { data: rows[0] || null }; },
+      };
+      return query;
+    },
+  };
+  assert.equal(await connectionOwner(db, 'valid-session'), 'owner');
+  assert.equal(authCalls, 1);
+  user = 'another-user';
+  await assert.rejects(connectionOwner(db, 'valid-session'), { status: 403 });
+  await assert.rejects(connectionOwner(db, 'invalid-session'), { status: 401 });
+  assert.throws(() => bearerToken(new Request('https://example.com')), { status: 401 });
+});
 
 test('pending authorization is bound to owner, workspace, platform, expiry and state', () => {
   assert.equal(selectCandidate(session, 'owner', 'instagram', candidate.id, now), candidate);

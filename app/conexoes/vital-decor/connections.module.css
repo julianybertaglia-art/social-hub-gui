@@ -36,4 +36,5 @@
 .option input { accent-color: #7b2945; }
 .message { background: #f0e5ea; border: 1px solid #dfc8d2; border-radius: 10px; padding: 15px 18px; color: #663346; font-size: 13px; line-height: 1.6; margin: 24px 0; }
 .footer { font-size: 11px; color: #9b8b92; padding: 30px 0 10px; }
+.cancel { background: transparent; border: 1px solid #bb8297; border-radius: 8px; color: #75243d; padding: 10px 15px; font: inherit; font-size: 12px; cursor: pointer; }
 @media (max-width: 680px) { .grid { grid-template-columns: 1fr; } .page { padding: 24px 18px; } .header { padding-bottom: 36px; } .card, .selection { padding: 24px; } }

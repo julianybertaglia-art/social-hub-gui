@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../../CloudGate';
+import { launchMetaLogin } from './meta-login.mjs';
 import styles from './connections.module.css';
 
 function facebookOrigin(origin) {
@@ -28,7 +29,29 @@ export default function VitalConnections() {
   const [configInput, setConfigInput] = useState('');
   const [pending, setPending] = useState(null);
   const [selectedId, setSelectedId] = useState('');
+  const [awaitingMeta, setAwaitingMeta] = useState(false);
   const whatsapp = useRef(null);
+  const cancelLogin = useRef(null);
+
+  useEffect(() => () => { cancelLogin.current?.(); }, []);
+
+  function loginFailure(error) {
+    whatsapp.current = null;
+    setAwaitingMeta(false);
+    setBusy('');
+    setMessage(error?.message === 'meta_login_timeout'
+      ? 'A Meta não retornou a autorização. Tente novamente e confira se a janela de login abriu.'
+      : 'Não foi possível abrir a autorização da Meta. Tente novamente.');
+  }
+
+  function cancelAttempt() {
+    cancelLogin.current?.();
+    cancelLogin.current = null;
+    whatsapp.current = null;
+    setAwaitingMeta(false);
+    setBusy('');
+    setMessage('Tentativa cancelada. Você pode iniciar a conexão novamente.');
+  }
 
   const api = useCallback(async (body) => {
     if (!supabase) throw new Error('A conexão com o TidePlace está indisponível.');
@@ -62,6 +85,7 @@ export default function VitalConnections() {
     const session = whatsapp.current;
     if (!session?.active || !session.code || !session.wabaId || session.finishing) return;
     session.finishing = true;
+    setAwaitingMeta(false);
     setMessage('Conferindo o número autorizado pela Meta...');
     try {
       const result = await api({
@@ -119,7 +143,9 @@ export default function VitalConnections() {
         whatsapp.current.wabaId = String(data.data?.waba_id || '');
         finishWhatsApp();
       } else if (['CANCEL', 'ERROR'].includes(data.event)) {
+        cancelLogin.current?.();
         whatsapp.current = null;
+        setAwaitingMeta(false);
         setBusy('');
         setMessage('A autorização do WhatsApp não foi concluída. Você pode tentar novamente.');
       }
@@ -129,10 +155,16 @@ export default function VitalConnections() {
   }, [finishWhatsApp]);
 
   function connectInstagram() {
+    cancelLogin.current?.();
     setPending(null);
     setBusy('instagram');
+    setAwaitingMeta(true);
     setMessage('Conclua a autorização do Instagram na janela da Meta.');
-    window.FB.login(async (response) => {
+    cancelLogin.current = launchMetaLogin(window.FB, {
+      scope: 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights',
+      auth_type: 'rerequest',
+    }, async (response) => {
+      setAwaitingMeta(false);
       const userToken = response.authResponse?.accessToken;
       if (!userToken) {
         setMessage('A autorização do Instagram não foi concluída. Você pode tentar novamente.');
@@ -144,10 +176,7 @@ export default function VitalConnections() {
       } catch (error) {
         setMessage(error.message);
       } finally { setBusy(''); }
-    }, {
-      scope: 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights',
-      auth_type: 'rerequest',
-    });
+    }, loginFailure);
   }
 
   function connectWhatsApp() {
@@ -157,13 +186,19 @@ export default function VitalConnections() {
       return;
     }
     window.localStorage.setItem('lynna_meta_whatsapp_config_id', configId);
+    cancelLogin.current?.();
     setPending(null);
     setBusy('whatsapp');
+    setAwaitingMeta(true);
     setMessage('Conclua a autorização do WhatsApp na janela da Meta.');
     whatsapp.current = { active: true, code: '', wabaId: '', finishing: false };
-    window.FB.login((response) => {
+    cancelLogin.current = launchMetaLogin(window.FB, {
+      config_id: configId, response_type: 'code', override_default_response_type: true,
+      extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' },
+    }, (response) => {
       if (!whatsapp.current) return;
       if (!response.authResponse?.code) {
+        setAwaitingMeta(false);
         whatsapp.current = null;
         setBusy('');
         setMessage('A autorização do WhatsApp não foi concluída. Você pode tentar novamente.');
@@ -171,10 +206,7 @@ export default function VitalConnections() {
       }
       whatsapp.current.code = response.authResponse.code;
       finishWhatsApp();
-    }, {
-      config_id: configId, response_type: 'code', override_default_response_type: true,
-      extras: { setup: {}, featureType: 'whatsapp_business_app_onboarding', sessionInfoVersion: '3' },
-    });
+    }, loginFailure);
   }
 
   async function confirmAccount() {
@@ -267,6 +299,7 @@ export default function VitalConnections() {
         </section>
       )}
       {message && <p role="status" aria-live="polite" className={styles.message}>{message}</p>}
+      {awaitingMeta && <button className={styles.cancel} onClick={cancelAttempt}>Cancelar tentativa</button>}
       <footer className={styles.footer}>Vital Decor · Instagram e WhatsApp</footer>
     </main>
   );

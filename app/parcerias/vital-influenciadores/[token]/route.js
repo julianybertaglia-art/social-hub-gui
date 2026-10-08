@@ -95,30 +95,18 @@ export async function GET(request, context) {
 }
 
 async function boundedForm(request) {
-  if (!request.headers.get('content-type')?.startsWith('application/x-www-form-urlencoded')) {
+  const contentType = String(request.headers.get('content-type') || '').toLowerCase();
+  if (!contentType.startsWith('multipart/form-data')) {
     throw Object.assign(new Error('Use o formulário abaixo para enviar sua inscrição.'), { status: 415 });
   }
 
-  const reader = request.body?.getReader();
-  if (!reader) return {};
-
-  const decoder = new TextDecoder();
-  let raw = '';
-  let bytes = 0;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    bytes += value.byteLength;
-    if (bytes > 32768) {
-      await reader.cancel();
-      throw Object.assign(new Error('O formulário excedeu o tamanho permitido.'), { status: 413 });
-    }
-    raw += decoder.decode(value, { stream: true });
+  const contentLength = Number(request.headers.get('content-length') || 0);
+  if (Number.isFinite(contentLength) && contentLength > 4400000) {
+    throw Object.assign(new Error('O formulário excedeu o tamanho permitido. Use um print de até 4 MB.'), { status: 413 });
   }
 
-  raw += decoder.decode();
-  return Object.fromEntries(new URLSearchParams(raw));
+  const formData = await request.formData();
+  return Object.fromEntries(formData.entries());
 }
 
 export async function POST(request, context) {

@@ -262,6 +262,19 @@ export default function Home() {
     .filter(Boolean);
 
   useEffect(() => {
+    // The CloudGate refresh updates metrics in the background. Repaint just the
+    // numbers, preserving the current section, draft forms and scroll position.
+    function handleUpdatedInstagramMetrics(event) {
+      const updated = event?.detail?.metrics;
+      if (!updated || typeof updated !== 'object') return;
+      setLiveMetrics((current) => ({ ...(current || {}), ...updated }));
+    }
+
+    window.addEventListener('tideplace:instagram-metrics-updated', handleUpdatedInstagramMetrics);
+    return () => window.removeEventListener('tideplace:instagram-metrics-updated', handleUpdatedInstagramMetrics);
+  }, []);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const requestedSection = params.get('section');
     if (SECTION_IDS.includes(requestedSection)) setActive(requestedSection);

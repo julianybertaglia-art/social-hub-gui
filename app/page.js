@@ -24,6 +24,7 @@ const navGroups = [
     items: [
       { href: '/whatsapp', label: 'CRM', icon: '◉', type: 'link' },
       { href: '/automacoes', label: 'Automações', icon: '⚡', type: 'link' },
+      { href: '/conexoes/vital-decor', label: 'Vital Decor · Conexões', icon: '◎', type: 'link' },
     ],
   },
   {

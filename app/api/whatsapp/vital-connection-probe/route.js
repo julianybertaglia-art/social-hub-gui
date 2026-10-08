@@ -42,7 +42,7 @@ export async function GET(request) {
   if (!meta?.accessToken) return Response.json({ credentialAvailable: false });
   const appId = process.env.META_WHATSAPP_APP_ID || process.env.META_APP_ID || '1975149819862842';
   const secret = process.env.META_WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;
-  const [debug, phones, owned] = await Promise.all([
+  const [debug, phones, owned, systemUser, account] = await Promise.all([
     secret ? inspect('debug_token', `${appId}|${secret}`, { input_token: meta.accessToken })
       : Promise.resolve({ ok: false, message: 'App secret unavailable' }),
     inspect(`${VITAL_ACCOUNT}/phone_numbers`, meta.accessToken, {
@@ -51,6 +51,8 @@ export async function GET(request) {
     inspect(`${VITAL_BUSINESS}/owned_whatsapp_business_accounts`, meta.accessToken, {
       fields: 'id,name', limit: '100',
     }),
+    inspect('me', meta.accessToken, { fields: 'id,name' }),
+    inspect(VITAL_ACCOUNT, meta.accessToken, { fields: 'id,name' }),
   ]);
   const phone = phones.ok ? phones.data.data?.find((item) =>
     String(item.display_phone_number || '').replace(/\D/g, '') === VITAL_PHONE) : null;
@@ -61,11 +63,14 @@ export async function GET(request) {
     credentialAvailable: true, credentialSource: meta.source,
     token: debug.ok ? {
       appId: debug.data.data?.app_id, valid: debug.data.data?.is_valid,
-      type: debug.data.data?.type, scopes: debug.data.data?.scopes || [],
+      type: debug.data.data?.type, userId: debug.data.data?.user_id,
+      scopes: debug.data.data?.scopes || [],
       vitalAssetGranted: (debug.data.data?.granular_scopes || []).some((scope) =>
         scope.target_ids?.includes(VITAL_ACCOUNT)),
     } : debug,
     accountAccess: phones.ok ? { ok: true, targetFound: Boolean(phone) } : phones,
+    systemUser: systemUser.ok ? systemUser.data : systemUser,
+    account: account.ok ? account.data : account,
     phone: profile?.ok ? profile.data : profile,
     ownedAccounts: owned.ok ? { ok: true, accounts: owned.data.data || [] } : owned,
   }, { headers: { 'Cache-Control': 'no-store' } });

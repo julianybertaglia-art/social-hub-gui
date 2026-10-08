@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import styles from './cloudgate.module.css';
+import { hasAuthIdentityChanged, sameAuthenticatedUser } from './lib/session-gate.mjs';
 
 const STORAGE_KEYS = [
   'guihub-metrics',
@@ -49,12 +50,6 @@ function serializeState(data) {
   return JSON.stringify(data);
 }
 
-function isUserEditing() {
-  const element = document.activeElement;
-  if (!element) return false;
-  return ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName) || element.isContentEditable;
-}
-
 async function refreshInstagramMetrics() {
   try {
     const response = await fetch('/api/instagram', { cache: 'no-store' });
@@ -83,6 +78,13 @@ async function refreshInstagramMetrics() {
     window.localStorage.setItem('guihub-metrics', JSON.stringify(nextMetrics));
     window.localStorage.setItem('guihub-instagram-updated-at', payload.updatedAt || new Date().toISOString());
     window.localStorage.setItem('guihub-instagram-source', source);
+
+    // Update the visible dashboard without remounting the entire application.
+    if (changed) {
+      window.dispatchEvent(new CustomEvent('tideplace:instagram-metrics-updated', {
+        detail: { metrics: nextMetrics, source },
+      }));
+    }
 
     return { ok: true, changed, source };
   } catch (error) {
@@ -160,6 +162,7 @@ export default function CloudGate({ children }) {
   const lastMetricsRefreshRef = useRef(0);
   const contentRefreshInProgressRef = useRef(false);
   const lastContentRefreshRef = useRef(0);
+  const authUserIdRef = useRef(null);
 
   useEffect(() => {
     if (!supabase) {
@@ -171,13 +174,29 @@ export default function CloudGate({ children }) {
 
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
-      setSession(data.session ?? null);
+      const nextSession = data?.session ?? null;
+      if (hasAuthIdentityChanged(authUserIdRef.current, nextSession)) {
+        authUserIdRef.current = nextSession?.user?.id ?? null;
+        setReady(false);
+      }
+      setSession((current) => sameAuthenticatedUser(current, nextSession) ? current : nextSession);
+      setInitializing(false);
+    }).catch((error) => {
+      if (!active) return;
+      console.error('Não foi possível conferir a sessão:', error);
       setInitializing(false);
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setReady(false);
+      // TOKEN_REFRESHED and tab-focus revalidation must not reset the screen.
+      // Reset cloud data only when the authenticated identity truly changes.
+      if (hasAuthIdentityChanged(authUserIdRef.current, nextSession)) {
+        authUserIdRef.current = nextSession?.user?.id ?? null;
+        rowIdRef.current = null;
+        lastSnapshotRef.current = '';
+        setReady(false);
+      }
+      setSession((current) => sameAuthenticatedUser(current, nextSession) ? current : nextSession);
     });
 
     return () => {
@@ -236,12 +255,6 @@ export default function CloudGate({ children }) {
 
       if (cancelled) return;
 
-      setSyncStatus('Atualizando Instagram...');
-      const instagramResult = await refreshInstagramMetrics();
-      lastMetricsRefreshRef.current = Date.now();
-
-      if (cancelled) return;
-
       const previousContentUpdate = Date.parse(
         window.localStorage.getItem('guihub-media-performance-updated-at') || ''
       );
@@ -250,14 +263,21 @@ export default function CloudGate({ children }) {
         : 0;
 
       lastSnapshotRef.current = data ? serializeState(readLocalState()) : '';
-      setSyncStatus(
-        instagramResult.ok
-          ? `Sincronizado · Instagram atualizado · ${instagramResult.source}`
-          : data
-            ? 'Sincronizado · Instagram indisponível'
-            : 'Preparando primeira sincronização...'
-      );
+      // Do not keep the whole interface hidden while waiting for the Instagram API.
+      setSyncStatus(data ? 'Sincronizado · Atualizando Instagram em segundo plano...' : 'Preparando primeira sincronização...');
       setReady(true);
+
+      void refreshInstagramMetrics().then((instagramResult) => {
+        if (cancelled) return;
+        lastMetricsRefreshRef.current = Date.now();
+        setSyncStatus(
+          instagramResult.ok
+            ? `Sincronizado · Instagram atualizado · ${instagramResult.source}`
+            : data
+              ? 'Sincronizado · Instagram indisponível'
+              : 'Primeira sincronização pendente · Instagram indisponível'
+        );
+      });
     }
 
     initializeCloudState();
@@ -265,7 +285,7 @@ export default function CloudGate({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (!supabase || !session || !ready) return undefined;
@@ -294,9 +314,6 @@ export default function CloudGate({ children }) {
           : 'Sincronizado · não foi possível atualizar Instagram'
       );
 
-      if (result.ok && result.changed && !isUserEditing()) {
-        window.location.reload();
-      }
     }
 
     const intervalId = window.setInterval(

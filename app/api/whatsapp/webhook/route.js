@@ -1,21 +1,16 @@
-import crypto from 'node:crypto';
-import { getSupabaseAdmin, messageBody, normalizeWaId, upsertWhatsAppContact, sendWhatsAppText } from '../lib';
+import { getSupabaseAdmin, getMetaCredentials, messageBody, normalizeWaId, upsertWhatsAppContact, sendWhatsAppText } from '../lib';
 import { processWhatsAppAutomation } from '../automation';
 import { processWhatsAppAi } from '../ai';
+import { validWebhookSignature } from '../../vital-connections/helpers.mjs';
+import { dispatchWorkspaceWebhook } from '../../vital-connections/webhook.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 function isValidSignature(rawBody, signatureHeader) {
-  const appSecret = process.env.META_WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;
-  if (!appSecret || !signatureHeader?.startsWith('sha256=')) return false;
-
-  const received = signatureHeader.slice('sha256='.length);
-  const expected = crypto.createHmac('sha256', appSecret).update(rawBody, 'utf8').digest('hex');
-  const receivedBuffer = Buffer.from(received, 'hex');
-  const expectedBuffer = Buffer.from(expected, 'hex');
-  if (receivedBuffer.length !== expectedBuffer.length) return false;
-  return crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
+  return validWebhookSignature(rawBody, signatureHeader, [
+    process.env.META_WHATSAPP_APP_SECRET, process.env.META_APP_SECRET,
+  ]);
 }
 
 function eventChanges(payload) {
@@ -312,7 +307,10 @@ export async function POST(request) {
   const origin = new URL(request.url).origin;
 
   try {
+    const primary = await getMetaCredentials();
     for (const change of eventChanges(payload)) {
+      const destination = await dispatchWorkspaceWebhook(supabase, change, primary);
+      if (destination !== 'primary') continue;
       if (change.field === 'messages') await handleMessages(supabase, change.value, origin);
       if (change.field === 'smb_message_echoes') await handleEchoes(supabase, change.value);
       if (change.field === 'smb_app_state_sync') await handleContactSync(supabase, change.value);

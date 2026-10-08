@@ -20,6 +20,7 @@ const GROUPS = [
     items: [
       { href: '/whatsapp', label: 'CRM', icon: '◉', match: '/whatsapp' },
       { href: '/automacoes', label: 'Automações', icon: '⚡', match: '/automacoes' },
+      { href: '/conexoes/vital-decor', label: 'Vital Decor · Conexões', icon: '◎' },
     ],
   },
   {

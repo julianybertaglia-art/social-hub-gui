@@ -130,7 +130,17 @@ export function isAdImersaoNextAction(selectionId) {
   return AD_IMERSAO_NEXT_ACTIONS.some((item) => item.id === String(selectionId || ''));
 }
 
-export function shouldSendInitialMenu({ message, messageCount, hasPreviousContact = false }) {
+export function shouldSendInitialMenu({
+  message,
+  messageCount,
+  hasPreviousContact = false,
+  inboundOriginVerified = false,
+}) {
+  // The first inbound message recorded in our CRM may actually be a reply to
+  // manual outreach from the WhatsApp Business app. Outbound echoes/history
+  // are not guaranteed to arrive first (or at all). Never send an unsolicited
+  // welcome menu unless the origin is independently verified as inbound-first.
+  if (!inboundOriginVerified) return false;
   if (hasPreviousContact) return false;
   if (interactiveSelectionId(message)) return false;
   if (Number(messageCount) !== 1) return false;
@@ -503,6 +513,9 @@ export async function processWhatsAppAutomation(supabase, {
       message,
       messageCount: count,
       hasPreviousContact: Boolean(contact._wasExistingBeforeUpsert) || Boolean(session),
+      // We cannot verify inbound-first from Meta's message callback alone.
+      // Keep automatic greetings off; the explicit MENU request still works.
+      inboundOriginVerified: false,
     })) {
       await sendMainMenu(supabase, contact, { welcome: true });
       await finishEvent(supabase, messageId, 'processed');

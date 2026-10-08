@@ -75,3 +75,29 @@ export async function GET(request) {
     ownedAccounts: owned.ok ? { ok: true, accounts: owned.data.data || [] } : owned,
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
+
+export async function POST(request) {
+  const key = request.headers.get('x-vital-probe-key') || '';
+  const digest = createHash('sha256').update(key).digest();
+  if (!timingSafeEqual(digest, Buffer.from(PROBE_HASH, 'hex'))) {
+    return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  const meta = await getMetaCredentials();
+  if (!meta?.accessToken) return Response.json({ credentialAvailable: false }, { status: 503 });
+  const identity = await inspect('me', meta.accessToken, { fields: 'id,name' });
+  if (!identity.ok || identity.data.id !== '122195389388839764') {
+    return Response.json({ error: 'Unexpected authorization identity' }, { status: 409 });
+  }
+  // The user authorized connecting this exact Vital Decor account to TidePlace.
+  // Reuse its existing integration user; never change the Gui number or token.
+  const response = await fetch(`https://graph.facebook.com/${WHATSAPP_API_VERSION}/${VITAL_ACCOUNT}/assigned_users`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${meta.accessToken}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ user: identity.data.id, tasks: JSON.stringify(['MANAGE']) }),
+    cache: 'no-store', signal: AbortSignal.timeout(15000),
+  });
+  const data = await response.json().catch(() => ({}));
+  return Response.json({ ok: response.ok && !data.error, result: data }, {
+    headers: { 'Cache-Control': 'no-store' },
+  });
+}

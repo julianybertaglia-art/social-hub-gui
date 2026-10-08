@@ -29,7 +29,7 @@ const baseApplication = {
   averageComments: '30',
   postsPerWeek: '5',
   brazilAudiencePercent: '85',
-  affiliateExperience: 'yes',
+  affiliateExperience: 'no',
   liveExperience: 'yes',
   contentCommitment: 'yes',
   topVideo1: 'https://www.tiktok.com/@criadora/video/123456789',
@@ -40,7 +40,7 @@ const baseApplication = {
 
 test('the WhatsApp list fits Meta limits and exposes the five current topics', () => {
   assert.equal(WHATSAPP_MENU_ROWS.length, 5);
-  assert.equal(new Set(WHATSAPP_MENU_ROWS.map((row) => row.id)).size, 6);
+  assert.equal(new Set(WHATSAPP_MENU_ROWS.map((row) => row.id)).size, 5);
   for (const row of WHATSAPP_MENU_ROWS) {
     assert.ok(row.title.length <= 24, row.title);
     assert.ok(row.description.length <= 72, row.description);

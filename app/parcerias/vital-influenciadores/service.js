@@ -3,6 +3,10 @@ import { sendWhatsAppText } from '../../api/whatsapp/lib.js';
 
 export const INFLUENCER_APPLICATIONS_TABLE = 'influencer_applications';
 export const INFLUENCER_CONSENT_TEXT = 'Autorizo a Vital Decor a analisar os dados e perfis informados para avaliar uma possível parceria.';
+const SALES_PROOF_BUCKET = 'influencer-sales-proof';
+const SALES_RANGES = new Set(['none', 'up_to_1k', '1k_5k', '5k_20k', '20k_50k', '50k_plus']);
+const SALES_PROOF_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const SALES_PROOF_MAX_BYTES = 4000000;
 
 export function formError(message, status = 400) {
   return Object.assign(new Error(message), { status });
@@ -50,6 +54,41 @@ function optionalTikTokVideo(value) {
   return raw ? socialUrl(raw, 'TikTok', true) : null;
 }
 
+function optionalInteger(value, { min = 0, max, label }) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return null;
+  return integer(raw, { min, max, label });
+}
+
+function validateSalesProof(file, required = false) {
+  const validFile = file && typeof file === 'object' && typeof file.arrayBuffer === 'function' && Number(file.size || 0) > 0;
+  if (!validFile) {
+    if (required) throw formError('Envie um print do seu painel de vendas do TikTok Shop.', 400);
+    return null;
+  }
+  if (!SALES_PROOF_TYPES.has(String(file.type || '').toLowerCase())) {
+    throw formError('O print de vendas precisa estar em JPG, PNG ou WebP.', 400);
+  }
+  if (Number(file.size || 0) > SALES_PROOF_MAX_BYTES) {
+    throw formError('O print de vendas deve ter no máximo 4 MB.', 400);
+  }
+  return file;
+}
+
+async function uploadSalesProof(db, applicationId, file) {
+  if (!file) return null;
+  const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+  const path = `${applicationId}/${Date.now()}.${extension}`;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const { error } = await db.storage.from(SALES_PROOF_BUCKET).upload(path, bytes, {
+    contentType: file.type,
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) throw formError('Não foi possível enviar o print das vendas. Tente novamente.', 503);
+  return path;
+}
+
 export function validateInfluencerApplication(values) {
   const publicToken = String(values.token || '').trim();
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(publicToken)) {
@@ -68,6 +107,20 @@ export function validateInfluencerApplication(values) {
   if (!['yes', 'no'].includes(affiliateExperience) || !['yes', 'no'].includes(liveExperience)) {
     throw formError('Responda às perguntas sobre sua experiência.', 400);
   }
+
+  const salesLast30dRange = String(values.salesLast30dRange || '').trim();
+  if (salesLast30dRange && !SALES_RANGES.has(salesLast30dRange)) {
+    throw formError('Confira a faixa de vendas dos últimos 30 dias.', 400);
+  }
+
+  const claimsAffiliateSales = affiliateExperience === 'yes';
+  if (claimsAffiliateSales && (!salesLast30dRange || salesLast30dRange === 'none')) {
+    throw formError('Informe sua faixa de vendas dos últimos 30 dias.', 400);
+  }
+  const salesOrdersLast30d = claimsAffiliateSales
+    ? integer(values.salesOrdersLast30d, { min: 1, max: 1000000, label: 'a quantidade de pedidos dos últimos 30 dias' })
+    : optionalInteger(values.salesOrdersLast30d, { min: 0, max: 1000000, label: 'a quantidade de pedidos dos últimos 30 dias' });
+  const salesProof = validateSalesProof(values.salesProof, claimsAffiliateSales);
   if (values.contentCommitment !== 'yes') throw formError('Confirme sua disponibilidade para produzir os conteúdos.', 400);
   if (values.consent !== 'yes') throw formError('Autorize a análise dos dados para enviar sua inscrição.', 400);
 
@@ -87,6 +140,9 @@ export function validateInfluencerApplication(values) {
     brazilAudiencePercent: integer(values.brazilAudiencePercent, { min: 0, max: 100, label: 'a porcentagem de público brasileiro' }),
     affiliateExperience,
     liveExperience,
+    salesLast30dRange: salesLast30dRange || (claimsAffiliateSales ? null : 'none'),
+    salesOrdersLast30d,
+    salesProof,
     contentCommitment: 'yes',
     topVideoUrls: [values.topVideo1, values.topVideo2, values.topVideo3].map(optionalTikTokVideo).filter(Boolean),
     motivation: null,
@@ -135,6 +191,7 @@ export async function saveInfluencerApplication(db, values) {
   if (current.status === 'submitted') return { alreadySubmitted: true, classification: null };
 
   const now = new Date().toISOString();
+  const salesProofPath = await uploadSalesProof(db, current.id, values.salesProof);
   const { data, error } = await db.from(INFLUENCER_APPLICATIONS_TABLE).update({
     creator_name: values.creatorName,
     email: values.email,
@@ -150,6 +207,10 @@ export async function saveInfluencerApplication(db, values) {
     brazil_audience_percent: values.brazilAudiencePercent,
     affiliate_experience: values.affiliateExperience === 'yes',
     live_experience: values.liveExperience === 'yes',
+    sales_last_30d_range: values.salesLast30dRange || null,
+    sales_orders_last_30d: values.salesOrdersLast30d,
+    sales_proof_path: salesProofPath,
+    sales_proof_uploaded_at: salesProofPath ? now : null,
     content_commitment: true,
     top_video_urls: values.topVideoUrls,
     motivation: null,
@@ -168,8 +229,12 @@ export async function saveInfluencerApplication(db, values) {
     const { data: contact } = await db.from('whatsapp_contacts').select('tags,notes').eq('id', current.contact_id).maybeSingle();
     const label = INFLUENCER_CLASSIFICATIONS[values.classification]?.label || 'Revisar';
     const tags = Array.isArray(contact?.tags) ? contact.tags : [];
-    const nextTags = [...new Set([...tags, 'Influenciador TikTok — Vital', `Influenciador — ${label}`])];
-    const note = `Triagem automática: ${values.score}/100 · ${label}.`;
+    const proofTag = salesProofPath ? ['Influenciador — Comprovante de vendas enviado'] : [];
+    const nextTags = [...new Set([...tags, 'Influenciador TikTok — Vital', `Influenciador — ${label}`, ...proofTag])];
+    const salesNote = values.affiliateExperience === 'yes'
+      ? ` · Vendas 30d: ${values.salesLast30dRange} · Pedidos: ${values.salesOrdersLast30d} · comprovante enviado`
+      : '';
+    const note = `Triagem automática: ${values.score}/100 · ${label}${salesNote}.`;
     await db.from('whatsapp_contacts').update({
       tags: nextTags,
       notes: contact?.notes ? `${contact.notes}\n${note}`.slice(0, 5000) : note,
@@ -196,10 +261,17 @@ export async function saveInfluencerApplication(db, values) {
 
 export async function listInfluencerApplications(db) {
   const { data, error } = await db.from(INFLUENCER_APPLICATIONS_TABLE)
-    .select('id,contact_id,profile_name,creator_name,email,city_state,tiktok_url,instagram_url,niche,followers,average_views,average_likes,average_comments,posts_per_week,brazil_audience_percent,affiliate_experience,live_experience,content_commitment,top_video_urls,motivation,score,score_breakdown,qualification,status,review_status,review_notes,submitted_at,created_at,updated_at')
+    .select('id,contact_id,profile_name,creator_name,email,city_state,tiktok_url,instagram_url,niche,followers,average_views,average_likes,average_comments,posts_per_week,brazil_audience_percent,affiliate_experience,live_experience,sales_last_30d_range,sales_orders_last_30d,sales_proof_path,sales_proof_uploaded_at,content_commitment,top_video_urls,motivation,score,score_breakdown,qualification,status,review_status,review_notes,submitted_at,created_at,updated_at')
     .order('score', { ascending: false, nullsFirst: false })
     .order('submitted_at', { ascending: false, nullsFirst: false })
     .limit(250);
   if (error) throw formError('Não foi possível carregar os influenciadores.', 503);
-  return data || [];
+
+  return Promise.all((data || []).map(async (application) => {
+    if (!application.sales_proof_path) return { ...application, sales_proof_url: null };
+    const { data: signed } = await db.storage
+      .from(SALES_PROOF_BUCKET)
+      .createSignedUrl(application.sales_proof_path, 3600);
+    return { ...application, sales_proof_url: signed?.signedUrl || null };
+  }));
 }

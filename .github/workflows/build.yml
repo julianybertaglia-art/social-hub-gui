@@ -25,5 +25,8 @@ jobs:
       - name: Testar envio restrito de áudio
         run: node --test tests/instagram-audio.test.mjs
 
+      - name: Verificar saudação e atendimento WhatsApp
+        run: node --test tests/whatsapp-influencer-automation.test.mjs
+
       - name: Testar build
         run: npm run build

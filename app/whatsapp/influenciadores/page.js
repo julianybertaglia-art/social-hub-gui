@@ -10,6 +10,7 @@ const FILTERS = [
   { id: 'prequalified', label: 'Pré-aprovados' },
   { id: 'review', label: 'Revisar' },
   { id: 'low_fit', label: 'Baixa aderência' },
+  { id: 'sales_proof', label: 'Comprovante vendas' },
 ];
 
 const CLASSIFICATION = {
@@ -17,6 +18,21 @@ const CLASSIFICATION = {
   review: 'Revisar',
   low_fit: 'Baixa aderência',
 };
+
+const SALES_RANGE = {
+  none: 'Sem vendas',
+  up_to_1k: 'Até R$ 1 mil',
+  '1k_5k': 'R$ 1 mil a R$ 5 mil',
+  '5k_20k': 'R$ 5 mil a R$ 20 mil',
+  '20k_50k': 'R$ 20 mil a R$ 50 mil',
+  '50k_plus': 'Mais de R$ 50 mil',
+};
+
+function matchesApplicationFilter(app, filter) {
+  if (filter === 'all') return true;
+  if (filter === 'sales_proof') return Boolean(app.sales_proof_path);
+  return app.qualification === filter;
+}
 
 const NICHE = {
   casa_decoracao: 'Casa e decoração',
@@ -81,9 +97,9 @@ export default function InfluenciadoresPage() {
 
   const counts = useMemo(() => Object.fromEntries(FILTERS.map((item) => [
     item.id,
-    item.id === 'all' ? applications.length : applications.filter((app) => app.qualification === item.id).length,
+    applications.filter((app) => matchesApplicationFilter(app, item.id)).length,
   ])), [applications]);
-  const filtered = filter === 'all' ? applications : applications.filter((app) => app.qualification === filter);
+  const filtered = applications.filter((app) => matchesApplicationFilter(app, filter));
 
   async function saveReview() {
     if (!selected) return;
@@ -154,12 +170,15 @@ export default function InfluenciadoresPage() {
                 <div><span>Curtidas</span><b>{formatNumber(selected.average_likes)}</b></div>
                 <div><span>Posts/semana</span><b>{selected.posts_per_week}</b></div>
                 <div><span>Público BR</span><b>{selected.brazil_audience_percent}%</b></div>
-                <div><span>Já foi afiliado</span><b>{selected.affiliate_experience ? 'Sim' : 'Não'}</b></div>
+                <div><span>Já vende no TikTok Shop</span><b>{selected.affiliate_experience ? 'Sim' : 'Não'}</b></div>
+                <div><span>Vendas 30 dias</span><b>{SALES_RANGE[selected.sales_last_30d_range] || '—'}</b></div>
+                <div><span>Pedidos 30 dias</span><b>{selected.sales_orders_last_30d ?? '—'}</b></div>
               </div>
 
               <div className={styles.links}>
                 <a href={selected.tiktok_url} target="_blank" rel="noreferrer">Abrir TikTok ↗</a>
                 {selected.instagram_url && <a href={selected.instagram_url} target="_blank" rel="noreferrer">Abrir Instagram ↗</a>}
+                {selected.sales_proof_url && <a href={selected.sales_proof_url} target="_blank" rel="noreferrer">Ver comprovante de vendas ↗</a>}
                 {(selected.top_video_urls || []).map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer">Vídeo {index + 1} ↗</a>)}
               </div>
 

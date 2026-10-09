@@ -27,6 +27,7 @@ const GROUPS = [
     label: 'ANALYTICS',
     items: [
       { href: '/?section=metrics', label: 'Métricas', icon: '↗' },
+      { href: '/?section=metrics&account=vital-decor', label: 'Métricas da Vital', icon: '↗' },
       { href: '/?section=goals', label: 'Metas', icon: '◎' },
     ],
   },
@@ -110,3 +111,4 @@ export default function HubFrame({ children }) {
     </div>
   );
 }
+

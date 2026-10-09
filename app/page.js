@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import DetailDialog from './DetailDialog';
+import VitalInstagramMetrics from './VitalInstagramMetrics';
+import metricsStyles from './vital-instagram-metrics.module.css';
 
 const SECTION_IDS = ['dashboard', 'calendar', 'tasks', 'ideas', 'metrics', 'goals'];
 
@@ -30,7 +32,8 @@ const navGroups = [
   {
     label: 'ANALYTICS',
     items: [
-      { id: 'metrics', label: 'Métricas', icon: '↗', type: 'section' },
+      { id: 'metrics', account: 'gui-nonato', label: 'Métricas', icon: '↗', type: 'section' },
+      { id: 'metrics', account: 'vital-decor', label: 'Métricas da Vital', icon: '↗', type: 'section' },
       { id: 'goals', label: 'Metas', icon: '◎', type: 'section' },
     ],
   },
@@ -245,6 +248,8 @@ export default function Home() {
   const [crmSummary, setCrmSummary] = useState({ total: null, newLeads: null, readyToSchedule: 0 });
   const [automationCount, setAutomationCount] = useState(1);
   const [liveMetrics, setLiveMetrics] = useState(null);
+  const [metricsAccount, setMetricsAccount] = useState('gui-nonato');
+  const [vitalProfile, setVitalProfile] = useState(null);
   const [metrics, setMetrics] = useStoredState('guihub-metrics', defaultMetrics);
   const [posts, setPosts] = useStoredState('guihub-posts', defaultPosts);
   const [ideas, setIdeas] = useStoredState('guihub-ideas', defaultIdeas);
@@ -278,6 +283,7 @@ export default function Home() {
     const params = new URLSearchParams(window.location.search);
     const requestedSection = params.get('section');
     if (SECTION_IDS.includes(requestedSection)) setActive(requestedSection);
+    if (params.get('account') === 'vital-decor') setMetricsAccount('vital-decor');
 
     const hour = Number(new Intl.DateTimeFormat('pt-BR', {
       timeZone: 'America/Sao_Paulo',
@@ -333,10 +339,13 @@ export default function Home() {
     setDetailPath([{ kind: 'post', id }]);
   }
 
-  function goTo(section) {
+  function goTo(section, account) {
     setActive(section);
+    if (section === 'metrics' && account) setMetricsAccount(account);
     setMobileMenu(false);
-    const nextUrl = section === 'dashboard' ? '/' : `/?section=${section}`;
+    const selectedAccount = account || metricsAccount;
+    const accountQuery = section === 'metrics' && selectedAccount === 'vital-decor' ? '&account=vital-decor' : '';
+    const nextUrl = section === 'dashboard' ? '/' : `/?section=${section}${accountQuery}`;
     window.history.replaceState(null, '', nextUrl);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -538,9 +547,9 @@ export default function Home() {
               <div className="panel-heading">
                 <div>
                   <span className="eyebrow">PERFORMANCE</span>
-                  <h2>Instagram</h2>
+                  <h2>Instagram · @gui_nonato</h2>
                 </div>
-                <button className="text-button" onClick={() => goTo('metrics')}>Ver métricas</button>
+                <button className="text-button" onClick={() => goTo('metrics', 'gui-nonato')}>Ver métricas</button>
               </div>
               <div className="performance-mini-grid">
                 <div><span>Seguidores</span><strong>{formatMetric(currentMetrics.seguidores)}</strong></div>
@@ -662,6 +671,19 @@ export default function Home() {
   }
 
   function renderMetrics() {
+    const accounts = (
+      <div className={metricsStyles.accounts} aria-label="Conta do Instagram">
+        <button type="button" aria-pressed={metricsAccount === 'gui-nonato'} onClick={() => goTo('metrics', 'gui-nonato')}>Gui Nonato · @gui_nonato</button>
+        <button type="button" aria-pressed={metricsAccount === 'vital-decor'} onClick={() => goTo('metrics', 'vital-decor')}>Vital Decor · @vitaldecor_</button>
+      </div>
+    );
+    if (metricsAccount === 'vital-decor') return (
+      <>
+        <section className="page-heading"><div><span className="eyebrow">ANALYTICS</span><h1>Métricas do Instagram</h1><p className="subtitle">Acompanhe a conta conectada da Vital Decor.</p></div></section>
+        {accounts}
+        <VitalInstagramMetrics onProfile={setVitalProfile} />
+      </>
+    );
     const fields = [
       { key: 'seguidores', label: 'Seguidores', value: currentMetrics.seguidores, source: 'Meta' },
       { key: 'alcance', label: 'Alcance · 30 dias', value: currentMetrics.alcance, source: 'Meta' },
@@ -674,6 +696,7 @@ export default function Home() {
     return (
       <>
         <section className="page-heading"><div><span className="eyebrow">ANALYTICS</span><h1>Métricas do Instagram</h1><p className="subtitle">Dados oficiais da Meta e do CRM. Quando a fonte não entrega uma métrica, o Tide mostra “—” em vez de transformar ausência de dado em zero.</p></div></section>
+        {accounts}
         <section className="metrics-edit-grid">
           {fields.map(({ key, label, value, source }) => (
             <article className="metric-input-card" key={key}>
@@ -738,7 +761,7 @@ export default function Home() {
                   <span className="nav-icon">{item.icon}</span><span>{item.label}</span>
                 </Link>
               ) : (
-                <button key={item.id} type="button" className={active === item.id ? 'active' : ''} onClick={() => goTo(item.id)}>
+                <button key={item.id + (item.account || '')} type="button" className={active === item.id && (!item.account || metricsAccount === item.account) ? 'active' : ''} onClick={() => goTo(item.id, item.account)}>
                   <span className="nav-icon">{item.icon}</span><span>{item.label}</span>
                 </button>
               ))}
@@ -758,8 +781,13 @@ export default function Home() {
         <header className="topbar">
           <button className="menu-button" onClick={() => setMobileMenu(true)} aria-label="Abrir menu">☰</button>
           <div className="account-pill workspace-current">
-            <span className="instagram-dot">GN</span>
-            <div><strong>Gui Nonato</strong><span>@gui_nonato · Instagram</span></div>
+            <span className="instagram-dot">
+              {active === 'metrics' && metricsAccount === 'vital-decor'
+                ? vitalProfile?.profilePictureUrl
+                  ? <img src={vitalProfile.profilePictureUrl} alt="Vital Decor" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : 'VD'
+                : 'GN'}
+            </span>
+            <div><strong>{active === 'metrics' && metricsAccount === 'vital-decor' ? 'Vital Decor' : 'Gui Nonato'}</strong><span>@{active === 'metrics' && metricsAccount === 'vital-decor' ? vitalProfile?.username || 'vitaldecor_' : 'gui_nonato'} · Instagram</span></div>
           </div>
           <span className="workspace-status"><i /> Meta conectada</span>
         </header>
@@ -780,3 +808,4 @@ export default function Home() {
     </div>
   );
 }
+

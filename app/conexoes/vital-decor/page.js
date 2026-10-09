@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../../CloudGate';
+import VitalInstagramMetrics from '../../VitalInstagramMetrics';
 import { launchMetaLogin } from './meta-login.mjs';
 import styles from './connections.module.css';
 
@@ -276,6 +277,12 @@ export default function VitalConnections() {
           );
         })}
       </div>
+      {status?.connections.some((connection) => connection.platform === 'instagram' && connection.connected) && (
+        <>
+          <VitalInstagramMetrics />
+          <Link href="/?section=metrics&account=vital-decor" className={styles.back}>Abrir painel de métricas da Vital ↗</Link>
+        </>
+      )}
       {pending && (
         <section className={styles.selection} aria-labelledby="account-selection">
           <p className={styles.eyebrow}>ÚLTIMA ETAPA</p>
@@ -304,3 +311,4 @@ export default function VitalConnections() {
     </main>
   );
 }
+

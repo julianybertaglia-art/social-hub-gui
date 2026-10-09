@@ -6,6 +6,7 @@ import { useState } from 'react';
 import styles from './hub-frame.module.css';
 import ThemeCustomizer from './ThemeCustomizer';
 import WorkspaceSwitcher, { useWorkspace, useVitalConnectionStatus } from './WorkspaceSwitcher';
+import VitalWhatsAppInbox from './VitalWhatsAppInbox';
 
 const GROUPS = [
   {
@@ -121,7 +122,9 @@ export default function HubFrame({ children }) {
           </div>
         </header>
         <div className={styles.body}>
-          {workspace.id === 'gui-nonato' || pathname.startsWith('/tiktok') ? children : (
+          {workspace.id === 'gui-nonato' || pathname.startsWith('/tiktok') ? children : pathname === '/whatsapp' ? (
+            <VitalWhatsAppInbox />
+          ) : (
             <section className={styles.workspaceEmpty}>
               <span className={styles.workspaceEyebrow}>WORKSPACE · {workspace.name.toUpperCase()}</span>
               <h1>{vital.loading ? 'Verificando canais da Vital Decor...' : vitalConnected ? 'Canais da Vital Decor conectados.' : 'Gerencie as conexões da Vital Decor.'}</h1>

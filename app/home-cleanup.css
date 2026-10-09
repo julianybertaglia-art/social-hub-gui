@@ -9,7 +9,7 @@
   gap: 18px !important;
   padding-right: 3px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,.12) transparent;
+  scrollbar-color: var(--border) transparent;
 }
 
 .sidebar-group {
@@ -18,11 +18,11 @@
 }
 
 .sidebar-group-label {
-  margin: 0 14px 4px;
-  color: rgba(255,255,255,.34);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: .14em;
+  margin: 0 14px 6px;
+  color: #8e8588;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .13em;
 }
 
 .sidebar-nav-link {
@@ -30,17 +30,19 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  min-height: 44px;
-  padding: 12px 14px;
+  min-height: 47px;
+  padding: 11px 14px;
   border-radius: 10px;
-  color: rgba(255,255,255,.63);
+  color: #504a4c;
+  font-size: 15.5px;
+  font-weight: 650;
   text-decoration: none;
   transition: .2s ease;
 }
 
 .sidebar-nav-link:hover {
-  background: rgba(185,146,77,.15);
-  color: white;
+  background: var(--gold-soft);
+  color: var(--gold-dark);
 }
 
 .sidebar-bottom {
@@ -58,7 +60,7 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  margin-left: auto;
+  margin-left: 0;
   padding: 7px 10px;
   border: 1px solid #dce9df;
   border-radius: 999px;
@@ -128,7 +130,7 @@
 
 .quick-stat strong {
   margin: 10px 0 5px;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: inherit;
   font-size: 28px;
   font-weight: 500;
 }
@@ -255,7 +257,7 @@
 
 .performance-mini-grid strong {
   margin-top: 7px;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: inherit;
   font-size: 20px;
   font-weight: 500;
 }
@@ -321,3 +323,118 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.workspace-status i.pending {
+  background: #c28b42;
+}
+
+.quick-stat {
+  position: relative;
+  min-height: 112px;
+  padding: 18px;
+}
+
+
+.quick-stat strong {
+  margin: 4px 0 4px;
+  font-family: inherit;
+  font-size: 28px;
+  font-weight: 750;
+  letter-spacing: -.035em;
+}
+
+.quick-stat:hover {
+  border-color: color-mix(in srgb, var(--gold) 28%, var(--border));
+  box-shadow: 0 12px 30px rgba(54, 35, 41, .07);
+}
+
+/* Refinamento visual: ícones e tipografia um pouco maiores. */
+.quick-stat-icon {
+  display: grid !important;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 14px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--gold) 18%, var(--border));
+  border-radius: 11px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--gold) 11%, transparent), transparent),
+    var(--surface-soft);
+  color: var(--gold-dark);
+}
+
+.quick-stat-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+.quick-stat > span:not(.quick-stat-icon) {
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.quick-stat strong {
+  font-size: 30px;
+}
+
+.quick-stat small {
+  font-size: 10.5px;
+}
+
+.sidebar nav button,
+.sidebar-nav-link {
+  font-size: 15px;
+}
+
+.sidebar-group-label {
+  font-size: 9.5px;
+}
+
+.dashboard-hero .subtitle {
+  font-size: 15px;
+}
+
+.panel-heading h2 {
+  font-size: 24px;
+  letter-spacing: -.025em;
+}
+
+.task-copy,
+.post-copy strong {
+  font-size: 13px;
+}
+
+.workspace-status-warning {
+  border-color: #edd8bc;
+  background: #fff7eb;
+  color: #946428;
+}
+
+.metric-input-card.metric-live {
+  border-color: color-mix(in srgb, var(--success) 22%, var(--border));
+}
+
+.metric-input-card.metric-live input {
+  cursor: default;
+}
+
+.metric-input-card.metric-live small {
+  color: #4f855e;
+  font-weight: 700;
+}
+
+/* Leitura geral mais confortável, alinhada ao Argo. */
+.page-content .subtitle,
+.page-heading .subtitle,
+.panel p,
+.note {
+  font-size: 14px;
+  line-height: 1.55;
+}
+.quick-stat > span:not(.quick-stat-icon) { font-size: 13px; }
+.quick-stat strong { font-size: 32px; }
+.quick-stat small { font-size: 11px; }
+.attention-item strong { font-size: 13px; }
+.attention-item small { font-size: 11px; }
+.performance-mini-grid span { font-size: 11px; }
+.performance-mini-grid strong { font-size: 22px; font-weight: 750; }

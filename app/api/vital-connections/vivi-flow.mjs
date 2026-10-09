@@ -1,4 +1,5 @@
 import { WHATSAPP_API_VERSION } from '../whatsapp/lib.js';
+import { routeViviConversation } from '../integrations/argo/v1/bridge.mjs';
 
 export const VIVI_MAIN = [
   { id: 'vivi_buy', title: 'Quero comprar', description: 'Conhecer produtos e receber atendimento' },
@@ -91,6 +92,7 @@ async function setSession(db, connection, to, state) {
     updated_at: new Date().toISOString(), last_interaction_at: new Date().toISOString(),
   }, { onConflict: 'connection_id,contact_wa_id' });
   if (error) throw error;
+  await routeViviConversation(db, connection, to, state.stage, state.selection);
 }
 async function mainMenu(db, connection, to) {
   await sendList(db, connection, to, VIVI_WELCOME, 'Escolher assunto', VIVI_MAIN);

@@ -23,6 +23,8 @@ function phoneLabel(value) {
 
 export default function VitalWhatsAppInbox() {
   const [contacts, setContacts] = useState([]);
+  const [routes, setRoutes] = useState([]);
+  const [routesReady, setRoutesReady] = useState(false);
   const [selectedId, setSelectedId] = useState('');
   const [messages, setMessages] = useState([]);
   const [account, setAccount] = useState(null);
@@ -57,7 +59,12 @@ export default function VitalWhatsAppInbox() {
     else setRefreshing(true);
     try {
       const suffix = contactId ? '?contact=' + encodeURIComponent(contactId) : '';
-      const data = await request('/api/vital-whatsapp/conversations' + suffix);
+      const [data, routing] = await Promise.all([
+        request('/api/vital-whatsapp/conversations' + suffix),
+        request('/api/vital-whatsapp/argo-routing'),
+      ]);
+      setRoutes(routing.assignments || []);
+      setRoutesReady(true);
       if (data.workspace !== 'vital-decor') throw new Error('Resposta recebida de outro workspace.');
       setContacts(data.contacts || []);
       setAccount(data.account || null);
@@ -69,7 +76,8 @@ export default function VitalWhatsAppInbox() {
       else if (!data.contacts?.length) setMessages([]);
       setError('');
     } catch (failure) {
-      if (!background) setError(failure.message);
+      setRoutesReady(false);
+      setError(failure.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -89,7 +97,22 @@ export default function VitalWhatsAppInbox() {
   }, [contacts, search]);
 
   const lastInbound = selected?.lastInboundAt || null;
-  const canReply = Boolean(lastInbound && selected?.canReply);
+  const activeRoute = routes.find(item => item.contact_wa_id === selectedId);
+  const inArgo = Boolean(activeRoute && activeRoute.assigned_to !== 'tide' && activeRoute.status !== 'closed');
+  const canReply = Boolean(lastInbound && selected?.canReply && routesReady && !inArgo);
+
+  async function returnToTide() {
+    if (!activeRoute || !selected) return;
+    setError('');
+    try {
+      await request('/api/vital-whatsapp/argo-routing', {
+        method: 'POST',
+        body: JSON.stringify({ action:'assign',phone:selected.id,sector:activeRoute.sector,assignee:'tide' }),
+      });
+      setNotice('Conversa transferida de volta para seu atendimento no TidePlace.');
+      await load(selected.id,true);
+    } catch (failure) { setError(failure.message); }
+  }
 
   async function send(event) {
     event.preventDefault();
@@ -150,7 +173,7 @@ export default function VitalWhatsAppInbox() {
                 <span className={styles.avatar}>{(contact.name || 'V').slice(0,1).toUpperCase()}</span>
                 <span className={styles.contactText}>
                   <strong>{contact.name || phoneLabel(contact.phone)}</strong>
-                  <small>{phoneLabel(contact.phone)}</small>
+                  <small>{phoneLabel(contact.phone)}{routes.find(r => r.contact_wa_id === contact.id && r.status !== 'closed' && r.assigned_to !== 'tide') ? ' · Argo' : ''}</small>
                   <span>{contact.lastDirection === 'outbound' ? 'Você: ' : ''}{contact.lastMessage || 'Mensagem recebida'}</span>
                 </span>
                 <time>{clock(contact.lastMessageAt)}</time>
@@ -164,7 +187,7 @@ export default function VitalWhatsAppInbox() {
               <div className={styles.chatHead}>
                 <span className={styles.avatar}>{(selected.name || 'V').slice(0,1).toUpperCase()}</span>
                 <div><strong>{selected.name}</strong><span>{phoneLabel(selected.phone)}</span></div>
-                <span className={styles.manual}>Atendimento manual</span>
+                <span className={styles.manual}>{inArgo ? 'Com ' + activeRoute.assigned_to + ' no Argo' : 'Atendimento TidePlace'}</span>
               </div>
               <div className={styles.messages}>
                 {!messages.length && loading ? <p className={styles.empty}>Carregando mensagens...</p> : null}
@@ -176,7 +199,13 @@ export default function VitalWhatsAppInbox() {
                   </article>
                 ))}
               </div>
-              {canReply ? (
+              {inArgo ? (
+                <div className={styles.outsideWindow}>
+                  <strong>Atendimento atribuído a {activeRoute.assigned_to} no Argo</strong>
+                  <span>Você pode acompanhar o histórico aqui. Para assumir e responder pelo TidePlace, transfira primeiro.</span>
+                  <button type="button" onClick={returnToTide} style={{marginTop:8,alignSelf:'start',border:'1px solid var(--border)',padding:'9px 12px',borderRadius:8,background:'var(--surface)',color:'var(--text)',cursor:'pointer'}}>Assumir no TidePlace</button>
+                </div>
+              ) : canReply ? (
                 <form className={styles.composer} onSubmit={send}>
                   <textarea value={draft} onChange={event => setDraft(event.target.value)}
                     placeholder="Escreva sua resposta para o cliente..." aria-label="Escrever mensagem"
@@ -185,7 +214,7 @@ export default function VitalWhatsAppInbox() {
                 </form>
               ) : (
                 <div className={styles.outsideWindow}>
-                  <strong>Janela de atendimento encerrada</strong>
+                  <strong>{!routesReady ? 'Verificando atribuição da conversa' : 'Janela de atendimento encerrada'}</strong>
                   <span>Para enviar uma nova mensagem fora das 24 horas, a Meta exige um modelo aprovado. O envio livre permanece bloqueado para sua segurança.</span>
                 </div>
               )}
@@ -200,7 +229,7 @@ export default function VitalWhatsAppInbox() {
           )}
         </section>
       </div>
-      <p className={styles.footnote}>Mensagens sincronizadas a partir da integração Meta · Respostas automáticas permanecem desligadas · Histórico anterior à conexão pode não estar disponível.</p>
+      <p className={styles.footnote}>Mensagens sincronizadas pela Meta · A Vivi pausa quando o atendimento passa para uma pessoa · Conversas atribuídas ao Argo são acompanhadas aqui, mas respondidas no Argo.</p>
     </main>
   );
 }

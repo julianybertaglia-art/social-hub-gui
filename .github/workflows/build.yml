@@ -37,5 +37,8 @@ jobs:
       - name: Testar automação Vivi da Vital Decor
         run: node --test tests/vivi-vital-flow.test.mjs
 
+      - name: Testar bridge TidePlace Argo
+        run: node --test tests/argo-vital-bridge.test.mjs
+
       - name: Testar build
         run: npm run build

@@ -9,6 +9,7 @@ import WorkspaceSwitcher, { useWorkspace, useVitalConnectionStatus } from './Wor
 import VitalWhatsAppInbox from './VitalWhatsAppInbox';
 import ViviAutomationPanel from './ViviAutomationPanel';
 import VitalAffiliatePanel from './VitalAffiliatePanel';
+import ArgoBridgePanel from './ArgoBridgePanel';
 
 const GROUPS = [
   {
@@ -34,6 +35,7 @@ const GROUPS = [
     items: [
       { href: '/whatsapp', label: 'CRM', icon: '◉', exact: true },
       { href: '/whatsapp/automacoes', label: 'Automações', icon: '⚙', match: '/whatsapp/automacoes' },
+      { href: '/whatsapp/integracao-argo', label: 'Integração Argo', icon: '⇄', match: '/whatsapp/integracao-argo' },
       { href: '/whatsapp/campanha', label: 'Campanhas', icon: '↗', match: '/whatsapp/campanha' },
       { href: '/whatsapp/grupos', label: 'Grupos', icon: '◎', match: '/whatsapp/grupos' },
       { href: '/whatsapp/gato', label: 'Gato / envios', icon: '⌁', match: '/whatsapp/gato' },
@@ -50,6 +52,7 @@ const GROUPS = [
 function pageLabel(pathname) {
   if (pathname.startsWith('/tiktok/afiliados')) return 'TikTok · Afiliados';
   if (pathname.startsWith('/whatsapp/automacoes')) return 'WhatsApp · Automações';
+  if (pathname.startsWith('/whatsapp/integracao-argo')) return 'WhatsApp · Integração Argo';
   if (pathname.startsWith('/whatsapp/campanha')) return 'WhatsApp · Campanhas';
   if (pathname.startsWith('/whatsapp/grupos')) return 'WhatsApp · Grupos';
   if (pathname.startsWith('/whatsapp/gato')) return 'WhatsApp · Gato';
@@ -83,6 +86,7 @@ export default function HubFrame({ children }) {
             <div className={styles.group} key={group.label}>
               <span className={styles.groupLabel}>{group.label}</span>
               {group.items.map((item) => {
+                if(item.href==='/whatsapp/integracao-argo' && workspace.id!=='vital-decor')return null;
                 const active = item.exact ? pathname === item.href : item.match ? pathname.startsWith(item.match) : false;
                 return (
                   <Link
@@ -130,6 +134,8 @@ export default function HubFrame({ children }) {
             <VitalWhatsAppInbox />
           ) : pathname === '/whatsapp/automacoes' ? (
             <ViviAutomationPanel />
+          ) : pathname === '/whatsapp/integracao-argo' ? (
+            <ArgoBridgePanel />
           ) : (
             <section className={styles.workspaceEmpty}>
               <span className={styles.workspaceEyebrow}>WORKSPACE · {workspace.name.toUpperCase()}</span>

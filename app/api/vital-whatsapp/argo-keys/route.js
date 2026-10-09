@@ -1,5 +1,5 @@
 import { authorize } from '../../vital-connections/service';
-import { fail } from '../vital-connections/helpers.mjs';
+import { fail } from '../../vital-connections/helpers.mjs';
 import { createBridgeSecret, vitalConnection, AGENTS,
   requireSameOrigin,replyError,noCacheJson } from '../../integrations/argo/v1/bridge.mjs';
 export const runtime='nodejs';

@@ -53,6 +53,8 @@ CREATE TABLE IF NOT EXISTS public.vital_whatsapp_affiliate_applications (
   live_experience text,
   sales_last_30d_range text,
   sales_orders_last_30d integer,
+  sales_proof_path text,
+  sales_proof_uploaded_at timestamptz,
   top_video_urls jsonb,
   score integer,
   qualification text,

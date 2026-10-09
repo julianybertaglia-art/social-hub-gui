@@ -1,4 +1,5 @@
 import { WORKSPACE, webhookDestination } from './helpers.mjs';
+import { handleViviMessage } from './vivi-flow.mjs';
 
 function sentAt(timestamp) {
   const numeric = Number(timestamp);
@@ -64,6 +65,23 @@ export async function dispatchWorkspaceWebhook(db, change, primary) {
     .eq('workspace_id', WORKSPACE).eq('platform', 'whatsapp').eq('waba_id', String(change.wabaId || ''));
   if (error) throw error;
   const destination = webhookDestination(change, data || [], primary);
-  if (destination.target === WORKSPACE) await saveWorkspaceMessages(db, change, destination.connection);
+  if (destination.target === WORKSPACE) {
+    await saveWorkspaceMessages(db, change, destination.connection);
+    if (change.field === 'messages' && (change.value.messages || []).length) {
+      // The Meta webhook is already signature-verified by the primary handler.
+      const { data: connection, error: authError } = await db.from('workspace_meta_connections')
+        .select('id,owner_user_id,workspace_id,platform,external_account_id,access_token,state')
+        .eq('id', destination.connection.id).eq('workspace_id', WORKSPACE)
+        .eq('platform', 'whatsapp').eq('state', 'connected').maybeSingle();
+      if (authError) throw authError;
+      if (connection?.access_token) {
+        const origin = 'https://social-hub-gui.vercel.app';
+        for (const message of change.value.messages || []) {
+          try { await handleViviMessage(db, connection, message, origin); }
+          catch (error) { console.error('Vivi WhatsApp flow:', error); }
+        }
+      }
+    }
+  }
   return destination.target;
 }

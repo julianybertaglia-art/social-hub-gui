@@ -78,12 +78,22 @@ export default function ArgoBridgePanel(){
    <div style={{display:'grid',gap:10,marginTop:16}}>
     {GROUPS.map(([id,name])=>{
      const rule=settings.find(i=>i.sector===id); const current=rule?.assignee||'tide'; const active=Boolean(rule?.enabled); const ready=keys.some(k=>k.agent===current&&!k.revoked_at&&Date.parse(k.expires_at)>Date.now());
-     return <div key={id} style={{display:'grid',gridTemplateColumns:'minmax(180px,1fr) minmax(180px,230px)',gap:14,alignItems:'center'}}>
+     return <div key={id} style={{display:'grid',gridTemplateColumns:'minmax(170px,1fr) minmax(170px,230px) minmax(165px,210px)',gap:14,alignItems:'center'}}>
       <strong style={{fontSize:13}}>{name}</strong>
       <select aria-label={'Responsável: '+name} style={field} disabled={working} value={current}
         onChange={e=>run('/api/vital-whatsapp/argo-routing',{action:'default',sector:id,assignee:e.target.value},'Setor atualizado.')}>
        {PEOPLE.map(([value,label])=><option key={value} value={value}>{label}</option>)}
       </select>
+      {current==='tide'?<span style={muted}>Atendimento no TidePlace</span>:
+        <div style={{display:'grid',gap:4}}>
+          <span style={{...muted,color:active?'#237047':'var(--muted)'}}>{active?'Argo ativo':'Planejado: continua no TidePlace'}</span>
+          <button type="button" disabled={working||(!active&&!ready)}
+            style={{...btn,fontSize:11,padding:'7px 10px',opacity:!active&&!ready?0.55:1}}
+            onClick={()=>{
+              if(!active&&!window.confirm('O Argo de '+current+' já está integrado e testado? Ativar encaminha NOVOS contatos deste setor.'))return;
+              void run('/api/vital-whatsapp/argo-routing',{action:'activate',sector:id,assignee:current,enabled:!active},active?'Encaminhamento pausado.':'Encaminhamento ativado.');
+            }}>{active?'Pausar encaminhamento':ready?'Ativar após teste':'Aguardando Argo'}</button>
+        </div>}
      </div>;
     })}
    </div>

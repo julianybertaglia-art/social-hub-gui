@@ -34,5 +34,8 @@ jobs:
       - name: Testar inbox da Vital Decor e isolamento entre workspaces
         run: node --test tests/vital-whatsapp-inbox.test.mjs
 
+      - name: Testar automação Vivi da Vital Decor
+        run: node --test tests/vivi-vital-flow.test.mjs
+
       - name: Testar build
         run: npm run build

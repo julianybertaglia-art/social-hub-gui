@@ -4,37 +4,43 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import DetailDialog from './DetailDialog';
 import VitalInstagramMetrics from './VitalInstagramMetrics';
-import metricsStyles from './vital-instagram-metrics.module.css';
+import ThemeCustomizer from './ThemeCustomizer';
+import WorkspaceSwitcher, { getWorkspaceStorageKey, useWorkspace, useVitalConnectionStatus } from './WorkspaceSwitcher';
 
 const SECTION_IDS = ['dashboard', 'calendar', 'tasks', 'ideas', 'metrics', 'goals'];
 
 const navGroups = [
   {
     label: 'PRINCIPAL',
-    items: [{ id: 'dashboard', label: 'Visão geral', icon: '⌂', type: 'section' }],
+    items: [
+      { id: 'dashboard', label: 'Visão geral', icon: '⌂', type: 'section' },
+      { id: 'tasks', label: 'Tarefas', icon: '✓', type: 'section' },
+    ],
   },
   {
-    label: 'PLANEJAMENTO',
+    label: 'INSTAGRAM',
     items: [
       { id: 'calendar', label: 'Calendário', icon: '▦', type: 'section' },
-      { id: 'tasks', label: 'Tarefas', icon: '✓', type: 'section' },
       { id: 'ideas', label: 'Ideias', icon: '✦', type: 'section' },
+      { id: 'metrics', label: 'Métricas', icon: '↗', type: 'section' },
+      { href: '/conexoes/vital-decor', label: 'Vital Decor · Conexões', icon: '◎', type: 'link' },
+      { id: 'goals', label: 'Metas', icon: '◎', type: 'section' },
+      { href: '/automacoes', label: 'Automações', icon: '⚡', type: 'link' },
     ],
   },
   {
-    label: 'AUDIÊNCIA',
+    label: 'WHATSAPP',
     items: [
       { href: '/whatsapp', label: 'CRM', icon: '◉', type: 'link' },
-      { href: '/automacoes', label: 'Automações', icon: '⚡', type: 'link' },
-      { href: '/conexoes/vital-decor', label: 'Vital Decor · Conexões', icon: '◎', type: 'link' },
+      { href: '/whatsapp/automacoes', label: 'Automações', icon: '⚙', type: 'link' },
+      { href: '/whatsapp/campanha', label: 'Campanhas', icon: '↗', type: 'link' },
+      { href: '/whatsapp/grupos', label: 'Grupos', icon: '◎', type: 'link' },
     ],
   },
   {
-    label: 'ANALYTICS',
+    label: 'TIKTOK',
     items: [
-      { id: 'metrics', account: 'gui-nonato', label: 'Métricas', icon: '↗', type: 'section' },
-      { id: 'metrics', account: 'vital-decor', label: 'Métricas da Vital', icon: '↗', type: 'section' },
-      { id: 'goals', label: 'Metas', icon: '◎', type: 'section' },
+      { href: '/tiktok/afiliados', label: 'Afiliados', icon: '◇', type: 'link' },
     ],
   },
 ];
@@ -164,14 +170,33 @@ function useStoredState(key, initialValue) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(key);
-      if (saved) setValue(JSON.parse(saved));
-    } catch (error) {
-      console.warn(`Não foi possível carregar ${key}`, error);
-    } finally {
-      setReady(true);
+    function readStoredValue() {
+      try {
+        const saved = window.localStorage.getItem(key);
+        setValue(saved ? JSON.parse(saved) : initialValue);
+      } catch (error) {
+        console.warn(`Não foi possível carregar ${key}`, error);
+        setValue(initialValue);
+      } finally {
+        setReady(true);
+      }
     }
+
+    function handleStorageUpdate(event) {
+      if (event?.detail?.key && event.detail.key !== key) return;
+      if (event?.key && event.key !== key) return;
+      readStoredValue();
+    }
+
+    setReady(false);
+    readStoredValue();
+    window.addEventListener('storage', handleStorageUpdate);
+    window.addEventListener('tideplace:storage-update', handleStorageUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageUpdate);
+      window.removeEventListener('tideplace:storage-update', handleStorageUpdate);
+    };
   }, [key]);
 
   useEffect(() => {
@@ -215,6 +240,49 @@ function EmptyState({ children }) {
   return <div className="empty-state">{children}</div>;
 }
 
+function SummaryIcon({ type }) {
+  const paths = {
+    tasks: (
+      <>
+        <path d="M5 6.5h14" />
+        <path d="M5 12h14" />
+        <path d="M5 17.5h9" />
+        <path d="m2.8 6.5.9.9 1.7-1.9" />
+        <path d="m2.8 12 .9.9 1.7-1.9" />
+      </>
+    ),
+    content: (
+      <>
+        <rect x="4" y="3.5" width="16" height="17" rx="2.5" />
+        <path d="M8 8h8" />
+        <path d="M8 12h8" />
+        <path d="M8 16h5" />
+      </>
+    ),
+    leads: (
+      <>
+        <circle cx="9" cy="9" r="3" />
+        <path d="M3.5 19c.8-3.2 2.8-5 5.5-5s4.7 1.8 5.5 5" />
+        <path d="M17 8v6" />
+        <path d="M14 11h6" />
+      </>
+    ),
+    automations: (
+      <>
+        <path d="M13 2 5.5 13h5L9.8 22 18.5 10h-5L13 2Z" />
+      </>
+    ),
+  };
+
+  return (
+    <span className="quick-stat-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+        {paths[type]}
+      </svg>
+    </span>
+  );
+}
+
 function TaskRow({ task, onToggle, onOpen }) {
   return (
     <div className={`task-row ${task.done ? 'done' : ''}`}>
@@ -242,19 +310,37 @@ function TaskRow({ task, onToggle, onOpen }) {
 }
 
 export default function Home() {
+  const [workspace] = useWorkspace();
+  const isGuiWorkspace = workspace.id === 'gui-nonato';
+  const vitalConnection = useVitalConnectionStatus();
+  const vitalFullyConnected = vitalConnection.instagram === true && vitalConnection.whatsapp === true;
   const [active, setActive] = useState('dashboard');
   const [mobileMenu, setMobileMenu] = useState(false);
   const [greeting, setGreeting] = useState('Olá');
   const [crmSummary, setCrmSummary] = useState({ total: null, newLeads: null, readyToSchedule: 0 });
   const [automationCount, setAutomationCount] = useState(1);
   const [liveMetrics, setLiveMetrics] = useState(null);
-  const [metricsAccount, setMetricsAccount] = useState('gui-nonato');
-  const [vitalProfile, setVitalProfile] = useState(null);
-  const [metrics, setMetrics] = useStoredState('guihub-metrics', defaultMetrics);
-  const [posts, setPosts] = useStoredState('guihub-posts', defaultPosts);
-  const [ideas, setIdeas] = useStoredState('guihub-ideas', defaultIdeas);
-  const [tasks, setTasks] = useStoredState('guihub-tasks', defaultTasks);
-  const [goals, setGoals] = useStoredState('guihub-goals', defaultGoals);
+  const [instagramConnected, setInstagramConnected] = useState(null);
+  const [metrics, setMetrics] = useStoredState(
+    getWorkspaceStorageKey('guihub-metrics', workspace.id),
+    defaultMetrics
+  );
+  const [posts, setPosts] = useStoredState(
+    getWorkspaceStorageKey('guihub-posts', workspace.id),
+    isGuiWorkspace ? defaultPosts : []
+  );
+  const [ideas, setIdeas] = useStoredState(
+    getWorkspaceStorageKey('guihub-ideas', workspace.id),
+    isGuiWorkspace ? defaultIdeas : []
+  );
+  const [tasks, setTasks] = useStoredState(
+    getWorkspaceStorageKey('guihub-tasks', workspace.id),
+    isGuiWorkspace ? defaultTasks : []
+  );
+  const [goals, setGoals] = useStoredState(
+    getWorkspaceStorageKey('guihub-goals', workspace.id),
+    isGuiWorkspace ? defaultGoals : []
+  );
   const [ideaDraft, setIdeaDraft] = useState({ title: '', audience: '', format: 'Reel', priority: 'Média' });
   const [postDraft, setPostDraft] = useState({ date: '', time: '', format: 'Reel', title: '', objective: 'Autoridade', status: 'Ideia' });
   const [detailPath, setDetailPath] = useState([]);
@@ -267,23 +353,9 @@ export default function Home() {
     .filter(Boolean);
 
   useEffect(() => {
-    // The CloudGate refresh updates metrics in the background. Repaint just the
-    // numbers, preserving the current section, draft forms and scroll position.
-    function handleUpdatedInstagramMetrics(event) {
-      const updated = event?.detail?.metrics;
-      if (!updated || typeof updated !== 'object') return;
-      setLiveMetrics((current) => ({ ...(current || {}), ...updated }));
-    }
-
-    window.addEventListener('tideplace:instagram-metrics-updated', handleUpdatedInstagramMetrics);
-    return () => window.removeEventListener('tideplace:instagram-metrics-updated', handleUpdatedInstagramMetrics);
-  }, []);
-
-  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const requestedSection = params.get('section');
     if (SECTION_IDS.includes(requestedSection)) setActive(requestedSection);
-    if (params.get('account') === 'vital-decor') setMetricsAccount('vital-decor');
 
     const hour = Number(new Intl.DateTimeFormat('pt-BR', {
       timeZone: 'America/Sao_Paulo',
@@ -291,6 +363,16 @@ export default function Home() {
       hour12: false,
     }).format(new Date()));
     setGreeting(hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite');
+
+    if (!isGuiWorkspace) {
+      setAutomationCount(0);
+      setCrmSummary({ total: null, newLeads: 0 });
+      setLiveMetrics(null);
+      setInstagramConnected(false);
+      return;
+    }
+
+    setInstagramConnected(null);
 
     try {
       const stored = JSON.parse(window.localStorage.getItem('guihub-automations') || '[]');
@@ -314,12 +396,25 @@ export default function Home() {
       })
       .catch(() => {});
 
-    Promise.all([
-      fetch('/api/instagram/profile', { cache: 'no-store' }).then((response) => response.json()),
-      fetch('/api/instagram', { cache: 'no-store' }).then((response) => response.json()),
-    ])
-      .then(([profileData, metricsData]) => {
-        const apiMetrics = metricsData?.metrics || {};
+    Promise.allSettled([
+      fetch('/api/instagram/profile', { cache: 'no-store' })
+        .then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) throw new Error(data?.detail || data?.error || 'Falha ao carregar perfil');
+          return data;
+        }),
+      fetch('/api/instagram', { cache: 'no-store' })
+        .then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) throw new Error(data?.metaDetail || data?.error || 'Falha ao carregar métricas');
+          return data;
+        }),
+    ]).then(([profileResult, metricsResult]) => {
+      const profileData = profileResult.status === 'fulfilled' ? profileResult.value : null;
+      const metricsData = metricsResult.status === 'fulfilled' ? metricsResult.value : null;
+      const apiMetrics = metricsData?.metrics || null;
+
+      if (apiMetrics) {
         setLiveMetrics({
           seguidores: profileData?.followersCount ?? apiMetrics.seguidores ?? null,
           alcance: apiMetrics.alcance ?? null,
@@ -327,9 +422,15 @@ export default function Home() {
           visitasPerfil: apiMetrics.visitasPerfil ?? null,
           interacoes: apiMetrics.interacoes ?? null,
         });
-      })
-      .catch(() => {});
-  }, []);
+      } else {
+        setLiveMetrics(null);
+      }
+
+      // A conta está conectada se ao menos um endpoint oficial da Meta respondeu.
+      // Assim uma falha isolada na foto/perfil não derruba as métricas do painel.
+      setInstagramConnected(Boolean(profileData?.connected || apiMetrics));
+    });
+  }, [workspace.id, isGuiWorkspace]);
 
   function openTask(id) {
     setDetailPath([{ kind: 'task', id }]);
@@ -339,13 +440,10 @@ export default function Home() {
     setDetailPath([{ kind: 'post', id }]);
   }
 
-  function goTo(section, account) {
+  function goTo(section) {
     setActive(section);
-    if (section === 'metrics' && account) setMetricsAccount(account);
     setMobileMenu(false);
-    const selectedAccount = account || metricsAccount;
-    const accountQuery = section === 'metrics' && selectedAccount === 'vital-decor' ? '&account=vital-decor' : '';
-    const nextUrl = section === 'dashboard' ? '/' : `/?section=${section}${accountQuery}`;
+    const nextUrl = section === 'dashboard' ? '/' : `/?section=${section}`;
     window.history.replaceState(null, '', nextUrl);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -428,30 +526,40 @@ export default function Home() {
       <>
         <section className="hero-row dashboard-hero">
           <div>
-            <span className="eyebrow">PAINEL DO DIA · GUI NONATO</span>
+            <span className="eyebrow">TIDEPLACE · {workspace.name.toUpperCase()}</span>
             <h1>{greeting}, Juliany.</h1>
             <p className="subtitle">O que precisa da sua atenção, sem misturar tudo na mesma tela.</p>
           </div>
           <button className="primary-button" onClick={() => goTo('calendar')}>+ Adicionar conteúdo</button>
         </section>
 
+        {!isGuiWorkspace && (
+          <section aria-label="Instagram da Vital Decor" style={{ marginBottom: 20 }}>
+            <VitalInstagramMetrics />
+            <p style={{ marginTop: 10 }}><Link href="/conexoes/vital-decor">Gerenciar Instagram e WhatsApp da Vital Decor →</Link></p>
+          </section>
+        )}
         <section className="quick-stats" aria-label="Resumo do dia">
           <button type="button" className="quick-stat" onClick={() => goTo('tasks')}>
+            <SummaryIcon type="tasks" />
             <span>Tarefas pendentes</span>
             <strong>{pendingTasks.length}</strong>
             <small>{highPriorityCount ? `${highPriorityCount} de alta prioridade` : 'Nenhuma urgente'}</small>
           </button>
           <button type="button" className="quick-stat" onClick={() => goTo('calendar')}>
+            <SummaryIcon type="content" />
             <span>Conteúdos programados</span>
             <strong>{scheduledPosts.length}</strong>
             <small>{contentInProduction ? `${contentInProduction} em produção` : 'Tudo encaminhado'}</small>
           </button>
           <Link className="quick-stat" href="/whatsapp">
+            <SummaryIcon type="leads" />
             <span>Leads no CRM</span>
             <strong>{formatMetric(leadCount)}</strong>
             <small>{crmSummary.newLeads === null ? 'Carregando CRM…' : `${crmSummary.newLeads} novos`}</small>
           </Link>
           <Link className="quick-stat" href="/automacoes">
+            <SummaryIcon type="automations" />
             <span>Automações ativas</span>
             <strong>{automationCount}</strong>
             <small>Direct e comentários</small>
@@ -547,9 +655,9 @@ export default function Home() {
               <div className="panel-heading">
                 <div>
                   <span className="eyebrow">PERFORMANCE</span>
-                  <h2>Instagram · @gui_nonato</h2>
+                  <h2>Instagram</h2>
                 </div>
-                <button className="text-button" onClick={() => goTo('metrics', 'gui-nonato')}>Ver métricas</button>
+                <button className="text-button" onClick={() => goTo('metrics')}>Ver métricas</button>
               </div>
               <div className="performance-mini-grid">
                 <div><span>Seguidores</span><strong>{formatMetric(currentMetrics.seguidores)}</strong></div>
@@ -671,17 +779,11 @@ export default function Home() {
   }
 
   function renderMetrics() {
-    const accounts = (
-      <div className={metricsStyles.accounts} aria-label="Conta do Instagram">
-        <button type="button" aria-pressed={metricsAccount === 'gui-nonato'} onClick={() => goTo('metrics', 'gui-nonato')}>Gui Nonato · @gui_nonato</button>
-        <button type="button" aria-pressed={metricsAccount === 'vital-decor'} onClick={() => goTo('metrics', 'vital-decor')}>Vital Decor · @vitaldecor_</button>
-      </div>
-    );
-    if (metricsAccount === 'vital-decor') return (
+    if (!isGuiWorkspace) return (
       <>
-        <section className="page-heading"><div><span className="eyebrow">ANALYTICS</span><h1>Métricas do Instagram</h1><p className="subtitle">Acompanhe a conta conectada da Vital Decor.</p></div></section>
-        {accounts}
-        <VitalInstagramMetrics onProfile={setVitalProfile} />
+        <section className="page-heading"><div><span className="eyebrow">ANALYTICS · VITAL DECOR</span><h1>Métricas do Instagram</h1><p className="subtitle">Dados reais do perfil conectado da Vital Decor, separados do Gui Nonato.</p></div></section>
+        <VitalInstagramMetrics />
+        <p style={{ marginTop: 12 }}><Link href="/conexoes/vital-decor">Gerenciar conexões da Vital Decor →</Link></p>
       </>
     );
     const fields = [
@@ -695,8 +797,14 @@ export default function Home() {
 
     return (
       <>
-        <section className="page-heading"><div><span className="eyebrow">ANALYTICS</span><h1>Métricas do Instagram</h1><p className="subtitle">Dados oficiais da Meta e do CRM. Quando a fonte não entrega uma métrica, o Tide mostra “—” em vez de transformar ausência de dado em zero.</p></div></section>
-        {accounts}
+        <section className="page-heading">
+          <div>
+            <span className="eyebrow">ANALYTICS</span>
+            <h1>Métricas do Instagram</h1>
+            <p className="subtitle">Dados oficiais da Meta e do CRM. Quando a fonte não entrega uma métrica, o Tide mostra “—” em vez de transformar ausência de dado em zero.</p>
+          </div>
+        </section>
+
         <section className="metrics-edit-grid">
           {fields.map(({ key, label, value, source }) => (
             <article className="metric-input-card" key={key}>
@@ -706,7 +814,22 @@ export default function Home() {
             </article>
           ))}
         </section>
-        <section className="panel instruction-panel"><span className="eyebrow">CONEXÃO</span><h2>Meta + CRM conectados ao TidePlace</h2><p className="note">Zero agora só aparece quando a fonte realmente retorna zero. Dados ausentes aparecem como “—”. Os leads são puxados automaticamente do CRM.</p></section>
+
+        <section className="panel instruction-panel">
+          <span className="eyebrow">CONEXÃO</span>
+          <h2>
+            {instagramConnected === null
+              ? 'Verificando conexão com a Meta...'
+              : instagramConnected
+                ? 'Meta + CRM conectados ao TidePlace'
+                : 'Meta precisa ser reconectada'}
+          </h2>
+          <p className="note">
+            {instagramConnected
+              ? 'Zero agora só aparece quando a fonte realmente retorna zero. Dados ausentes aparecem como “—”. Os leads são puxados automaticamente do CRM.'
+              : 'A TidePlace mantém o painel disponível e identifica como indisponíveis as métricas que a Meta não retornar.'}
+          </p>
+        </section>
       </>
     );
   }
@@ -748,11 +871,11 @@ export default function Home() {
     <div className="app-shell">
       <aside className={`sidebar ${mobileMenu ? 'open' : ''}`}>
         <div className="brand">
-          <div className="brand-mark">GN</div>
-          <div><strong>GUI SOCIAL HUB</strong><span>Central estratégica</span></div>
+          <div className="brand-mark"><img src="/brand/tideplace-mark.svg" alt="" /></div>
+          <div className="brand-copy"><strong><b>TIDE</b>PLACE</strong><span>Flow with your audience.</span></div>
         </div>
 
-        <nav className="sidebar-nav" aria-label="Áreas do Hub">
+        <nav className="sidebar-nav" aria-label="Áreas da TidePlace">
           {navGroups.map((group) => (
             <div className="sidebar-group" key={group.label}>
               <span className="sidebar-group-label">{group.label}</span>
@@ -761,7 +884,7 @@ export default function Home() {
                   <span className="nav-icon">{item.icon}</span><span>{item.label}</span>
                 </Link>
               ) : (
-                <button key={item.id + (item.account || '')} type="button" className={active === item.id && (!item.account || metricsAccount === item.account) ? 'active' : ''} onClick={() => goTo(item.id, item.account)}>
+                <button key={item.id} type="button" className={active === item.id ? 'active' : ''} onClick={() => goTo(item.id)}>
                   <span className="nav-icon">{item.icon}</span><span>{item.label}</span>
                 </button>
               ))}
@@ -780,16 +903,19 @@ export default function Home() {
       <main className="main-content">
         <header className="topbar">
           <button className="menu-button" onClick={() => setMobileMenu(true)} aria-label="Abrir menu">☰</button>
-          <div className="account-pill workspace-current">
-            <span className="instagram-dot">
-              {active === 'metrics' && metricsAccount === 'vital-decor'
-                ? vitalProfile?.profilePictureUrl
-                  ? <img src={vitalProfile.profilePictureUrl} alt="Vital Decor" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : 'VD'
-                : 'GN'}
-            </span>
-            <div><strong>{active === 'metrics' && metricsAccount === 'vital-decor' ? 'Vital Decor' : 'Gui Nonato'}</strong><span>@{active === 'metrics' && metricsAccount === 'vital-decor' ? vitalProfile?.username || 'vitaldecor_' : 'gui_nonato'} · Instagram</span></div>
-          </div>
-          <span className="workspace-status"><i /> Meta conectada</span>
+          <WorkspaceSwitcher />
+          <ThemeCustomizer />
+          <span className={`workspace-status ${(isGuiWorkspace ? instagramConnected === false : (!vitalConnection.loading && !vitalFullyConnected)) ? 'workspace-status-warning' : ''}`}>
+            <i className={(isGuiWorkspace ? instagramConnected === false : (!vitalConnection.loading && !vitalFullyConnected)) ? 'pending' : ''} />
+            {isGuiWorkspace
+              ? instagramConnected === null ? 'Verificando Meta...' : instagramConnected ? 'Meta conectada' : 'Reconectar Meta'
+              : vitalConnection.loading ? 'Verificando Vital...'
+              : vitalConnection.error ? 'Verificar conexão'
+              : vitalFullyConnected ? 'Instagram e WhatsApp conectados'
+              : vitalConnection.instagram ? 'Instagram conectado · verificar WhatsApp'
+              : vitalConnection.whatsapp ? 'WhatsApp conectado · verificar Instagram'
+              : 'Conexões pendentes'}
+          </span>
         </header>
         <div className="page-content">{content()}</div>
       </main>
@@ -808,4 +934,3 @@ export default function Home() {
     </div>
   );
 }
-

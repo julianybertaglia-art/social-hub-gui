@@ -2,12 +2,12 @@ import { GUI_INSTAGRAM_ID } from '../helpers.mjs';
 
 const API_VERSION = 'v26.0';
 export const VITAL_WHATSAPP = '5511965765247';
-export const VITAL_WELCOME_TEXT = 'Olá! 👋 Seja bem-vindo à Vital Decor!\\n\\nPara oferecer um atendimento mais rápido e organizado, nossa equipe atende pelo WhatsApp. 💚\\n\\nToque no botão abaixo para falar com a gente.';
+export const VITAL_WELCOME_TEXT = 'Olá! 👋 Seja bem-vindo à Vital Decor!\n\nPara oferecer um atendimento mais rápido e organizado, nossa equipe atende pelo WhatsApp. 💚\n\nToque no botão abaixo para falar com a gente.';
 export const VITAL_WHATSAPP_LINK = 'https://wa.me/' + VITAL_WHATSAPP + '?text=' + encodeURIComponent('Olá, vim pelo Instagram da Vital Decor e gostaria de atendimento.');
 
 function id(value) {
   const result = String(value || '');
-  return /^\\d{5,40}$/.test(result) ? result : '';
+  return /^\d{5,40}$/.test(result) ? result : '';
 }
 
 export function extractVitalDirectMessages(payload) {
@@ -76,7 +76,7 @@ export async function processVitalInstagramDirect(payload, db) {
       });
     } catch (templateError) {
       console.warn('Vital Instagram: template unavailable, sending text with link.', templateError.message);
-      await sendMetaMessage(connection, event.senderId, { text: VITAL_WELCOME_TEXT + '\\n\\n' + VITAL_WHATSAPP_LINK });
+      await sendMetaMessage(connection, event.senderId, { text: VITAL_WELCOME_TEXT + '\n\n' + VITAL_WHATSAPP_LINK });
     }
     sent += 1;
   }

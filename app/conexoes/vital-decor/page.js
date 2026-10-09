@@ -162,7 +162,7 @@ export default function VitalConnections() {
     setAwaitingMeta(true);
     setMessage('Conclua a autorização do Instagram na janela da Meta.');
     cancelLogin.current = launchMetaLogin(window.FB, {
-      scope: 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights',
+      scope: 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,pages_manage_metadata,instagram_manage_messages',
       auth_type: 'rerequest',
     }, async (response) => {
       setAwaitingMeta(false);
@@ -219,13 +219,13 @@ export default function VitalConnections() {
       setPending(null);
       setSelectedId('');
       await refresh();
-      setMessage('Conexão da Vital Decor confirmada.');
+      setMessage(pending.platform === 'instagram' ? 'Direct da Vital Decor ativado! O atendimento será direcionado ao WhatsApp.' : 'Conexão da Vital Decor confirmada.');
     } catch (error) { setMessage(error.message); }
     finally { setBusy(''); }
   }
 
   const channels = [
-    { id: 'instagram', label: 'Instagram', description: 'Perfil profissional e métricas da Vital Decor.',
+    { id: 'instagram', label: 'Instagram', description: 'Perfil, métricas e resposta automática do Direct da Vital Decor.',
       connect: connectInstagram },
     { id: 'whatsapp', label: 'WhatsApp Business', description: 'Conecte o número que você já usa no WhatsApp Business.',
       connect: connectWhatsApp },
@@ -260,6 +260,7 @@ export default function VitalConnections() {
                 <strong>{connection.name || 'Vital Decor'}</strong>
                 <span>{connection.username ? '@' + connection.username : connection.displayPhoneNumber}</span>
                 {connection.state === 'reauthorization_required' && <span>Autorize novamente para recuperar a conexão.</span>}
+                {channel.id === 'instagram' && <span>{connection.automaticReplies ? 'Direct automático: ativo → WhatsApp comercial' : 'Direct automático: falta ativar na Meta'}</span>}
               </div>}
               {channel.id === 'whatsapp' && !connected && (
                 <label className={styles.config}>
@@ -270,7 +271,7 @@ export default function VitalConnections() {
                 </label>
               )}
               <button className={styles.button} onClick={channel.connect} disabled={!sdkReady || Boolean(busy)}>
-                {busy === channel.id ? 'Aguardando autorização...' : connected ? 'Renovar autorização' : 'Conectar ' + channel.label}
+                {busy === channel.id ? 'Aguardando autorização...' : channel.id === 'instagram' && connected && !connection?.automaticReplies ? 'Ativar Direct no Instagram' : connected ? 'Renovar autorização' : 'Conectar ' + channel.label}
               </button>
               {channel.id === 'whatsapp' && connected && <p className={styles.note}>Respostas automáticas pausadas.</p>}
             </section>

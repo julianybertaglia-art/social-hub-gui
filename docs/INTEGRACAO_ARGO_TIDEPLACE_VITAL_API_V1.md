@@ -12,6 +12,9 @@
 - Proteção contra envio duplicado (`Idempotency-Key`), janela de atendimento de 24 horas, limites de 30 envios por minuto/atendente, transferência, suspensão da Vivi depois da passagem ao humano.
 - Histórico sincronizado, incluindo mensagens enviadas pelo TidePlace.
 
+## Cliente Node.js pronto para copiar
+O exemplo pronto está em [`docs/examples/argo-tideplace-client.mjs`](./examples/argo-tideplace-client.mjs). Ele já implementa as cinco operações, valida o telefone, usa HTTPS e exige chave de idempotência no envio. Andrey só precisa copiá-lo para o **backend** do Argo e ligá-lo ao login dos atendentes.
+
 ## O que Andrey precisa fazer no Argo
 1. Criar ou adaptar a área **Atendimento / WhatsApp Vital Decor** na interface do Argo.
 2. Autenticar os usuários Andrey e Vitor **no Argo** e vincular cada sessão ao respectivo atendente; não aceite um `agent` arbitrário vindo do navegador.

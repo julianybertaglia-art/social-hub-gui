@@ -58,3 +58,18 @@ test('Tide owner remains default and can revoke keys',()=>{
 function bridgeSetup(){
  return code('../supabase/migrations/20261009150000_argo_bridge_vital.sql');
 }
+
+test('sector plan remains in Tide until the Argo integration is explicitly enabled',()=>{
+ const bridge=code('../app/api/integrations/argo/v1/bridge.mjs');
+ const admin=code('../app/api/vital-whatsapp/argo-routing/route.js');
+ const ui=code('../app/ArgoBridgePanel.js');
+ const migration=code('../supabase/migrations/20261009190000_argo_sector_activation.sql');
+ assert.match(migration,/routing_enabled boolean NOT NULL DEFAULT false/i);
+ assert.match(bridge,/setting\?\.routing_enabled/);
+ assert.match(bridge,/assignee = 'tide'/);
+ assert.match(bridge,/vital_whatsapp_argo_keys/);
+ assert.match(admin,/routing_enabled:false/);
+ assert.match(admin,/payload.action==='activate'/);
+ assert.match(ui,/Planejado: continua no TidePlace/);
+ assert.match(ui,/Ativar após teste/);
+});

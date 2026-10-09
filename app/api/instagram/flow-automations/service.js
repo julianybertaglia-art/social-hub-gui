@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
+import { upgradeGuiWhatsappNode, guiWhatsappButtonTemplate, GUI_WHATSAPP_URL } from '../../../lib/gui-whatsapp-cta.mjs';
 
 export const FLOW_STORAGE_KEY = 'tideplace-instagram-flow-automations';
 export const STATE_TITLE = '__SOCIAL_HUB_STATE__';
@@ -32,6 +33,7 @@ function sanitizeNode(node, depth = 0) {
       responseMode: 'same',
       sharedNext: null,
       buttons: [],
+      whatsappButton: false,
     };
   }
 
@@ -46,9 +48,10 @@ function sanitizeNode(node, depth = 0) {
   const legacyShared = responseMode === 'same' ? buttons[0]?.next : null;
   const sharedSource = node?.sharedNext || legacyShared;
 
-  return {
+  return upgradeGuiWhatsappNode({
     id: String(node?.id || crypto.randomUUID()).slice(0, 80),
     text: String(node?.text || '').trim().slice(0, 1000),
+    whatsappButton: Boolean(node?.whatsappButton),
     audioPath: String(node?.audioPath || '').trim().slice(0, 500),
     audioName: String(node?.audioName || '').trim().slice(0, 120),
     audioBucket: String(node?.audioBucket || AUDIO_BUCKET).trim().slice(0, 120),
@@ -57,7 +60,7 @@ function sanitizeNode(node, depth = 0) {
       ? sanitizeNode(sharedSource, depth + 1)
       : null,
     buttons: sanitizedButtons,
-  };
+  });
 }
 
 export function sanitizeFlows(value) {
@@ -75,7 +78,7 @@ export function sanitizeFlows(value) {
         String(publicReplies[1] || '').trim().slice(0, 300),
       ],
       start,
-      active: Boolean(flow?.active && keyword && (start.text || start.audioPath)),
+      active: Boolean(flow?.active && keyword && (start.text || start.audioPath || start.whatsappButton)),
     };
   });
 }
@@ -228,8 +231,8 @@ function quickReplies(flow, node, { includeAudioAction = false } = {}) {
   return replies.slice(0, MAX_BUTTONS);
 }
 
-function buttonTemplate(flow, node, { includeAudioAction = false } = {}) {
-  const buttons = (node?.buttons || []).slice(0, 3).map((button) => ({
+export function buttonTemplate(flow, node, { includeAudioAction = false } = {}) {
+  const buttons = (node?.buttons || []).map((button) => ({
     type: 'postback',
     title: button.label,
     payload: buttonPayload(flow.id, button.id),
@@ -243,8 +246,11 @@ function buttonTemplate(flow, node, { includeAudioAction = false } = {}) {
     });
   }
 
-  if (!buttons.length || buttons.length > 3) return null;
+  if (node?.whatsappButton) buttons.push(guiWhatsappButtonTemplate().attachment.payload.buttons[0]);
 
+  // Meta button templates support up to 3 actions and only 640 characters.
+  // Longer user-provided prompts must be sent as text, with the CTA separately.
+  if (!buttons.length || buttons.length > 3 || String(node?.text || '').length > 640) return null;
   return {
     attachment: {
       type: 'template',
@@ -257,10 +263,10 @@ function buttonTemplate(flow, node, { includeAudioAction = false } = {}) {
   };
 }
 
-async function sendNodeToRecipient(db, accountId, recipientId, flow, node, { includeAudio = true } = {}) {
+export async function sendNodeToRecipient(db, accountId, recipientId, flow, node, { includeAudio = true } = {}) {
   if (includeAudio && node?.audioPath) await sendAudio(db, accountId, recipientId, node.audioPath, node.audioBucket);
 
-  const template = (node?.buttons || []).length <= 3 ? buttonTemplate(flow, node) : null;
+  const template = buttonTemplate(flow, node);
   if (template) {
     return metaPost(accountId + '/messages', {
       recipient: { id: recipientId },
@@ -269,14 +275,24 @@ async function sendNodeToRecipient(db, accountId, recipientId, flow, node, { inc
   }
 
   const replies = quickReplies(flow, node);
-  if (!node?.text && !replies.length) return null;
-  return metaPost(accountId + '/messages', {
-    recipient: { id: recipientId },
-    message: {
-      text: node?.text || 'Escolha uma opção:',
-      ...(replies.length ? { quick_replies: replies } : {}),
-    },
-  });
+  let result = null;
+  if (node?.text || replies.length) {
+    result = await metaPost(accountId + '/messages', {
+      recipient: { id: recipientId },
+      message: {
+        text: node?.text || 'Escolha uma opção:',
+        ...(replies.length ? { quick_replies: replies } : {}),
+      },
+    });
+  }
+  if (node?.whatsappButton) {
+    // A separate CTA protects long prompts and keeps the menu quick replies.
+    return metaPost(accountId + '/messages', {
+      recipient: { id: recipientId },
+      message: guiWhatsappButtonTemplate(),
+    });
+  }
+  return result;
 }
 
 function findButtonContext(node, buttonId, depth = 0) {
@@ -406,7 +422,8 @@ export async function processFlowComments(payload, db = null) {
       await metaPost(event.accountId + '/messages', {
         recipient: { comment_id: commentId },
         message: startTemplate || {
-          text: flow.start.text || (flow.start.audioPath ? 'Toque abaixo para continuar e ouvir o áudio.' : 'Escolha uma opção:'),
+          text: (flow.start.text || (flow.start.audioPath ? 'Toque abaixo para continuar e ouvir o áudio.' : 'Escolha uma opção:'))
+            + (flow.start.whatsappButton ? '\n\n👉 ' + GUI_WHATSAPP_URL : ''),
           ...(startReplies.length ? { quick_replies: startReplies } : {}),
         },
       });
@@ -443,14 +460,8 @@ export async function processFlowSelections(payload, db = null) {
 
       const branchTemplate = (flow.start?.buttons || []).length <= 3 ? buttonTemplate(flow, flow.start) : null;
       const branchReplies = branchTemplate ? [] : quickReplies(flow, flow.start);
-      if (branchTemplate || branchReplies.length) {
-        await metaPost(event.accountId + '/messages', {
-          recipient: { id: event.senderId },
-          message: branchTemplate || {
-            text: flow.start.text || 'Agora escolha como você quer continuar:',
-            quick_replies: branchReplies,
-          },
-        });
+      if (branchTemplate || branchReplies.length || flow.start.whatsappButton) {
+        await sendNodeToRecipient(db, event.accountId, event.senderId, flow, flow.start, { includeAudio: false });
       }
       handled += 1;
       continue;

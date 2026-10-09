@@ -107,42 +107,14 @@ const MENTORIA_FLOW = {
   active: true,
   start: {
     id: 'node-mentoria-inicio',
-    text: 'Fala! 👊 Eu consigo te ajudar tanto se você está começando do zero quanto se já tem uma operação e quer crescer ainda mais.\n\nPra eu te direcionar da melhor forma, qual é o seu momento hoje?',
+    text: 'Fala! Vi seu comentário no meu post 👊\n\nEu consigo te ajudar tanto se você está começando do zero quanto se já tem uma operação e quer crescer ainda mais.\n\nMe chama no WhatsApp pra eu entender melhor o seu momento e te ajudar a dar o próximo passo. 👇',
     audioPath: '',
     audioName: '',
     audioBucket: 'instagram-flow-audio',
-    responseMode: 'personalized',
+    responseMode: 'same',
+    whatsappButton: true,
     sharedNext: null,
-    buttons: [
-      {
-        id: 'btn-mentoria-ja-vendo',
-        label: 'Já vendo · Mentoria',
-        next: {
-          id: 'node-mentoria-seller',
-          text: 'Se quiser entender melhor como funciona a mentoria e ver se faz sentido para o seu momento, fala com a minha equipe 👊\n\n📲 WhatsApp: (11) 92399-0244\nhttps://wa.me/5511923990244',
-          audioPath: 'd3db0981-1179-459e-9449-9e97232f6632/9edc7844-3f0a-4bb6-b71a-e2e7cb7d2331.m4a',
-          audioName: 'mentoria-gui.m4a',
-          audioBucket: 'instagram-audio-tests',
-          responseMode: 'same',
-          sharedNext: null,
-          buttons: [],
-        },
-      },
-      {
-        id: 'btn-mentoria-comecar',
-        label: 'Quero começar',
-        next: {
-          id: 'node-mentoria-iniciante',
-          text: 'Se você ainda está começando, eu tenho um treinamento completo pensado para quem quer iniciar do zero no Mercado Livre e construir a operação do jeito certo. 👊\n\nVocê pode conhecer o treinamento aqui:\nhttps://guilhermenonato.com.br/destravando-o-mercado-livre/\n\nSe quiser falar com a minha equipe e tirar alguma dúvida:\n📲 WhatsApp: (11) 92399-0244\nhttps://wa.me/5511923990244',
-          audioPath: '',
-          audioName: '',
-          audioBucket: 'instagram-flow-audio',
-          responseMode: 'same',
-          sharedNext: null,
-          buttons: [],
-        },
-      },
-    ],
+    buttons: [],
   },
 };
 

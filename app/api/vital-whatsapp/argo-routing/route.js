@@ -1,5 +1,5 @@
 import { authorize } from '../../vital-connections/service';
-import { fail } from '../vital-connections/helpers.mjs';
+import { fail } from '../../vital-connections/helpers.mjs';
 import { vitalConnection,SECTORS,ASSIGNEES,requireSameOrigin,replyError,noCacheJson } from '../../integrations/argo/v1/bridge.mjs';
 export const runtime='nodejs';export const dynamic='force-dynamic';
 export async function GET(request){

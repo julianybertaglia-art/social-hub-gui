@@ -40,6 +40,9 @@ jobs:
       - name: Testar bridge TidePlace Argo
         run: node --test tests/argo-vital-bridge.test.mjs
 
+      - name: Testar botões clicáveis do WhatsApp no Direct do Gui
+        run: node --test tests/gui-whatsapp-cta.test.mjs
+
       - name: Testar redirecionamento Direct Vital para WhatsApp
         run: node --test tests/vital-instagram-direct.test.mjs tests/vital-instagram-automation-panel.test.mjs
 

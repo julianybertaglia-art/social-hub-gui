@@ -48,6 +48,14 @@ export async function saveWorkspaceMessages(db, change, connection) {
       sent_at: sentAt(message.timestamp), raw_payload: message,
     }, { onConflict: 'connection_id,meta_message_id', ignoreDuplicates: true });
     if (error) throw error;
+    // Keep the Argo queue ordered by actual client activity without transferring ownership.
+    if (direction === 'inbound') {
+      const {error:activityError}=await db.from('vital_whatsapp_assignments')
+        .update({updated_at:new Date().toISOString()})
+        .eq('connection_id',connection.id).eq('owner_user_id',connection.owner_user_id)
+        .eq('contact_wa_id',contactId).neq('status','closed');
+      if (activityError) console.error('Argo activity sync failed',activityError.code);
+    }
   }
   if (change.field === 'messages') {
     for (const status of value.statuses || []) {

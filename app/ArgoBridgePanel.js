@@ -77,7 +77,7 @@ export default function ArgoBridgePanel(){
    <p style={muted}>Os responsáveis são planejados. Novas conversas continuam no TidePlace até o encaminhamento para o Argo ser ativado após os testes.</p>
    <div style={{display:'grid',gap:10,marginTop:16}}>
     {GROUPS.map(([id,name])=>{
-     const current=settings.find(i=>i.sector===id)?.assignee||'tide';
+     const rule=settings.find(i=>i.sector===id); const current=rule?.assignee||'tide'; const active=Boolean(rule?.enabled); const ready=keys.some(k=>k.agent===current&&!k.revoked_at&&Date.parse(k.expires_at)>Date.now());
      return <div key={id} style={{display:'grid',gridTemplateColumns:'minmax(180px,1fr) minmax(180px,230px)',gap:14,alignItems:'center'}}>
       <strong style={{fontSize:13}}>{name}</strong>
       <select aria-label={'Responsável: '+name} style={field} disabled={working} value={current}

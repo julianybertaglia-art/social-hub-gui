@@ -10,6 +10,7 @@ import VitalWhatsAppInbox from './VitalWhatsAppInbox';
 import ViviAutomationPanel from './ViviAutomationPanel';
 import VitalAffiliatePanel from './VitalAffiliatePanel';
 import ArgoBridgePanel from './ArgoBridgePanel';
+import VitalInstagramAutomationPanel from './VitalInstagramAutomationPanel';
 
 const GROUPS = [
   {
@@ -136,6 +137,8 @@ export default function HubFrame({ children }) {
             <ViviAutomationPanel />
           ) : pathname === '/whatsapp/integracao-argo' ? (
             <ArgoBridgePanel />
+          ) : pathname === '/automacoes' ? (
+            <VitalInstagramAutomationPanel />
           ) : (
             <section className={styles.workspaceEmpty}>
               <span className={styles.workspaceEyebrow}>WORKSPACE · {workspace.name.toUpperCase()}</span>

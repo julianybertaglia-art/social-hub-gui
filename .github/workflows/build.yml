@@ -41,7 +41,7 @@ jobs:
         run: node --test tests/argo-vital-bridge.test.mjs
 
       - name: Testar redirecionamento Direct Vital para WhatsApp
-        run: node --test tests/vital-instagram-direct.test.mjs
+        run: node --test tests/vital-instagram-direct.test.mjs tests/vital-instagram-automation-panel.test.mjs
 
       - name: Testar build
         run: npm run build

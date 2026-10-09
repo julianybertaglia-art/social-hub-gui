@@ -1,0 +1,45 @@
+.page{width:min(1140px,calc(100% - 48px));margin:40px auto 80px;color:var(--text)}
+.heading{display:flex;align-items:center;justify-content:space-between;gap:22px;margin-bottom:26px}
+.eyebrow,.previewLabel{display:block;color:var(--gold-dark);font-size:10px;font-weight:850;letter-spacing:.13em}
+.heading h1{margin:12px 0 8px;font-size:34px;line-height:1.1;letter-spacing:-.04em}
+.heading p{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
+.activeBadge,.pendingBadge{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;border-radius:20px;padding:8px 12px;font-size:11px;font-weight:800}
+.activeBadge{background:#eaf6ee;color:#30724b}
+.pendingBadge{background:var(--gold-soft);color:var(--gold-dark)}
+.bullet{display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor}
+.card,.confirmCard{border:1px solid var(--border);border-radius:21px;background:var(--surface);box-shadow:var(--shadow)}
+.cardHeader{display:flex;align-items:center;gap:15px;padding:26px 28px 20px}
+.cardTitle{flex:1;min-width:0}
+.cardTitle h2,.confirmCard h2{margin:0 0 5px;font-size:22px;letter-spacing:-.03em}
+.cardTitle p{margin:0;color:var(--muted);font-size:12px}
+.appIcon{display:grid;width:46px;height:46px;flex-shrink:0;place-items:center;border-radius:13px;background:var(--gold-soft);color:var(--gold-dark);font-size:28px}
+.steps{display:flex;align-items:center;gap:10px;margin:0 28px 24px;padding:15px;border:1px solid var(--border);border-radius:13px;background:var(--surface-soft)}
+.steps div{display:flex;flex:1;align-items:center;gap:10px;min-width:0;font-size:12px;font-weight:700}
+.steps b{display:grid;flex:0 0 26px;height:26px;place-items:center;border-radius:50%;background:var(--gold-soft);color:var(--gold-dark);font-size:11px}
+.arrow{color:var(--gold-dark);font-weight:800}
+.previewGrid{display:grid;grid-template-columns:1.15fr 1fr;gap:20px;margin:0 28px 26px}
+.preview,.details{padding:21px;border:1px solid var(--border);border-radius:16px;background:var(--surface-soft)}
+.previewLabel{margin-bottom:16px}
+.message{padding:18px;border:1px solid var(--border);border-radius:14px 14px 14px 3px;background:var(--surface);font-size:13px;line-height:1.7;white-space:pre-wrap}
+.whatsappButton{display:block;margin-top:10px;padding:13px 16px;border:1px solid #cee6d6;border-radius:10px;background:#eaf6ee;color:#256d44!important;font-size:13px;font-weight:800;text-align:center;text-decoration:none!important}
+.whatsappButton:hover{background:#ddf0e2}
+.detail{display:flex;justify-content:space-between;gap:15px;padding:12px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.5}
+.detail:last-child{border-bottom:0}
+.detail strong{flex:0 0 110px}
+.detail span{text-align:right;color:var(--muted)}
+.actions{display:flex;align-items:center;justify-content:space-between;gap:25px;padding:24px 28px;border-top:1px solid var(--border)}
+.actionCopy strong{font-size:14px}
+.actionCopy p{margin:6px 0 0;color:var(--muted);font-size:12px;line-height:1.6}
+.primaryButton,.secondaryButton{min-height:46px;padding:12px 18px;border:1px solid var(--gold);border-radius:11px;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.primaryButton{background:var(--gold);color:white}
+.secondaryButton{background:var(--surface);color:var(--gold-dark)}
+.primaryButton:disabled,.secondaryButton:disabled{opacity:.55;cursor:wait}
+.confirmCard{margin-top:18px;padding:26px 28px}
+.confirmCard p{color:var(--muted);font-size:13px}
+.options{display:grid;gap:9px;max-width:480px;margin:16px 0}
+.option{display:flex;align-items:center;gap:12px;padding:13px;border:1px solid var(--border);border-radius:11px;cursor:pointer}
+.option strong,.option small{display:block;font-size:12px}
+.option small{margin-top:3px;color:var(--muted)}
+.notice{margin:18px 0 0;padding:14px 18px;border:1px solid var(--border);border-radius:12px;background:var(--gold-soft);color:var(--gold-dark);font-size:13px;line-height:1.6}
+@media(max-width:860px){.previewGrid{grid-template-columns:1fr}.steps{flex-wrap:wrap}.steps .arrow{display:none}.actions{align-items:stretch;flex-direction:column}.actions button{width:100%}}
+@media(max-width:560px){.page{width:calc(100% - 28px);margin:20px auto 55px}.heading{align-items:flex-start;flex-direction:column}.heading h1{font-size:27px}.cardHeader{padding:20px;flex-wrap:wrap}.steps{display:grid;margin:0 18px 18px}.previewGrid{margin:0 18px 18px}.actions{padding:20px}.detail{display:block}.detail span{display:block;text-align:left;margin-top:5px}.confirmCard{padding:20px}}

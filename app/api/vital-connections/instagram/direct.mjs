@@ -1,9 +1,8 @@
 import { GUI_INSTAGRAM_ID } from '../helpers.mjs';
 
 const API_VERSION = 'v26.0';
-export const VITAL_WHATSAPP = '5511965765247';
-export const VITAL_WELCOME_TEXT = 'Olá! 👋 Seja bem-vindo à Vital Decor!\n\nPara oferecer um atendimento mais rápido e organizado, nossa equipe atende pelo WhatsApp. 💚\n\nToque no botão abaixo para falar com a gente.';
-export const VITAL_WHATSAPP_LINK = 'https://wa.me/' + VITAL_WHATSAPP + '?text=' + encodeURIComponent('Olá, vim pelo Instagram da Vital Decor e gostaria de atendimento.');
+import { VITAL_WELCOME_TEXT, VITAL_WHATSAPP_LINK } from '../../../lib/vital-direct-copy.mjs';
+export { VITAL_WHATSAPP, VITAL_WELCOME_TEXT, VITAL_WHATSAPP_LINK } from '../../../lib/vital-direct-copy.mjs';
 
 function id(value) {
   const result = String(value || '');

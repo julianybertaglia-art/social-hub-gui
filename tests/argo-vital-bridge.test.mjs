@@ -53,7 +53,7 @@ test('Tide owner remains default and can revoke keys',()=>{
  assert.match(config,/vital_whatsapp_assignments/);
  assert.match(vivi,/routeViviConversation/);
  assert.match(hub,/<ArgoBridgePanel \/>/);
- assert.match(bridgeSetup(),'default_assignee text not null default \'tide\'');
+ assert.ok(bridgeSetup().includes("default_assignee text not null default 'tide'"));
 });
 function bridgeSetup(){
  return code('../supabase/migrations/20261009150000_argo_bridge_vital.sql');

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   GUI_WHATSAPP_LABEL,
   GUI_WHATSAPP_NUMBER,
@@ -96,4 +97,26 @@ test('long Direct prompt is sent intact before a separate clickable button', asy
     if (token === undefined) delete process.env.META_INSTAGRAM_ACCESS_TOKEN;
     else process.env.META_INSTAGRAM_ACCESS_TOKEN = token;
   }
+});
+
+test('Mentoria fallback keeps opening and routes directly to WhatsApp without a menu', () => {
+  const source = readFileSync(new URL('../app/automacoes/page.js', import.meta.url), 'utf8');
+  const start = source.indexOf('const MENTORIA_FLOW = {');
+  const end = source.indexOf('const FORNECEDORES_FLOW = {');
+  assert.ok(start >= 0 && end > start);
+  const block = source.slice(start, end);
+  assert.match(block, /Me chama no WhatsApp pra eu entender melhor o seu momento/);
+  assert.match(block, /whatsappButton: true/);
+  assert.match(block, /buttons: \[\]/);
+  assert.doesNotMatch(block, /Já vendo · Mentoria|btn-mentoria-comecar/);
+  const flow = sanitizeFlows([{ id: 'flow-mentoria-20260930-v2', name: 'Mentoria',
+    keyword: 'MENTORIA', active: true,
+    start: { text: 'Fala! Vi seu comentário no meu post 👊\n\nMe chama no WhatsApp pra eu entender melhor o seu momento.', whatsappButton: true, buttons: [] },
+  }])[0];
+  assert.equal(flow.active, true);
+  assert.equal(flow.start.buttons.length, 0);
+  const template = buttonTemplate(flow, flow.start, { includeAudioAction: true });
+  assert.equal(template.attachment.payload.buttons.length, 1);
+  assert.equal(template.attachment.payload.buttons[0].type, 'web_url');
+  assert.equal(template.attachment.payload.buttons[0].url, GUI_WHATSAPP_URL);
 });

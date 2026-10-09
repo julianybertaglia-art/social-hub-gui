@@ -3,6 +3,8 @@ import { after } from 'next/server';
 import { extractTestMessages, processAudioTests } from '../audio-test/service';
 import { processFlowComments, processFlowSelections } from '../flow-automations/service.js';
 import { serverClient } from '../audio-automation/service.js';
+import { processVitalInstagramDirect } from '../../vital-connections/instagram/direct.mjs';
+import { GUI_INSTAGRAM_ID } from '../../vital-connections/helpers.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -88,12 +90,16 @@ export async function POST(request) {
 
   after(async () => {
     try {
-      const [comments, selections] = await Promise.all([
-        processFlowComments(payload),
-        processFlowSelections(payload),
+      // The Gui's keyword/comment flows must never intercept Vital Decor conversations.
+      const guiPayload = { ...payload, entry: (payload.entry || [])
+        .filter((entry) => String(entry?.id || '') === GUI_INSTAGRAM_ID) };
+      const [comments, selections, vitalDirect] = await Promise.all([
+        processFlowComments(guiPayload),
+        processFlowSelections(guiPayload),
+        processVitalInstagramDirect(payload, serverClient()),
       ]);
-      if (comments || selections) {
-        console.info('TIDEPLACE:FLOW', { comments, selections });
+      if (comments || selections || vitalDirect) {
+        console.info('TIDEPLACE:FLOW', { comments, selections, vitalDirect });
       }
     } catch (error) {
       console.error('TIDEPLACE:FLOW: falha no processamento', error instanceof Error ? error.message : String(error));

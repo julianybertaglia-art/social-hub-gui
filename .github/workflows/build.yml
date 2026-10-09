@@ -40,5 +40,8 @@ jobs:
       - name: Testar bridge TidePlace Argo
         run: node --test tests/argo-vital-bridge.test.mjs
 
+      - name: Testar redirecionamento Direct Vital para WhatsApp
+        run: node --test tests/vital-instagram-direct.test.mjs
+
       - name: Testar build
         run: npm run build

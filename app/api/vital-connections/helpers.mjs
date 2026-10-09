@@ -105,6 +105,6 @@ export function publicConnection(row) {
     state: row.state,
     connected: row.state === 'connected',
     connectedAt: row.connected_at,
-    automaticReplies: false,
+    automaticReplies: Boolean(row.automatic_replies_enabled),
   };
 }

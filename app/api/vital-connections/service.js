@@ -135,6 +135,19 @@ export async function commitConnection(db, ownerId, body) {
         throw fail('Selecione o WhatsApp da Vital Decor.');
       }
     }
+    // Subscribe the Vital Decor Page to Instagram message events BEFORE replacing
+    // its existing metrics connection. If Meta denies the permission, preserve
+    // the currently working connection and keep automatic replies disabled.
+    if (platform === 'instagram') {
+      try {
+        const subscription = await graph(safePhoneId(candidate.pageId) + '/subscribed_apps', candidate.accessToken, {
+          method: 'POST', query: { subscribed_fields: 'messages,messaging_postbacks' },
+        });
+        if (subscription.success !== true) throw fail('A Meta não confirmou a assinatura dos Directs.', 502);
+      } catch {
+        throw fail('A Meta não autorizou as mensagens do Instagram. Ao renovar, conceda pages_manage_metadata e instagram_manage_messages para ativar o Direct.', 422);
+      }
+    }
     const now = new Date().toISOString();
     const row = {
       owner_user_id: ownerId, workspace_id: WORKSPACE, platform,
@@ -145,7 +158,7 @@ export async function commitConnection(db, ownerId, body) {
       picture_url: profile.profile_picture_url || null,
       display_phone_number: profile.display_phone_number || null,
       state: platform === 'whatsapp' ? 'pending_subscription' : 'connected',
-      connected_at: now, updated_at: now, automatic_replies_enabled: false,
+      connected_at: now, updated_at: now, automatic_replies_enabled: platform === 'instagram',
     };
     const { data: saved, error: saveError } = await db.from(CONNECTIONS)
       .upsert(row, { onConflict: 'owner_user_id,workspace_id,platform' })
@@ -188,6 +201,6 @@ export async function readStatus(db, ownerId) {
   return {
     workspace: WORKSPACE, connections, appId: APP_ID,
     whatsappConfigId: process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID || '',
-    automaticReplies: false,
+    automaticReplies: connections.some((connection) => connection.platform === 'instagram' && connection.automaticReplies),
   };
 }

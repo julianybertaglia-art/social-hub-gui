@@ -52,3 +52,13 @@ test('Vivi code only touches Vital workspace, supports handoff and silent existi
   assert.match(upload,/enabled: true, bluetti_catalog_url: url/);
   assert.doesNotMatch(flow,/whatsapp_contacts|sendWhatsAppText/);
 });
+
+test('TikTok applicant view never mixes Vital candidates with Gui records', () => {
+  const frame = readFileSync(new URL('../app/HubFrame.js', import.meta.url), 'utf8');
+  const api = readFileSync(new URL('../app/api/vital-whatsapp/afiliados/route.js', import.meta.url), 'utf8');
+  assert.match(frame, /<VitalAffiliatePanel \/>/);
+  assert.match(api, /vital_whatsapp_affiliate_applications/);
+  assert.match(api, /eq\('owner_user_id', ownerId\)/);
+  assert.match(api, /eq\('workspace_id', 'vital-decor'\)/);
+  assert.doesNotMatch(api, /whatsapp_contacts|influencer_applications'\)/);
+});

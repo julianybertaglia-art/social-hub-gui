@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../CloudGate';
 import styles from './automacoes.module.css';
+import { GUI_WHATSAPP_URL, upgradeGuiWhatsappFlows } from '../lib/gui-whatsapp-cta.mjs';
 
 function uid(prefix) {
   const value = globalThis.crypto?.randomUUID?.() || (Date.now().toString(36) + Math.random().toString(36).slice(2));
@@ -15,6 +16,7 @@ function emptyNode() {
     text: '',
     audioPath: '',
     audioName: '',
+    whatsappButton: false,
     responseMode: 'same',
     sharedNext: null,
     buttons: [],
@@ -299,7 +301,7 @@ function readAsDataUrl(file) {
 }
 
 export default function AutomacoesPage() {
-  const [flows, setFlows] = useState(() => [IMPORTACAO_FLOW, MENTORIA_FLOW, FORNECEDORES_FLOW]);
+  const [flows, setFlows] = useState(() => upgradeGuiWhatsappFlows([IMPORTACAO_FLOW, MENTORIA_FLOW, FORNECEDORES_FLOW]));
   const [selectedId, setSelectedId] = useState(FORNECEDORES_FLOW.id);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -315,14 +317,14 @@ export default function AutomacoesPage() {
         if (cancelled) return;
         const next = storedFlows.length
           ? storedFlows
-          : [IMPORTACAO_FLOW, MENTORIA_FLOW, FORNECEDORES_FLOW];
+          : upgradeGuiWhatsappFlows([IMPORTACAO_FLOW, MENTORIA_FLOW, FORNECEDORES_FLOW]);
         setFlows(next);
         setSelectedId(next.find((flow) => flow.id === FORNECEDORES_FLOW.id)?.id || next[0]?.id || IMPORTACAO_FLOW.id);
         try { window.localStorage.setItem('tideplace-instagram-flow-automations', JSON.stringify(next)); } catch {}
       })
       .catch((error) => {
         if (cancelled) return;
-        const next = [IMPORTACAO_FLOW, MENTORIA_FLOW, FORNECEDORES_FLOW];
+        const next = upgradeGuiWhatsappFlows([IMPORTACAO_FLOW, MENTORIA_FLOW, FORNECEDORES_FLOW]);
         setFlows(next);
         setSelectedId(FORNECEDORES_FLOW.id);
         setNotice(error.message);
@@ -501,6 +503,29 @@ export default function AutomacoesPage() {
           )}
         </div>
 
+        <div className={styles.whatsappAction}>
+          <label className={styles.whatsappToggle}>
+            <input
+              type="checkbox"
+              checked={Boolean(node.whatsappButton)}
+              onChange={(event) => patchNode(flow.id, node.id, (current) => ({
+                ...current, whatsappButton: event.target.checked,
+              }))}
+            />
+            <span>
+              <strong>Botão “Abrir WhatsApp”</strong>
+              <small>Abre a conversa com a equipe do Gui no WhatsApp, em um clique.</small>
+            </span>
+          </label>
+          {node.whatsappButton && (
+            <a className={styles.whatsappPreview} href={GUI_WHATSAPP_URL}
+               target="_blank" rel="noopener noreferrer">
+              Abrir WhatsApp ↗
+            </a>
+          )}
+          <small className={styles.whatsappHint}>Ao salvar, o número antigo da equipe também é substituído automaticamente pelo botão.</small>
+        </div>
+
         <div className={styles.branchHeader}>
           <div>
             <strong>Botões de resposta</strong>
@@ -512,7 +537,7 @@ export default function AutomacoesPage() {
         </div>
 
         {(node.buttons || []).length === 0 ? (
-          <div className={styles.noButtons}>Sem botões: a automação termina depois desta resposta.</div>
+          <div className={styles.noButtons}>{node.whatsappButton ? 'Esta resposta termina com o botão “Abrir WhatsApp”.' : 'Sem botões: a automação termina depois desta resposta.'}</div>
         ) : (
           <>
             <div className={styles.modePicker}>

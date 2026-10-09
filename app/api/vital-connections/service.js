@@ -188,6 +188,6 @@ export async function readStatus(db, ownerId) {
   return {
     workspace: WORKSPACE, connections, appId: APP_ID,
     whatsappConfigId: process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID || '',
-    automaticReplies: false,
+    automaticReplies: connections.some((connection) => connection.platform === 'instagram' && connection.automaticReplies),
   };
 }

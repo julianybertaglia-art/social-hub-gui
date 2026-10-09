@@ -69,12 +69,12 @@ export default function ArgoBridgePanel(){
  return <main style={{maxWidth:1220,margin:'auto',padding:'30px 24px 60px',color:'var(--text)'}}>
   <p style={{fontSize:10,letterSpacing:2,fontWeight:850,color:'var(--gold-dark)'}}>VITAL DECOR · INTEGRAÇÕES</p>
   <h1 style={{fontSize:32,margin:'8px 0'}}>Integração com Argo</h1>
-  <p style={{...muted,maxWidth:820}}>A Vivi e o WhatsApp continuam no TidePlace. Você atende aqui; Andrey e Vitor respondem pelo Argo, com acessos separados. Nada é compartilhado com o Argo até ser atribuído a um deles.</p>
+  <p style={{...muted,maxWidth:820}}>A Vivi e o WhatsApp continuam no TidePlace. Você atende aqui; Andrey e Vitor respondem pelo Argo, com acessos separados. A distribuição planejada não encaminha conversas enquanto o Argo não for ativado.</p>
   {error&&<p role="alert" style={{padding:12,color:'#9c2e38',background:'#fff0f2'}}>{error}</p>}
   {message&&<p role="status" style={{padding:12,color:'#247a4f',background:'#edfbef'}}>{message}</p>}
   <section style={{...panel,marginTop:20}}>
    <h2 style={{fontSize:18,margin:'0 0 8px'}}>1. Defina quem recebe cada assunto</h2>
-   <p style={muted}>A alteração vale para novos encaminhamentos da Vivi. As conversas em andamento só mudam quando você transferi-las abaixo.</p>
+   <p style={muted}>Os responsáveis são planejados. Novas conversas continuam no TidePlace até o encaminhamento para o Argo ser ativado após os testes.</p>
    <div style={{display:'grid',gap:10,marginTop:16}}>
     {GROUPS.map(([id,name])=>{
      const current=settings.find(i=>i.sector===id)?.assignee||'tide';

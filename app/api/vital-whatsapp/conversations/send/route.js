@@ -78,6 +78,14 @@ export async function POST(request) {
       raw_payload: { type: 'text', source: 'vital_tideplace_manual' },
     }, { onConflict: 'connection_id,meta_message_id', ignoreDuplicates: true });
 
+    // Once a human sends a message, pause Vivi on this contact until they request MENU.
+    const { error: handoffError } = await db.from('vital_whatsapp_flow_sessions').upsert({
+      connection_id: connection.id, owner_user_id: ownerId, contact_wa_id: to,
+      stage: 'await_human', human_handoff: true, manual_override: true,
+      updated_at: now, last_interaction_at: now,
+    }, { onConflict: 'connection_id,contact_wa_id' });
+    if (handoffError) console.error('Vivi manual takeover:', handoffError.code);
+
     // Never suggest retrying a message that Meta already accepted.
     return Response.json({
       ok: true, messageId, logged: !saveError,

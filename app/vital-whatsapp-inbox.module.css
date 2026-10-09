@@ -1,0 +1,49 @@
+.page{min-height:calc(100vh - 72px);padding:28px 30px 22px;background:var(--bg);color:var(--text)}
+.heading{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;max-width:1480px;margin:0 auto 20px}
+.kicker{font-size:10px!important;color:var(--gold-dark)!important;letter-spacing:.15em;font-weight:850!important;margin:0 0 8px!important}
+.heading h1{font-family:inherit;font-weight:750;font-size:34px;letter-spacing:-.045em;line-height:1.1;margin:0 0 8px}
+.heading p{font-size:13px;color:var(--muted);margin:0}
+.headingActions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.headingActions button,.headingActions a{display:inline-flex;align-items:center;min-height:37px;padding:0 13px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:10px;font-size:12px;font-weight:700;text-decoration:none}
+.connected{display:inline-flex;align-items:center;gap:7px;color:#35734d;background:#edf8f0;border-radius:40px;padding:10px 12px;font-size:11px;font-weight:750;white-space:nowrap}
+.connected i{width:7px;height:7px;background:#43975c;border-radius:100%}
+.error,.notice{max-width:1480px;padding:12px 14px;border-radius:10px;margin:0 auto 12px;font-size:12px;font-weight:650}
+.error{color:#9a3333;background:#fff0f0;border:1px solid #efcaca}
+.notice{color:#326f4a;background:#effbf2;border:1px solid #c9ebd2}
+.workspace{display:grid;grid-template-columns:minmax(265px,320px) minmax(0,1fr);height:calc(100vh - 225px);min-height:480px;max-width:1480px;margin:auto;border-radius:18px;background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden}
+.sidebar{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--border);background:var(--surface-soft)}
+.sidebarTop{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
+.sectionTitle{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}
+.sectionTitle h2{font-size:17px;font-weight:750;margin:0}
+.sectionTitle span{font-size:11px;font-weight:750;background:var(--gold-soft);color:var(--gold-dark);border-radius:30px;padding:5px 9px}
+.sidebarTop input{width:100%;padding:11px;border:1px solid var(--border);border-radius:10px;font-size:12px;background:var(--surface);color:var(--text);outline:0}
+.sidebarTop input:focus,.composer textarea:focus{border-color:var(--gold);outline:2px solid var(--gold-soft)}
+.contacts{overflow-y:auto;min-height:0;flex:1}
+.contact,.selectedContact{display:flex;align-items:center;gap:10px;width:100%;padding:14px 12px;border:0;border-bottom:1px solid var(--border);background:transparent;text-align:left;color:var(--text);cursor:pointer}
+.contact:hover{background:var(--gold-soft)}.selectedContact{background:var(--gold-soft);box-shadow:inset 3px 0 0 var(--gold)}
+.avatar{display:grid;place-items:center;width:37px;height:37px;flex-shrink:0;border-radius:50%;background:var(--gold-soft);border:1px solid var(--border);color:var(--gold-dark);font-size:13px;font-weight:800}
+.contactText{min-width:0;flex:1}.contactText strong,.contactText small,.contactText span{display:block;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
+.contactText strong{font-size:12.5px}.contactText small{font-size:10px;color:var(--muted);margin:3px 0}.contactText span{font-size:11px;color:var(--muted)}
+.contact time{font-size:9px;color:var(--muted);white-space:nowrap}.selectedContact time{font-size:9px;color:var(--muted);white-space:nowrap}
+.chat{display:flex;flex-direction:column;min-width:0;min-height:0}
+.chatHead{display:flex;gap:12px;align-items:center;min-height:74px;padding:13px 20px;border-bottom:1px solid var(--border);background:var(--surface)}
+.chatHead div{flex:1}.chatHead strong,.chatHead span{display:block}.chatHead strong{font-size:14px}.chatHead div span{color:var(--muted);font-size:11px;margin-top:4px}
+.manual{margin-left:auto;color:var(--gold-dark);font-size:11px!important;font-weight:750}
+.messages{min-height:0;overflow:auto;flex:1;display:flex;flex-direction:column;gap:10px;padding:24px;background:var(--bg)}
+.received,.sent{max-width:min(75%,570px);border-radius:13px;padding:12px 14px;font-size:13px;box-shadow:0 2px 7px rgba(0,0,0,.025)}
+.received{background:var(--surface);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:3px}
+.sent{background:var(--gold-soft);border:1px solid var(--border);align-self:flex-end;border-bottom-right-radius:3px}
+.messages p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55}
+.messages time{display:block;text-align:right;font-size:9px;color:var(--muted);margin-top:6px}
+.composer{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:14px;background:var(--surface);border-top:1px solid var(--border)}
+.composer textarea{font:inherit;font-size:13px;border:1px solid var(--border);border-radius:11px;padding:11px 12px;min-height:56px;background:var(--surface);color:var(--text);resize:vertical}
+.composer button{padding:0 20px;border:none;border-radius:11px;background:var(--gold-dark);color:white;font-size:12px;font-weight:800}
+.composer button:disabled{opacity:.5;cursor:not-allowed}
+.outsideWindow{display:grid;gap:5px;padding:18px 22px;background:var(--surface-soft);border-top:1px solid var(--border)}
+.outsideWindow strong{font-size:13px}.outsideWindow span{color:var(--muted);font-size:11px;line-height:1.45}
+.empty{padding:22px;text-align:center;font-size:12px;color:var(--muted)}
+.welcome{margin:auto;text-align:center;padding:30px;max-width:460px}.welcome h2{font-size:21px;margin:11px 0 8px}.welcome p{font-size:13px;color:var(--muted);line-height:1.5}.welcome small{color:var(--muted)}
+.bigIcon{width:55px;height:55px;border-radius:17px;background:var(--gold-soft);display:grid;place-items:center;color:var(--gold-dark);font-size:25px;margin:auto}
+.footnote{color:var(--muted);max-width:1480px;margin:12px auto 0;font-size:10px;line-height:1.5}
+@media(max-width:960px){.page{padding:20px 16px}.workspace{grid-template-columns:245px minmax(0,1fr)}.heading{align-items:flex-start;flex-direction:column}.manual{display:none}}
+@media(max-width:680px){.workspace{grid-template-columns:1fr;height:auto;min-height:580px}.sidebar{max-height:260px;border-right:0;border-bottom:1px solid var(--border)}.chat{min-height:450px}.received,.sent{max-width:90%}.heading h1{font-size:28px}.messages{padding:14px}.headingActions{gap:6px}}

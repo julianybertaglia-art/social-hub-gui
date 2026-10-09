@@ -7,6 +7,7 @@ import styles from './hub-frame.module.css';
 import ThemeCustomizer from './ThemeCustomizer';
 import WorkspaceSwitcher, { useWorkspace, useVitalConnectionStatus } from './WorkspaceSwitcher';
 import VitalWhatsAppInbox from './VitalWhatsAppInbox';
+import ViviAutomationPanel from './ViviAutomationPanel';
 
 const GROUPS = [
   {
@@ -124,6 +125,8 @@ export default function HubFrame({ children }) {
         <div className={styles.body}>
           {workspace.id === 'gui-nonato' || pathname.startsWith('/tiktok') ? children : pathname === '/whatsapp' ? (
             <VitalWhatsAppInbox />
+          ) : pathname === '/whatsapp/automacoes' ? (
+            <ViviAutomationPanel />
           ) : (
             <section className={styles.workspaceEmpty}>
               <span className={styles.workspaceEyebrow}>WORKSPACE · {workspace.name.toUpperCase()}</span>

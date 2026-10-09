@@ -341,6 +341,15 @@ export default function Home() {
     getWorkspaceStorageKey('guihub-goals', workspace.id),
     isGuiWorkspace ? defaultGoals : []
   );
+  useEffect(() => {
+    if (!isGuiWorkspace) return undefined;
+    function updateGuiMetrics(event) {
+      if (event?.detail?.metrics) setMetrics((current) => ({ ...current, ...event.detail.metrics }));
+    }
+    window.addEventListener('tideplace:instagram-metrics-updated', updateGuiMetrics);
+    return () => window.removeEventListener('tideplace:instagram-metrics-updated', updateGuiMetrics);
+  }, [isGuiWorkspace, setMetrics]);
+
   const [ideaDraft, setIdeaDraft] = useState({ title: '', audience: '', format: 'Reel', priority: 'Média' });
   const [postDraft, setPostDraft] = useState({ date: '', time: '', format: 'Reel', title: '', objective: 'Autoridade', status: 'Ideia' });
   const [detailPath, setDetailPath] = useState([]);

@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
-import { getSupabaseAdmin } from '../../whatsapp/lib.js';
-import { fail } from '../../vital-connections/helpers.mjs';
+import { getSupabaseAdmin } from '../../../whatsapp/lib.js';
+import { fail } from '../../../vital-connections/helpers.mjs';
 
 export const BRIDGE_WORKSPACE = 'vital-decor';
 export const AGENTS = ['andrey','vitor'];

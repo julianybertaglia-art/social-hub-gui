@@ -69,21 +69,31 @@ export default function ArgoBridgePanel(){
  return <main style={{maxWidth:1220,margin:'auto',padding:'30px 24px 60px',color:'var(--text)'}}>
   <p style={{fontSize:10,letterSpacing:2,fontWeight:850,color:'var(--gold-dark)'}}>VITAL DECOR · INTEGRAÇÕES</p>
   <h1 style={{fontSize:32,margin:'8px 0'}}>Integração com Argo</h1>
-  <p style={{...muted,maxWidth:820}}>A Vivi e o WhatsApp continuam no TidePlace. Você atende aqui; Andrey e Vitor respondem pelo Argo, com acessos separados. Nada é compartilhado com o Argo até ser atribuído a um deles.</p>
+  <p style={{...muted,maxWidth:820}}>A Vivi e o WhatsApp continuam no TidePlace. Você atende aqui; Andrey e Vitor respondem pelo Argo, com acessos separados. A distribuição planejada não encaminha conversas enquanto o Argo não for ativado.</p>
   {error&&<p role="alert" style={{padding:12,color:'#9c2e38',background:'#fff0f2'}}>{error}</p>}
   {message&&<p role="status" style={{padding:12,color:'#247a4f',background:'#edfbef'}}>{message}</p>}
   <section style={{...panel,marginTop:20}}>
    <h2 style={{fontSize:18,margin:'0 0 8px'}}>1. Defina quem recebe cada assunto</h2>
-   <p style={muted}>A alteração vale para novos encaminhamentos da Vivi. As conversas em andamento só mudam quando você transferi-las abaixo.</p>
+   <p style={muted}>Os responsáveis são planejados. Novas conversas continuam no TidePlace até o encaminhamento para o Argo ser ativado após os testes.</p>
    <div style={{display:'grid',gap:10,marginTop:16}}>
     {GROUPS.map(([id,name])=>{
-     const current=settings.find(i=>i.sector===id)?.assignee||'tide';
-     return <div key={id} style={{display:'grid',gridTemplateColumns:'minmax(180px,1fr) minmax(180px,230px)',gap:14,alignItems:'center'}}>
+     const rule=settings.find(i=>i.sector===id); const current=rule?.assignee||'tide'; const active=Boolean(rule?.enabled); const ready=keys.some(k=>k.agent===current&&!k.revoked_at&&Date.parse(k.expires_at)>Date.now());
+     return <div key={id} style={{display:'grid',gridTemplateColumns:'minmax(170px,1fr) minmax(170px,230px) minmax(165px,210px)',gap:14,alignItems:'center'}}>
       <strong style={{fontSize:13}}>{name}</strong>
       <select aria-label={'Responsável: '+name} style={field} disabled={working} value={current}
         onChange={e=>run('/api/vital-whatsapp/argo-routing',{action:'default',sector:id,assignee:e.target.value},'Setor atualizado.')}>
        {PEOPLE.map(([value,label])=><option key={value} value={value}>{label}</option>)}
       </select>
+      {current==='tide'?<span style={muted}>Atendimento no TidePlace</span>:
+        <div style={{display:'grid',gap:4}}>
+          <span style={{...muted,color:active?'#237047':'var(--muted)'}}>{active?'Argo ativo':'Planejado: continua no TidePlace'}</span>
+          <button type="button" disabled={working||(!active&&!ready)}
+            style={{...btn,fontSize:11,padding:'7px 10px',opacity:!active&&!ready?0.55:1}}
+            onClick={()=>{
+              if(!active&&!window.confirm('O Argo de '+current+' já está integrado e testado? Ativar encaminha NOVOS contatos deste setor.'))return;
+              void run('/api/vital-whatsapp/argo-routing',{action:'activate',sector:id,assignee:current,enabled:!active},active?'Encaminhamento pausado.':'Encaminhamento ativado.');
+            }}>{active?'Pausar encaminhamento':ready?'Ativar após teste':'Aguardando Argo'}</button>
+        </div>}
      </div>;
     })}
    </div>

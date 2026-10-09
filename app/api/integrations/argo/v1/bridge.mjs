@@ -95,10 +95,19 @@ export async function routeViviConversation(db,connection,contact,stage,selectio
   if(!['await_human','affiliate_form'].includes(stage))return;
   const sector=sectorFromStage(stage,selection);
   const {data:setting,error:settingErr}=await db.from('vital_whatsapp_sector_settings')
-    .select('default_assignee').eq('connection_id',connection.id).eq('sector',sector).maybeSingle();
+    .select('default_assignee,routing_enabled').eq('connection_id',connection.id).eq('sector',sector).maybeSingle();
   if(settingErr)throw settingErr;
   const now=new Date().toISOString();
-  const assignee=ASSIGNEES.includes(setting?.default_assignee)?setting.default_assignee:'tide';
+  // Assigned sectors remain in TidePlace until explicitly activated and a live agent key exists.
+  let assignee = 'tide';
+  if(setting?.routing_enabled && AGENTS.includes(setting.default_assignee)){
+    const {count,error:keyError}=await db.from('vital_whatsapp_argo_keys')
+      .select('id',{count:'exact',head:true}).eq('connection_id',connection.id)
+      .eq('owner_user_id',connection.owner_user_id).eq('agent',setting.default_assignee)
+      .is('revoked_at',null).gt('expires_at',now);
+    if(keyError)throw keyError;
+    if(count>0)assignee=setting.default_assignee;
+  }
   const {error}=await db.from('vital_whatsapp_assignments').upsert({
     connection_id:connection.id,owner_user_id:connection.owner_user_id,contact_wa_id:contact,
     sector,assigned_to:assignee,status:'open',updated_at:now,assigned_at:now,

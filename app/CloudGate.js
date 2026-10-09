@@ -6,6 +6,12 @@ import styles from './cloudgate.module.css';
 import { hasAuthIdentityChanged, sameAuthenticatedUser } from './lib/session-gate.mjs';
 
 const STORAGE_KEYS = [
+  'tideplace-workspace',
+  'guihub-metrics:vital-decor',
+  'guihub-posts:vital-decor',
+  'guihub-ideas:vital-decor',
+  'guihub-tasks:vital-decor',
+  'guihub-goals:vital-decor',
   'guihub-metrics',
   'guihub-posts',
   'guihub-ideas',
@@ -479,10 +485,10 @@ export default function CloudGate({ children }) {
   if (!supabase) {
     return (
       <main className={styles.screen}>
-        <section className={styles.card}>
-          <div className={styles.mark}>GN</div>
-          <p className={styles.eyebrow}>CONFIGURAÇÃO PENDENTE</p>
-          <h1>O banco ainda não foi conectado.</h1>
+        <section className={styles.statusCard}>
+          <img className={styles.statusLogo} src="/brand/tideplace-mark.svg" alt="" />
+          <p className={styles.eyebrow}>TIDEPLACE</p>
+          <h1>Configuração pendente</h1>
           <p>Verifique as variáveis do Supabase na Vercel e faça um novo deploy.</p>
         </section>
       </main>
@@ -491,13 +497,13 @@ export default function CloudGate({ children }) {
 
   if (initializing || (session && !ready)) {
     return (
-      <main className={styles.screen}>
-        <section className={styles.card}>
-          <div className={styles.mark}>GN</div>
-          <p className={styles.eyebrow}>GUI SOCIAL HUB</p>
-          <h1>Preparando seu painel...</h1>
-          <p>{syncStatus}</p>
-        </section>
+      <main className={styles.loadingScreen} aria-live="polite">
+        <div className={styles.loadingBrand}>
+          <img src="/brand/tideplace-mark.svg" alt="" />
+          <strong><b>TIDE</b>PLACE</strong>
+          <span>Flow with your audience.</span>
+        </div>
+        <div className={styles.loadingLine}><span /></div>
       </main>
     );
   }
@@ -505,38 +511,69 @@ export default function CloudGate({ children }) {
   if (!session) {
     return (
       <main className={styles.screen}>
-        <section className={styles.card}>
-          <div className={styles.mark}>GN</div>
-          <p className={styles.eyebrow}>ACESSO RESTRITO</p>
-          <h1>Gui Social Hub</h1>
-          <p>Entre para acessar o calendário, as métricas e o planejamento do Instagram.</p>
+        <section className={styles.loginShell}>
+          <div className={styles.brandPanel}>
+            <div className={styles.brandLockup}>
+              <img src="/brand/tideplace-mark.svg" alt="" />
+              <div>
+                <strong><b>TIDE</b>PLACE</strong>
+                <span>Flow with your audience.</span>
+              </div>
+            </div>
 
-          <form className={styles.form} onSubmit={handleLogin}>
-            <label>
-              E-mail
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                autoComplete="email"
-                required
-              />
-            </label>
-            <label>
-              Senha
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                autoComplete="current-password"
-                required
-              />
-            </label>
-            {message && <p className={styles.error}>{message}</p>}
-            <button type="submit" disabled={submitting}>
-              {submitting ? 'Entrando...' : 'Entrar no painel'}
-            </button>
-          </form>
+            <div className={styles.brandMessage}>
+              <span className={styles.brandKicker}>YOUR SOCIAL PLACE</span>
+              <h1>Tudo o que move sua audiência, em um só lugar.</h1>
+              <p>Conteúdo, conversas, leads e automações organizados para você acompanhar o fluxo sem perder o que importa.</p>
+            </div>
+
+            <div className={styles.brandFeatures}>
+              <span>Conteúdo</span>
+              <span>Audiência</span>
+              <span>Automação</span>
+              <span>Relacionamento</span>
+            </div>
+          </div>
+
+          <div className={styles.authPanel}>
+            <div className={styles.mobileBrand}>
+              <img src="/brand/tideplace-mark.svg" alt="" />
+              <strong><b>TIDE</b>PLACE</strong>
+            </div>
+            <p className={styles.eyebrow}>ACESSO À PLATAFORMA</p>
+            <h2>Bem-vinda de volta.</h2>
+            <p className={styles.authIntro}>Entre para acessar sua central TidePlace.</p>
+
+            <form className={styles.form} onSubmit={handleLogin}>
+              <label>
+                E-mail
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  autoComplete="email"
+                  placeholder="seu@email.com"
+                  required
+                />
+              </label>
+              <label>
+                Senha
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  required
+                />
+              </label>
+              {message && <p className={styles.error}>{message}</p>}
+              <button type="submit" disabled={submitting}>
+                {submitting ? 'Entrando...' : 'Entrar na TidePlace'}
+              </button>
+            </form>
+            <p className={styles.securityNote}>Acesso seguro · seus dados permanecem sincronizados.</p>
+          </div>
         </section>
       </main>
     );
@@ -545,8 +582,8 @@ export default function CloudGate({ children }) {
   return (
     <>
       {children}
-      <div className={styles.syncBar}>
-        <span>{syncStatus}</span>
+      <div className={`${styles.syncBar} ${ready ? styles.syncReady : styles.syncBusy}`}>
+        <span>{ready ? syncStatus : 'Sincronizando em segundo plano...'}</span>
         <button type="button" onClick={handleLogout}>Sair</button>
       </div>
     </>

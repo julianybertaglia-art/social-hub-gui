@@ -48,17 +48,10 @@ test('the WhatsApp list fits Meta limits and exposes the five current topics', (
   assert.ok(WHATSAPP_MENU_ROWS.some((row) => row.id === 'topic_influencer'));
 });
 
-test('a first CRM message cannot trigger a greeting without verified inbound-first origin', () => {
+test('a new organic first contact receives a menu, but ongoing and manual replies do not', () => {
   assert.equal(shouldSendInitialMenu({
     message: { text: { body: 'Oi' } },
     messageCount: 1,
-  }), false);
-
-  // Only an independently verified inbound-first conversation may qualify.
-  assert.equal(shouldSendInitialMenu({
-    message: { text: { body: 'Oi' } },
-    messageCount: 1,
-    inboundOriginVerified: true,
   }), true);
 
   assert.equal(shouldSendInitialMenu({

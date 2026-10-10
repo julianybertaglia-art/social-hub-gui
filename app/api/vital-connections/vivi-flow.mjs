@@ -21,7 +21,7 @@ export const VIVI_MARKETPLACES = [
 ];
 
 export const VIVI_WELCOME = 'Oi! 👋 Sou a Vivi, assistente virtual da Vital Decor.\n\nEstou aqui para te ajudar. Selecione abaixo sobre o que você gostaria de falar.\n\nVocê pode escrever MENU a qualquer momento para voltar ao início.';
-export const VIVI_WHOLESALE = 'Que bom saber do seu interesse em revender nossos produtos! 🤝\n\nNossas condições mínimas para compras no atacado são:\n• Pedido geral: R$ 25.000\n• Grama sintética: 1.000 m²\n• Placas de PVC: R$ 3.000\n\nOs pedidos podem incluir diferentes produtos, conforme disponibilidade. Para preparar seu atendimento, me diga seu nome, cidade/estado e quais itens você procura. Nossa equipe comercial dará continuidade por aqui.';
+export const VIVI_WHOLESALE = 'Que bom saber do seu interesse em revender nossos produtos! 🤝\n\nVocê pode combinar produtos de diferentes categorias no mesmo pedido. Nesse caso, o pedido mínimo é de R$ 25.000 no total.\n\nPara compras somente de grama sintética, o mínimo é 1.000 m². Para compras somente de placas de PVC 3D, o mínimo é R$ 3.000.\n\nA seguir, vou te enviar nosso catálogo interativo. Você escolhe os produtos, monta o pedido e solicita pelo WhatsApp.\n\nPara adiantar o atendimento, me diga seu nome, cidade/estado e quais itens procura. Nossa equipe comercial dará continuidade por aqui.';
 export const VIVI_BLUETTI = 'Ótima escolha! 🔋 Um especialista da nossa equipe vai continuar seu atendimento por aqui.\n\nEnquanto isso, você pode conhecer os modelos em nosso catálogo BLUETTI. Para agilizar, me diga seu nome e qual modelo deseja conhecer ou qual é sua dúvida sobre o produto.';
 export const VIVI_BLUETTI_NO_CATALOG = 'Ótima escolha! 🔋 Um especialista da nossa equipe vai continuar seu atendimento por aqui.\n\nPara agilizar, me diga seu nome e qual modelo BLUETTI deseja conhecer ou qual é sua dúvida. Nossa equipe também poderá compartilhar o catálogo.';
 export const VIVI_ORDER_QUESTION = 'Para localizar seu pedido, me informe: seu nome completo, o número do pedido e sua dúvida. Nossa equipe de pós-venda vai conferir e continuar o atendimento por aqui. 😊';
@@ -149,7 +149,7 @@ export async function handleViviMessage(db, connection, message, origin) {
       await setSession(db, connection, to, { stage: 'order_channel' });
     } else if (choice === 'vivi_wholesale') {
       await sendText(db, connection, to, VIVI_WHOLESALE);
-      if (config.wholesale_catalog_url) await sendDocument(db, connection, to, config.wholesale_catalog_url, 'Catalogo_Atacado_Vital_Decor.pdf');
+      if (config.wholesale_catalog_url) await sendText(db, connection, to, '📲 Acesse nosso catálogo interativo de atacado e monte seu pedido:\n' + config.wholesale_catalog_url);
       await setSession(db, connection, to, { stage: 'await_human', selection: 'Revenda', human_handoff: true });
     } else if (choice === 'vivi_affiliate') {
       const token = await application(db, connection, to);

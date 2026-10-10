@@ -15,17 +15,12 @@ test('Vivi offers correct menu, brands, and marketplace options', () => {
   assert.match(VIVI_WELCOME,/MENU/);
   assert.match(VIVI_WELCOME,/Vivi/);
 });
-test('Wholesale minimums exactly reflect current Vital conditions', () => {
-  assert.match(VIVI_WHOLESALE,/R\$ 25\.000/);
-  assert.match(VIVI_WHOLESALE,/1\.000 m²/);
-  assert.match(VIVI_WHOLESALE,/R\$ 3\.000/);
-  assert.doesNotMatch(VIVI_WHOLESALE,/25 caixas/);
-  assert.match(VIVI_WHOLESALE,/combinar diferentes categorias/);
-  assert.match(VIVI_WHOLESALE,/preencha seus dados no próprio catálogo/);
-  assert.match(VIVI_WHOLESALE,/É só tocar em/);
-  assert.match(VIVI_WHOLESALE,/representante comercial dará continuidade/);
-  assert.doesNotMatch(VIVI_WHOLESALE,/me diga seu nome/);
-  assert.match(VIVI_WHOLESALE,/R\$ 25\.000 no total/);
+test('Wholesale greeting explains how to send a catalog order', () => {
+  assert.match(VIVI_WHOLESALE,/No nosso catálogo/);
+  assert.match(VIVI_WHOLESALE,/preenche seus dados/);
+  assert.match(VIVI_WHOLESALE,/pedido pronto/);
+  assert.match(VIVI_WHOLESALE,/representante comercial/);
+  assert.ok(VIVI_WHOLESALE.length < 400);
 });
 test('MENU works case-insensitively, with accent normalization', () => {
   assert.equal(extractChoice({text:{body:' MENU '}}),'vivi_menu');

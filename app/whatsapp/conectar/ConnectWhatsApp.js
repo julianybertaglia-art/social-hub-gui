@@ -184,6 +184,8 @@ export default function ConnectWhatsApp() {
   const needsCredentialRefresh = status?.state === 'credential_refresh_required'
     || status?.needsCredentialRefresh
     || status?.needsReauthorization;
+  const reconnectRequired = status?.state === 'coexistence_reconnect_required'
+    || status?.needsCoexistenceReconnect;
 
   if (needsCredentialRefresh) {
     return (
@@ -210,10 +212,19 @@ export default function ConnectWhatsApp() {
         </div>
       )}
       {configId && <p>Configuração da Meta pronta ✓</p>}
+      {reconnectRequired && (
+        <p role="alert">
+          <strong>A conexão da API do WhatsApp do Gui foi interrompida.</strong>{' '}
+          Refaça a autorização pela janela oficial da Meta, escolhendo o mesmo WhatsApp Business.
+          Não exclua o número nem desinstale o aplicativo no celular.
+        </p>
+      )}
       <button type="button" disabled={!configId || !sdkReady || busy} onClick={connect}>
         {busy ? 'Aguardando a Meta...' : sdkReady ? 'Conectar WhatsApp Business' : 'Carregando Meta...'}
       </button>
-      <p>Use esta opção apenas para uma primeira conexão. Se o número já recebe mensagens no Lynna, não refaça o cadastro.</p>
+      <p>{reconnectRequired
+        ? 'Após concluir a reconexão, confirme em Diagnóstico que aparece CLOUD_API e CONNECTED.'
+        : 'Use esta opção para a primeira conexão. Se o número já recebe mensagens normalmente, não refaça o cadastro.'}</p>
       {message && <p>{message}</p>}
     </div>
   );

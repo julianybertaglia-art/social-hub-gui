@@ -84,6 +84,14 @@ export function isMetaRateLimitCode(value) {
   return Number(value) === 80008;
 }
 
+// A valid Meta token alone does not mean the WhatsApp Business app
+// is currently connected to the Cloud API (coexistence).
+export function isWhatsAppCoexistenceReady(phone) {
+  return phone?.is_on_biz_app === true
+    && String(phone?.platform_type || '').toUpperCase() === 'CLOUD_API'
+    && ['CONNECTED', 'APPROVED'].includes(String(phone?.status || '').toUpperCase());
+}
+
 export function normalizeWhatsAppRecipient(value) {
   const raw = String(value || '').trim();
   if (raw.endsWith('@g.us') || raw.endsWith('@s.whatsapp.net')) return raw;

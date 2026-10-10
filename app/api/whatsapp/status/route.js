@@ -1,4 +1,4 @@
-import { getMetaCredentials, getSupabaseAdmin, isMetaRateLimitCode, WHATSAPP_API_VERSION } from '../lib';
+import { getMetaCredentials, getSupabaseAdmin, isMetaRateLimitCode, isWhatsAppCoexistenceReady, WHATSAPP_API_VERSION } from '../lib';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +43,7 @@ async function validateMetaAuthentication(meta) {
 
   try {
     const phone = await graphJson(
-      `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${encodeURIComponent(meta.phoneNumberId)}?fields=id,display_phone_number,verified_name,quality_rating,status`,
+      `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${encodeURIComponent(meta.phoneNumberId)}?fields=id,display_phone_number,verified_name,quality_rating,status,is_on_biz_app,platform_type`,
       { headers: { Authorization: `Bearer ${meta.accessToken}` } }
     );
     lastAuthAt = now;
@@ -240,13 +240,17 @@ export async function GET(request) {
     }
   }
 
-  const connected = Boolean(auth.valid);
+  const coexistenceReady = isWhatsAppCoexistenceReady(auth?.phone);
+  // An accessible phone object and valid token do not establish Cloud API connectivity.
+  // Keep the existing temporary Meta rate-limit behavior until its state can be rechecked.
+  const connected = Boolean(auth.valid && (auth.temporarilyLimited || coexistenceReady));
   const webhookReady = hasVerifyToken && hasAppSecret;
   const webhookEnsure = connected && hasVerifyToken && !auth.temporarilyLimited
     ? await ensureCoexistenceWebhook(meta, origin, verifyToken)
     : { ok: Boolean(auth.temporarilyLimited), skipped: true, reason: auth.temporarilyLimited ? 'rate_limited' : null };
 
-  const needsCredentialRefresh = hasAccessToken && hasPhoneNumberId && !connected;
+  const needsCredentialRefresh = hasAccessToken && hasPhoneNumberId && !auth.valid;
+  const needsCoexistenceReconnect = Boolean(auth.valid && !auth.temporarilyLimited && !coexistenceReady);
 
   return Response.json({
     ok: true,
@@ -255,6 +259,7 @@ export async function GET(request) {
     connected,
     canSend: connected,
     needsCredentialRefresh,
+    needsCoexistenceReconnect,
     webhookReady,
     webhookEnsure,
     recovery: {
@@ -264,10 +269,16 @@ export async function GET(request) {
       code: recovery?.code || null,
       subcode: recovery?.subcode || null,
     },
-    state: connected ? 'connected' : needsCredentialRefresh ? 'credential_refresh_required' : 'authorization_required',
-    error: needsCredentialRefresh
-      ? 'A conexão do número continua ativa, mas a credencial de envio da Meta precisa ser renovada.'
-      : null,
+    state: connected
+      ? 'connected'
+      : needsCoexistenceReconnect
+        ? 'coexistence_reconnect_required'
+        : needsCredentialRefresh ? 'credential_refresh_required' : 'authorization_required',
+    error: needsCoexistenceReconnect
+      ? 'O número está no WhatsApp Business, mas a conexão com a Cloud API foi interrompida. Reconecte pela Meta sem remover o número do aplicativo.'
+      : needsCredentialRefresh
+        ? 'A credencial de envio da Meta precisa ser renovada.'
+        : null,
     authentication: {
       valid: connected,
       reason: auth.reason || null,
@@ -277,6 +288,9 @@ export async function GET(request) {
     },
     connectionSource: connected ? meta?.source || 'meta' : null,
     coexistence: Boolean(meta?.coexistence),
+    coexistenceReady,
+    phoneStatus: auth?.phone?.status || null,
+    platformType: auth?.phone?.platform_type || null,
     displayPhoneNumber: auth?.phone?.display_phone_number || meta?.displayPhoneNumber || null,
     verifiedName: auth?.phone?.verified_name || meta?.verifiedName || null,
     wabaId: meta?.wabaId || DEFAULT_WABA_ID,

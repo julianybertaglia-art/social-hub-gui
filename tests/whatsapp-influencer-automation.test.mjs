@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateInfluencerScore } from '../app/lib/influencer-scoring.js';
-import { buildWhatsAppCtaUrlMessage, isMetaRateLimitCode } from '../app/api/whatsapp/lib.js';
+import { buildWhatsAppCtaUrlMessage, isMetaRateLimitCode, isWhatsAppCoexistenceReady } from '../app/api/whatsapp/lib.js';
 import {
   AD_IMERSAO_ROWS,
   cameFromAd,
@@ -121,6 +121,13 @@ test('the influencer form is sent behind a clean WhatsApp button', () => {
   assert.equal(payload.interactive.action.parameters.display_text, 'Preencher formulário');
   assert.match(payload.interactive.action.parameters.url, /^https:\/\/social-hub-gui\.vercel\.app\//);
   assert.doesNotMatch(payload.interactive.body.text, /https?:\/\//);
+});
+
+test('WhatsApp needs active Cloud API coexistence, not only valid credentials', () => {
+  assert.equal(isWhatsAppCoexistenceReady({ is_on_biz_app: true, platform_type: 'CLOUD_API', status: 'CONNECTED' }), true);
+  assert.equal(isWhatsAppCoexistenceReady({ is_on_biz_app: true, platform_type: 'ON_PREMISE', status: 'DISCONNECTED' }), false);
+  assert.equal(isWhatsAppCoexistenceReady({ is_on_biz_app: true, platform_type: 'CLOUD_API', status: 'DISCONNECTED' }), false);
+  assert.equal(isWhatsAppCoexistenceReady({ is_on_biz_app: false, platform_type: 'CLOUD_API', status: 'CONNECTED' }), false);
 });
 
 test('a temporary Meta rate limit is not mistaken for an expired credential', () => {

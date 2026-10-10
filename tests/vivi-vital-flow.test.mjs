@@ -20,6 +20,8 @@ test('Wholesale minimums exactly reflect current Vital conditions', () => {
   assert.match(VIVI_WHOLESALE,/1\.000 m²/);
   assert.match(VIVI_WHOLESALE,/R\$ 3\.000/);
   assert.doesNotMatch(VIVI_WHOLESALE,/25 caixas/);
+  assert.match(VIVI_WHOLESALE,/combinar produtos/);
+  assert.match(VIVI_WHOLESALE,/R\$ 25\.000 no total/);
 });
 test('MENU works case-insensitively, with accent normalization', () => {
   assert.equal(extractChoice({text:{body:' MENU '}}),'vivi_menu');
@@ -46,6 +48,11 @@ test('Vivi code only touches Vital workspace, supports handoff and silent existi
   assert.match(flow,/if \(previous\?\.length\) return/);
   assert.match(flow,/vital_whatsapp_flow_events/);
   assert.match(flow,/vital_whatsapp_affiliate_applications/);
+  // Atacado envia URL do catálogo por texto, nunca como documento PDF.
+  assert.match(flow,/if \(config\.wholesale_catalog_url\) await sendText\(/);
+  assert.doesNotMatch(flow,/sendDocument\(db, connection, to, config\.wholesale_catalog_url/);
+  // O PDF da BLUETTI segue em seu próprio fluxo.
+  assert.match(flow,/sendDocument\(db, connection, to, config\.bluetti_catalog_url/);
   assert.match(hook,/handleViviMessage\(db, connection/);
   assert.match(manual,/manual_override: true/);
   assert.match(upload,/createSignedUploadUrl/);

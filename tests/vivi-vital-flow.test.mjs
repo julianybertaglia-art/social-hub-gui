@@ -20,7 +20,11 @@ test('Wholesale minimums exactly reflect current Vital conditions', () => {
   assert.match(VIVI_WHOLESALE,/1\.000 m²/);
   assert.match(VIVI_WHOLESALE,/R\$ 3\.000/);
   assert.doesNotMatch(VIVI_WHOLESALE,/25 caixas/);
-  assert.match(VIVI_WHOLESALE,/combinar produtos/);
+  assert.match(VIVI_WHOLESALE,/combinar diferentes categorias/);
+  assert.match(VIVI_WHOLESALE,/preencha seus dados no próprio catálogo/);
+  assert.match(VIVI_WHOLESALE,/É só tocar em/);
+  assert.match(VIVI_WHOLESALE,/representante comercial dará continuidade/);
+  assert.doesNotMatch(VIVI_WHOLESALE,/me diga seu nome/);
   assert.match(VIVI_WHOLESALE,/R\$ 25\.000 no total/);
 });
 test('MENU works case-insensitively, with accent normalization', () => {

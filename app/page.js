@@ -5,11 +5,15 @@ import { useEffect, useState } from 'react';
 import DetailDialog from './DetailDialog';
 import VitalInstagramMetrics from './VitalInstagramMetrics';
 import ThemeCustomizer from './ThemeCustomizer';
+import HubHealthBell from './HubHealthBell';
 import WorkspaceSwitcher, { getWorkspaceStorageKey, useWorkspace, useVitalConnectionStatus } from './WorkspaceSwitcher';
 
 const SECTION_IDS = ['dashboard', 'calendar', 'tasks', 'ideas', 'metrics', 'goals'];
 
 const navGroups = [
+  { label: 'ADMINISTRAÇÃO', items: [
+    { href: '/admin/conexoes', label: 'Central de Controle', icon: '◈', type: 'link' },
+  ] },
   {
     label: 'PRINCIPAL',
     items: [
@@ -914,6 +918,7 @@ export default function Home() {
           <button className="menu-button" onClick={() => setMobileMenu(true)} aria-label="Abrir menu">☰</button>
           <WorkspaceSwitcher />
           <ThemeCustomizer />
+          <HubHealthBell />
           <span className={`workspace-status ${(isGuiWorkspace ? instagramConnected === false : (!vitalConnection.loading && !vitalFullyConnected)) ? 'workspace-status-warning' : ''}`}>
             <i className={(isGuiWorkspace ? instagramConnected === false : (!vitalConnection.loading && !vitalFullyConnected)) ? 'pending' : ''} />
             {isGuiWorkspace

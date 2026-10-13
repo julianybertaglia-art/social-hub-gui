@@ -8,7 +8,8 @@ import styles from './admin-conexoes.module.css';
 const LABELS = { online: 'Confirmado', warning: 'Atenção', offline: 'Desconectado', unknown: 'Não verificado', paused: 'Pausado' };
 const ICONS = { 'gui-instagram': '◎', 'gui-direct': '✉', 'gui-whatsapp': '◉', 'gui-wa-webhook': '⌁',
   'gui-wa-automation': '⚡', 'gui-ig-automation': '⚡', 'gui-ig-ingress': '⇢', 'gui-ai': '✧',
-  'vital-instagram': '◎', 'vital-whatsapp': '◉', 'vital-argo': '⇄' };
+  'vital-instagram': '◎', 'vital-whatsapp': '◉', 'vital-argo': '⇄',
+  'supabase': '▤', 'vercel': '◇', 'github': '⌘', 'legacy-bridge': '⌁' };
 const FRESHNESS_MS = 3 * 60 * 1000;
 
 function getStatus(node) { return node?.status || 'unknown'; }
@@ -77,6 +78,7 @@ export default function AdminConnectionsPage() {
 
   const nodes = payload?.nodes || [];
   const filteredNodes = nodes.filter((node) => node.workspace !== 'system');
+  const infrastructure = nodes.filter((node) => node.workspace === 'system' && node.id !== 'tideplace');
   const alerts = filteredNodes.filter((node) => node.status === 'offline' || node.status === 'warning');
   const countOnline = nodes.filter((node) => node.status === 'online').length;
   const countUnknown = nodes.filter((node) => node.status === 'unknown' || node.status === 'paused').length;
@@ -142,8 +144,10 @@ export default function AdminConnectionsPage() {
         ))}
       </div>
     </section>
+    {infrastructure.length > 0 && <><div className={styles.sectionHead}><h2>Infraestrutura e serviços antigos</h2><span>Componentes que sustentam o Hub</span></div>
+      <div className={styles.infrastructure}>{infrastructure.map(renderNode)}</div></>}
     {selectedNode && <section className={styles.detail} aria-live="polite">
-      <div><span className={styles.eyebrow}>{selectedNode.workspace === 'gui' ? 'GUI NONATO' : 'VITAL DECOR'} · {selectedNode.group}</span>
+      <div><span className={styles.eyebrow}>{selectedNode.workspace === 'gui' ? 'GUI NONATO' : selectedNode.workspace === 'vital' ? 'VITAL DECOR' : 'INFRAESTRUTURA'} · {selectedNode.group}</span>
         <h3>{selectedNode.name} · {LABELS[selectedNode.status]}</h3>
         <p>{selectedNode.detail}</p><small>{selectedNode.action}{selectedNode.lastEventAt ? ' · Último registro: ' + dateTime(selectedNode.lastEventAt) : ''}</small>
       </div>

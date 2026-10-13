@@ -250,6 +250,21 @@ export async function GET(request) {
       'Não foi possível concluir esta verificação.', 'Atualize a página para tentar novamente.', '/admin/conexoes');
     const nodes = calls.flatMap((r, index) => r.status === 'fulfilled'
       ? (Array.isArray(r.value) ? r.value : [r.value]) : [fallback('check-' + index)]);
+    nodes.push(node('supabase', 'system', 'Banco de dados Supabase', 'Infraestrutura', 'online',
+      'Sessão do usuário e estado do Hub confirmados no banco de dados.',
+      'A comunicação com o banco está funcionando nesta checagem.', '/admin/conexoes'));
+    nodes.push(node('vercel', 'system', 'Hospedagem Vercel', 'Infraestrutura',
+      process.env.VERCEL === '1' ? 'online' : 'unknown',
+      process.env.VERCEL === '1' ? 'O servidor da Vercel está executando esta API. Isso não garante futuros deploys.' :
+        'Não foi possível identificar o ambiente de hospedagem nesta execução.',
+      'Consultar implantação e logs para investigar falhas de publicação.', '/admin/conexoes'));
+    nodes.push(node('github', 'system', 'Código no GitHub', 'Infraestrutura', 'unknown',
+      process.env.VERCEL_GIT_COMMIT_SHA ? 'Código publicado a partir do commit ' + process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) + '. Sem teste de acesso à API do GitHub.' :
+        'Não foi possível confirmar a integração de código com GitHub pelo servidor.',
+      'Abrir repositório para verificar alterações e versão.', 'https://github.com/julianybertaglia-art/social-hub-gui'));
+    nodes.push(node('legacy-bridge', 'system', 'Ponte antiga Railway', 'Legado', 'paused',
+      'O envio oficial do WhatsApp usa a Meta. A ponte anterior não faz parte desse envio; o estado da hospedagem antiga não foi verificado.',
+      'Conferir diagnóstico caso encontre integrações antigas.', '/whatsapp/diagnostico'));
     nodes.unshift(node('tideplace', 'system', 'TidePlace · Hub', 'Sistema', 'online',
       'API do Hub respondeu e sua sessão foi validada no banco de dados.',
       'Você está na Central de Controle.', '/admin/conexoes'));

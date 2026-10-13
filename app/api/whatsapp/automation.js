@@ -219,7 +219,7 @@ async function sendAndStoreFormButton(supabase, contact, text, url) {
 
 async function sendMainMenu(supabase, contact, { welcome = true } = {}) {
   const body = welcome
-    ? 'Oi! Eu sou a Juliany, da equipe do Gui Nonato e da Vital Decor 👋\n\nPara eu te direcionar mais rápido, toque abaixo e escolha o assunto que você quer falar:'
+    ? 'Oi! Eu sou a Juliany, da equipe do Gui Nonato 👋\n\nPara eu te direcionar mais rápido, toque abaixo e escolha o assunto que você quer falar:'
     : 'Claro! Toque abaixo e escolha o assunto que você quer falar:';
 
   const result = await sendWhatsAppInteractiveList({

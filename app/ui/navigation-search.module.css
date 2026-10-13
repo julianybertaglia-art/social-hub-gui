@@ -1,0 +1,14 @@
+.trigger{display:flex;align-items:center;gap:10px;height:37px;min-width:210px;max-width:330px;padding:0 12px;border:1px solid var(--tp-line,#e7e3e6);border-radius:9px;background:var(--tp-surface,#fff);color:var(--tp-muted,#6b6369);text-align:left;font-size:13px;transition:border .16s ease,background .16s ease}
+.trigger:hover{border-color:var(--gold,#8f2945);background:var(--tp-surface-2,#faf9fa)}
+.trigger span{flex:1}.trigger kbd{font-size:10px;border:1px solid var(--tp-line);border-radius:4px;padding:2px 4px;background:var(--tp-canvas)}
+.backdrop{position:fixed;inset:0;z-index:500;display:flex;justify-content:center;align-items:flex-start;padding:clamp(50px,14vh,135px) 16px 20px;background:rgba(15,11,16,.48);backdrop-filter:blur(5px)}
+.dialog{width:min(620px,100%);max-height:min(78dvh,650px);display:flex;flex-direction:column;border:1px solid var(--tp-line);border-radius:16px;background:var(--surface,#fff);color:var(--text,#151216);box-shadow:0 28px 100px rgba(9,6,9,.25);overflow:hidden}
+.searchRow{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--tp-line);padding:15px 19px;color:var(--tp-muted)}
+.searchRow input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font-size:16px}
+.searchRow input::placeholder{color:var(--tp-faint,#9a9198)}.close{display:grid;place-items:center;width:29px;height:29px;border:0;border-radius:7px;background:var(--tp-surface-3);color:var(--tp-muted)}
+.results{padding:9px;overflow-y:auto;overscroll-behavior:contain}.result{display:flex;align-items:center;gap:12px;padding:11px 12px;color:var(--text)!important;text-decoration:none!important;border-radius:9px;border:1px solid transparent}
+.selected,.result:hover{background:var(--gold-soft,#f6ebee);border-color:color-mix(in srgb,var(--gold,#8f2945) 15%,transparent)}
+.resultIcon{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;background:var(--tp-surface-3,#f1eff2);border-radius:8px;color:var(--gold)}
+.resultCopy{flex:1;min-width:0}.resultCopy strong,.resultCopy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.resultCopy strong{font-size:13px;font-weight:700}.resultCopy small{margin-top:1px;color:var(--tp-muted);font-size:11px}.result>svg{color:var(--tp-muted)}
+.empty{margin:28px 10px;text-align:center;color:var(--tp-muted);font-size:13px}.footer{padding:11px 16px;border-top:1px solid var(--tp-line);color:var(--tp-muted);font-size:11px}
+@media(max-width:1100px){.trigger{min-width:37px;width:37px;padding:0;justify-content:center}.trigger span,.trigger kbd{display:none}}

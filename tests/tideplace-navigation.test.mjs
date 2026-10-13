@@ -39,3 +39,23 @@ test('dashboard sections match only the currently active tab', () => {
   assert.equal(matchesNavigation(crm, '/whatsapp'), true);
   assert.equal(matchesNavigation(crm, '/whatsapp/gato'), false);
 });
+
+
+test('sidebar groups Instagram and CRM in the previous channel-based structure', () => {
+  const guiGroups = visibleNavGroups('gui-nonato');
+  const vitalGroups = visibleNavGroups('vital-decor');
+  for (const groups of [guiGroups, vitalGroups]) {
+    assert.ok(groups.find(group => group.label === 'INSTAGRAM'));
+    assert.ok(groups.find(group => group.label === 'CRM · WHATSAPP'));
+    const instagram = groups.find(group => group.label === 'INSTAGRAM').items.map(item => item.label);
+    assert.ok(instagram.includes('Métricas'));
+    assert.ok(instagram.includes('Automações'));
+    assert.ok(instagram.includes('Metas'));
+  }
+  assert.ok(flatten('vital-decor').some(item => item.href === '/whatsapp/setores'));
+  assert.ok(!flatten('gui-nonato').some(item => item.href === '/whatsapp/setores'));
+  const inbox = flatten('vital-decor').find(item => item.href === '/whatsapp');
+  const sectors = flatten('vital-decor').find(item => item.href === '/whatsapp/setores');
+  assert.equal(matchesNavigation(inbox, '/whatsapp/setores'), false);
+  assert.equal(matchesNavigation(sectors, '/whatsapp/setores'), true);
+});

@@ -7,6 +7,7 @@ import {
   sendWhatsAppVoiceByUrl,
   upsertWhatsAppContact,
 } from '../lib';
+import { isWhatsAppServiceWindowOpen } from '../service-window.js';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -355,6 +356,40 @@ export async function POST(request) {
     return Response.json({ ok: false, error: 'Envie texto ou áudio por vez.' }, { status: 400 });
   }
 
+  // Meta only allows free-form text, audio and other non-template messages
+  // within 24h of the lead's last inbound. HTTP 200 is not proof of delivery:
+  // Meta may accept and later fail a message with code 131047.
+  let lastInboundAt = null;
+  try {
+    const db = getSupabaseAdmin();
+    const { data: recipient, error: recipientError } = await db.from('whatsapp_contacts')
+      .select('id').eq('wa_id', normalizeWaId(to)).maybeSingle();
+    if (recipientError) throw recipientError;
+    if (recipient) {
+      const { data: inbound, error: inboundError } = await db.from('whatsapp_messages')
+        .select('sent_at').eq('contact_id', recipient.id).eq('direction', 'inbound')
+        .order('sent_at', { ascending: false }).limit(1);
+      if (inboundError) throw inboundError;
+      lastInboundAt = inbound?.[0]?.sent_at || null;
+    }
+  } catch (error) {
+    console.error('WhatsApp service window lookup:', error);
+    return Response.json({
+      ok: false,
+      code: 'WHATSAPP_WINDOW_CHECK_UNAVAILABLE',
+      error: 'Não consegui confirmar a janela de atendimento. Tente novamente em instantes.',
+    }, { status: 503 });
+  }
+
+  if (!isWhatsAppServiceWindowOpen(lastInboundAt)) {
+    return Response.json({
+      ok: false,
+      code: 'WHATSAPP_WINDOW_EXPIRED',
+      lastInboundAt,
+      error: 'A janela de 24 horas desse lead está encerrada. Para retomar pelo TidePlace, envie um modelo aprovado pela Meta ou aguarde uma nova mensagem do lead.',
+    }, { status: 409 });
+  }
+
   try {
     const result = wantsVoice
       ? await sendWhatsAppVoiceByUrl({ to, audioUrl })
@@ -404,6 +439,12 @@ export async function POST(request) {
       type: wantsVoice ? 'audio' : 'text',
     });
   } catch (error) {
+    if (Number(error?.code) === 131047) {
+      return Response.json({
+        ok: false, code: 'WHATSAPP_WINDOW_EXPIRED',
+        error: 'A Meta recusou a mensagem porque passaram mais de 24 horas desde a última resposta do lead. Use um modelo aprovado ou aguarde o lead escrever.',
+      }, { status: 409 });
+    }
     const status = [
       'WHATSAPP_NOT_CONFIGURED',
       'WHATSAPP_BRIDGE_NOT_CONFIGURED',

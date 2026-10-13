@@ -316,7 +316,7 @@ export default function WhatsAppPage() {
           <section className={styles.setupCard}>
             <div>
               <span className={styles.eyebrow}>CONEXÃO OFICIAL META</span>
-              <h2>Autorize o WhatsApp Business para ativar o Hub.</h2>
+              <h2>{status?.readOnlyPreview ? "Esta é uma versão de testes: não reconecte a Meta aqui." : "Autorize o WhatsApp Business para ativar o Hub."}</h2>
               <p>A ponte antiga foi removida. Mensagens e envios funcionarão somente pela conexão oficial da Meta.</p>
             </div>
             <div className={styles.bridgeSetup}>
@@ -374,7 +374,7 @@ export default function WhatsAppPage() {
             placeholder="Buscar dentro desta fila..."
           />
           <div className={styles.contactList}>
-            {!filteredContacts.length && <div className={styles.empty}>Nenhum lead nesta fila agora.</div>}
+            {!filteredContacts.length && <div className={styles.empty}>{notice ? "Não foi possível confirmar os leads. Verifique o erro acima." : "Nenhum lead nesta fila agora."}</div>}
             {filteredContacts.map((contact) => {
               const topic = contact.smart_categories?.[0];
               const attention = contact.needs_reply

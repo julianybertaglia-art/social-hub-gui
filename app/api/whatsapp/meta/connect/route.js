@@ -129,6 +129,21 @@ export async function POST(request) {
     if (!phone) {
       throw new Error('O número escolhido não foi encontrado na conta autorizada.');
     }
+    if (!requestedPhoneId && phones.length > 1) {
+      throw new Error('A Meta retornou mais de um número. Selecione explicitamente o WhatsApp de atendimento do Gui.');
+    }
+
+    const supabase = getSupabaseAdmin();
+    const { data: otherWorkspace, error: workspaceError } = await supabase
+      .from('workspace_meta_connections')
+      .select('external_account_id')
+      .eq('workspace_id', 'vital-decor')
+      .eq('platform', 'whatsapp')
+      .maybeSingle();
+    if (workspaceError) throw workspaceError;
+    if (String(otherWorkspace?.external_account_id || '') === String(phone.id)) {
+      throw new Error('Esse número pertence à conexão da Vital Decor. Para proteger as duas contas, selecione o WhatsApp do Gui.');
+    }
 
     await subscribeApp(wabaId, accessToken);
 
@@ -141,7 +156,6 @@ export async function POST(request) {
       console.warn('WhatsApp phone-specific webhook setup:', webhookError);
     }
 
-    const supabase = getSupabaseAdmin();
     const now = new Date().toISOString();
     const { error } = await supabase
       .from('whatsapp_meta_connections')

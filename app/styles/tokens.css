@@ -1,0 +1,139 @@
+/*
+ * TidePlace design tokens
+ * ------------------------------------------------------------------
+ * Única fonte de verdade para cor, tipografia, espaço, raio, sombra e
+ * movimento. Os nomes antigos (--gold, --surface, --muted...) continuam
+ * existindo como aliases, porque o "Personalizar" (ThemeCustomizer) e
+ * vários módulos CSS ainda os usam. Nada aqui altera comportamento.
+ */
+
+:root {
+  /* Marca */
+  --tp-wine: #8f2945;
+  --tp-wine-deep: #6f1e35;
+  --tp-wine-tint: #f6ebee;
+  --tp-ink: #151216;
+
+  /* Superfícies (modo claro) */
+  --tp-canvas: #f5f4f6;
+  --tp-surface: #ffffff;
+  --tp-surface-2: #faf9fa;
+  --tp-surface-3: #f1eff2;
+  --tp-line: #e7e3e6;
+  --tp-line-strong: #d6d0d4;
+
+  /* Texto */
+  --tp-text: #151216;
+  --tp-text-2: #4b4449;
+  --tp-muted: #6b6369;
+  --tp-faint: #9a9198;
+  --tp-on-accent: #ffffff;
+
+  /* Estados */
+  --tp-ok: #2e7d5b;
+  --tp-ok-tint: #e7f3ec;
+  --tp-warn: #a86a12;
+  --tp-warn-tint: #fbf1e1;
+  --tp-danger: #c4441c;
+  --tp-danger-tint: #fcece5;
+  --tp-info: #2f5d8a;
+  --tp-info-tint: #eaf1f8;
+  --tp-idle: #8a8288;
+  --tp-idle-tint: #f0eef0;
+
+  /* Sidebar (preto da marca) */
+  --tp-side-bg: #151216;
+  --tp-side-text: #f4f1f3;
+  --tp-side-muted: #a49ba2;
+  --tp-side-hover: rgba(255, 255, 255, .06);
+  --tp-side-line: rgba(255, 255, 255, .08);
+
+  /* Tipografia */
+  --tp-font: 'Hanken Grotesk Variable', 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --tp-text-xs: 12px;
+  --tp-text-sm: 13px;
+  --tp-text-md: 14px;
+  --tp-text-lg: 16px;
+  --tp-text-xl: 20px;
+  --tp-text-2xl: 26px;
+  --tp-text-3xl: 34px;
+  --tp-leading: 1.5;
+
+  /* Espaço (escala de 4px) */
+  --tp-1: 4px;
+  --tp-2: 8px;
+  --tp-3: 12px;
+  --tp-4: 16px;
+  --tp-5: 20px;
+  --tp-6: 24px;
+  --tp-8: 32px;
+  --tp-10: 40px;
+  --tp-12: 48px;
+
+  /* Raio: controles < cartões < superfícies flutuantes */
+  --tp-radius-sm: 6px;
+  --tp-radius: 10px;
+  --tp-radius-lg: 16px;
+  --tp-radius-pill: 999px;
+
+  /* Elevação: bordas primeiro, sombra só no que flutua */
+  --tp-shadow-overlay: 0 18px 50px rgba(21, 18, 22, .18), 0 2px 8px rgba(21, 18, 22, .08);
+  --tp-shadow-raise: 0 1px 2px rgba(21, 18, 22, .05);
+  --tp-focus: 0 0 0 3px color-mix(in srgb, var(--gold, #8f2945) 28%, transparent);
+
+  /* Movimento */
+  --tp-ease: cubic-bezier(.2, .7, .2, 1);
+  --tp-fast: 120ms;
+  --tp-base: 200ms;
+
+  /* Layout */
+  --tp-sidebar-w: 248px;
+  --tp-topbar-h: 60px;
+  --tp-content-max: 1320px;
+
+  /* Aliases legados (o ThemeCustomizer sobrescreve estes em runtime) */
+  --bg: var(--tp-canvas);
+  --surface: var(--tp-surface);
+  --surface-soft: var(--tp-surface-2);
+  --text: var(--tp-text);
+  --muted: var(--tp-muted);
+  --border: var(--tp-line);
+  --gold: var(--tp-wine);
+  --gold-dark: var(--tp-wine-deep);
+  --gold-soft: var(--tp-wine-tint);
+  --dark: var(--tp-ink);
+  --sidebar-bg: var(--tp-side-bg);
+  --topbar-bg: rgba(245, 244, 246, .86);
+  --success: var(--tp-ok);
+  --danger: var(--tp-danger);
+  --shadow: var(--tp-shadow-raise);
+
+  /* Tokens semânticos que seguem o tema escolhido pelo usuário */
+  --accent: var(--gold);
+  --accent-deep: var(--gold-dark);
+  --accent-tint: var(--gold-soft);
+  color-scheme: light;
+}
+
+/* Modo escuro (ativado pelo "Personalizar → Escuro") */
+:root[data-appearance='dark'] {
+  --tp-surface-3: #2c2629;
+  --tp-line-strong: #4a4045;
+  --tp-text-2: #d9d1d5;
+  --tp-faint: #8d8389;
+  --tp-ok-tint: #1e3229;
+  --tp-warn-tint: #382a14;
+  --tp-danger-tint: #3b2017;
+  --tp-info-tint: #1c2a38;
+  --tp-idle-tint: #2c2629;
+  --tp-side-bg: #0f0d10;
+  --tp-shadow-overlay: 0 18px 50px rgba(0, 0, 0, .5), 0 2px 8px rgba(0, 0, 0, .3);
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --tp-fast: 0ms;
+    --tp-base: 0ms;
+  }
+}

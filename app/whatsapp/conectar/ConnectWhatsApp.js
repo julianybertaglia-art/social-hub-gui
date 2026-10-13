@@ -73,7 +73,7 @@ export default function ConnectWhatsApp() {
   }
 
   useEffect(() => {
-    const saved = window.localStorage.getItem('lynna_meta_whatsapp_config_id') || '';
+    const saved = window.localStorage.getItem('tideplace_gui_whatsapp_config_id') || '';
     if (saved) {
       setConfigId(saved);
       setInput(saved);
@@ -139,10 +139,10 @@ export default function ConnectWhatsApp() {
   function saveConfig() {
     const parsed = configIdFrom(input);
     if (!parsed) {
-      setMessage('Cole o link completo gerado pela Meta ou somente o Configuration ID.');
+      setMessage('Use o Configuration ID do WhatsApp do Gui, não o da Vital Decor.');
       return;
     }
-    window.localStorage.setItem('lynna_meta_whatsapp_config_id', parsed);
+    window.localStorage.setItem('tideplace_gui_whatsapp_config_id', parsed);
     setConfigId(parsed);
     setInput(parsed);
     setMessage('Configuração salva. Agora é só conectar.');

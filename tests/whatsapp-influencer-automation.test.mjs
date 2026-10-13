@@ -10,6 +10,7 @@ import {
   isReplyToBusiness,
   requestsMainMenu,
   shouldSendInitialMenu,
+  shouldSendReentryMenu,
   WHATSAPP_MENU_ROWS,
 } from '../app/api/whatsapp/automation.js';
 import { influencerFormHtml } from '../app/parcerias/vital-influenciadores/html.js';
@@ -83,6 +84,21 @@ test('a new organic first contact receives a menu, but ongoing and manual replie
 
   assert.equal(cameFromAd({ referral: { source_type: 'ad' } }), true);
   assert.equal(isReplyToBusiness({ context: { id: 'wamid.outbound' } }), true);
+});
+
+test('returning WhatsApp contacts get one menu after inactivity, never during an ongoing chat', () => {
+  const nowMs = Date.UTC(2026, 9, 13, 12);
+  const message = { type: 'text', text: { body: 'Oi, quero saber mais' }, timestamp: nowMs / 1000 };
+  const base = { message, previousMessageAt: new Date(nowMs - 72 * 3600000).toISOString(), nowMs };
+
+  assert.equal(shouldSendReentryMenu(base), true);
+  assert.equal(shouldSendReentryMenu({ ...base, hasExistingSession: true }), false);
+  assert.equal(shouldSendReentryMenu({ ...base, previousMessageAt: new Date(nowMs - 2 * 3600000).toISOString() }), false);
+  assert.equal(shouldSendReentryMenu({ ...base, previousMessageAt: null }), false);
+  assert.equal(shouldSendReentryMenu({ ...base, message: { ...message, context: { id: 'outbound' } } }), false);
+  assert.equal(shouldSendReentryMenu({ ...base, message: { ...message, referral: { source_type: 'ad' } } }), false);
+  assert.equal(shouldSendReentryMenu({ ...base, message: { ...message, timestamp: (nowMs - 6 * 3600000) / 1000 } }), false);
+  assert.equal(shouldSendReentryMenu({ ...base, message: { type: 'audio' } }), false);
 });
 
 test('Meta ad leads receive only the Imersao qualification choices', () => {

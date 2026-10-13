@@ -310,6 +310,18 @@ async function postWhatsAppMessage(body) {
   return payload;
 }
 
+export async function sendWhatsAppTemplate({ to, name, language }) {
+  return postWhatsAppMessage({
+    messaging_product: 'whatsapp',
+    to: normalizeWaId(to),
+    type: 'template',
+    template: {
+      name,
+      language: { code: language },
+    },
+  });
+}
+
 export async function sendWhatsAppText({ to, text }) {
   if (getWhatsAppProvider() === 'baileys') {
     return bridgeRequest('/messages/text', {

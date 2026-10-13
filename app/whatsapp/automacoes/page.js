@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import styles from './automacoes-whatsapp.module.css';
 
@@ -7,8 +8,8 @@ const flows = [
   {
     title: 'Menu de entrada',
     description: 'Organiza cada novo contato por assunto antes de cair no atendimento.',
-    status: 'Ativo',
-    items: ['Imersão', 'Começar no ML', 'Importação', 'Mentoria', 'Influenciador', 'Outro'],
+    status: 'Verificando',
+    items: ['Começar no ML', 'Importação', 'Mentoria', 'Influenciador', 'Outro'],
     href: '/whatsapp',
     cta: 'Abrir CRM',
   },
@@ -38,6 +39,22 @@ const tools = [
 ];
 
 export default function WhatsappAutomacoesPage() {
+  const [connection, setConnection] = useState(null);
+  const [connectionError, setConnectionError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/whatsapp/status', { cache: 'no-store' })
+      .then((response) => { if (!response.ok) throw new Error('Falha ao consultar a conexão.'); return response.json(); })
+      .then((data) => { if (active) setConnection(data); })
+      .catch(() => { if (active) setConnectionError(true); });
+    return () => { active = false; };
+  }, []);
+
+  const connected = Boolean(connection?.connected && connection?.webhookReady
+    && connection?.webhookEnsure?.ok && !connection?.authentication?.temporarilyLimited);
+  const connectionStatus = connectionError ? 'Verificar' : !connection ? 'Verificando' : connected ? 'Ativo' : 'Desconectado';
+
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -46,8 +63,19 @@ export default function WhatsappAutomacoesPage() {
           <h1>Automações do WhatsApp</h1>
           <p>Fluxos de atendimento, campanhas e envios separados das automações do Instagram.</p>
         </div>
-        <span className={styles.channelBadge}><i /> Canal oficial Meta</span>
+        <span className={styles.channelBadge}><i /> Canal oficial Meta · {connectionStatus}</span>
       </header>
+
+      {(connectionError || (connection && !connected)) && (
+        <section className={styles.sectionHeader} role="alert">
+          <div>
+            <h2>WhatsApp do Gui precisa de atenção</h2>
+            <p>O menu automático depende da conexão oficial da Meta. Acesse o diagnóstico e, se necessário, reconecte o mesmo número sem desinstalar o WhatsApp Business.</p>
+            <Link href="/whatsapp/diagnostico">Ver diagnóstico</Link>{' · '}
+            <Link href="/whatsapp/conectar">Reconectar pela Meta</Link>
+          </div>
+        </section>
+      )}
 
       <section className={styles.summary} aria-label="Resumo das automações">
         <article><span>Fluxos principais</span><strong>3</strong><small>Organizados por função</small></article>
@@ -67,7 +95,7 @@ export default function WhatsappAutomacoesPage() {
           <article className={styles.flowCard} key={flow.title}>
             <div className={styles.flowTop}>
               <span className={styles.flowIcon}>⚡</span>
-              <span className={styles.status}>{flow.status}</span>
+              <span className={styles.status}>{flow.title === 'Menu de entrada' ? connectionStatus : flow.status}</span>
             </div>
             <h3>{flow.title}</h3>
             <p>{flow.description}</p>

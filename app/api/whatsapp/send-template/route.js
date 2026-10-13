@@ -3,10 +3,10 @@ import {
   getSupabaseAdmin,
   normalizeWaId,
   sendWhatsAppTemplate,
-  upsertWhatsAppContact,
   WHATSAPP_API_VERSION,
 } from '../lib.js';
 import { isSimpleApprovedWhatsAppTemplate } from '../service-window.js';
+import { bearerToken, connectionOwner } from '../../vital-connections/helpers.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -52,15 +52,19 @@ export async function POST(request) {
   }
 
   try {
+    const supabase = getSupabaseAdmin();
+    await connectionOwner(supabase, bearerToken(request));
+    const { data: contact, error: contactError } = await supabase.from('whatsapp_contacts')
+      .select('id,wa_id').eq('wa_id', to).maybeSingle();
+    if (contactError) throw contactError;
+    if (!contact) return Response.json({ ok: false, error: 'Esse contato não está no CRM do Gui.' }, { status: 404 });
     const meta = await getMetaCredentials();
     const template = await approvedTemplate(meta, name, language);
     const result = await sendWhatsAppTemplate({ to, name, language });
     const messageId = result?.messages?.[0]?.id || null;
     if (!messageId) throw new Error('A Meta não confirmou o recebimento do envio.');
 
-    const supabase = getSupabaseAdmin();
     const now = new Date().toISOString();
-    const contact = await upsertWhatsAppContact(supabase, { waId: to, source: 'WhatsApp', lastMessageAt: now });
     const text = template.components.find((item) => item.type === 'BODY')?.text || name;
     const { error } = await supabase.from('whatsapp_messages').insert({
       meta_message_id: messageId,

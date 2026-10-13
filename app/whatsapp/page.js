@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from './whatsapp.module.css';
+import ServiceWindowControls from './ServiceWindowControls.js';
+import { mostRecentInboundAt, isWhatsAppServiceWindowOpen, whatsappFailureDescription } from '../api/whatsapp/service-window.js';
 
 const STAGES = ['Novo lead', 'Conversando', 'Interessado', 'Agendar com Gui', 'Link enviado', 'Venda', 'Perdido'];
 const SMART_FILTERS = [
@@ -79,6 +81,8 @@ export default function WhatsAppPage() {
   const [notice, setNotice] = useState('');
 
   const selected = contacts.find((contact) => contact.id === selectedId) || null;
+  const lastInboundAt = mostRecentInboundAt(messages.filter((item) => item.contact_id === selectedId));
+  const canSendFreeForm = isWhatsAppServiceWindowOpen(lastInboundAt);
   const isBaileys = status?.provider === 'baileys';
   const connectionReady = Boolean(status?.connected);
   const checkingConnection = status === null;
@@ -211,7 +215,7 @@ export default function WhatsAppPage() {
   async function sendMessage(event) {
     event.preventDefault();
     const text = draft.trim();
-    if (!selected || !text) return;
+    if (!selected || !text || !canSendFreeForm) return;
     setSending(true);
     setNotice('');
     try {
@@ -234,7 +238,7 @@ export default function WhatsAppPage() {
   function handleComposerKeyDown(event) {
     if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent?.isComposing) return;
     event.preventDefault();
-    if (!connectionReady || sending || !draft.trim()) return;
+    if (!connectionReady || !canSendFreeForm || sending || !draft.trim()) return;
     event.currentTarget.form?.requestSubmit();
   }
 
@@ -409,6 +413,7 @@ export default function WhatsAppPage() {
                   <div key={message.id} className={styles.bubble + ' ' + (message.direction === 'outbound' ? styles.outbound : styles.inbound)}>
                     <p>{message.body || '[' + message.message_type + ']'}</p>
                     <span>{formatTime(message.sent_at)}{message.direction === 'outbound' && message.status ? ' · ' + message.status : ''}</span>
+                    {message.status === 'failed' && <small style={{ display: 'block', color: '#b42318' }}>{whatsappFailureDescription(message)}</small>}
                   </div>
                 ))}
               </div>
@@ -444,16 +449,18 @@ export default function WhatsAppPage() {
                 </div>
               )}
 
+              <ServiceWindowControls contact={selected} messages={messages} connected={connectionReady} setNotice={setNotice} onSent={() => Promise.all([loadContacts(), loadMessages(selected.id)])} />
+
               <form className={styles.composer} onSubmit={sendMessage}>
                 <textarea
                   rows="2"
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   onKeyDown={handleComposerKeyDown}
-                  placeholder={connectionReady ? 'Digite sua mensagem...' : 'Conecte o número para responder pelo Hub'}
-                  disabled={!connectionReady || sending}
+                  placeholder={!connectionReady ? 'Conecte o número para responder pelo Hub' : canSendFreeForm ? 'Digite sua mensagem...' : 'Aguarde o lead responder ou envie um modelo aprovado'}
+                  disabled={!connectionReady || !canSendFreeForm || sending}
                 />
-                <button disabled={!connectionReady || sending || !draft.trim()}>{sending ? 'Enviando...' : 'Enviar'}</button>
+                <button disabled={!connectionReady || !canSendFreeForm || sending || !draft.trim()}>{sending ? 'Enviando...' : 'Enviar'}</button>
               </form>
             </>
           )}

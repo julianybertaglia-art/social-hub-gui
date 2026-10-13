@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../CloudGate';
 import styles from './admin-conexoes.module.css';
+import ConnectionTree from './ConnectionTree';
 
 const LABELS = { online: 'Confirmado', warning: 'Atenção', offline: 'Desconectado', unknown: 'Não verificado', paused: 'Pausado' };
 const ICONS = { 'gui-instagram': '◎', 'gui-direct': '✉', 'gui-whatsapp': '◉', 'gui-wa-webhook': '⌁',
@@ -24,6 +25,7 @@ export default function AdminConnectionsPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState('gui-whatsapp');
+  const [view, setView] = useState('tree');
   const [changes, setChanges] = useState([]);
   const inFlight = useRef(false);
   const lastCheck = useRef(0);
@@ -116,20 +118,19 @@ export default function AdminConnectionsPage() {
       <div className={styles.stat}><span>Precisam de atenção</span><strong>{payload ? alerts.length : '—'}</strong><small>Problemas ou pendências</small></div>
       <div className={styles.stat}><span>Não confirmadas</span><strong>{payload ? countUnknown : '—'}</strong><small>Pausadas ou sem teste completo</small></div>
     </div>
-    <div className={styles.sectionHead}><h2>Alertas e ações</h2><span>{payload ? 'Última verificação: ' + dateTime(payload.checkedAt) : 'Aguardando checagem'}</span></div>
-    <div className={styles.alertList} aria-live="polite">
-      {!payload && !error ? <div className={styles.alertEmpty}>Consultando integrações...</div> :
-        payload && !alerts.length ? <div className={styles.alertEmpty}>Nenhuma desconexão ou pendência confirmada nesta checagem. Os testes de mensagens ainda são necessários para validar os fluxos.</div> :
-        alerts.map((alert) => (
-          <div key={alert.id} className={styles.alert + ' ' + (alert.status === 'offline' ? styles.alertOffline : '')}>
-            <span className={styles.dot + ' ' + styles[alert.status]} />
-            <div><strong>{changes.includes(alert.id) ? 'NOVO · ' : ''}{alert.name}</strong>
-              <p>{alert.detail} {alert.action}</p></div>
-            <Link href={alert.href}>Resolver →</Link>
-          </div>
-        ))}
+
+    <div className={styles.treeToolbar}>
+      <div><span className={styles.eyebrow}>VISÃO GERAL</span><h2>Árvore de conexões</h2>
+        <p>Entenda de onde sai cada integração e o que depende de cada canal. Clique em qualquer componente para ver o diagnóstico.</p>
+      </div>
+      <div className={styles.treeTabs} role="group" aria-label="Modo de visualização">
+        <button type="button" className={view === 'tree' ? styles.treeTabActive : ''}
+          aria-pressed={view === 'tree'} onClick={() => setView('tree')}>♧ Árvore geral</button>
+        <button type="button" className={view === 'map' ? styles.treeTabActive : ''}
+          aria-pressed={view === 'map'} onClick={() => setView('map')}>◈ Mapa de conexões</button>
+      </div>
     </div>
-    <div className={styles.sectionHead}><h2>Mapa das integrações</h2><span>Toque em um componente para ver o diagnóstico</span></div>
+    {view === 'tree' ? <ConnectionTree nodes={nodes} selectedId={selectedNode?.id} onSelect={setSelected} /> : <>
     <section className={styles.map} aria-label="Mapa visual de integrações">
       <div className={styles.network}>
         <div className={styles.lane}><span className={styles.laneHeader}>GUI NONATO</span>{groups.gui.map(renderNode)}</div>
@@ -146,6 +147,8 @@ export default function AdminConnectionsPage() {
     </section>
     {infrastructure.length > 0 && <><div className={styles.sectionHead}><h2>Infraestrutura e serviços antigos</h2><span>Componentes que sustentam o Hub</span></div>
       <div className={styles.infrastructure}>{infrastructure.map(renderNode)}</div></>}
+    </>}
+    <div className={styles.treeGuide}>As linhas mostram a organização das integrações. Os indicadores representam o resultado da última verificação, não o funcionamento garantido de todos os envios.</div>
     {selectedNode && <section className={styles.detail} aria-live="polite">
       <div><span className={styles.eyebrow}>{selectedNode.workspace === 'gui' ? 'GUI NONATO' : selectedNode.workspace === 'vital' ? 'VITAL DECOR' : 'INFRAESTRUTURA'} · {selectedNode.group}</span>
         <h3>{selectedNode.name} · {LABELS[selectedNode.status]}</h3>
@@ -153,6 +156,21 @@ export default function AdminConnectionsPage() {
       </div>
       <Link className={styles.detailLink} href={selectedNode.href}>Abrir configuração ↗</Link>
     </section>}
+
+    <div className={styles.sectionHead}><h2>Alertas e ações</h2><span>{payload ? 'Última verificação: ' + dateTime(payload.checkedAt) : 'Aguardando checagem'}</span></div>
+    <div className={styles.alertList} aria-live="polite">
+      {!payload && !error ? <div className={styles.alertEmpty}>Consultando integrações...</div> :
+        payload && !alerts.length ? <div className={styles.alertEmpty}>Nenhuma desconexão ou pendência confirmada nesta checagem. Os testes de mensagens ainda são necessários para validar os fluxos.</div> :
+        alerts.map((alert) => (
+          <div key={alert.id} className={styles.alert + ' ' + (alert.status === 'offline' ? styles.alertOffline : '')}>
+            <span className={styles.dot + ' ' + styles[alert.status]} />
+            <div><strong>{changes.includes(alert.id) ? 'NOVO · ' : ''}{alert.name}</strong>
+              <p>{alert.detail} {alert.action}</p></div>
+            <Link href={alert.href}>Resolver →</Link>
+          </div>
+        ))}
+    </div>
+
     <p className={styles.finePrint}>
       Atualização automática a cada 3 minutos enquanto esta aba estiver aberta. O verde confirma somente a verificação descrita no componente;
       não substitui testes reais de envio, recebimento e resposta. Avisos aparecem nesta página ao detectar pendências;

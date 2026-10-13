@@ -21,9 +21,23 @@ function phoneLabel(value) {
   return digits ? '+' + digits : 'Sem número';
 }
 
-export default function VitalWhatsAppInbox() {
+const SECTORS = [
+  ['comercial_vital', 'Comercial Vital'],
+  ['bluetti', 'BLUETTI'],
+  ['vtx', 'VTX Fitness'],
+  ['pos_venda', 'Pedidos e pós-venda'],
+  ['atacado', 'Revendedores / atacado'],
+  ['afiliados', 'Afiliados TikTok'],
+];
+
+function sectorLabel(id) {
+  return SECTORS.find(([sector]) => sector === id)?.[1] || 'Sem setor';
+}
+
+export default function VitalWhatsAppInbox({ view = 'all' }) {
   const [contacts, setContacts] = useState([]);
   const [routes, setRoutes] = useState([]);
+  const [sectorDefaults, setSectorDefaults] = useState([]);
   const [routesReady, setRoutesReady] = useState(false);
   const [selectedId, setSelectedId] = useState('');
   const [messages, setMessages] = useState([]);
@@ -35,7 +49,8 @@ export default function VitalWhatsAppInbox() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const selected = contacts.find(item => item.id === selectedId) || null;
+  const [destinationSector, setDestinationSector] = useState('');
+  const [transferring, setTransferring] = useState(false);
 
   const request = useCallback(async (path, options = {}) => {
     if (!supabase) throw new Error('A conexão com TidePlace está indisponível.');
@@ -64,13 +79,18 @@ export default function VitalWhatsAppInbox() {
         request('/api/vital-whatsapp/argo-routing'),
       ]);
       setRoutes(routing.assignments || []);
+      setSectorDefaults(routing.defaults || []);
       setRoutesReady(true);
       if (data.workspace !== 'vital-decor') throw new Error('Resposta recebida de outro workspace.');
       setContacts(data.contacts || []);
       setAccount(data.account || null);
       setSelectedId(current => {
-        const next = (data.contacts || []).some(item => item.id === current) ? current : (data.contacts?.[0]?.id || '');
-        return next;
+        const eligible = view === 'mine'
+          ? (data.contacts || []).filter(item => (routing.assignments || []).some(
+              assignment => assignment.contact_wa_id === item.id
+                && assignment.assigned_to === 'tide' && assignment.status !== 'closed'))
+          : (data.contacts || []);
+        return eligible.some(item => item.id === current) ? current : (eligible[0]?.id || '');
       });
       if (contactId) setMessages(data.messages || []);
       else if (!data.contacts?.length) setMessages([]);
@@ -82,7 +102,7 @@ export default function VitalWhatsAppInbox() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [request]);
+  }, [request, view]);
 
   useEffect(() => {
     void load(selectedId);
@@ -92,14 +112,65 @@ export default function VitalWhatsAppInbox() {
 
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return contacts.filter(item => !term ||
-      [item.name, item.phone, item.lastMessage].some(v => String(v || '').toLowerCase().includes(term)));
-  }, [contacts, search]);
+    return contacts.filter(item => {
+      const mine = routes.some(assignment => assignment.contact_wa_id === item.id
+        && assignment.status !== 'closed' && assignment.assigned_to === 'tide');
+      if (view === 'mine' && !mine) return false;
+      return !term || [item.name, item.phone, item.lastMessage, sectorLabel(
+        routes.find(assignment => assignment.contact_wa_id === item.id)?.sector
+      )].some(value => String(value || '').toLowerCase().includes(term));
+    });
+  }, [contacts, routes, search, view]);
 
+  const selected = visible.find(item => item.id === selectedId) || null;
   const lastInbound = selected?.lastInboundAt || null;
   const activeRoute = routes.find(item => item.contact_wa_id === selectedId);
   const inArgo = Boolean(activeRoute && activeRoute.assigned_to !== 'tide' && activeRoute.status !== 'closed');
   const canReply = Boolean(lastInbound && selected?.canReply && routesReady && !inArgo);
+  const mySectors = sectorDefaults.filter(rule => rule.assignee === 'tide').map(rule => sectorLabel(rule.sector));
+
+  async function transferConversation(event) {
+    event.preventDefault();
+    if (!selected || !destinationSector || transferring || !routesReady) return;
+    const rule = sectorDefaults.find(item => item.sector === destinationSector);
+    if (!rule) {
+      setError('Selecione um setor válido.');
+      return;
+    }
+    if (rule.assignee !== 'tide' && !rule.enabled) {
+      setError('O setor ainda não está habilitado para receber conversas no Argo. Ative a integração antes de encaminhar.');
+      return;
+    }
+    const assignee = rule.enabled && rule.assignee !== 'tide' ? rule.assignee : 'tide';
+    if (activeRoute?.sector === destinationSector && activeRoute.assigned_to === assignee && activeRoute.status !== 'closed') {
+      setNotice('Esta conversa já está nesse setor.');
+      return;
+    }
+    if (assignee !== 'tide' && !window.confirm('Encaminhar esta conversa para ' + sectorLabel(destinationSector) + ' no Argo de ' + assignee + '? Você deixará de responder por aqui até assumir novamente.')) return;
+    setTransferring(true);
+    setError('');
+    setNotice('');
+    try {
+      await request('/api/vital-whatsapp/argo-routing', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'assign',
+          phone: selected.id,
+          sector: destinationSector,
+          assignee,
+        }),
+      });
+      setNotice(assignee === 'tide'
+        ? 'Conversa direcionada para ' + sectorLabel(destinationSector) + ' no TidePlace.'
+        : 'Conversa encaminhada para ' + sectorLabel(destinationSector) + ' · ' + assignee + ' no Argo.');
+      setDestinationSector('');
+      await load(selected.id, true);
+    } catch (failure) {
+      setError(failure.message);
+    } finally {
+      setTransferring(false);
+    }
+  }
 
   async function returnToTide() {
     if (!activeRoute || !selected) return;
@@ -140,8 +211,10 @@ export default function VitalWhatsAppInbox() {
       <header className={styles.heading}>
         <div>
           <p className={styles.kicker}>TIDEPLACE · VITAL DECOR · WHATSAPP</p>
-          <h1>Caixa de entrada</h1>
-          <p>Converse com os clientes da loja, sem misturar os leads do Gui Nonato.</p>
+          <h1>{view === 'mine' ? 'Meus setores' : 'Caixa geral'}</h1>
+          <p>{view === 'mine'
+            ? 'Conversas atribuídas ao seu atendimento na Vital Decor.'
+            : 'Todas as conversas da Vital, organizadas por setor e responsável.'}</p>
         </div>
         <div className={styles.headingActions}>
           <span className={styles.connected}><i /> WhatsApp Vital conectado</span>
@@ -157,23 +230,31 @@ export default function VitalWhatsAppInbox() {
         <aside className={styles.sidebar} aria-label="Conversas da Vital Decor">
           <div className={styles.sidebarTop}>
             <div className={styles.sectionTitle}>
-              <h2>Conversas</h2>
-              <span>{contacts.length}</span>
+              <h2>{view === 'mine' ? 'Meu atendimento' : 'Todas as conversas'}</h2>
+              <span>{visible.length}</span>
             </div>
+            {view === 'mine' && <p className={styles.sectorSummary}>
+              {mySectors.length ? 'Seus setores padrão: ' + mySectors.join(' · ') : 'Nenhum setor padrão configurado para você.'}
+            </p>}
             <input aria-label="Buscar contatos" placeholder="Buscar nome, número ou mensagem..."
               value={search} onChange={event => setSearch(event.target.value)} />
           </div>
           <div className={styles.contacts}>
             {loading && !contacts.length ? <p className={styles.empty}>Carregando conversas...</p> : null}
-            {!loading && !visible.length ? <p className={styles.empty}>Nenhuma conversa encontrada. Novas mensagens aparecerão aqui automaticamente.</p> : null}
+            {!loading && !visible.length ? <div className={styles.empty}>
+              <p>{view === 'mine'
+                ? 'Nenhuma conversa atribuída ao seu atendimento nesta caixa.'
+                : 'Nenhuma conversa encontrada.'}</p>
+              {view === 'mine' && <Link href="/whatsapp">Abrir caixa geral para classificar conversas →</Link>}
+            </div> : null}
             {visible.map(contact => (
-              <button key={contact.id} type="button" onClick={() => { setSelectedId(contact.id); setDraft(''); setNotice(''); }}
+              <button key={contact.id} type="button" onClick={() => { setSelectedId(contact.id); setDraft(''); setNotice(''); setDestinationSector(''); }}
                 className={contact.id === selectedId ? styles.selectedContact : styles.contact}
                 aria-pressed={contact.id === selectedId}>
                 <span className={styles.avatar}>{(contact.name || 'V').slice(0,1).toUpperCase()}</span>
                 <span className={styles.contactText}>
                   <strong>{contact.name || phoneLabel(contact.phone)}</strong>
-                  <small>{phoneLabel(contact.phone)}{routes.find(r => r.contact_wa_id === contact.id && r.status !== 'closed' && r.assigned_to !== 'tide') ? ' · Argo' : ''}</small>
+                  <small>{phoneLabel(contact.phone)} · {sectorLabel(routes.find(r => r.contact_wa_id === contact.id && r.status !== 'closed')?.sector)}</small>
                   <span>{contact.lastDirection === 'outbound' ? 'Você: ' : ''}{contact.lastMessage || 'Mensagem recebida'}</span>
                 </span>
                 <time>{clock(contact.lastMessageAt)}</time>
@@ -187,8 +268,29 @@ export default function VitalWhatsAppInbox() {
               <div className={styles.chatHead}>
                 <span className={styles.avatar}>{(selected.name || 'V').slice(0,1).toUpperCase()}</span>
                 <div><strong>{selected.name}</strong><span>{phoneLabel(selected.phone)}</span></div>
-                <span className={styles.manual}>{inArgo ? 'Com ' + activeRoute.assigned_to + ' no Argo' : 'Atendimento TidePlace'}</span>
+                <span className={styles.manual}>{activeRoute
+                  ? sectorLabel(activeRoute.sector) + ' · ' + (inArgo ? activeRoute.assigned_to + ' / Argo' : 'TidePlace')
+                  : 'Sem setor · não atribuída'}</span>
               </div>
+              <form className={styles.transferBar} onSubmit={transferConversation}>
+                <label htmlFor="vital-transfer-sector">Encaminhar para</label>
+                <select id="vital-transfer-sector" value={destinationSector}
+                  onChange={event => setDestinationSector(event.target.value)}
+                  disabled={transferring || !routesReady}>
+                  <option value="">Escolher setor...</option>
+                  {SECTORS.map(([id, label]) => {
+                    const rule = sectorDefaults.find(item => item.sector === id);
+                    const blocked = rule?.assignee !== 'tide' && !rule?.enabled;
+                    return <option key={id} value={id} disabled={blocked}>
+                      {label}{blocked ? ' · aguardando Argo' : rule?.assignee !== 'tide' ? ' · Argo' : ' · TidePlace'}
+                    </option>;
+                  })}
+                </select>
+                <button type="submit" disabled={transferring || !destinationSector || !routesReady}>
+                  {transferring ? 'Encaminhando...' : 'Encaminhar'}
+                </button>
+                <Link href="/whatsapp/integracao-argo" className={styles.transferSettings}>Configurar setores</Link>
+              </form>
               <div className={styles.messages}>
                 {!messages.length && loading ? <p className={styles.empty}>Carregando mensagens...</p> : null}
                 {!messages.length && !loading ? <p className={styles.empty}>Sem mensagens sincronizadas para este contato.</p> : null}
@@ -229,7 +331,7 @@ export default function VitalWhatsAppInbox() {
           )}
         </section>
       </div>
-      <p className={styles.footnote}>Mensagens sincronizadas pela Meta · A Vivi pausa quando o atendimento passa para uma pessoa · Conversas atribuídas ao Argo são acompanhadas aqui, mas respondidas no Argo.</p>
+      <p className={styles.footnote}>As conversas sem setor ficam na Caixa geral até serem classificadas. Em Meus setores aparecem apenas as atribuídas ao TidePlace. O encaminhamento ao Argo depende da integração ativa, sem alterar as mensagens existentes.</p>
     </main>
   );
 }

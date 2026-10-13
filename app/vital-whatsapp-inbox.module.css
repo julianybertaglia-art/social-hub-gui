@@ -107,3 +107,21 @@
   .transferBar select { min-width: 0; flex: 1 1 175px; }
   .transferSettings { margin-left: 0; }
 }
+
+
+/* Larger day-to-day text in the Vital Decor CRM and sector handoff. */
+.kicker { font-size: 12px!important; }
+.heading p, .headingActions button, .headingActions a,
+.error, .notice { font-size: 14px; }
+.sectionTitle h2 { font-size: 18px; }
+.sectionTitle span, .sidebarTop input { font-size: 13px; }
+.contactText strong { font-size: 14px; }
+.contactText small, .contactText span,
+.contact time, .selectedContact time { font-size: 12px; }
+.chatHead strong, .chatHead div span { font-size: 14px; }
+.manual { font-size: 12px!important; }
+.received, .sent, .composer textarea, .composer button { font-size: 14px; }
+.messages time, .outsideWindow span { font-size: 12px; }
+.outsideWindow strong, .empty, .welcome p { font-size: 14px; }
+.footnote, .sectorSummary, .transferBar label,
+.transferBar select, .transferBar button, .transferSettings { font-size: 13px; }

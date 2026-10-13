@@ -67,8 +67,10 @@ export function webhookDestination(change, connections, primary) {
   if (phoneId) {
     const connection = matches.find((row) => String(row.external_account_id) === phoneId);
     if (connection) return { target: WORKSPACE, connection };
-    if (primary && phoneId === String(primary.phoneNumberId)
-        && (!primary.wabaId || wabaId === String(primary.wabaId))) return { target: 'primary' };
+    // Meta's phone_number_id uniquely identifies the primary number. After
+    // a WABA transfer/re-authorization the entry.id may change before the
+    // saved WABA metadata does; never discard an otherwise matching message.
+    if (primary && phoneId === String(primary.phoneNumberId)) return { target: 'primary' };
   } else if (!matches.length && primary?.wabaId && wabaId === String(primary.wabaId)) {
     return { target: 'primary' };
   }

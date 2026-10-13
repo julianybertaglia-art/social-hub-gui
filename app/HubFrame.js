@@ -11,8 +11,12 @@ import ViviAutomationPanel from './ViviAutomationPanel';
 import VitalAffiliatePanel from './VitalAffiliatePanel';
 import ArgoBridgePanel from './ArgoBridgePanel';
 import VitalInstagramAutomationPanel from './VitalInstagramAutomationPanel';
+import HubHealthBell from './HubHealthBell';
 
 const GROUPS = [
+  { label: 'ADMINISTRAÇÃO', items: [
+    { href: '/admin/conexoes', label: 'Central de Controle', icon: '◈', match: '/admin' },
+  ] },
   {
     label: 'PRINCIPAL',
     items: [
@@ -51,6 +55,7 @@ const GROUPS = [
 ];
 
 function pageLabel(pathname) {
+  if (pathname.startsWith('/admin')) return 'Administração · Central de Controle';
   if (pathname.startsWith('/tiktok/afiliados')) return 'TikTok · Afiliados';
   if (pathname.startsWith('/whatsapp/automacoes')) return 'WhatsApp · Automações';
   if (pathname.startsWith('/whatsapp/integracao-argo')) return 'WhatsApp · Integração Argo';
@@ -68,7 +73,7 @@ export default function HubFrame({ children }) {
   const vital = useVitalConnectionStatus();
   const vitalConnected = vital.instagram === true && vital.whatsapp === true;
   const [menuOpen, setMenuOpen] = useState(false);
-  const framed = pathname.startsWith('/whatsapp') || pathname.startsWith('/automacoes') || pathname.startsWith('/tiktok');
+  const framed = pathname.startsWith('/whatsapp') || pathname.startsWith('/automacoes') || pathname.startsWith('/tiktok') || pathname.startsWith('/admin');
   if (!framed) return children;
 
   return (
@@ -123,13 +128,14 @@ export default function HubFrame({ children }) {
           <button type="button" className={styles.menuButton} onClick={() => setMenuOpen(true)} aria-label="Abrir menu">☰</button>
           <WorkspaceSwitcher />
           <ThemeCustomizer />
+          <HubHealthBell />
           <div className={styles.context}>
             <span>ÁREA ATUAL</span>
             <strong>{pageLabel(pathname)}</strong>
           </div>
         </header>
         <div className={styles.body}>
-          {workspace.id === 'gui-nonato' ? children : pathname.startsWith('/tiktok') ? (
+          {workspace.id === 'gui-nonato' || pathname.startsWith('/admin') ? children : pathname.startsWith('/tiktok') ? (
             <VitalAffiliatePanel />
           ) : pathname === '/whatsapp' ? (
             <VitalWhatsAppInbox />

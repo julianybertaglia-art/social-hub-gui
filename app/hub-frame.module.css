@@ -29,3 +29,23 @@
 @media(max-width:810px){.sidebar{transform:translateX(-103%);transition:transform .22s ease;box-shadow:18px 0 45px rgba(0,0,0,.16)}.sidebarOpen{transform:translateX(0)}.main{margin-left:0}.menuButton{display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;border:1px solid var(--tp-line);border-radius:8px;background:var(--surface);color:var(--text)}.overlay{position:fixed;inset:0;z-index:65;display:block;border:0;background:rgba(9,6,9,.48)}.topbar{min-height:62px;padding:9px 14px}.body{min-height:calc(100vh - 62px)}}
 @media(max-width:640px){.workspaceEmpty{width:min(100% - 24px,860px);margin:20px auto;padding:22px}.workspaceSteps{grid-template-columns:1fr}.topbar{gap:6px}}
 @media(prefers-reduced-motion:reduce){.navLink,.sidebar{transition:none}}
+
+
+/* Legibility pass: normal navigation text should be comfortably readable. */
+.frame { --frame-sidebar: 272px; }
+.brandCopy strong { font-size: 17px; }
+.brandCopy span { font-size: 12px; line-height: 1.4; }
+.nav { gap: 19px; }
+.group { gap: 4px; }
+.groupLabel { font-size: 12px; letter-spacing: .085em; padding-bottom: 7px; }
+.navLink { min-height: 45px; padding: 10px 12px; font-size: 15px; line-height: 1.35; }
+.profile strong { font-size: 14px; }
+.profile span { font-size: 12px; }
+.context span { font-size: 11px; }
+.context strong { font-size: 13px; }
+.workspaceEyebrow { font-size: 12px; }
+.workspaceEmpty p, .workspaceSteps span { font-size: 14px; }
+@media (min-width: 811px) and (max-width: 1100px) {
+  .frame { --frame-sidebar: 252px; }
+  .navLink { font-size: 14px; }
+}

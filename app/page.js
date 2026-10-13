@@ -4,50 +4,9 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import DetailDialog from './DetailDialog';
 import VitalInstagramMetrics from './VitalInstagramMetrics';
-import ThemeCustomizer from './ThemeCustomizer';
-import HubHealthBell from './HubHealthBell';
 import WorkspaceSwitcher, { getWorkspaceStorageKey, useWorkspace, useVitalConnectionStatus } from './WorkspaceSwitcher';
 
 const SECTION_IDS = ['dashboard', 'calendar', 'tasks', 'ideas', 'metrics', 'goals'];
-
-const navGroups = [
-  { label: 'ADMINISTRAÇÃO', items: [
-    { href: '/admin/conexoes', label: 'Central de Controle', icon: '◈', type: 'link' },
-  ] },
-  {
-    label: 'PRINCIPAL',
-    items: [
-      { id: 'dashboard', label: 'Visão geral', icon: '⌂', type: 'section' },
-      { id: 'tasks', label: 'Tarefas', icon: '✓', type: 'section' },
-    ],
-  },
-  {
-    label: 'INSTAGRAM',
-    items: [
-      { id: 'calendar', label: 'Calendário', icon: '▦', type: 'section' },
-      { id: 'ideas', label: 'Ideias', icon: '✦', type: 'section' },
-      { id: 'metrics', label: 'Métricas', icon: '↗', type: 'section' },
-      { href: '/conexoes/vital-decor', label: 'Vital Decor · Conexões', icon: '◎', type: 'link' },
-      { id: 'goals', label: 'Metas', icon: '◎', type: 'section' },
-      { href: '/automacoes', label: 'Automações', icon: '⚡', type: 'link' },
-    ],
-  },
-  {
-    label: 'WHATSAPP',
-    items: [
-      { href: '/whatsapp', label: 'CRM', icon: '◉', type: 'link' },
-      { href: '/whatsapp/automacoes', label: 'Automações', icon: '⚙', type: 'link' },
-      { href: '/whatsapp/campanha', label: 'Campanhas', icon: '↗', type: 'link' },
-      { href: '/whatsapp/grupos', label: 'Grupos', icon: '◎', type: 'link' },
-    ],
-  },
-  {
-    label: 'TIKTOK',
-    items: [
-      { href: '/tiktok/afiliados', label: 'Afiliados', icon: '◇', type: 'link' },
-    ],
-  },
-];
 
 const defaultMetrics = {
   seguidores: 0,
@@ -236,7 +195,7 @@ function Progress({ current, target }) {
   return (
     <div className="progress-wrap" aria-label={`${percent}% concluído`}>
       <div className="progress-bar" style={{ width: `${percent}%` }} />
-    </div>
+    </>
   );
 }
 
@@ -460,6 +419,17 @@ export default function Home() {
     window.history.replaceState(null, '', nextUrl);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+
+  // The shared TidePlace sidebar owns navigation across every page.
+  // Keep the homepage section state in sync without remounting its editors.
+  useEffect(() => {
+    function navigateToSection(event) {
+      const section = event?.detail?.section;
+      if (SECTION_IDS.includes(section)) goTo(section);
+    }
+    window.addEventListener('tideplace:section-change', navigateToSection);
+    return () => window.removeEventListener('tideplace:section-change', navigateToSection);
+  }, []);
 
   function addIdea() {
     if (!ideaDraft.title.trim()) return;
@@ -881,58 +851,8 @@ export default function Home() {
   }[active];
 
   return (
-    <div className="app-shell">
-      <aside className={`sidebar ${mobileMenu ? 'open' : ''}`}>
-        <div className="brand">
-          <div className="brand-mark"><img src="/brand/tideplace-mark.svg" alt="" /></div>
-          <div className="brand-copy"><strong><b>TIDE</b>PLACE</strong><span>Flow with your audience.</span></div>
-        </div>
-
-        <nav className="sidebar-nav" aria-label="Áreas da TidePlace">
-          {navGroups.map((group) => (
-            <div className="sidebar-group" key={group.label}>
-              <span className="sidebar-group-label">{group.label}</span>
-              {group.items.map((item) => item.type === 'link' ? (
-                <Link key={item.href} href={item.href} className="sidebar-nav-link" onClick={() => setMobileMenu(false)}>
-                  <span className="nav-icon">{item.icon}</span><span>{item.label}</span>
-                </Link>
-              ) : (
-                <button key={item.id} type="button" className={active === item.id ? 'active' : ''} onClick={() => goTo(item.id)}>
-                  <span className="nav-icon">{item.icon}</span><span>{item.label}</span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
-
-        <div className="sidebar-bottom">
-          <div className="profile-dot">J</div>
-          <div><strong>Juliany</strong><span>Social media</span></div>
-        </div>
-      </aside>
-
-      {mobileMenu && <button className="menu-overlay" onClick={() => setMobileMenu(false)} aria-label="Fechar menu" />}
-
-      <main className="main-content">
-        <header className="topbar">
-          <button className="menu-button" onClick={() => setMobileMenu(true)} aria-label="Abrir menu">☰</button>
-          <WorkspaceSwitcher />
-          <ThemeCustomizer />
-          <HubHealthBell />
-          <span className={`workspace-status ${(isGuiWorkspace ? instagramConnected === false : (!vitalConnection.loading && !vitalFullyConnected)) ? 'workspace-status-warning' : ''}`}>
-            <i className={(isGuiWorkspace ? instagramConnected === false : (!vitalConnection.loading && !vitalFullyConnected)) ? 'pending' : ''} />
-            {isGuiWorkspace
-              ? instagramConnected === null ? 'Verificando Meta...' : instagramConnected ? 'Meta conectada' : 'Reconectar Meta'
-              : vitalConnection.loading ? 'Verificando Vital...'
-              : vitalConnection.error ? 'Verificar conexão'
-              : vitalFullyConnected ? 'Instagram e WhatsApp conectados'
-              : vitalConnection.instagram ? 'Instagram conectado · verificar WhatsApp'
-              : vitalConnection.whatsapp ? 'WhatsApp conectado · verificar Instagram'
-              : 'Conexões pendentes'}
-          </span>
-        </header>
-        <div className="page-content">{content()}</div>
-      </main>
+    <>
+      <div className="page-content">{content()}</div>
 
       {detailItem && (
         <DetailDialog

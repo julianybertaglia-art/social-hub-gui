@@ -267,3 +267,29 @@
   .queueTitleLine h2 { font-size: 15px; }
   .queueTab { min-height: 46px; font-size: 12px; }
 }
+
+
+/* CRM readability: keep actions and labels useful on a full workday. */
+.header p, .chatHeader span, .contactCopy span { font-size: 13px; }
+.connection, .notice, .previewHint, .loadError { font-size: 13px; }
+.queueTitleLine h2 { font-size: 18px; }
+.queueHeading p, .queueTopic label, .queueTopic select,
+.queueTab, .queueTabCount, .queueTotal { font-size: 14px; }
+.queueTabs { gap: 17px; }
+.queueTab { min-height: 49px; }
+.queueTabCount { min-width: 25px; height: 25px; }
+.paneHeading h2 { font-size: 17px; }
+.search, .chatHeader select, .crmForm input,
+.crmForm select, .crmForm textarea { font-size: 14px; }
+.contactCopy strong, .chatHeader strong { font-size: 14px; }
+.contactCopy small, .contact time, .crmForm label,
+.crmForm small, .empty { font-size: 12px; line-height: 1.45; }
+.bubble, .composer textarea, .composer button { font-size: 14px; }
+.bubble span, .smartCard span, .smartCard p,
+.crmPane > .eyebrow { font-size: 12px; }
+.smartCard strong, .chatEmpty span { font-size: 14px; }
+.smartCard { line-height: 1.5; }
+@media (max-width: 820px) {
+  .queueTabs { gap: 14px; }
+  .queueTab { font-size: 13px; }
+}

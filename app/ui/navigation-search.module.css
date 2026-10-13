@@ -12,3 +12,10 @@
 .resultCopy{flex:1;min-width:0}.resultCopy strong,.resultCopy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.resultCopy strong{font-size:13px;font-weight:700}.resultCopy small{margin-top:1px;color:var(--tp-muted);font-size:11px}.result>svg{color:var(--tp-muted)}
 .empty{margin:28px 10px;text-align:center;color:var(--tp-muted);font-size:13px}.footer{padding:11px 16px;border-top:1px solid var(--tp-line);color:var(--tp-muted);font-size:11px}
 @media(max-width:1100px){.trigger{min-width:37px;width:37px;padding:0;justify-content:center}.trigger span,.trigger kbd{display:none}}
+
+
+/* Bigger quick navigation search text. */
+.trigger { font-size: 14px; }
+.trigger kbd { font-size: 11px; }
+.resultCopy strong { font-size: 15px; }
+.resultCopy small, .footer, .empty { font-size: 13px; }

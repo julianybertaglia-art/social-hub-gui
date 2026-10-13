@@ -125,7 +125,7 @@ export default function HubFrame({ children }) {
           </div>
         </header>
         <div className={styles.body}>
-          {workspace.id === 'gui-nonato' ? children : pathname.startsWith('/admin') ? children : pathname.startsWith('/tiktok') ? (
+          {workspace.id === 'gui-nonato' ? children : pathname === '/' ? children : pathname.startsWith('/admin') ? children : pathname.startsWith('/tiktok') ? (
             <VitalAffiliatePanel />
           ) : pathname === '/whatsapp' ? (
             <VitalWhatsAppInbox />

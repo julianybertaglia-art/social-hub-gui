@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../CloudGate';
 import {
   isSimpleApprovedWhatsAppTemplate,
   isWhatsAppServiceWindowOpen,
@@ -62,9 +63,12 @@ export default function ServiceWindowControls({ contact, messages, connected, on
     setSending(true);
     setNotice('');
     try {
+      if (!supabase) throw new Error('Faça login no TidePlace para enviar modelos.');
+      const { data: auth, error: authError } = await supabase.auth.getSession();
+      if (authError || !auth?.session?.access_token) throw new Error('Sua sessão expirou. Entre novamente no TidePlace.');
       const response = await fetch('/api/whatsapp/send-template', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + auth.session.access_token },
         body: JSON.stringify({
           to: contact.wa_id,
           templateName: selected.name,

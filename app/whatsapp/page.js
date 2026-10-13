@@ -22,20 +22,6 @@ const SMART_FILTERS = [
   { id: 'influenciadores', label: 'Influenciadores' },
 ];
 
-async function readApiResponse(response, fallbackMessage) {
-  let data = null;
-  try {
-    const text = await response.text();
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    throw new Error(`${fallbackMessage} O servidor retornou uma resposta inválida (HTTP ${response.status}).`);
-  }
-  if (!response.ok || !data || data.ok === false) {
-    throw new Error(data?.error || `${fallbackMessage} HTTP ${response.status}.`);
-  }
-  return data;
-}
-
 function formatPhone(value) {
   const digits = String(value || '').replace(/\D/g, '');
   if (digits.length === 13 && digits.startsWith('55')) {
@@ -95,45 +81,29 @@ export default function WhatsAppPage() {
   const [sending, setSending] = useState(false);
   const [bridgeBusy, setBridgeBusy] = useState(false);
   const [notice, setNotice] = useState('');
-  const [statusError, setStatusError] = useState('');
-  const [contactsError, setContactsError] = useState('');
-  const [contactsLoaded, setContactsLoaded] = useState(false);
 
   const selected = contacts.find((contact) => contact.id === selectedId) || null;
   const lastInboundAt = mostRecentInboundAt(messages.filter((item) => item.contact_id === selectedId));
   const canSendFreeForm = isWhatsAppServiceWindowOpen(lastInboundAt);
   const isBaileys = status?.provider === 'baileys';
   const connectionReady = Boolean(status?.connected);
-  const checkingConnection = status === null && !statusError;
-  const readOnlyPreview = status?.readOnlyPreview === true;
+  const checkingConnection = status === null;
   const bridgeWaiting = ['starting', 'connecting', 'reconnecting'].includes(status?.state);
 
   const loadStatus = useCallback(async () => {
-    try {
-      const response = await fetch('/api/whatsapp/status', { cache: 'no-store' });
-      const data = await readApiResponse(response, 'Não foi possível consultar a conexão.');
-      setStatusError('');
-      setStatus(data);
-      return data;
-    } catch (error) {
-      setStatusError(error.message);
-      throw error;
-    }
+    const response = await fetch('/api/whatsapp/status', { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.error || 'Não foi possível carregar o status do WhatsApp.');
+    setStatus(data);
+    return data;
   }, []);
 
   const loadContacts = useCallback(async () => {
-    try {
-      const response = await fetch('/api/whatsapp/conversations', { cache: 'no-store' });
-      const data = await readApiResponse(response, 'Não foi possível carregar os leads.');
-      const nextContacts = Array.isArray(data.contacts) ? data.contacts : [];
-      setContacts(nextContacts);
-      setSelectedId((current) => current || nextContacts[0]?.id || null);
-      setContactsLoaded(true);
-      setContactsError('');
-    } catch (error) {
-      setContactsError(error.message);
-      throw error;
-    }
+    const response = await fetch('/api/whatsapp/conversations', { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.error || 'Não foi possível carregar os leads.');
+    setContacts(data.contacts || []);
+    setSelectedId((current) => current || data.contacts?.[0]?.id || null);
   }, []);
 
   const loadMessages = useCallback(async (contactId) => {
@@ -143,14 +113,16 @@ export default function WhatsAppPage() {
       return;
     }
     const response = await fetch('/api/whatsapp/conversations?contact=' + encodeURIComponent(contactId), { cache: 'no-store' });
-    const data = await readApiResponse(response, 'Não foi possível carregar a conversa.');
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.error || 'Não foi possível carregar a conversa.');
     setMessages(data.messages || []);
     setAiSuggestion(data.aiSuggestion || null);
     if (data.contacts) setContacts(data.contacts);
   }, []);
 
   useEffect(() => {
-    Promise.allSettled([loadStatus(), loadContacts()]);
+    Promise.all([loadStatus(), loadContacts()])
+      .catch((error) => setNotice(error.message));
   }, [loadStatus, loadContacts]);
 
   useEffect(() => {
@@ -286,11 +258,7 @@ export default function WhatsAppPage() {
             <span />
             {checkingConnection
               ? 'Verificando conexão...'
-              : statusError
-                ? 'Status indisponível'
-                : readOnlyPreview && !connectionReady
-                  ? 'Prévia · conexão não validada'
-                  : connectionReady
+              : connectionReady
               ? 'WhatsApp conectado'
               : isBaileys && status?.state === 'awaiting_qr'
                 ? 'Aguardando leitura do QR'
@@ -344,7 +312,7 @@ export default function WhatsAppPage() {
           </section>
         )
       ) : (
-        status && !status.connected && !readOnlyPreview && (
+        status && !status.connected && (
           <section className={styles.setupCard}>
             <div>
               <span className={styles.eyebrow}>CONEXÃO OFICIAL META</span>
@@ -360,19 +328,7 @@ export default function WhatsAppPage() {
         )
       )}
 
-      {readOnlyPreview && (
-        <div className={styles.previewHint} role="status">
-          <strong>Versão de testes</strong>
-          <span>Esta prévia não reconecta nem altera a Meta. Confira a conexão oficial na versão em uso.</span>
-        </div>
-      )}
-      {statusError && (
-        <div className={styles.loadError} role="alert">
-          <span>{statusError}</span>
-          <button type="button" onClick={() => loadStatus().catch(() => {})}>Tentar novamente</button>
-        </div>
-      )}
-      {notice && <button className={styles.notice} onClick={() => setNotice('')}>{notice} ×</button>
+      {notice && <button className={styles.notice} onClick={() => setNotice('')}>{notice} ×</button>}
 
       <section className={styles.smartBar}>
         <div className={styles.smartBarIntro}>
@@ -388,7 +344,7 @@ export default function WhatsAppPage() {
               onClick={() => chooseFilter(filter.id)}
             >
               <span>{filter.label}</span>
-              <b>{contactsLoaded ? (filterCounts[filter.id] || 0) : '—'}</b>
+              <b>{filterCounts[filter.id] || 0}</b>
             </button>
           ))}
           <select
@@ -399,7 +355,7 @@ export default function WhatsAppPage() {
           >
             <option value="">Assuntos · todos</option>
             {SMART_FILTERS.filter((filter) => !PRIORITY_FILTERS.has(filter.id)).map((filter) => (
-              <option key={filter.id} value={filter.id}>{filter.label} ({contactsLoaded ? (filterCounts[filter.id] || 0) : '—'})</option>
+              <option key={filter.id} value={filter.id}>{filter.label} ({filterCounts[filter.id] || 0})</option>
             ))}
           </select>
         </div>
@@ -409,7 +365,7 @@ export default function WhatsAppPage() {
         <aside className={styles.contactsPane}>
           <div className={styles.paneHeading}>
             <div><span className={styles.eyebrow}>LEADS</span><h2>{SMART_FILTERS.find((item) => item.id === activeFilter)?.label || 'Conversas'}</h2></div>
-            <span className={styles.count}>{contactsLoaded ? filteredContacts.length : '—'}</span>
+            <span className={styles.count}>{filteredContacts.length}</span>
           </div>
           <input
             className={styles.search}
@@ -418,15 +374,7 @@ export default function WhatsAppPage() {
             placeholder="Buscar dentro desta fila..."
           />
           <div className={styles.contactList}>
-            {contactsError && (
-              <div className={styles.loadError} role="alert">
-                <strong>Conversas indisponíveis.</strong>
-                <span>{contactsError}</span>
-                <button type="button" onClick={() => loadContacts().catch(() => {})}>Recarregar CRM</button>
-              </div>
-            )}
-            {!contactsError && !contactsLoaded && <div className={styles.empty}>Carregando conversas...</div>}
-            {!contactsError && contactsLoaded && !filteredContacts.length && <div className={styles.empty}>Nenhum lead nesta fila agora.</div>}
+            {!filteredContacts.length && <div className={styles.empty}>Nenhum lead nesta fila agora.</div>}
             {filteredContacts.map((contact) => {
               const topic = contact.smart_categories?.[0];
               const attention = contact.needs_reply

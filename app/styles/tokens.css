@@ -50,11 +50,11 @@
 
   /* Tipografia */
   --tp-font: 'Hanken Grotesk Variable', 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --tp-text-xs: 12px;
-  --tp-text-sm: 13px;
-  --tp-text-md: 14px;
-  --tp-text-lg: 16px;
-  --tp-text-xl: 20px;
+  --tp-text-xs: 13px;
+  --tp-text-sm: 14px;
+  --tp-text-md: 15px;
+  --tp-text-lg: 18px;
+  --tp-text-xl: 21px;
   --tp-text-2xl: 26px;
   --tp-text-3xl: 34px;
   --tp-leading: 1.5;

@@ -195,7 +195,7 @@ function Progress({ current, target }) {
   return (
     <div className="progress-wrap" aria-label={`${percent}% concluído`}>
       <div className="progress-bar" style={{ width: `${percent}%` }} />
-    </>
+    </div>
   );
 }
 

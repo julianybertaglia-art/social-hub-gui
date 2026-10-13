@@ -63,6 +63,30 @@ async function subscribeApp(wabaId, accessToken) {
   );
 }
 
+async function configurePhoneWebhook(phoneNumberId, accessToken) {
+  const verifyToken = String(process.env.META_WHATSAPP_VERIFY_TOKEN || process.env.META_WEBHOOK_VERIFY_TOKEN || '').trim();
+  if (!verifyToken) return false;
+  // Use the permanent production callback, never a temporary preview deployment.
+  const callbackUrl = 'https://social-hub-gui.vercel.app/api/whatsapp/webhook';
+  await graphJson(
+    `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${encodeURIComponent(phoneNumberId)}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        webhook_configuration: {
+          override_callback_uri: callbackUrl,
+          verify_token: verifyToken,
+        },
+      }),
+    }
+  );
+  return true;
+}
+
 async function requestSync(phoneNumberId, accessToken, syncType) {
   return graphJson(
     `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${encodeURIComponent(phoneNumberId)}/smb_app_data`,
@@ -108,6 +132,15 @@ export async function POST(request) {
 
     await subscribeApp(wabaId, accessToken);
 
+    let webhookConfigured = false;
+    try {
+      webhookConfigured = await configurePhoneWebhook(String(phone.id), accessToken);
+    } catch (webhookError) {
+      // Preserve the newly authorized credentials; /api/whatsapp/status
+      // can retry configuring the callback after the Meta connection stabilizes.
+      console.warn('WhatsApp phone-specific webhook setup:', webhookError);
+    }
+
     const supabase = getSupabaseAdmin();
     const now = new Date().toISOString();
     const { error } = await supabase
@@ -148,6 +181,7 @@ export async function POST(request) {
       displayPhoneNumber: phone.display_phone_number || null,
       verifiedName: phone.verified_name || null,
       multipleNumbersFound: phones.length > 1,
+      webhookConfigured,
       sync,
     });
   } catch (error) {

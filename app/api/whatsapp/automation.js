@@ -144,6 +144,32 @@ export function shouldSendInitialMenu({
   return true;
 }
 
+// Existing contacts imported from the WhatsApp history did not receive a session,
+// so the old first-message-only rule would silently ignore every future greeting.
+// Show the menu once when a dormant conversation is genuinely restarted.
+// Never interrupt an active conversation or replay an older webhook message.
+export function shouldSendReentryMenu({
+  message,
+  hasExistingSession = false,
+  previousMessageAt,
+  nowMs = Date.now(),
+}) {
+  if (hasExistingSession || message?.type !== 'text') return false;
+  if (!String(message?.text?.body || '').trim()) return false;
+  if (interactiveSelectionId(message) || cameFromAd(message) || isReplyToBusiness(message)) return false;
+
+  const previousMs = Date.parse(String(previousMessageAt || ''));
+  if (!Number.isFinite(previousMs)) return false;
+  if (nowMs - previousMs < 48 * 60 * 60 * 1000) return false;
+
+  const inboundTimestamp = Number(message?.timestamp);
+  if (Number.isFinite(inboundTimestamp) && inboundTimestamp > 0) {
+    const receivedMs = inboundTimestamp < 1e12 ? inboundTimestamp * 1000 : inboundTimestamp;
+    if (Math.abs(nowMs - receivedMs) > 3 * 60 * 60 * 1000) return false;
+  }
+  return true;
+}
+
 async function saveOutboundMessage(supabase, contact, result, body, messageType) {
   const messageId = result?.messages?.[0]?.id || null;
   const now = new Date().toISOString();
@@ -512,6 +538,26 @@ export async function processWhatsAppAutomation(supabase, {
       await sendMainMenu(supabase, contact, { welcome: true });
       await finishEvent(supabase, messageId, 'processed');
       return { handled: true, action: 'welcome_menu' };
+    }
+
+    if (!session && count > 1 && message?.type === 'text') {
+      const { data: recent, error: historyError } = await supabase
+        .from('whatsapp_messages')
+        .select('meta_message_id,sent_at')
+        .eq('contact_id', contact.id)
+        .order('sent_at', { ascending: false })
+        .limit(8);
+      if (historyError) throw historyError;
+      const previous = (recent || []).find((item) => item.meta_message_id !== messageId);
+      if (shouldSendReentryMenu({
+        message,
+        hasExistingSession: Boolean(session),
+        previousMessageAt: previous?.sent_at,
+      })) {
+        await sendMainMenu(supabase, contact, { welcome: false });
+        await finishEvent(supabase, messageId, 'processed');
+        return { handled: true, action: 'returning_menu' };
+      }
     }
 
     await finishEvent(supabase, messageId, 'ignored');

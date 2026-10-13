@@ -7,6 +7,8 @@ import ServiceWindowControls from './ServiceWindowControls.js';
 import { mostRecentInboundAt, isWhatsAppServiceWindowOpen, whatsappFailureDescription } from '../api/whatsapp/service-window.js';
 
 const STAGES = ['Novo lead', 'Conversando', 'Interessado', 'Agendar com Gui', 'Link enviado', 'Venda', 'Perdido'];
+const PRIORITY_FILTERS = new Set(['all', 'reply', 'followup', 'hot', 'schedule']);
+
 const SMART_FILTERS = [
   { id: 'all', label: 'Todos' },
   { id: 'reply', label: 'Para responder' },
@@ -166,7 +168,7 @@ export default function WhatsAppPage() {
     setActiveFilter(filterId);
     setSearch('');
     const first = contacts.find((contact) => matchesFilter(contact, filterId));
-    if (first) setSelectedId(first.id);
+    setSelectedId(first?.id || null);
   }
 
   async function handleBridgeAction(action) {
@@ -331,10 +333,10 @@ export default function WhatsAppPage() {
       <section className={styles.smartBar}>
         <div className={styles.smartBarIntro}>
           <strong>Fila inteligente</strong>
-          <span>Escolha o que você quer resolver agora.</span>
+          <span>Primeiro resolva as prioridades; depois filtre por assunto.</span>
         </div>
         <div className={styles.smartFilters}>
-          {SMART_FILTERS.map((filter) => (
+          {SMART_FILTERS.filter((filter) => PRIORITY_FILTERS.has(filter.id)).map((filter) => (
             <button
               type="button"
               key={filter.id}
@@ -345,6 +347,17 @@ export default function WhatsAppPage() {
               <b>{filterCounts[filter.id] || 0}</b>
             </button>
           ))}
+          <select
+            aria-label="Filtrar conversas por assunto"
+            value={PRIORITY_FILTERS.has(activeFilter) ? '' : activeFilter}
+            onChange={(event) => chooseFilter(event.target.value || 'all')}
+            style={{ minHeight: 37, border: '1px solid var(--tp-line-strong, #d6d0d4)', borderRadius: 9, background: 'var(--surface, white)', padding: '7px 12px', fontSize: 12, fontWeight: 650 }}
+          >
+            <option value="">Assuntos · todos</option>
+            {SMART_FILTERS.filter((filter) => !PRIORITY_FILTERS.has(filter.id)).map((filter) => (
+              <option key={filter.id} value={filter.id}>{filter.label} ({filterCounts[filter.id] || 0})</option>
+            ))}
+          </select>
         </div>
       </section>
 

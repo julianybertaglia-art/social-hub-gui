@@ -865,6 +865,6 @@ export default function Home() {
           onToggleTask={toggleTask}
         />
       )}
-    </div>
+    </>
   );
 }

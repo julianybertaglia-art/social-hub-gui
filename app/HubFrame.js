@@ -19,12 +19,13 @@ import { visibleNavGroups, matchesNavigation } from './ui/navigation';
 function pageLabel(pathname) {
   if (pathname.startsWith('/admin')) return 'Administração · Central de Controle';
   if (pathname.startsWith('/tiktok/afiliados')) return 'TikTok · Afiliados';
+  if (pathname === '/whatsapp/setores') return 'WhatsApp · Meus setores';
   if (pathname.startsWith('/whatsapp/automacoes')) return 'WhatsApp · Automações';
   if (pathname.startsWith('/whatsapp/integracao-argo')) return 'WhatsApp · Integração Argo';
   if (pathname.startsWith('/whatsapp/campanha')) return 'WhatsApp · Campanhas';
   if (pathname.startsWith('/whatsapp/grupos')) return 'WhatsApp · Grupos';
   if (pathname.startsWith('/whatsapp/gato')) return 'WhatsApp · Gato';
-  if (pathname === '/whatsapp') return 'WhatsApp · CRM';
+  if (pathname === '/whatsapp') return 'WhatsApp · Caixa de entrada';
   if (pathname.startsWith('/automacoes')) return 'Instagram · Automações';
   return 'Central estratégica';
 }
@@ -127,8 +128,8 @@ export default function HubFrame({ children }) {
         <div className={styles.body}>
           {workspace.id === 'gui-nonato' ? children : pathname === '/' ? children : pathname.startsWith('/admin') ? children : pathname.startsWith('/tiktok') ? (
             <VitalAffiliatePanel />
-          ) : pathname === '/whatsapp' ? (
-            <VitalWhatsAppInbox />
+          ) : pathname === '/whatsapp' || pathname === '/whatsapp/setores' ? (
+            <VitalWhatsAppInbox view={pathname === '/whatsapp/setores' ? 'mine' : 'all'} />
           ) : pathname === '/whatsapp/automacoes' ? (
             <ViviAutomationPanel />
           ) : pathname === '/whatsapp/integracao-argo' ? (

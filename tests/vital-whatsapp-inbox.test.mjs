@@ -51,5 +51,6 @@ test('vital inbox and send route are scoped to owner and workspace, never use Gu
   assert.match(sendRoute, /connection\.access_token/);
   assert.doesNotMatch(sendRoute, /sendWhatsAppText\(/);
   assert.match(frame, /pathname === '\/whatsapp'/);
-  assert.match(frame, /<VitalWhatsAppInbox \/>/);
+  assert.match(frame, /<VitalWhatsAppInbox view=\{pathname === '\/whatsapp\/setores' \? 'mine' : 'all'\} \/>/);
+  assert.match(frame, /workspace\.id === 'gui-nonato' \? children/);
 });

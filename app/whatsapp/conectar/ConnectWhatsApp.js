@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 
 const APP_ID = '1975149819862842';
 const VERSION = 'v26.0';
-const SYSTEM_USERS_URL = 'https://business.facebook.com/latest/settings/system_users';
 
 function configIdFrom(value) {
   const raw = String(value || '').trim();
@@ -56,8 +55,15 @@ export default function ConnectWhatsApp() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data?.ok) throw new Error(data?.error || 'Não foi possível concluir a conexão.');
-      setDone(data);
-      setMessage('WhatsApp Business conectado com sucesso.');
+      const checkResponse = await fetch('/api/whatsapp/status', { cache: 'no-store' });
+      const check = await checkResponse.json().catch(() => ({}));
+      setStatus(check);
+      if (!check?.connected || !check?.webhookReady || !check?.webhookEnsure?.ok) {
+        setMessage('Autorização recebida, mas a entrega de mensagens ainda precisa ser confirmada. Abra o diagnóstico antes de ativar as automações.');
+      } else {
+        setDone(data);
+        setMessage('WhatsApp Business conectado e webhook confirmado.');
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Falha ao concluir a conexão.');
     } finally {
@@ -77,7 +83,7 @@ export default function ConnectWhatsApp() {
       .then((response) => response.json())
       .then((data) => {
         setStatus(data);
-        if (data?.provider === 'meta' && data?.connected) {
+        if (data?.provider === 'meta' && data?.connected && data?.webhookReady && data?.webhookEnsure?.ok) {
           setDone({
             verifiedName: data.verifiedName,
             displayPhoneNumber: data.displayPhoneNumber,
@@ -184,23 +190,9 @@ export default function ConnectWhatsApp() {
   const needsCredentialRefresh = status?.state === 'credential_refresh_required'
     || status?.needsCredentialRefresh
     || status?.needsReauthorization;
-  const reconnectRequired = status?.state === 'coexistence_reconnect_required'
+  const reconnectRequired = needsCredentialRefresh
+    || status?.state === 'coexistence_reconnect_required'
     || status?.needsCoexistenceReconnect;
-
-  if (needsCredentialRefresh) {
-    return (
-      <div>
-        <h2>O número já está conectado</h2>
-        <p>Não refaça o cadastro do WhatsApp. O que precisa ser renovado é somente a credencial usada pelo Lynna para enviar mensagens.</p>
-        <p><strong>Não altere o número, o portfólio, a WABA ou o WhatsApp Business do celular.</strong></p>
-        <p>
-          <a href={SYSTEM_USERS_URL} target="_blank" rel="noreferrer">Abrir Usuários do sistema na Meta</a>
-        </p>
-        <p>Gere uma nova chave para o app Gui Social Hub com as permissões de WhatsApp. Não envie a chave pelo chat.</p>
-        <p><a href="/whatsapp">Voltar ao CRM</a></p>
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -214,9 +206,11 @@ export default function ConnectWhatsApp() {
       {configId && <p>Configuração da Meta pronta ✓</p>}
       {reconnectRequired && (
         <p role="alert">
-          <strong>A conexão da API do WhatsApp do Gui foi interrompida.</strong>{' '}
-          Refaça a autorização pela janela oficial da Meta, escolhendo o mesmo WhatsApp Business.
-          Não exclua o número nem desinstale o aplicativo no celular.
+          <strong>{needsCredentialRefresh
+            ? 'A autorização da Meta do WhatsApp do Gui precisa ser renovada.'
+            : 'A conexão da API do WhatsApp do Gui foi interrompida.'}</strong>{' '}
+          Clique abaixo para autorizar novamente pela janela oficial da Meta, selecionando o mesmo número.
+          Não exclua o número, não troque a WABA e não desinstale o WhatsApp Business.
         </p>
       )}
       <button type="button" disabled={!configId || !sdkReady || busy} onClick={connect}>

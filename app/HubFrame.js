@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import styles from './hub-frame.module.css';
 import ThemeCustomizer from './ThemeCustomizer';
 import WorkspaceSwitcher, { useWorkspace, useVitalConnectionStatus } from './WorkspaceSwitcher';
@@ -12,57 +12,20 @@ import VitalAffiliatePanel from './VitalAffiliatePanel';
 import ArgoBridgePanel from './ArgoBridgePanel';
 import VitalInstagramAutomationPanel from './VitalInstagramAutomationPanel';
 import HubHealthBell from './HubHealthBell';
-
-const GROUPS = [
-  { label: 'ADMINISTRAÇÃO', items: [
-    { href: '/admin/conexoes', label: 'Central de Controle', icon: '◈', match: '/admin' },
-  ] },
-  {
-    label: 'PRINCIPAL',
-    items: [
-      { href: '/', label: 'Visão geral', icon: '⌂' },
-      { href: '/?section=tasks', label: 'Tarefas', icon: '✓' },
-    ],
-  },
-  {
-    label: 'INSTAGRAM',
-    items: [
-      { href: '/?section=calendar', label: 'Calendário', icon: '▦' },
-      { href: '/?section=ideas', label: 'Ideias', icon: '✦' },
-      { href: '/?section=metrics', label: 'Métricas', icon: '↗' },
-      { href: '/?section=goals', label: 'Metas', icon: '◎' },
-      { href: '/automacoes', label: 'Automações', icon: '⚡', match: '/automacoes' },
-      { href: '/conexoes/vital-decor', label: 'Vital Decor · Conexões', icon: '◎' },
-    ],
-  },
-  {
-    label: 'WHATSAPP',
-    items: [
-      { href: '/whatsapp', label: 'CRM', icon: '◉', exact: true },
-      { href: '/whatsapp/automacoes', label: 'Automações', icon: '⚙', match: '/whatsapp/automacoes' },
-      { href: '/whatsapp/integracao-argo', label: 'Integração Argo', icon: '⇄', match: '/whatsapp/integracao-argo' },
-      { href: '/whatsapp/campanha', label: 'Campanhas', icon: '↗', match: '/whatsapp/campanha' },
-      { href: '/whatsapp/grupos', label: 'Grupos', icon: '◎', match: '/whatsapp/grupos' },
-      { href: '/whatsapp/gato', label: 'Gato / envios', icon: '⌁', match: '/whatsapp/gato' },
-    ],
-  },
-  {
-    label: 'TIKTOK',
-    items: [
-      { href: '/tiktok/afiliados', label: 'Afiliados', icon: '◇', match: '/tiktok/afiliados' },
-    ],
-  },
-];
+import Icon from './ui/Icon';
+import NavigationSearch from './ui/NavigationSearch';
+import { visibleNavGroups, matchesNavigation } from './ui/navigation';
 
 function pageLabel(pathname) {
   if (pathname.startsWith('/admin')) return 'Administração · Central de Controle';
   if (pathname.startsWith('/tiktok/afiliados')) return 'TikTok · Afiliados';
+  if (pathname === '/whatsapp/setores') return 'WhatsApp · Meus setores';
   if (pathname.startsWith('/whatsapp/automacoes')) return 'WhatsApp · Automações';
   if (pathname.startsWith('/whatsapp/integracao-argo')) return 'WhatsApp · Integração Argo';
   if (pathname.startsWith('/whatsapp/campanha')) return 'WhatsApp · Campanhas';
   if (pathname.startsWith('/whatsapp/grupos')) return 'WhatsApp · Grupos';
   if (pathname.startsWith('/whatsapp/gato')) return 'WhatsApp · Gato';
-  if (pathname === '/whatsapp') return 'WhatsApp · CRM';
+  if (pathname === '/whatsapp') return 'WhatsApp · Caixa de entrada';
   if (pathname.startsWith('/automacoes')) return 'Instagram · Automações';
   return 'Central estratégica';
 }
@@ -73,7 +36,27 @@ export default function HubFrame({ children }) {
   const vital = useVitalConnectionStatus();
   const vitalConnected = vital.instagram === true && vital.whatsapp === true;
   const [menuOpen, setMenuOpen] = useState(false);
-  const framed = pathname.startsWith('/whatsapp') || pathname.startsWith('/automacoes') || pathname.startsWith('/tiktok') || pathname.startsWith('/admin');
+  const [section, setSection] = useState('dashboard');
+  useEffect(() => {
+    function syncSection(event) {
+      const requested = event?.detail?.section || new URLSearchParams(window.location.search).get('section');
+      setSection(requested || 'dashboard');
+    }
+    syncSection();
+    window.addEventListener('tideplace:section-change', syncSection);
+    window.addEventListener('popstate', syncSection);
+    return () => {
+      window.removeEventListener('tideplace:section-change', syncSection);
+      window.removeEventListener('popstate', syncSection);
+    };
+  }, [pathname]);
+
+  function changeSection(next) {
+    setSection(next);
+    window.dispatchEvent(new CustomEvent('tideplace:section-change', { detail: { section: next } }));
+  }
+
+  const framed = pathname === '/' || pathname.startsWith('/whatsapp') || pathname.startsWith('/automacoes') || pathname.startsWith('/tiktok') || pathname.startsWith('/admin');
   if (!framed) return children;
 
   return (
@@ -88,20 +71,27 @@ export default function HubFrame({ children }) {
         </Link>
 
         <nav className={styles.nav} aria-label="Áreas da TidePlace">
-          {GROUPS.map((group) => (
+          {visibleNavGroups(workspace.id).map((group) => (
             <div className={styles.group} key={group.label}>
               <span className={styles.groupLabel}>{group.label}</span>
               {group.items.map((item) => {
-                if(item.href==='/whatsapp/integracao-argo' && workspace.id!=='vital-decor')return null;
-                const active = item.exact ? pathname === item.href : item.match ? pathname.startsWith(item.match) : false;
+                const active = matchesNavigation(item, pathname, section);
                 return (
                   <Link
                     href={item.href}
                     key={item.href}
                     className={`${styles.navLink} ${active ? styles.active : ''}`}
-                    onClick={() => setMenuOpen(false)}
+                    aria-current={active ? 'page' : undefined}
+                    title={item.description}
+                    onClick={(event) => {
+                      if (pathname === '/' && item.section) {
+                        event.preventDefault();
+                        changeSection(item.section);
+                      }
+                      setMenuOpen(false);
+                    }}
                   >
-                    <span className={styles.icon}>{item.icon}</span>
+                    <span className={styles.icon}><Icon name={item.icon} size={18} /></span>
                     <span>{item.label}</span>
                   </Link>
                 );
@@ -125,20 +115,21 @@ export default function HubFrame({ children }) {
 
       <div className={styles.main}>
         <header className={styles.topbar}>
-          <button type="button" className={styles.menuButton} onClick={() => setMenuOpen(true)} aria-label="Abrir menu">☰</button>
+          <button type="button" className={styles.menuButton} onClick={() => setMenuOpen(true)} aria-label="Abrir menu"><Icon name="menu" size={21} /></button>
           <WorkspaceSwitcher />
+          <NavigationSearch workspaceId={workspace.id} pathname={pathname} onSectionChange={changeSection} />
           <ThemeCustomizer />
           <HubHealthBell />
           <div className={styles.context}>
-            <span>ÁREA ATUAL</span>
+            <span>VOCÊ ESTÁ EM</span>
             <strong>{pageLabel(pathname)}</strong>
           </div>
         </header>
         <div className={styles.body}>
-          {workspace.id === 'gui-nonato' || pathname.startsWith('/admin') ? children : pathname.startsWith('/tiktok') ? (
+          {workspace.id === 'gui-nonato' ? children : pathname === '/' ? children : pathname.startsWith('/admin') ? children : pathname.startsWith('/tiktok') ? (
             <VitalAffiliatePanel />
-          ) : pathname === '/whatsapp' ? (
-            <VitalWhatsAppInbox />
+          ) : pathname === '/whatsapp' || pathname === '/whatsapp/setores' ? (
+            <VitalWhatsAppInbox view={pathname === '/whatsapp/setores' ? 'mine' : 'all'} />
           ) : pathname === '/whatsapp/automacoes' ? (
             <ViviAutomationPanel />
           ) : pathname === '/whatsapp/integracao-argo' ? (

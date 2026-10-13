@@ -47,3 +47,81 @@
 .footnote{color:var(--muted);max-width:1480px;margin:12px auto 0;font-size:10px;line-height:1.5}
 @media(max-width:960px){.page{padding:20px 16px}.workspace{grid-template-columns:245px minmax(0,1fr)}.heading{align-items:flex-start;flex-direction:column}.manual{display:none}}
 @media(max-width:680px){.workspace{grid-template-columns:1fr;height:auto;min-height:580px}.sidebar{max-height:260px;border-right:0;border-bottom:1px solid var(--border)}.chat{min-height:450px}.received,.sent{max-width:90%}.heading h1{font-size:28px}.messages{padding:14px}.headingActions{gap:6px}}
+
+
+/* Sector routing: keep assignment controls compact inside the conversation. */
+.sectorSummary {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.transferBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-soft);
+}
+.transferBar label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+.transferBar select {
+  min-width: 200px;
+  max-width: 300px;
+  flex: 1;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface);
+}
+.transferBar button {
+  min-height: 36px;
+  padding: 8px 13px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--gold-dark);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.transferBar button:disabled { opacity: .45; cursor: not-allowed; }
+.transferSettings {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--gold-dark);
+  font-weight: 700;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+@media (max-width: 680px) {
+  .transferBar { gap: 8px; padding: 10px 12px; }
+  .transferBar select { min-width: 0; flex: 1 1 175px; }
+  .transferSettings { margin-left: 0; }
+}
+
+
+/* Larger day-to-day text in the Vital Decor CRM and sector handoff. */
+.kicker { font-size: 12px!important; }
+.heading p, .headingActions button, .headingActions a,
+.error, .notice { font-size: 14px; }
+.sectionTitle h2 { font-size: 18px; }
+.sectionTitle span, .sidebarTop input { font-size: 13px; }
+.contactText strong { font-size: 14px; }
+.contactText small, .contactText span,
+.contact time, .selectedContact time { font-size: 12px; }
+.chatHead strong, .chatHead div span { font-size: 14px; }
+.manual { font-size: 12px!important; }
+.received, .sent, .composer textarea, .composer button { font-size: 14px; }
+.messages time, .outsideWindow span { font-size: 12px; }
+.outsideWindow strong, .empty, .welcome p { font-size: 14px; }
+.footnote, .sectorSummary, .transferBar label,
+.transferBar select, .transferBar button, .transferSettings { font-size: 13px; }

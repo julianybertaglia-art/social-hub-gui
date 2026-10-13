@@ -275,3 +275,14 @@
 .optionCopy span {
   font-size: 11px;
 }
+
+
+/* Readable account names, handles, status and account menu. */
+.trigger { min-width: 260px; }
+.triggerCopy strong { font-size: 15px; }
+.triggerCopy span { font-size: 13px; }
+.menuHeading span { font-size: 11px; }
+.menuHeading strong, .optionCopy strong { font-size: 14px; }
+.optionCopy span, .menuFooter { font-size: 12px; }
+.statusOk, .statusPending { font-size: 11px; }
+@media (max-width: 760px) { .trigger { min-width: 0; } }

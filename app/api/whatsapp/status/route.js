@@ -216,6 +216,8 @@ async function ensureCoexistenceWebhook(meta, origin, verifyToken) {
 
 export async function GET(request) {
   const origin = new URL(request.url).origin;
+  // Preview builds must never change the live Meta webhook or saved credentials.
+  const readOnlyPreview = process.env.VERCEL_ENV === 'preview';
   let meta = await getMetaCredentials();
   let hasAccessToken = Boolean(meta?.accessToken);
   let hasPhoneNumberId = Boolean(meta?.phoneNumberId);
@@ -230,7 +232,7 @@ export async function GET(request) {
     : { valid: false, reason: 'missing_credentials' };
 
   let recovery = { recovered: false, skipped: true };
-  if (!auth.valid && meta?.source === 'meta_environment') {
+  if (!readOnlyPreview && !auth.valid && meta?.source === 'meta_environment') {
     recovery = await tryRecoverEnvironmentToken(meta);
     if (recovery?.recovered && recovery?.meta && recovery?.auth?.valid) {
       meta = recovery.meta;
@@ -245,9 +247,11 @@ export async function GET(request) {
   // Keep the existing temporary Meta rate-limit behavior until its state can be rechecked.
   const connected = Boolean(auth.valid && (auth.temporarilyLimited || coexistenceReady));
   const webhookReady = hasVerifyToken && hasAppSecret;
-  const webhookEnsure = connected && hasVerifyToken && !auth.temporarilyLimited
-    ? await ensureCoexistenceWebhook(meta, origin, verifyToken)
-    : { ok: Boolean(auth.temporarilyLimited), skipped: true, reason: auth.temporarilyLimited ? 'rate_limited' : null };
+  const webhookEnsure = readOnlyPreview
+    ? { ok: false, skipped: true, reason: 'preview_read_only' }
+    : connected && hasVerifyToken && !auth.temporarilyLimited
+      ? await ensureCoexistenceWebhook(meta, origin, verifyToken)
+      : { ok: Boolean(auth.temporarilyLimited), skipped: true, reason: auth.temporarilyLimited ? 'rate_limited' : null };
 
   const needsCredentialRefresh = hasAccessToken && hasPhoneNumberId && !auth.valid;
   const needsCoexistenceReconnect = Boolean(auth.valid && !auth.temporarilyLimited && !coexistenceReady);
@@ -255,6 +259,7 @@ export async function GET(request) {
   return Response.json({
     ok: true,
     provider: 'meta',
+    readOnlyPreview,
     configured: connected,
     connected,
     canSend: connected,
@@ -307,7 +312,7 @@ export async function GET(request) {
       storedMetaConnection: meta?.source === 'meta_embedded_signup' || meta?.source === 'meta_recovered',
       officialEnvironmentFallback: meta?.source === 'meta_environment',
     },
-    webhookUrl: origin + '/api/whatsapp/webhook',
+    webhookUrl: readOnlyPreview ? null : origin + '/api/whatsapp/webhook',
   }, {
     headers: { 'Cache-Control': 'no-store, max-age=0' },
   });

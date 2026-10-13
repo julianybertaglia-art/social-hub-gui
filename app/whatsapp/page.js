@@ -7,15 +7,18 @@ import ServiceWindowControls from './ServiceWindowControls.js';
 import { mostRecentInboundAt, isWhatsAppServiceWindowOpen, whatsappFailureDescription } from '../api/whatsapp/service-window.js';
 
 const STAGES = ['Novo lead', 'Conversando', 'Interessado', 'Agendar com Gui', 'Link enviado', 'Venda', 'Perdido'];
+const PRIORITY_FILTERS = new Set(['all', 'reply', 'followup', 'hot', 'schedule']);
+
 const SMART_FILTERS = [
-  { id: 'all', label: 'Todos' },
-  { id: 'reply', label: 'Para responder' },
-  { id: 'followup', label: 'Para chamar' },
-  { id: 'hot', label: 'Quentes' },
-  { id: 'schedule', label: '🔥 Agendar com Gui' },
+  { id: 'all', label: 'Todas' },
+  { id: 'reply', label: 'A responder' },
+  { id: 'followup', label: 'Retomar contato' },
+  { id: 'hot', label: 'Leads quentes' },
+  { id: 'schedule', label: 'Agendar com Gui' },
   { id: 'imersao', label: 'Imersão' },
   { id: 'mentoria', label: 'Mentoria' },
   { id: 'argo', label: 'ARGO' },
+  { id: 'importacao', label: 'Importação' },
   { id: 'treinamento', label: 'Treinamento' },
   { id: 'influenciadores', label: 'Influenciadores' },
 ];
@@ -52,6 +55,7 @@ function matchesFilter(contact, filter) {
   if (filter === 'imersao') return categories.includes('Imersão');
   if (filter === 'mentoria') return categories.includes('Mentoria');
   if (filter === 'argo') return categories.includes('ARGO');
+  if (filter === 'importacao') return categories.includes('Importação');
   if (filter === 'treinamento') return categories.includes('Treinamento');
   if (filter === 'influenciadores') return categories.includes('Influenciadores');
   return true;
@@ -73,7 +77,8 @@ export default function WhatsAppPage() {
   const [messages, setMessages] = useState([]);
   const [aiSuggestion, setAiSuggestion] = useState(null);
   const [search, setSearch] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
+  const [activePriority, setActivePriority] = useState('all');
+  const [activeTopic, setActiveTopic] = useState('all');
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -139,15 +144,20 @@ export default function WhatsAppPage() {
   const filterCounts = useMemo(() => {
     const counts = {};
     for (const filter of SMART_FILTERS) {
-      counts[filter.id] = contacts.filter((contact) => matchesFilter(contact, filter.id)).length;
+      // Counts always reflect the other active filter, making the two controls complementary.
+      const isPriority = PRIORITY_FILTERS.has(filter.id);
+      counts[filter.id] = contacts.filter((contact) => (
+        matchesFilter(contact, filter.id)
+        && matchesFilter(contact, isPriority ? activeTopic : activePriority)
+      )).length;
     }
     return counts;
-  }, [contacts]);
+  }, [contacts, activePriority, activeTopic]);
 
   const filteredContacts = useMemo(() => {
     const term = search.trim().toLowerCase();
     return contacts.filter((contact) => {
-      if (!matchesFilter(contact, activeFilter)) return false;
+      if (!matchesFilter(contact, activePriority) || !matchesFilter(contact, activeTopic)) return false;
       if (!term) return true;
       return [
         contact.profile_name,
@@ -160,13 +170,14 @@ export default function WhatsAppPage() {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term));
     });
-  }, [contacts, search, activeFilter]);
+  }, [contacts, search, activePriority, activeTopic]);
 
-  function chooseFilter(filterId) {
-    setActiveFilter(filterId);
+  function chooseFilter(priority = activePriority, topic = activeTopic) {
+    setActivePriority(priority);
+    setActiveTopic(topic);
     setSearch('');
-    const first = contacts.find((contact) => matchesFilter(contact, filterId));
-    if (first) setSelectedId(first.id);
+    const first = contacts.find((contact) => matchesFilter(contact, priority) && matchesFilter(contact, topic));
+    setSelectedId(first?.id || null);
   }
 
   async function handleBridgeAction(action) {
@@ -314,7 +325,7 @@ export default function WhatsAppPage() {
           <section className={styles.setupCard}>
             <div>
               <span className={styles.eyebrow}>CONEXÃO OFICIAL META</span>
-              <h2>Autorize o WhatsApp Business para ativar o Hub.</h2>
+              <h2>{status?.readOnlyPreview ? "Esta é uma versão de testes: não reconecte a Meta aqui." : "Autorize o WhatsApp Business para ativar o Hub."}</h2>
               <p>A ponte antiga foi removida. Mensagens e envios funcionarão somente pela conexão oficial da Meta.</p>
             </div>
             <div className={styles.bridgeSetup}>
@@ -328,21 +339,40 @@ export default function WhatsAppPage() {
 
       {notice && <button className={styles.notice} onClick={() => setNotice('')}>{notice} ×</button>}
 
-      <section className={styles.smartBar}>
-        <div className={styles.smartBarIntro}>
-          <strong>Fila inteligente</strong>
-          <span>Escolha o que você quer resolver agora.</span>
+      <section className={styles.queuePanel} aria-label="Organização das conversas">
+        <div className={styles.queueTop}>
+          <div className={styles.queueHeading}>
+            <div className={styles.queueTitleLine}>
+              <h2>Central de atendimento</h2>
+              <span className={styles.queueTotal}>{filterCounts.all || 0} conversas</span>
+            </div>
+            <p>Priorize quem precisa da sua atenção.</p>
+          </div>
+          <div className={styles.queueTopic}>
+            <label htmlFor="crm-assunto">Assunto</label>
+            <select
+              id="crm-assunto"
+              value={activeTopic}
+              onChange={(event) => chooseFilter(activePriority, event.target.value)}
+            >
+              <option value="all">Todos os assuntos</option>
+              {SMART_FILTERS.filter((filter) => !PRIORITY_FILTERS.has(filter.id)).map((filter) => (
+                <option key={filter.id} value={filter.id}>{filter.label} ({filterCounts[filter.id] || 0})</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className={styles.smartFilters}>
-          {SMART_FILTERS.map((filter) => (
+        <div className={styles.queueTabs} role="group" aria-label="Prioridade de atendimento">
+          {SMART_FILTERS.filter((filter) => PRIORITY_FILTERS.has(filter.id)).map((filter) => (
             <button
               type="button"
               key={filter.id}
-              className={styles.smartFilter + ' ' + (activeFilter === filter.id ? styles.smartFilterActive : '')}
-              onClick={() => chooseFilter(filter.id)}
+              className={styles.queueTab + ' ' + (activePriority === filter.id ? styles.queueTabActive : '')}
+              aria-pressed={activePriority === filter.id}
+              onClick={() => chooseFilter(filter.id, activeTopic)}
             >
               <span>{filter.label}</span>
-              <b>{filterCounts[filter.id] || 0}</b>
+              <span className={styles.queueTabCount}>{filterCounts[filter.id] || 0}</span>
             </button>
           ))}
         </div>
@@ -351,7 +381,7 @@ export default function WhatsAppPage() {
       <section className={styles.workspace}>
         <aside className={styles.contactsPane}>
           <div className={styles.paneHeading}>
-            <div><span className={styles.eyebrow}>LEADS</span><h2>{SMART_FILTERS.find((item) => item.id === activeFilter)?.label || 'Conversas'}</h2></div>
+            <div><span className={styles.eyebrow}>CONVERSAS</span><h2>{activePriority !== 'all' ? SMART_FILTERS.find((item) => item.id === activePriority)?.label : activeTopic !== 'all' ? SMART_FILTERS.find((item) => item.id === activeTopic)?.label : 'Todas as conversas'}</h2></div>
             <span className={styles.count}>{filteredContacts.length}</span>
           </div>
           <input
@@ -361,7 +391,7 @@ export default function WhatsAppPage() {
             placeholder="Buscar dentro desta fila..."
           />
           <div className={styles.contactList}>
-            {!filteredContacts.length && <div className={styles.empty}>Nenhum lead nesta fila agora.</div>}
+            {!filteredContacts.length && <div className={styles.empty}>{notice ? "Não foi possível confirmar os leads. Verifique o erro acima." : "Nenhum lead nesta fila agora."}</div>}
             {filteredContacts.map((contact) => {
               const topic = contact.smart_categories?.[0];
               const attention = contact.needs_reply

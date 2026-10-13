@@ -278,6 +278,8 @@ export default function AutomacoesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
+  const [flowSearch, setFlowSearch] = useState('');
+  const [savedSnapshot, setSavedSnapshot] = useState('');
   const [uploadingNodeId, setUploadingNodeId] = useState('');
 
   useEffect(() => {
@@ -291,6 +293,7 @@ export default function AutomacoesPage() {
           ? storedFlows
           : upgradeGuiWhatsappFlows([IMPORTACAO_FLOW, MENTORIA_FLOW, FORNECEDORES_FLOW]);
         setFlows(next);
+        setSavedSnapshot(JSON.stringify(next));
         setSelectedId(next.find((flow) => flow.id === FORNECEDORES_FLOW.id)?.id || next[0]?.id || IMPORTACAO_FLOW.id);
         try { window.localStorage.setItem('tideplace-instagram-flow-automations', JSON.stringify(next)); } catch {}
       })
@@ -298,6 +301,7 @@ export default function AutomacoesPage() {
         if (cancelled) return;
         const next = upgradeGuiWhatsappFlows([IMPORTACAO_FLOW, MENTORIA_FLOW, FORNECEDORES_FLOW]);
         setFlows(next);
+        setSavedSnapshot(JSON.stringify(next));
         setSelectedId(FORNECEDORES_FLOW.id);
         setNotice(error.message);
       })
@@ -308,6 +312,13 @@ export default function AutomacoesPage() {
 
   const selected = flows.find((flow) => flow.id === selectedId) || null;
   const activeCount = useMemo(() => flows.filter((flow) => flow.active).length, [flows]);
+  const hasUnsavedChanges = Boolean(savedSnapshot) && JSON.stringify(flows) !== savedSnapshot;
+  const visibleFlows = useMemo(() => {
+    const term = flowSearch.trim().toLocaleLowerCase('pt-BR');
+    return term ? flows.filter((flow) =>
+      [flow.name, flow.keyword].some((value) => String(value || '').toLocaleLowerCase('pt-BR').includes(term))
+    ) : flows;
+  }, [flows, flowSearch]);
 
   function patchFlow(flowId, patch) {
     setFlows((current) => current.map((flow) => flow.id === flowId ? { ...flow, ...patch } : flow));
@@ -421,6 +432,7 @@ export default function AutomacoesPage() {
       }
 
       setFlows(verifiedFlows);
+      setSavedSnapshot(JSON.stringify(verifiedFlows));
       try { window.localStorage.setItem('tideplace-instagram-flow-automations', JSON.stringify(verifiedFlows)); } catch {}
 
       setNotice('Salvo de verdade ✓');
@@ -588,6 +600,12 @@ export default function AutomacoesPage() {
       </section>
 
       {notice && <button type="button" className={styles.notice} onClick={() => setNotice('')}>{notice} ×</button>}
+      {!loading && hasUnsavedChanges && (
+        <div role="status" style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', marginBottom: 16, border: '1px solid #d7b98c', borderRadius: 10, background: '#fff8eb', color: '#5e421d', fontSize: 13 }}>
+          <span><strong>Alterações ainda não publicadas.</strong> Clique em Salvar para aplicar os ajustes nas automações.</span>
+          <button type="button" onClick={saveAll} disabled={saving} className={styles.saveButton}>{saving ? 'Salvando…' : 'Salvar agora'}</button>
+        </div>
+      )}
 
       {loading ? (
         <section className={styles.empty}><strong>Carregando automações…</strong></section>
@@ -606,7 +624,16 @@ export default function AutomacoesPage() {
               <span className={styles.eyebrow}>SUAS AUTOMAÇÕES</span>
               <button type="button" onClick={addFlow}>+</button>
             </div>
-            {flows.map((flow) => (
+            <input
+              type="search"
+              aria-label="Buscar automações"
+              value={flowSearch}
+              onChange={(event) => setFlowSearch(event.target.value)}
+              placeholder="Buscar por nome ou gatilho..."
+              style={{ display: 'block', boxSizing: 'border-box', width: 'calc(100% - 24px)', margin: '10px 12px', border: '1px solid var(--tp-line-strong, #d6d0d4)', borderRadius: 8, padding: '10px 12px', fontSize: 12, background: 'var(--surface, #fff)' }}
+            />
+            {!visibleFlows.length && <p style={{ fontSize: 12, padding: '12px', color: 'var(--muted)' }}>Nenhuma automação encontrada.</p>}
+            {visibleFlows.map((flow) => (
               <button
                 type="button"
                 key={flow.id}
@@ -628,7 +655,7 @@ export default function AutomacoesPage() {
                     <h2>{selected.name || 'Nova automação'}</h2>
                   </div>
                   <label className={styles.switch}>
-                    <span>{selected.active ? 'Ativa' : 'Pausada'}</span>
+                    <span>{hasUnsavedChanges ? 'Pendente salvar' : selected.active ? 'Ativa' : 'Pausada'}</span>
                     <input type="checkbox" checked={selected.active} onChange={(event) => patchFlow(selected.id, { active: event.target.checked })} />
                     <i />
                   </label>

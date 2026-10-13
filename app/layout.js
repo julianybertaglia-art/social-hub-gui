@@ -1,5 +1,8 @@
 import './globals.css';
 import './home-cleanup.css';
+import './styles/tokens.css';
+import './styles/ui.css';
+import '@fontsource-variable/hanken-grotesk';
 import CloudGate from './CloudGate';
 import HubFrame from './HubFrame';
 

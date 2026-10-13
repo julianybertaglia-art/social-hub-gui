@@ -438,3 +438,9 @@
 .attention-item small { font-size: 11px; }
 .performance-mini-grid span { font-size: 11px; }
 .performance-mini-grid strong { font-size: 22px; font-weight: 750; }
+
+
+/* Dashboard text that previously used 10–12px. */
+.sidebar-group-label { font-size: 12px; }
+.quick-stat span, .attention-item strong { font-size: 14px; }
+.quick-stat small, .attention-item small, .performance-mini-grid span { font-size: 13px; }

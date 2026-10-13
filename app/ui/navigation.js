@@ -2,27 +2,29 @@
 // UI metadata only. No CRM, Meta or automation business rules are changed.
 export const NAV_GROUPS = [
   {
-    label: 'ESPAÇO DE TRABALHO',
+    label: 'VISÃO GERAL',
     items: [
-      { href: '/', label: 'Visão geral', icon: 'grid', section: 'dashboard', description: 'Resumo e prioridades' },
-      { href: '/?section=tasks', label: 'Tarefas', icon: 'check', section: 'tasks', description: 'Pendências do dia' },
+      { href: '/', label: 'Painel', icon: 'grid', section: 'dashboard', description: 'Resumo e prioridades' },
+      { href: '/?section=tasks', label: 'Tarefas', icon: 'check', section: 'tasks', description: 'Pendências e organização' },
     ],
   },
   {
-    label: 'CONTEÚDO',
+    label: 'INSTAGRAM',
     items: [
-      { href: '/?section=calendar', label: 'Calendário', icon: 'calendar', section: 'calendar', description: 'Planejamento de publicações' },
-      { href: '/?section=ideas', label: 'Ideias', icon: 'sparkle', section: 'ideas', description: 'Banco de ideias' },
       { href: '/?section=metrics', label: 'Métricas', icon: 'chart', section: 'metrics', description: 'Desempenho do Instagram' },
-      { href: '/?section=goals', label: 'Metas', icon: 'target', section: 'goals', description: 'Objetivos e acompanhamento' },
+      { href: '/automacoes', label: 'Automações', icon: 'instagram', description: 'Direct e comentários do Instagram' },
+      { href: '/?section=goals', label: 'Metas', icon: 'target', section: 'goals', description: 'Metas da conta do Instagram' },
+      { href: '/?section=calendar', label: 'Calendário', icon: 'calendar', section: 'calendar', description: 'Calendário editorial' },
+      { href: '/?section=ideas', label: 'Ideias', icon: 'sparkle', section: 'ideas', description: 'Banco de ideias de conteúdo' },
     ],
   },
   {
-    label: 'AUTOMAÇÃO E ATENDIMENTO',
+    label: 'CRM · WHATSAPP',
     items: [
-      { href: '/whatsapp', label: 'Caixa de entrada', icon: 'chat', description: 'Conversas e CRM por conta' },
-      { href: '/automacoes', label: 'Automações Instagram', icon: 'instagram', description: 'Direct e comentários' },
-      { href: '/whatsapp/automacoes', label: 'Automações WhatsApp', icon: 'flow', description: 'Fluxos e mensagens' },
+      { href: '/whatsapp', label: 'Caixa de entrada', icon: 'chat', only: ['gui-nonato'], description: 'CRM e mensagens do Gui' },
+      { href: '/whatsapp', label: 'Caixa geral', icon: 'chat', only: ['vital-decor'], description: 'Todas as mensagens da Vital Decor' },
+      { href: '/whatsapp/setores', label: 'Meus setores', icon: 'users', only: ['vital-decor'], description: 'Conversas atribuídas ao seu atendimento' },
+      { href: '/whatsapp/automacoes', label: 'Automações', icon: 'flow', description: 'Fluxos e respostas automáticas do WhatsApp' },
       { href: '/whatsapp/campanha', label: 'Campanhas', icon: 'send', only: ['gui-nonato'], description: 'Reengajamento e envios' },
     ],
   },
@@ -30,7 +32,7 @@ export const NAV_GROUPS = [
     label: 'MAIS FERRAMENTAS',
     items: [
       { href: '/tiktok/afiliados', label: 'Afiliados TikTok', icon: 'tiktok', description: 'Parcerias e qualificação' },
-      { href: '/whatsapp/integracao-argo', label: 'Integração Argo', icon: 'layers', only: ['vital-decor'], description: 'Atendimento da Vital Decor' },
+      { href: '/whatsapp/integracao-argo', label: 'Setores e Argo', icon: 'layers', only: ['vital-decor'], description: 'Configuração de responsáveis e integração Argo' },
       { href: '/whatsapp/grupos', label: 'Grupos', icon: 'users', only: ['gui-nonato'], description: 'Gestão de grupos' },
       { href: '/whatsapp/gato', label: 'Envios rápidos', icon: 'send', only: ['gui-nonato'], description: 'Ferramentas pontuais' },
       { href: '/whatsapp/diagnostico', label: 'Diagnóstico WhatsApp', icon: 'shield', only: ['gui-nonato'], description: 'Verificação da integração Meta' },

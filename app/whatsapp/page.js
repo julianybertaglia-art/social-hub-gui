@@ -81,7 +81,6 @@ export default function WhatsAppPage() {
   const [sending, setSending] = useState(false);
   const [bridgeBusy, setBridgeBusy] = useState(false);
   const [notice, setNotice] = useState('');
-  const [crmLoadError, setCrmLoadError] = useState('');
 
   const selected = contacts.find((contact) => contact.id === selectedId) || null;
   const lastInboundAt = mostRecentInboundAt(messages.filter((item) => item.contact_id === selectedId));
@@ -100,19 +99,11 @@ export default function WhatsAppPage() {
   }, []);
 
   const loadContacts = useCallback(async () => {
-    try {
-      const response = await fetch('/api/whatsapp/conversations', { cache: 'no-store' });
-      const data = await response.json().catch(() => {
-        throw new Error('O servidor do CRM não retornou dados válidos.');
-      });
-      if (!response.ok) throw new Error(data?.error || 'Não foi possível carregar os leads.');
-      setContacts(data.contacts || []);
-      setSelectedId((current) => current || data.contacts?.[0]?.id || null);
-      setCrmLoadError('');
-    } catch (error) {
-      setCrmLoadError(error.message);
-      throw error;
-    }
+    const response = await fetch('/api/whatsapp/conversations', { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.error || 'Não foi possível carregar os leads.');
+    setContacts(data.contacts || []);
+    setSelectedId((current) => current || data.contacts?.[0]?.id || null);
   }, []);
 
   const loadMessages = useCallback(async (contactId) => {
@@ -267,9 +258,7 @@ export default function WhatsAppPage() {
             <span />
             {checkingConnection
               ? 'Verificando conexão...'
-              : status?.readOnlyPreview && !connectionReady
-                ? 'Prévia · conexão não validada'
-                : connectionReady
+              : connectionReady
               ? 'WhatsApp conectado'
               : isBaileys && status?.state === 'awaiting_qr'
                 ? 'Aguardando leitura do QR'
@@ -323,7 +312,7 @@ export default function WhatsAppPage() {
           </section>
         )
       ) : (
-        status && !status.connected && !status.readOnlyPreview && (
+        status && !status.connected && (
           <section className={styles.setupCard}>
             <div>
               <span className={styles.eyebrow}>CONEXÃO OFICIAL META</span>
@@ -339,13 +328,7 @@ export default function WhatsAppPage() {
         )
       )}
 
-      {status?.readOnlyPreview && (
-        <div className={styles.previewHint} role="status">
-          <strong>Versão de testes.</strong>
-          <span>Esta tela não altera nem reconecta a Meta. Confira a conexão na versão em uso.</span>
-        </div>
-      )}
-      {notice && <button className={styles.notice} onClick={() => setNotice('')}>{notice} ×</button>
+      {notice && <button className={styles.notice} onClick={() => setNotice('')}>{notice} ×</button>}
 
       <section className={styles.smartBar}>
         <div className={styles.smartBarIntro}>
@@ -391,14 +374,7 @@ export default function WhatsAppPage() {
             placeholder="Buscar dentro desta fila..."
           />
           <div className={styles.contactList}>
-            {crmLoadError && (
-              <div className={styles.loadError} role="alert">
-                <strong>CRM indisponível.</strong>
-                <span>{crmLoadError}</span>
-                <button type="button" onClick={() => loadContacts().catch(() => {})}>Tentar novamente</button>
-              </div>
-            )}
-            {!crmLoadError && !filteredContacts.length && <div className={styles.empty}>Nenhum lead nesta fila agora.</div>}
+            {!filteredContacts.length && <div className={styles.empty}>Nenhum lead nesta fila agora.</div>}
             {filteredContacts.map((contact) => {
               const topic = contact.smart_categories?.[0];
               const attention = contact.needs_reply

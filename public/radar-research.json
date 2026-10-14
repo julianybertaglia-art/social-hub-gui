@@ -901,7 +901,7 @@
         "/radar-preview/18146992669567001.jpg"
       ],
       "baselineCount": 5,
-      "relativePerformance": 1.0,
+      "relativePerformance": 1,
       "origin": "followed",
       "checkedAt": "2026-10-14T14:14:39.998929+00:00",
       "measurementSource": "Meta Business Discovery",
@@ -1650,6 +1650,10 @@
   ],
   "schemaVersion": 1,
   "automation": {
-    "enabled": false
+    "enabled": true,
+    "timezone": "America/Sao_Paulo",
+    "approximateHour": 8,
+    "timingMode": "flexible_schedule",
+    "startsOn": "2026-10-15"
   }
 }

@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "timezone": "America/Sao_Paulo",
+  "workspaces": {
+    "gui-nonato": {
+      "name": "Gui Nonato",
+      "topics": [
+        "Mercado Livre e marketplaces",
+        "fornecedores e atacado",
+        "importação da China",
+        "validação e pesquisa de produtos",
+        "margem e precificação",
+        "estoque, Full e logística",
+        "gestão da operação",
+        "marca própria",
+        "Black Friday, Natal e verão"
+      ],
+      "followedProfiles": [
+        {
+          "handle": "ecommercenapratica",
+          "name": "Ecommerce na Prática",
+          "workspace": "gui-nonato",
+          "reason": "Referência complementar de conteúdo e educação em e-commerce.",
+          "sampleCount": 3,
+          "selectedCount": 3,
+          "complementary": true,
+          "origin": "followed"
+        },
+        {
+          "handle": "alexmoro.efeito",
+          "name": "Alex Moro",
+          "reason": "Estratégia, análise de conta e operação no Mercado Livre.",
+          "workspace": "gui-nonato",
+          "sampleCount": 20,
+          "selectedCount": 3,
+          "complementary": false,
+          "origin": "followed"
+        },
+        {
+          "handle": "camilacarvalho_id",
+          "name": "Camila Carvalho",
+          "reason": "Importação, fornecedores e revenda de produtos.",
+          "workspace": "gui-nonato",
+          "sampleCount": 20,
+          "selectedCount": 2,
+          "complementary": false,
+          "origin": "followed"
+        },
+        {
+          "handle": "vovodomercadolivre",
+          "name": "Vovô do Mercado Livre",
+          "reason": "Importação, margem e estrutura de operação de sellers.",
+          "workspace": "gui-nonato",
+          "sampleCount": 20,
+          "selectedCount": 3,
+          "complementary": false,
+          "origin": "followed"
+        },
+        {
+          "handle": "imprrafael",
+          "name": "Rafael Campos",
+          "reason": "Importação direta, validação de produto e marca própria.",
+          "workspace": "gui-nonato",
+          "sampleCount": 20,
+          "selectedCount": 2,
+          "complementary": false,
+          "origin": "followed"
+        },
+        {
+          "handle": "chinagatebrasil",
+          "name": "China Gate",
+          "reason": "Fornecedores na China, containers e planejamento de importação.",
+          "workspace": "gui-nonato",
+          "sampleCount": 20,
+          "selectedCount": 3,
+          "complementary": false,
+          "origin": "followed"
+        },
+        {
+          "handle": "brunocapellete",
+          "name": "Bruno Capellete",
+          "reason": "Referência complementar de Amazon: fornecedores, margem, Ads e gestão de estoque.",
+          "workspace": "gui-nonato",
+          "sampleCount": 20,
+          "selectedCount": 3,
+          "complementary": true,
+          "origin": "followed"
+        },
+        {
+          "handle": "dhiegorosa",
+          "name": "Dhiego Rosa",
+          "reason": "Estratégia no Mercado Livre, produtos e gestão de operações.",
+          "workspace": "gui-nonato",
+          "sampleCount": 20,
+          "selectedCount": 2,
+          "origin": "followed"
+        },
+        {
+          "handle": "hugovasc_",
+          "name": "Hugo Vasconcelos",
+          "reason": "Estrutura, crescimento e rentabilidade de sellers no Mercado Livre.",
+          "workspace": "gui-nonato",
+          "sampleCount": 20,
+          "selectedCount": 3,
+          "origin": "followed"
+        },
+        {
+          "handle": "cristian.seller",
+          "name": "Cristian Seller",
+          "reason": "Fabricação, desenvolvimento de produto e venda em marketplaces.",
+          "workspace": "gui-nonato",
+          "sampleCount": 20,
+          "selectedCount": 2,
+          "origin": "followed"
+        },
+        {
+          "handle": "maxcazonatoo",
+          "name": "Max Cazonato",
+          "reason": "Catálogo, ranqueamento, margem e gestão no Mercado Livre.",
+          "workspace": "gui-nonato",
+          "sampleCount": 20,
+          "selectedCount": 3,
+          "origin": "followed"
+        }
+      ]
+    },
+    "vital-decor": {
+      "name": "Vital Decor",
+      "topics": [
+        "transformação de ambientes",
+        "jardim vertical artificial",
+        "revestimentos de parede",
+        "decoração sem reforma"
+      ],
+      "followedProfiles": [
+        {
+          "handle": "mobly",
+          "name": "Mobly",
+          "workspace": "vital-decor",
+          "reason": "Composição de ambientes e campanhas de decoração.",
+          "sampleCount": 3,
+          "selectedCount": 3,
+          "complementary": false,
+          "origin": "followed"
+        }
+      ]
+    }
+  },
+  "discoveryPolicy": {
+    "targetWorkspace": "gui-nonato",
+    "preferPostAgeDays": 7,
+    "maxAgeDays": 30,
+    "maxDiscoveryPosts": 20,
+    "maxTotalPosts": 80,
+    "newAuthorsStayDiscovery": true,
+    "minimumBaselineCount": 5,
+    "baselineMinAgeDays": 2,
+    "baselineMaxAgeDays": 60
+  }
+}

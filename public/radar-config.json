@@ -128,11 +128,89 @@
       "name": "Vital Decor",
       "topics": [
         "transformação de ambientes",
+        "antes e depois de paredes",
         "jardim vertical artificial",
-        "revestimentos de parede",
-        "decoração sem reforma"
+        "folhagens e arranjos artificiais",
+        "revestimentos de parede e placas 3D",
+        "decoração sem reforma",
+        "composição de cores e texturas",
+        "aplicação e cuidados confirmados",
+        "decoração comercial",
+        "novidades e sazonalidade"
       ],
       "followedProfiles": [
+        {
+          "handle": "gfcasadecor",
+          "name": "GF Casa Decor",
+          "workspace": "vital-decor",
+          "reason": "Inspiração indicada pela Ju: antes e depois, demonstração de aplicação, paredes e transformação sem reforma.",
+          "sampleCount": 20,
+          "selectedCount": 3,
+          "followers": 1204083,
+          "origin": "followed",
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "selectedByUser": true
+        },
+        {
+          "handle": "baazardecor",
+          "name": "Baazar Decor",
+          "workspace": "vital-decor",
+          "reason": "Vasos, folhagens e decoração sazonal, com apresentação de produtos e composições de loja.",
+          "sampleCount": 20,
+          "selectedCount": 3,
+          "followers": 34003,
+          "origin": "followed",
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "selectedByUser": false
+        },
+        {
+          "handle": "nv.decora",
+          "name": "NV Decora",
+          "workspace": "vital-decor",
+          "reason": "Loja de Praia Grande: composição de paredes, vasos e ambientes, com público menor no Instagram.",
+          "sampleCount": 20,
+          "selectedCount": 3,
+          "followers": 7173,
+          "origin": "followed",
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "selectedByUser": false
+        },
+        {
+          "handle": "a.encantalar",
+          "name": "Encantalar",
+          "workspace": "vital-decor",
+          "reason": "Loja de Pinheiros focada em plantas permanentes e ambientes comerciais, com público menor no Instagram.",
+          "sampleCount": 20,
+          "selectedCount": 1,
+          "followers": 4791,
+          "origin": "followed",
+          "checkedAt": "2026-10-14T16:41:44.228649+00:00",
+          "selectedByUser": false
+        },
+        {
+          "handle": "ambientehouse",
+          "name": "Ambiente House",
+          "workspace": "vital-decor",
+          "reason": "Loja da 25 de Março: flores artificiais, novidades e composição de ambientes.",
+          "sampleCount": 20,
+          "selectedCount": 3,
+          "followers": 107664,
+          "origin": "followed",
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "selectedByUser": false
+        },
+        {
+          "handle": "tuti.flores",
+          "name": "Tuti Flores",
+          "workspace": "vital-decor",
+          "reason": "Loja do Pari: flores permanentes, arranjos, novidades e decoração sazonal.",
+          "sampleCount": 20,
+          "selectedCount": 3,
+          "followers": 89888,
+          "origin": "followed",
+          "checkedAt": "2026-10-14T16:41:44.228649+00:00",
+          "selectedByUser": false
+        },
         {
           "handle": "mobly",
           "name": "Mobly",
@@ -143,11 +221,11 @@
           "complementary": false,
           "origin": "followed"
         }
-      ]
+      ],
+      "profileSelectionNote": "Priorizar lojas especializadas e regionais com público menor, além da GF Casa Decor indicada pela Ju. Tamanho de audiência não é estimativa de porte empresarial."
     }
   },
   "discoveryPolicy": {
-    "targetWorkspace": "gui-nonato",
     "preferPostAgeDays": 7,
     "maxAgeDays": 30,
     "maxDiscoveryPosts": 20,
@@ -155,6 +233,16 @@
     "newAuthorsStayDiscovery": true,
     "minimumBaselineCount": 5,
     "baselineMinAgeDays": 2,
-    "baselineMaxAgeDays": 60
+    "baselineMaxAgeDays": 60,
+    "targetWorkspaces": [
+      "gui-nonato",
+      "vital-decor"
+    ],
+    "preferSmallerLocalStoresForVital": true,
+    "pinnedInspirationHandles": {
+      "vital-decor": [
+        "gfcasadecor"
+      ]
+    }
   }
 }

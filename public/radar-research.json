@@ -1,5 +1,5 @@
 {
-  "collectedAt": "2026-10-14T14:14:39.998929+00:00",
+  "collectedAt": "2026-10-14T16:41:44.228649+00:00",
   "source": "Meta · Business Discovery",
   "posts": [
     {
@@ -901,7 +901,7 @@
         "/radar-preview/18146992669567001.jpg"
       ],
       "baselineCount": 5,
-      "relativePerformance": 1,
+      "relativePerformance": 1.0,
       "origin": "followed",
       "checkedAt": "2026-10-14T14:14:39.998929+00:00",
       "measurementSource": "Meta Business Discovery",
@@ -1499,6 +1499,868 @@
           "CTA: salve este checklist para sua próxima negociação"
         ]
       }
+    },
+    {
+      "id": "17910951318517667",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "gfcasadecor",
+      "profileName": "GF Casa Decor",
+      "followers": 1204083,
+      "caption": "Piso novo em um passo de mágica! ✨ Olha esse antes e depois: com o piso vinílico, o ambiente ganhou uma cara completamente nova de",
+      "type": "VIDEO",
+      "url": "https://www.instagram.com/reel/DeSUkLhv6_p/",
+      "publishedAt": "2026-10-09T20:05:07+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": 2257,
+      "comments": 87,
+      "images": [
+        "/radar-preview/81791095131851766700.jpg"
+      ],
+      "baselineCount": 18,
+      "baselineMedian": 2.0,
+      "relativePerformance": 1172.0,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Antes e depois sem reforma",
+        "hook": "Uma parede diferente pode mudar a sensação da sala",
+        "angle": "A GF usa um antes e depois para tornar a mudança fácil de perceber. A Vital pode aplicar esse formato a uma parede com revestimento 3D ou jardim vertical, usando uma transformação real.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: o antes e depois que muda a sala",
+          "Mostre a parede antes, com o mesmo enquadramento",
+          "Apresente o produto escolhido e a preparação necessária",
+          "Mostre o resultado e os detalhes de acabamento",
+          "CTA: fale com a Vital para escolher a sua parede"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": 2257,
+          "comments": 87
+        }
+      ]
+    },
+    {
+      "id": "18099106955634248",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "gfcasadecor",
+      "profileName": "GF Casa Decor",
+      "followers": 1204083,
+      "caption": "Transformando o chão da sala com PISO VINÍLICO 😳✨ Sério… parece outra sala, mas foi sem quebra-quebra, sem sujeira e sem aquela dor de cabeça",
+      "type": "VIDEO",
+      "url": "https://www.instagram.com/reel/DeIINOyvEMC/",
+      "publishedAt": "2026-10-05T21:04:35+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": 1717,
+      "comments": 399,
+      "images": [
+        "/radar-preview/81809910695563424800.jpg"
+      ],
+      "baselineCount": 18,
+      "baselineMedian": 2.0,
+      "relativePerformance": 1058.0,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Antes e depois sem reforma",
+        "hook": "Você renovaria esse cantinho com textura ou com verde?",
+        "angle": "O contraste visual abre espaço para uma escolha simples. Adapte para duas possibilidades reais da Vital, sem oferecer o piso que aparece no post de referência.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: qual mudança combina com seu espaço?",
+          "Opção 1: uma parede com textura",
+          "Opção 2: verde com jardim vertical artificial",
+          "Compare o efeito no mesmo ambiente",
+          "CTA: conte qual opção você escolheria"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": 1717,
+          "comments": 399
+        }
+      ]
+    },
+    {
+      "id": "17913256617467255",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "gfcasadecor",
+      "profileName": "GF Casa Decor",
+      "followers": 1204083,
+      "caption": "✨ A gente transformou esse ambiente em apenas 1 dia usando só 3 produtos! 🤎 Papel de Parede Decoratto Bege Texturizado Liso 🤍 Painel de",
+      "type": "VIDEO",
+      "url": "https://www.instagram.com/reel/DeNSj9Pvp59/",
+      "publishedAt": "2026-10-07T21:09:45+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": null,
+      "comments": 14,
+      "images": [
+        "/radar-preview/81791325661746725500.jpg"
+      ],
+      "baselineCount": 18,
+      "baselineMedian": 2.0,
+      "relativePerformance": null,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Composição de materiais",
+        "hook": "Como combinar textura e verde sem pesar no ambiente",
+        "angle": "A referência mostra uma transformação com poucos elementos. A Vital pode ensinar a combinar uma parede de destaque, cores do ambiente e folhagens, com produtos do próprio catálogo.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: poucos elementos, outra sensação",
+          "Escolha uma parede para receber o destaque",
+          "Observe as cores e materiais que já existem",
+          "Acrescente textura ou verde com equilíbrio",
+          "CTA: salve a composição para o seu ambiente"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": null,
+          "comments": 14
+        }
+      ]
+    },
+    {
+      "id": "18371908918243086",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "baazardecor",
+      "profileName": "Baazar Decor",
+      "followers": 34003,
+      "caption": "Sextou na Baazar Decor! E por aqui, sempre tem uma novidade esperando por você. Olha só esse cachepô com estampa azul e branca, perfeito para",
+      "type": "VIDEO",
+      "url": "https://www.instagram.com/reel/DeSPIJvFfkb/",
+      "publishedAt": "2026-10-09T19:30:36+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": 31,
+      "comments": 1,
+      "images": [
+        "/radar-preview/81837190891824308600.jpg"
+      ],
+      "baselineCount": 15,
+      "baselineMedian": 32,
+      "relativePerformance": 1.0,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Detalhes que completam",
+        "hook": "O detalhe que pode deixar seu cantinho mais completo",
+        "angle": "A loja aproxima um produto do uso na casa. A Vital pode mostrar como folhagens e textura completam um canto, em vez de apresentar apenas uma peça isolada.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: está faltando um detalhe nesse canto?",
+          "Mostre o espaço antes da composição",
+          "Escolha um elemento que combine com os materiais",
+          "Compare o ambiente completo e um detalhe próximo",
+          "CTA: salve para renovar o seu cantinho"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": 31,
+          "comments": 1
+        }
+      ]
+    },
+    {
+      "id": "18074830502566354",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "baazardecor",
+      "profileName": "Baazar Decor",
+      "followers": 34003,
+      "caption": "O Natal já chegou à Baazar Decor. ✨ Nossa fachada já entrou no clima da temporada e, lá dentro, você encontra uma variedade de itens",
+      "type": "CAROUSEL_ALBUM",
+      "url": "https://www.instagram.com/p/DeT2V9nlxpF/",
+      "publishedAt": "2026-10-10T11:00:36+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": 66,
+      "comments": 0,
+      "images": [
+        "/radar-preview/81807483050256635400.jpg",
+        "/radar-preview/81807483050256635500.jpg",
+        "/radar-preview/81807483050256635600.jpg",
+        "/radar-preview/81807483050256635700.jpg",
+        "/radar-preview/81807483050256635800.jpg",
+        "/radar-preview/81807483050256635900.jpg"
+      ],
+      "baselineCount": 3,
+      "baselineMedian": null,
+      "relativePerformance": null,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Decoração de loja e vitrine",
+        "hook": "Sua loja pode chamar atenção com uma parede de destaque",
+        "angle": "O post transforma a fachada da loja em conteúdo. Para a Vital, a ideia é mostrar um ambiente comercial real com jardim vertical ou revestimento, sem reproduzir os produtos sazonais da outra loja.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: sua vitrine começa no ambiente",
+          "Mostre o espaço e o ponto de atenção",
+          "Escolha uma parede com boa visibilidade",
+          "Apresente a composição real com textura ou verde",
+          "CTA: fale com a Vital sobre o seu espaço"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": 66,
+          "comments": 0
+        }
+      ]
+    },
+    {
+      "id": "18100995341162885",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "baazardecor",
+      "profileName": "Baazar Decor",
+      "followers": 34003,
+      "caption": "O Natal pode ter as cores, os detalhes e a beleza que combinam com você e com o seu ambiente. Na Baazar Decor, você pode",
+      "type": "VIDEO",
+      "url": "https://www.instagram.com/reel/DeeQv7vAW3n/",
+      "publishedAt": "2026-10-14T12:00:47+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": 8,
+      "comments": 0,
+      "images": [
+        "/radar-preview/81810099534116288500.jpg"
+      ],
+      "baselineCount": 15,
+      "baselineMedian": 32,
+      "relativePerformance": null,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Decoração sazonal com identidade",
+        "hook": "Dá para entrar no clima do Natal sem mudar tudo",
+        "angle": "A referência trabalha escolhas de cores e detalhes. A Vital pode usar a pauta para mostrar uma base de decoração que continua fazendo sentido depois da temporada.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: Natal sem transformar a casa inteira",
+          "Observe a base de cores do seu ambiente",
+          "Escolha pequenos detalhes da temporada",
+          "Mantenha verde e textura na composição principal",
+          "CTA: salve a ideia para decorar do seu jeito"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": 8,
+          "comments": 0
+        }
+      ]
+    },
+    {
+      "id": "18058938620801234",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "nv.decora",
+      "profileName": "NV Decora",
+      "followers": 7173,
+      "caption": "Uma parede vazia pode ser o ponto de partida para transformar o ambiente.🔹 Ao escolher os quadros, considere a proporção em relação ao móvel e",
+      "type": "VIDEO",
+      "url": "https://www.instagram.com/reel/DeXmFpoJhyH/",
+      "publishedAt": "2026-10-11T21:17:20+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": 8,
+      "comments": 0,
+      "images": [
+        "/radar-preview/81805893862080123400.jpg"
+      ],
+      "baselineCount": 16,
+      "baselineMedian": 33.0,
+      "relativePerformance": 0.24,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Composição de paredes",
+        "hook": "Parede vazia: por onde começar a mudança?",
+        "angle": "Uma loja com público menor usa uma dúvida comum para explicar proporção. A Vital pode adaptar o diagnóstico para parede de destaque, textura e jardim vertical.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: essa parede vazia pode virar o destaque",
+          "Observe os móveis e a circulação do espaço",
+          "Meça a área antes de escolher o produto",
+          "Compare opções de textura e verde",
+          "CTA: envie as medidas para a equipe da Vital"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": 8,
+          "comments": 0
+        }
+      ]
+    },
+    {
+      "id": "18122580838918642",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "nv.decora",
+      "profileName": "NV Decora",
+      "followers": 7173,
+      "caption": "✨ Detalhes que transformam ambientes. Uma seleção de vasos que une design, beleza e personalidade para dar aquele toque especial à sua decoração. 🤍 Modelos",
+      "type": "VIDEO",
+      "url": "https://www.instagram.com/reel/Dd_wHwUy2Ed/",
+      "publishedAt": "2026-10-02T14:59:05+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": 15,
+      "comments": 4,
+      "images": [
+        "/radar-preview/81812258083891864200.jpg"
+      ],
+      "baselineCount": 16,
+      "baselineMedian": 33.0,
+      "relativePerformance": 0.58,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Detalhes que completam",
+        "hook": "3 detalhes para deixar o ambiente mais aconchegante",
+        "angle": "A apresentação dos vasos pode inspirar uma sequência sobre combinação de materiais. Use imagens reais de ambientes e produtos da Vital para explicar cada escolha.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: o aconchego mora nos detalhes",
+          "Observe a paleta de cores do ambiente",
+          "Inclua uma textura em uma área de destaque",
+          "Acrescente um toque de verde à composição",
+          "CTA: salve para consultar quando for decorar"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": 15,
+          "comments": 4
+        }
+      ]
+    },
+    {
+      "id": "18371621578245267",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "nv.decora",
+      "profileName": "NV Decora",
+      "followers": 7173,
+      "caption": "Sofisticação em cada detalhe.✨ A transparência do acrílico encontra a beleza natural do quartzo verde e a delicadeza dos acabamentos dourados. Uma peça marcante para",
+      "type": "IMAGE",
+      "url": "https://www.instagram.com/p/DeIIxE8J4Rv/",
+      "publishedAt": "2026-10-05T21:11:00+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": 26,
+      "comments": 17,
+      "images": [
+        "/radar-preview/81837162157824526700.jpg"
+      ],
+      "baselineCount": 1,
+      "baselineMedian": null,
+      "relativePerformance": null,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Composição de materiais",
+        "hook": "Como misturar materiais sem deixar a decoração confusa",
+        "angle": "O post aproxima materiais diferentes numa composição. A Vital pode usar esse gancho para comparar parede lisa, textura e folhagens no mesmo enquadramento.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: misturar materiais pode ficar bonito",
+          "Escolha uma base de cores que já funciona",
+          "Defina qual elemento será o destaque",
+          "Use textura e verde com espaço para respirar",
+          "CTA: qual combinação você colocaria em casa?"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": 26,
+          "comments": 17
+        }
+      ]
+    },
+    {
+      "id": "18132840682738066",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "a.encantalar",
+      "profileName": "Encantalar",
+      "followers": 4791,
+      "caption": "Quanto a planta da recepção já custou desde que chegou? Planta viva costuma entrar barata. Depois vem a visita mensal de manutenção, a troca da",
+      "type": "CAROUSEL_ALBUM",
+      "url": "https://www.instagram.com/p/DecF_SyCDiv/",
+      "publishedAt": "2026-10-13T15:07:41+0000",
+      "checkedAt": "2026-10-14T16:41:44.228649+00:00",
+      "likes": 1,
+      "comments": 0,
+      "images": [
+        "/radar-preview/81813284068273806600.jpg",
+        "/radar-preview/81813284068273806700.jpg",
+        "/radar-preview/81813284068273806800.jpg",
+        "/radar-preview/81813284068273806900.jpg",
+        "/radar-preview/81813284068273807000.jpg",
+        "/radar-preview/81813284068273807100.jpg"
+      ],
+      "baselineCount": 1,
+      "baselineMedian": null,
+      "relativePerformance": null,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Verde na decoração comercial",
+        "hook": "Planta permanente: o que observar antes de escolher?",
+        "angle": "A Encantalar compara a rotina de manutenção. A Vital pode explicar cuidados, limpeza e escolha do local para folhagens artificiais, sem repetir estimativas de custo que não foram verificadas.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: verde na decoração sem complicar a rotina",
+          "Escolha o efeito visual e o tamanho do espaço",
+          "Confira a indicação de uso do produto",
+          "Mostre os cuidados de limpeza e conservação",
+          "CTA: fale com a Vital sobre a sua necessidade"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:41:44.228649+00:00",
+          "likes": 1,
+          "comments": 0
+        }
+      ]
+    },
+    {
+      "id": "18104219468284865",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "ambientehouse",
+      "profileName": "Ambiente House",
+      "followers": 107664,
+      "caption": "✨ Novidades todos os dias! ✨ 🌸 Para decorar sua casa, sua loja ou inspirar seus projetos de decoração! #florist #homedecor #natal #jardimvertical A loja",
+      "type": "VIDEO",
+      "url": "https://www.instagram.com/reel/DeP88LzJ9ve/",
+      "publishedAt": "2026-10-08T22:07:33+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": 23,
+      "comments": 0,
+      "images": [
+        "/radar-preview/81810421946828486500.jpg"
+      ],
+      "baselineCount": 8,
+      "baselineMedian": 14.0,
+      "relativePerformance": 1.64,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Novidades e folhagens",
+        "hook": "Veja como o verde muda o mesmo ambiente",
+        "angle": "A referência apresenta novidades em contexto de decoração. Para a Vital, a ideia é mostrar uma folhagem de perto e depois o efeito dela no ambiente, usando itens disponíveis.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: esse espaço pode ganhar mais vida",
+          "Mostre o ambiente antes da composição",
+          "Apresente a folhagem e seus detalhes",
+          "Abra o enquadramento para mostrar o resultado",
+          "CTA: conheça as opções de jardim vertical da Vital"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": 23,
+          "comments": 0
+        }
+      ]
+    },
+    {
+      "id": "17914621242467009",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "ambientehouse",
+      "profileName": "Ambiente House",
+      "followers": 107664,
+      "caption": "✨ Cada dia é um novo começo! ✨ Todos os dias, novas ideias, novas inspirações e produtos lindos chegam por aqui. 🌸🏡 Venha conferir as",
+      "type": "CAROUSEL_ALBUM",
+      "url": "https://www.instagram.com/p/DeMIUEokZG8/",
+      "publishedAt": "2026-10-07T10:20:03+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": 11,
+      "comments": 0,
+      "images": [
+        "/radar-preview/81791462124246700900.jpg",
+        "/radar-preview/81791462124246701000.jpg",
+        "/radar-preview/81791462124246701100.jpg",
+        "/radar-preview/81791462124246701200.jpg",
+        "/radar-preview/81791462124246701300.jpg",
+        "/radar-preview/81791462124246701400.jpg"
+      ],
+      "baselineCount": 6,
+      "baselineMedian": 25.0,
+      "relativePerformance": 0.44,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Inspiração por ambiente",
+        "hook": "3 ideias para renovar a parede do seu cantinho",
+        "angle": "O carrossel reúne inspirações e produtos da loja. A Vital pode organizar opções por ambiente e facilitar a escolha, em vez de listar o catálogo inteiro.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: seu cantinho, uma nova parede",
+          "Sala: observe a parede atrás do sofá",
+          "Home office: escolha um fundo com personalidade",
+          "Área de convivência: considere textura e verde",
+          "CTA: salve e escolha qual ambiente renovar primeiro"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": 11,
+          "comments": 0
+        }
+      ]
+    },
+    {
+      "id": "18338028316261377",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "ambientehouse",
+      "profileName": "Ambiente House",
+      "followers": 107664,
+      "caption": "✨ Novidades chegaram! ✨ Temos muitos novos itens de decoração para deixar sua casa ainda mais aconchegante, elegante e cheia de estilo! 🏡💐 #decoration #casa",
+      "type": "CAROUSEL_ALBUM",
+      "url": "https://www.instagram.com/p/DdpLut5idG1/",
+      "publishedAt": "2026-09-23T20:36:29+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": 36,
+      "comments": 0,
+      "images": [
+        "/radar-preview/81833802831626137700.jpg",
+        "/radar-preview/81833802831626137800.jpg",
+        "/radar-preview/81833802831626137900.jpg",
+        "/radar-preview/81833802831626138000.jpg",
+        "/radar-preview/81833802831626138100.jpg",
+        "/radar-preview/81833802831626138200.jpg"
+      ],
+      "baselineCount": 6,
+      "baselineMedian": 25.0,
+      "relativePerformance": 1.44,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Inspiração por ambiente",
+        "hook": "O mesmo verde, três possibilidades de composição",
+        "angle": "A seleção de novidades serve de referência de apresentação. A adaptação para a Vital pode comparar composições reais de folhagens e explicar o efeito de cada uma.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: qual composição combina com você?",
+          "Mostre uma composição mais leve",
+          "Mostre uma composição com mais volume",
+          "Compare cada opção no mesmo espaço",
+          "CTA: peça ajuda à equipe para escolher"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": 36,
+          "comments": 0
+        }
+      ]
+    },
+    {
+      "id": "18076315451454011",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "tuti.flores",
+      "profileName": "Tuti Flores",
+      "followers": 89888,
+      "caption": "As tendências de Natal de 2026 chegaram para surpreender! 🎄✨ Cores, texturas e detalhes que transformam a decoração e deixam cada árvore ainda mais encantadora.",
+      "type": "VIDEO",
+      "url": "https://www.instagram.com/reel/DeZgXpAuJSp/",
+      "publishedAt": "2026-10-12T15:00:08+0000",
+      "checkedAt": "2026-10-14T16:41:44.228649+00:00",
+      "likes": 716,
+      "comments": 15,
+      "images": [
+        "/radar-preview/81807631545145401100.jpg"
+      ],
+      "baselineCount": 12,
+      "baselineMedian": 135.5,
+      "relativePerformance": 5.39,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Decoração sazonal com identidade",
+        "hook": "Como trazer o Natal para uma decoração que já tem verde",
+        "angle": "Este Reel da Tuti se destaca na amostra do próprio perfil. A pauta pode mostrar como detalhes de temporada se combinam com a base de verde e textura da Vital, sem tratar a postagem como prova de uma tendência universal.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: Natal e verde podem conversar na decoração",
+          "Observe a base de cores que você já tem",
+          "Escolha detalhes sazonais que combinem com ela",
+          "Mostre uma composição real, sem excesso de elementos",
+          "CTA: salve a inspiração para a sua casa"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:41:44.228649+00:00",
+          "likes": 716,
+          "comments": 15
+        }
+      ]
+    },
+    {
+      "id": "18111038903180473",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "tuti.flores",
+      "profileName": "Tuti Flores",
+      "followers": 89888,
+      "caption": "Nosso container de Natal chegou… e está impossível não querer tudo. 🎄✨ Peças que transformam cada detalhe e deixam o seu Natal ainda mais especial.",
+      "type": "VIDEO",
+      "url": "https://www.instagram.com/reel/DeMobNLuExZ/",
+      "publishedAt": "2026-10-07T15:00:45+0000",
+      "checkedAt": "2026-10-14T16:41:44.228649+00:00",
+      "likes": 600,
+      "comments": 29,
+      "images": [
+        "/radar-preview/81811103890318047300.jpg"
+      ],
+      "baselineCount": 12,
+      "baselineMedian": 135.5,
+      "relativePerformance": 4.64,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Novidades com demonstração",
+        "hook": "Novidade na loja: mostre o detalhe que faz a diferença",
+        "angle": "O post usa chegada de estoque e demonstração de detalhes. A Vital pode adaptar o formato para uma novidade real de folhagens ou revestimentos, sem anunciar produtos de Natal que não vende.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: olha o detalhe dessa novidade",
+          "Mostre o produto de perto e sua textura",
+          "Apresente tamanho e indicação de uso confirmados",
+          "Mostre a peça aplicada em um ambiente real",
+          "CTA: fale com a Vital para consultar disponibilidade"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:41:44.228649+00:00",
+          "likes": 600,
+          "comments": 29
+        }
+      ]
+    },
+    {
+      "id": "17910647097556833",
+      "workspace": "vital-decor",
+      "origin": "followed",
+      "handle": "tuti.flores",
+      "profileName": "Tuti Flores",
+      "followers": 89888,
+      "caption": "Novidades de Natal que vieram diretamente da China para a Tuti Flores! 🎄✨ Cada detalhe foi escolhido a dedo para deixar o seu Natal ainda",
+      "type": "VIDEO",
+      "url": "https://www.instagram.com/reel/DeeobXVRvw6/",
+      "publishedAt": "2026-10-14T14:51:20+0000",
+      "checkedAt": "2026-10-14T16:41:44.228649+00:00",
+      "likes": 109,
+      "comments": 5,
+      "images": [
+        "/radar-preview/81791064709755683300.jpg"
+      ],
+      "baselineCount": 12,
+      "baselineMedian": 135.5,
+      "relativePerformance": null,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Novidades com demonstração",
+        "hook": "Da embalagem ao ambiente: mostre o produto em uso",
+        "angle": "Uma referência recente para organizar um unboxing com aplicação. Na Vital, o foco deve ser explicar o produto real que chegou e o resultado possível no ambiente.",
+        "label": "Inspiração para a Vital",
+        "slides": [
+          "Capa: como essa novidade fica no ambiente?",
+          "Mostre a chegada e os detalhes da peça",
+          "Explique a indicação de uso do fabricante",
+          "Mostre o produto em uma composição real",
+          "CTA: salve e consulte a equipe sobre o produto"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:41:44.228649+00:00",
+          "likes": 109,
+          "comments": 5
+        }
+      ]
+    },
+    {
+      "id": "18108425999207237",
+      "workspace": "vital-decor",
+      "origin": "discovery",
+      "handle": "pontual_decor",
+      "profileName": "Pontual Decor",
+      "followers": 254316,
+      "caption": "Uma torneira estourou, a parede ficou manchada… e o que era um problema virou uma transformação! Aproveitei para apostar no verde oliva, uma tendência que",
+      "type": "VIDEO",
+      "url": "https://www.instagram.com/reel/DecLUJsOz7G/",
+      "publishedAt": "2026-10-13T15:57:25+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": 72,
+      "comments": 2,
+      "images": [
+        "/radar-preview/81810842599920723700.jpg"
+      ],
+      "baselineCount": 4,
+      "baselineMedian": null,
+      "relativePerformance": null,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Antes e depois de paredes",
+        "hook": "Uma parede preparada pode ganhar uma nova história",
+        "angle": "Descoberta fora da lista fixa, com uma história de transformação. A adaptação deve mostrar a preparação correta da superfície e as orientações do produto da Vital, sem sugerir que um revestimento resolve infiltração.",
+        "label": "Descoberta de decoração",
+        "slides": [
+          "Capa: o começo de uma nova parede",
+          "Mostre a superfície antes da renovação",
+          "Confira as orientações de preparo e uso do produto",
+          "Apresente o resultado com o mesmo enquadramento",
+          "CTA: fale com a Vital para escolher o acabamento"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": 72,
+          "comments": 2
+        }
+      ]
+    },
+    {
+      "id": "17960312373235471",
+      "workspace": "vital-decor",
+      "origin": "discovery",
+      "handle": "pontual_decor",
+      "profileName": "Pontual Decor",
+      "followers": 254316,
+      "caption": "Já imaginou como pode surpreender a combinação de 3 modelos de adesivos? Aqui a combinação escolhida foram - Verde Khaki - Freijó - Ardósia areia",
+      "type": "VIDEO",
+      "url": "https://www.instagram.com/reel/DeAPQHPulr7/",
+      "publishedAt": "2026-10-02T19:33:35+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": 283,
+      "comments": 25,
+      "images": [
+        "/radar-preview/81796031237323547100.jpg"
+      ],
+      "baselineCount": 4,
+      "baselineMedian": null,
+      "relativePerformance": null,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Composição de materiais",
+        "hook": "Textura e verde: qual combinação você escolheria?",
+        "angle": "A referência compara uma combinação de revestimentos. A Vital pode adaptar o formato para opções do próprio catálogo e incentivar a escolha de uma composição.",
+        "label": "Descoberta de decoração",
+        "slides": [
+          "Capa: qual combinação tem a sua cara?",
+          "Observe a paleta do seu ambiente",
+          "Compare uma parede com textura",
+          "Compare uma composição com verde",
+          "CTA: comente qual opção você escolheria"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": 283,
+          "comments": 25
+        }
+      ]
+    },
+    {
+      "id": "18142109236591963",
+      "workspace": "vital-decor",
+      "origin": "discovery",
+      "handle": "decoreta_",
+      "profileName": "Decoreta",
+      "followers": 429558,
+      "caption": "O tipo de arranjo que faz todo mundo perguntar: “onde você comprou?” 💛 Comente QUERO para receber o link ✨ 🚚 Enviamos para todo Brasil",
+      "type": "CAROUSEL_ALBUM",
+      "url": "https://www.instagram.com/p/Deeqkz4lAPj/",
+      "publishedAt": "2026-10-14T15:05:01+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": null,
+      "comments": 2,
+      "images": [
+        "/radar-preview/81814210923659196300.jpg",
+        "/radar-preview/81814210923659196400.jpg",
+        "/radar-preview/81814210923659196500.jpg"
+      ],
+      "baselineCount": 0,
+      "baselineMedian": null,
+      "relativePerformance": null,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Arranjos e pontos de atenção",
+        "hook": "Como escolher o ponto de destaque do ambiente",
+        "angle": "Uma descoberta recente com proposta de arranjo. A inspiração para a Vital é mostrar onde o olhar deve chegar e como o verde se integra ao restante da decoração.",
+        "label": "Descoberta de decoração",
+        "slides": [
+          "Capa: para onde você quer levar o olhar?",
+          "Escolha um ponto de destaque no ambiente",
+          "Observe proporção e cores dos elementos",
+          "Mostre o efeito de uma composição com verde",
+          "CTA: salve para organizar sua próxima decoração"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": null,
+          "comments": 2
+        }
+      ]
+    },
+    {
+      "id": "18469109287140542",
+      "workspace": "vital-decor",
+      "origin": "discovery",
+      "handle": "decoreta_",
+      "profileName": "Decoreta",
+      "followers": 429558,
+      "caption": "Versáteis, lindas e zero manutenção. Assim são nossas orquídeas 🌸🩷 Comente QUERO para receber o link ✨ 🚚 Enviamos para todo Brasil 💳 Parcele em",
+      "type": "VIDEO",
+      "url": "https://www.instagram.com/reel/DedAp2ONdDQ/",
+      "publishedAt": "2026-10-13T23:40:06+0000",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "likes": 75,
+      "comments": 1,
+      "images": [
+        "/radar-preview/81846910928714054200.jpg"
+      ],
+      "baselineCount": 0,
+      "baselineMedian": null,
+      "relativePerformance": null,
+      "measurementSource": "Meta Business Discovery",
+      "editorial": {
+        "topic": "Flores e folhagens artificiais",
+        "hook": "Verde de perto: os detalhes que fazem a composição",
+        "angle": "O Reel aproxima a câmera do arranjo e do acabamento. A Vital pode usar essa linguagem para mostrar folhagens reais do catálogo e o efeito delas no ambiente.",
+        "label": "Descoberta de decoração",
+        "slides": [
+          "Capa: olhe os detalhes desse verde",
+          "Mostre as folhas de perto e a textura",
+          "Compare volume e distribuição da composição",
+          "Mostre o painel aplicado no ambiente",
+          "CTA: conheça as opções de jardim vertical da Vital"
+        ]
+      },
+      "observations": [
+        {
+          "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+          "likes": 75,
+          "comments": 1
+        }
+      ]
     }
   ],
   "profiles": [
@@ -1510,16 +2372,6 @@
       "sampleCount": 3,
       "selectedCount": 3,
       "complementary": true,
-      "origin": "followed"
-    },
-    {
-      "handle": "mobly",
-      "name": "Mobly",
-      "workspace": "vital-decor",
-      "reason": "Composição de ambientes e campanhas de decoração.",
-      "sampleCount": 3,
-      "selectedCount": 3,
-      "complementary": false,
       "origin": "followed"
     },
     {
@@ -1617,6 +2469,88 @@
       "sampleCount": 20,
       "selectedCount": 3,
       "origin": "followed"
+    },
+    {
+      "handle": "gfcasadecor",
+      "name": "GF Casa Decor",
+      "workspace": "vital-decor",
+      "reason": "Inspiração indicada pela Ju: antes e depois, demonstração de aplicação, paredes e transformação sem reforma.",
+      "sampleCount": 20,
+      "selectedCount": 3,
+      "followers": 1204083,
+      "origin": "followed",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "selectedByUser": true
+    },
+    {
+      "handle": "baazardecor",
+      "name": "Baazar Decor",
+      "workspace": "vital-decor",
+      "reason": "Vasos, folhagens e decoração sazonal, com apresentação de produtos e composições de loja.",
+      "sampleCount": 20,
+      "selectedCount": 3,
+      "followers": 34003,
+      "origin": "followed",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "selectedByUser": false
+    },
+    {
+      "handle": "nv.decora",
+      "name": "NV Decora",
+      "workspace": "vital-decor",
+      "reason": "Loja de Praia Grande: composição de paredes, vasos e ambientes, com público menor no Instagram.",
+      "sampleCount": 20,
+      "selectedCount": 3,
+      "followers": 7173,
+      "origin": "followed",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "selectedByUser": false
+    },
+    {
+      "handle": "a.encantalar",
+      "name": "Encantalar",
+      "workspace": "vital-decor",
+      "reason": "Loja de Pinheiros focada em plantas permanentes e ambientes comerciais, com público menor no Instagram.",
+      "sampleCount": 20,
+      "selectedCount": 1,
+      "followers": 4791,
+      "origin": "followed",
+      "checkedAt": "2026-10-14T16:41:44.228649+00:00",
+      "selectedByUser": false
+    },
+    {
+      "handle": "ambientehouse",
+      "name": "Ambiente House",
+      "workspace": "vital-decor",
+      "reason": "Loja da 25 de Março: flores artificiais, novidades e composição de ambientes.",
+      "sampleCount": 20,
+      "selectedCount": 3,
+      "followers": 107664,
+      "origin": "followed",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "selectedByUser": false
+    },
+    {
+      "handle": "tuti.flores",
+      "name": "Tuti Flores",
+      "workspace": "vital-decor",
+      "reason": "Loja do Pari: flores permanentes, arranjos, novidades e decoração sazonal.",
+      "sampleCount": 20,
+      "selectedCount": 3,
+      "followers": 89888,
+      "origin": "followed",
+      "checkedAt": "2026-10-14T16:41:44.228649+00:00",
+      "selectedByUser": false
+    },
+    {
+      "handle": "mobly",
+      "name": "Mobly",
+      "workspace": "vital-decor",
+      "reason": "Composição de ambientes e campanhas de decoração.",
+      "sampleCount": 3,
+      "selectedCount": 3,
+      "complementary": false,
+      "origin": "followed"
     }
   ],
   "discoveredProfiles": [
@@ -1646,6 +2580,30 @@
       "sampleCount": 20,
       "selectedCount": 1,
       "origin": "discovery"
+    },
+    {
+      "handle": "pontual_decor",
+      "name": "Pontual Decor",
+      "workspace": "vital-decor",
+      "reason": "Descoberta por assunto: revestimentos adesivos e transformação de paredes.",
+      "sampleCount": 20,
+      "selectedCount": 2,
+      "followers": 254316,
+      "origin": "discovery",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "selectedByUser": false
+    },
+    {
+      "handle": "decoreta_",
+      "name": "Decoreta",
+      "workspace": "vital-decor",
+      "reason": "Descoberta por assunto: arranjos e flores artificiais em ambientes reais.",
+      "sampleCount": 20,
+      "selectedCount": 2,
+      "followers": 429558,
+      "origin": "discovery",
+      "checkedAt": "2026-10-14T16:37:30.468198+00:00",
+      "selectedByUser": false
     }
   ],
   "schemaVersion": 1,

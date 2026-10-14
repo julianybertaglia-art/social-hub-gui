@@ -72,9 +72,18 @@ def collect(profile):
             'relativePerformance': round(total / median, 2) if median and total is not None and 2 <= age(m) <= 60 else None,
             'measurementSource': 'Meta Business Discovery'
         })
-    return {'handle': data['username'], 'name': data.get('name'), 'ok': True, 'sampleCount': len(media), 'posts': posts}
+    return {'handle': data['username'], 'name': data.get('name'), 'followers': data.get('followers_count'), 'ok': True, 'sampleCount': len(media), 'posts': posts}
 
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
     results = list(executor.map(collect, config['profiles'][:25]))
-print(json.dumps({'collectedAt': now.isoformat(), 'results': results}, ensure_ascii=False), flush=True)
+payload = {'collectedAt': now.isoformat(), 'results': results}
+if config.get('save_result') is True:
+    from pathlib import Path
+    result_file = Path.cwd() / 'radar-public-collection.json'
+    result_file.write_text(json.dumps(payload, ensure_ascii=False), encoding='utf-8')
+    summary = [{'handle': r['handle'], 'ok': r['ok'], 'sampleCount': r.get('sampleCount', 0),
+                'status': r.get('status'), 'error': r.get('error')} for r in results]
+    print(json.dumps({'collectedAt': now.isoformat(), 'resultFile': str(result_file), 'profiles': summary}, ensure_ascii=False), flush=True)
+else:
+    print(json.dumps(payload, ensure_ascii=False), flush=True)

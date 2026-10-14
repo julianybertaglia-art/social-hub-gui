@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Criar post · TidePlace</title>
+  <link rel="icon" href="/brand/tideplace-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/editor/editor.css">
+  <script type="module" src="/editor/app.mjs"></script>
+</head>
+<body>
+  <aside class="sidebar" aria-label="Navegação">
+    <a href="/previa-radar.html" class="brand"><img src="/brand/tideplace-mark.svg" alt=""><span><strong><b>TIDE</b>PLACE</strong><small>Flow with your audience.</small></span></a>
+    <span class="nav-label">CRIAÇÃO DE CONTEÚDO</span>
+    <a data-radar-link href="/previa-radar.html" class="nav-link">◉ <span>Radar de conteúdo</span></a>
+    <a data-radar-link data-hot="1" href="/previa-radar.html?aba=em-alta" class="nav-link">↗ <span>Em alta</span></a>
+    <a class="nav-link active" href="/criador-posts.html" aria-current="page">▧ <span>Criar post</span></a>
+    <button class="nav-link" data-action="drafts">▤ <span>Meus rascunhos</span></button>
+    <div class="sidebar-foot">SEU ESTÚDIO DE CONTEÚDO<strong>Juliany · Social media</strong><a href="https://social-hub-gui.vercel.app/">Abrir TidePlace oficial ↗</a></div>
+  </aside>
+  <div class="app">
+    <header class="topbar">
+      <div class="account"><span id="account-avatar" class="avatar">GN</span><div><label class="sr" for="workspace">Selecionar marca</label><select id="workspace"><option value="gui-nonato">Gui Nonato</option><option value="vital-decor">Vital Decor</option></select><small id="account-handle">@gui_nonato</small></div></div>
+      <span class="chip">Prévia · Estúdio de criação</span>
+    </header>
+    <main>
+      <div class="heading"><div><span class="eyebrow">DA IDEIA AO SEU PRÓXIMO POST</span><h1>Crie com a sua identidade.</h1><p id="brand-description">Suas fotos. Montserrat. Caixa branca. O padrão do Gui.</p></div><button class="secondary" data-action="start">+ Novo carrossel</button></div>
+      <section class="project-toolbar" aria-label="Ações do projeto">
+        <div class="project-name"><label class="sr" for="project-title">Nome do projeto</label><input id="project-title" maxlength="200" placeholder="Nome do seu carrossel"><span id="save-status" role="status">Preparando editor…</span></div>
+        <div class="actions"><button class="icon-button" id="undo" data-action="undo" title="Desfazer" aria-label="Desfazer" disabled>↶</button><button class="icon-button" id="redo" data-action="redo" title="Refazer" aria-label="Refazer" disabled>↷</button><button class="secondary" data-action="save">Salvar</button><button class="primary" id="export-all" data-action="export">↓ Baixar slides</button></div>
+      </section>
+      <div class="studio">
+        <section class="controls" aria-label="Editar carrossel">
+          <div class="tabs" role="tablist" aria-label="Ferramentas"><button id="tab-text" role="tab" aria-selected="true" aria-controls="editor-panel" data-tab="text">Texto</button><button id="tab-photos" role="tab" aria-selected="false" aria-controls="editor-panel" data-tab="photos" tabindex="-1">Fotos</button><button id="tab-layout" role="tab" aria-selected="false" aria-controls="editor-panel" data-tab="layout" tabindex="-1">Layout</button><button id="tab-caption" role="tab" aria-selected="false" aria-controls="editor-panel" data-tab="caption" tabindex="-1">Legenda</button></div>
+          <div id="editor-panel" class="panel" role="tabpanel" aria-labelledby="tab-text"><p>Preparando suas ferramentas…</p></div>
+          <div class="storage-note"><span>◷</span><p>Rascunhos salvos neste navegador.<br>Baixe o projeto para guardar uma cópia.</p></div>
+          <button class="text-button backup" data-action="backup">Baixar projeto editável ↗</button>
+        </section>
+        <section class="preview-area" aria-label="Prévia e slides">
+          <div class="preview-toolbar"><span id="slide-position">SLIDE 01 / 05</span><div class="actions"><button class="text-button" data-action="current-png">Baixar este slide ↓</button></div></div>
+          <div class="canvas-wrap"><canvas id="preview" width="1080" height="1080" tabindex="0" aria-label="Prévia do slide. Use os controles de layout para ajustar a caixa de texto."></canvas></div>
+          <div class="preview-footer"><span id="canvas-format">1080 × 1080 px</span><span id="preview-tip">Arraste a caixa de texto para posicionar.</span></div>
+          <p id="render-warning" class="warning" role="alert" hidden></p>
+          <div class="slides-heading"><strong>Seu carrossel <span id="slide-count">5 slides</span></strong><div class="actions"><button class="text-button" data-action="duplicate">Duplicar slide</button><button class="add-slide" data-action="add" aria-label="Adicionar slide">+</button></div></div>
+          <div id="slide-strip" class="slide-strip" aria-label="Selecionar slide"></div>
+          <div class="slide-actions"><div class="actions"><button class="secondary small" data-action="move-left">← Mover</button><button class="secondary small" data-action="move-right">Mover →</button></div><button class="text-button danger" data-action="remove">Excluir slide</button></div>
+        </section>
+      </div>
+      <div id="source-note" class="source-note" hidden></div>
+    </main>
+  </div>
+  <input id="photo-input" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+  <input id="project-input" type="file" accept="application/json,.json" hidden>
+  <div id="modal-root"></div><div id="toast" role="status" class="toast" hidden></div>
+  <noscript>Ative o JavaScript para abrir o editor de carrosséis.</noscript>
+</body>
+</html>

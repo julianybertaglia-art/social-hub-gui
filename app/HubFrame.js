@@ -17,6 +17,7 @@ import NavigationSearch from './ui/NavigationSearch';
 import { visibleNavGroups, matchesNavigation } from './ui/navigation';
 
 function pageLabel(pathname) {
+  if (pathname.startsWith('/criar-post')) return 'Criar post';
   if (pathname.startsWith('/admin')) return 'Administração · Central de Controle';
   if (pathname.startsWith('/tiktok/afiliados')) return 'TikTok · Afiliados';
   if (pathname === '/whatsapp/setores') return 'WhatsApp · Meus setores';
@@ -56,7 +57,7 @@ export default function HubFrame({ children }) {
     window.dispatchEvent(new CustomEvent('tideplace:section-change', { detail: { section: next } }));
   }
 
-  const framed = pathname === '/' || pathname.startsWith('/whatsapp') || pathname.startsWith('/automacoes') || pathname.startsWith('/tiktok') || pathname.startsWith('/admin');
+  const framed = pathname === '/' || pathname.startsWith('/whatsapp') || pathname.startsWith('/automacoes') || pathname.startsWith('/tiktok') || pathname.startsWith('/admin') || pathname.startsWith('/criar-post');
   if (!framed) return children;
 
   return (
@@ -126,7 +127,7 @@ export default function HubFrame({ children }) {
           </div>
         </header>
         <div className={styles.body}>
-          {workspace.id === 'gui-nonato' ? children : pathname === '/' ? children : pathname.startsWith('/admin') ? children : pathname.startsWith('/tiktok') ? (
+          {workspace.id === 'gui-nonato' ? children : pathname === '/' ? children : pathname.startsWith('/admin') || pathname.startsWith('/criar-post') ? children : pathname.startsWith('/tiktok') ? (
             <VitalAffiliatePanel />
           ) : pathname === '/whatsapp' || pathname === '/whatsapp/setores' ? (
             <VitalWhatsAppInbox view={pathname === '/whatsapp/setores' ? 'mine' : 'all'} />

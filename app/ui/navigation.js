@@ -19,6 +19,13 @@ export const NAV_GROUPS = [
     ],
   },
   {
+    label: 'CRIAÇÃO DE CONTEÚDO',
+    items: [
+      { href: '/previa-radar.html', label: 'Radar de conteúdo', icon: 'sparkle', description: 'Tendências, referências e ideias por marca' },
+      { href: '/criar-post', label: 'Criar post', icon: 'layers', description: 'Editor de carrosséis, fotos, textos e exportação' },
+    ],
+  },
+  {
     label: 'CRM · WHATSAPP',
     items: [
       { href: '/whatsapp', label: 'Caixa de entrada', icon: 'chat', only: ['gui-nonato'], description: 'CRM e mensagens do Gui' },
@@ -45,7 +52,9 @@ export const NAV_GROUPS = [
 export function visibleNavGroups(workspaceId = 'gui-nonato') {
   return NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => !item.only || item.only.includes(workspaceId)),
+    items: group.items.filter((item) => !item.only || item.only.includes(workspaceId)).map((item) =>
+      item.href === '/previa-radar.html' ? { ...item, href: `${item.href}?marca=${workspaceId}` } : item
+    ),
   })).filter((group) => group.items.length > 0);
 }
 

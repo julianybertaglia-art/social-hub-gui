@@ -151,7 +151,9 @@ async function switchWorkspace(value) {
 }
 function seedFromIdea(idea) {
   const ref = idea.reference, editorial = ref?.editorial || {};
-  const texts = idea.outline ? parseOutline(idea.outline) : editorial.slides;
+  const texts = idea.outline ? parseOutline(idea.outline) : Array.isArray(editorial.slides) ? [...editorial.slides] : [];
+  // The briefing labels this field as the cover hook, so keep its edits on the cover too.
+  if (idea.title || editorial.hook) texts[0] = idea.title || editorial.hook;
   return { title: idea.title || editorial.hook, slides: texts, sourceUrl: idea.sourceUrl || ref?.url,
     sourceHandle: idea.handle || ref?.handle,
     caption: (texts || [idea.title || '']).join('\n\n').replace(/\*\*/g,'').replace(/^(capa|cta)\s*:\s*/gim,'').slice(0,2200) };

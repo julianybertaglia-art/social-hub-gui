@@ -2,6 +2,9 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import ExecutiveDashboard from './operations/ExecutiveDashboard';
+import TaskManager from './operations/TaskManager';
+import EditorialCalendar from './operations/EditorialCalendar';
 import DetailDialog from './DetailDialog';
 import VitalInstagramMetrics from './VitalInstagramMetrics';
 import WorkspaceSwitcher, { getWorkspaceStorageKey, useWorkspace, useVitalConnectionStatus } from './WorkspaceSwitcher';
@@ -274,6 +277,9 @@ function TaskRow({ task, onToggle, onOpen }) {
 
 export default function Home() {
   const [workspace] = useWorkspace();
+  return <HomeWorkspace key={workspace.id} workspace={workspace}/>;
+}
+function HomeWorkspace({workspace}) {
   const isGuiWorkspace = workspace.id === 'gui-nonato';
   const vitalConnection = useVitalConnectionStatus();
   const vitalFullyConnected = vitalConnection.instagram === true && vitalConnection.whatsapp === true;
@@ -290,19 +296,19 @@ export default function Home() {
   );
   const [posts, setPosts] = useStoredState(
     getWorkspaceStorageKey('guihub-posts', workspace.id),
-    isGuiWorkspace ? defaultPosts : []
+    []
   );
   const [ideas, setIdeas] = useStoredState(
     getWorkspaceStorageKey('guihub-ideas', workspace.id),
-    isGuiWorkspace ? defaultIdeas : []
+    []
   );
   const [tasks, setTasks] = useStoredState(
     getWorkspaceStorageKey('guihub-tasks', workspace.id),
-    isGuiWorkspace ? defaultTasks : []
+    []
   );
   const [goals, setGoals] = useStoredState(
     getWorkspaceStorageKey('guihub-goals', workspace.id),
-    isGuiWorkspace ? defaultGoals : []
+    []
   );
   useEffect(() => {
     if (!isGuiWorkspace) return undefined;
@@ -658,6 +664,7 @@ export default function Home() {
   function renderCalendar() {
     return (
       <>
+        <EditorialCalendar posts={posts} onOpen={openPost}/>
         <section className="page-heading">
           <div>
             <span className="eyebrow">PLANEJAMENTO</span>
@@ -670,7 +677,7 @@ export default function Home() {
           <article className="panel form-panel">
             <h2>Novo conteúdo</h2>
             <div className="form-grid">
-              <label>Data<input value={postDraft.date} onChange={(event) => setPostDraft({ ...postDraft, date: event.target.value })} placeholder="Ex.: Sexta" /></label>
+              <label>Data<input type="date" value={postDraft.date} onChange={(event) => setPostDraft({ ...postDraft, date: event.target.value })} placeholder="Ex.: Sexta" /></label>
               <label>Horário<input type="time" value={postDraft.time} onChange={(event) => setPostDraft({ ...postDraft, time: event.target.value })} /></label>
               <label className="full-field">Tema<input value={postDraft.title} onChange={(event) => setPostDraft({ ...postDraft, title: event.target.value })} placeholder="Qual será o assunto?" /></label>
               <label>Formato<select value={postDraft.format} onChange={(event) => setPostDraft({ ...postDraft, format: event.target.value })}><option>Reel</option><option>Carrossel</option><option>Stories</option><option>Foto</option><option>Live</option></select></label>
@@ -707,6 +714,8 @@ export default function Home() {
                       <small>{post.status} <span className="post-open-hint">· Ver roteiro →</span></small>
                     </span>
                   </button>
+                  <label style={{fontSize:15}}>Data<input type="date" aria-label={'Data de '+post.title} value={/^\d{4}-\d{2}-\d{2}$/.test(post.date)?post.date:''} onChange={e=>{const date=e.target.value;if(date)setPosts(current=>current.map(item=>item.id===post.id?{...item,date}:item));}}/></label>
+                  <label style={{fontSize:15}}>Status<select aria-label={'Status de '+post.title} value={post.status} onChange={e=>{const status=e.target.value;setPosts(current=>current.map(item=>item.id===post.id?{...item,status}:item));}}>{['Ideia','Roteiro','Em criação','Aguardando aprovação','Pronto para publicar','Publicado'].map(status=><option key={status}>{status}</option>)}</select></label>
                   <button type="button" className="icon-button danger" onClick={() => removeItem(setPosts, post.id)} aria-label={`Excluir conteúdo: ${post.title}`}>×</button>
                 </article>
               ))}
@@ -842,11 +851,11 @@ export default function Home() {
   }
 
   const content = {
-    dashboard: renderDashboard,
+    dashboard: () => <ExecutiveDashboard workspace={workspace} tasks={tasks} posts={posts} onTask={openTask} onToggle={toggleTask}/>,
     calendar: renderCalendar,
-    tasks: renderTasks,
+    tasks: () => <TaskManager tasks={tasks} setTasks={setTasks} onOpen={openTask} onToggle={toggleTask}/>,
     ideas: renderIdeas,
-    metrics: renderMetrics,
+    metrics: () => <ExecutiveDashboard workspace={workspace} tasks={tasks} posts={posts} onTask={openTask} onToggle={toggleTask} mode="metrics"/>,
     goals: renderGoals,
   }[active];
 

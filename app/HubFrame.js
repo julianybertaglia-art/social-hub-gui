@@ -17,6 +17,8 @@ import NavigationSearch from './ui/NavigationSearch';
 import { visibleNavGroups, matchesNavigation } from './ui/navigation';
 
 function pageLabel(pathname) {
+  if (pathname.startsWith('/crm')) return 'CRM · Funil';
+  if (pathname.startsWith('/conteudo')) return 'Conteúdo · IA';
   if (pathname.startsWith('/criar-post')) return 'Criar post';
   if (pathname.startsWith('/admin')) return 'Administração · Central de Controle';
   if (pathname.startsWith('/tiktok/afiliados')) return 'TikTok · Afiliados';
@@ -57,7 +59,7 @@ export default function HubFrame({ children }) {
     window.dispatchEvent(new CustomEvent('tideplace:section-change', { detail: { section: next } }));
   }
 
-  const framed = pathname === '/' || pathname.startsWith('/whatsapp') || pathname.startsWith('/automacoes') || pathname.startsWith('/tiktok') || pathname.startsWith('/admin') || pathname.startsWith('/criar-post');
+  const framed = pathname === '/' || pathname.startsWith('/whatsapp') || pathname.startsWith('/automacoes') || pathname.startsWith('/tiktok') || pathname.startsWith('/admin') || pathname.startsWith('/criar-post') || pathname.startsWith('/crm') || pathname.startsWith('/conteudo');
   if (!framed) return children;
 
   return (
@@ -127,7 +129,7 @@ export default function HubFrame({ children }) {
           </div>
         </header>
         <div className={styles.body}>
-          {workspace.id === 'gui-nonato' ? children : pathname === '/' ? children : pathname.startsWith('/admin') || pathname.startsWith('/criar-post') ? children : pathname.startsWith('/tiktok') ? (
+          {workspace.id === 'gui-nonato' ? children : pathname === '/' ? children : pathname.startsWith('/admin') || pathname.startsWith('/criar-post') || pathname.startsWith('/crm') || pathname.startsWith('/conteudo') ? children : pathname.startsWith('/tiktok') ? (
             <VitalAffiliatePanel />
           ) : pathname === '/whatsapp' || pathname === '/whatsapp/setores' ? (
             <VitalWhatsAppInbox view={pathname === '/whatsapp/setores' ? 'mine' : 'all'} />

@@ -49,3 +49,7 @@
   .frame { --frame-sidebar: 252px; }
   .navLink { font-size: 14px; }
 }
+
+/* Larger navigation for everyday readability at 100% zoom. */
+.navLink{font-size:17px;line-height:1.4;min-height:48px}.groupLabel{font-size:13px;line-height:1.5;letter-spacing:.06em}.brandCopy span{font-size:13px}.profile strong{font-size:16px}.profile span{font-size:14px}.context span{font-size:13px}.context strong{font-size:16px;white-space:normal}.topbar{flex-wrap:wrap}.workspaceEmpty p,.workspaceSteps span{font-size:17px}
+@media(min-width:811px) and (max-width:1100px){.navLink{font-size:17px}}

@@ -198,6 +198,43 @@ async function metaPost(path, body) {
   return result;
 }
 
+// A resposta da Meta com um ID confirma apenas que a criação foi aceita.
+// Verificamos a existência da resposta e seu estado de ocultação antes
+// de classificá-la como entregue; isso não substitui teste público externo.
+async function inspectCreatedPublicReply(replyId) {
+  const token = process.env.META_INSTAGRAM_ACCESS_TOKEN;
+  if (!token || !replyId) throw flowError('Não foi possível verificar a resposta pública.', 503);
+
+  let lastError = '';
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (attempt) await new Promise((resolve) => setTimeout(resolve, attempt * 750));
+    try {
+      const response = await fetch(
+        'https://graph.instagram.com/' + API_VERSION + '/' + encodeURIComponent(replyId) + '?fields=id,hidden',
+        {
+          headers: { Authorization: 'Bearer ' + token },
+          cache: 'no-store',
+          signal: AbortSignal.timeout(10000),
+        }
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.error) {
+        lastError = String(payload?.error?.message || ('Meta HTTP ' + response.status)).slice(0, 220);
+        continue;
+      }
+      if (String(payload?.id || '') !== String(replyId)) {
+        lastError = 'ID retornado na leitura não corresponde à resposta publicada.';
+        continue;
+      }
+      if (payload.hidden === true) return { visibleToApi: false, hidden: true, error: 'A Meta sinalizou a resposta como oculta.' };
+      return { visibleToApi: true, hidden: false, error: null };
+    } catch (error) {
+      lastError = String(error?.message || error).slice(0, 220);
+    }
+  }
+  return { visibleToApi: false, hidden: false, error: 'A resposta foi aceita, mas a leitura pela Meta falhou: ' + (lastError || 'sem confirmação') };
+}
+
 async function sendAudio(db, accountId, recipientId, audioPath, audioBucket = AUDIO_BUCKET) {
   if (!audioPath) return null;
   const bucket = String(audioBucket || AUDIO_BUCKET).trim() || AUDIO_BUCKET;
@@ -396,12 +433,29 @@ export async function processFlowComments(payload, db = null) {
           message: publicReply,
         });
         const publicReplyId = String(createdReply?.id || '');
+        let verification = await inspectCreatedPublicReply(publicReplyId);
+
+        // Se o próprio comentário criado pela automação foi ocultado,
+        // solicitamos à Meta que revele apenas ESSA resposta, sem alterar
+        // a moderação do comentário original ou de outras pessoas.
+        if (verification.hidden && publicReplyId) {
+          try {
+            await metaPost(publicReplyId, { hide: false });
+            verification = await inspectCreatedPublicReply(publicReplyId);
+          } catch (unhideError) {
+            verification = {
+              visibleToApi: false,
+              hidden: true,
+              error: 'A Meta ocultou a resposta e não permitiu reexibi-la: ' + String(unhideError?.message || unhideError).slice(0, 170),
+            };
+          }
+        }
 
         await updateEvent(db, eventId, {
-          public_status: 'sent',
+          public_status: verification.visibleToApi ? 'sent' : 'unverified',
           public_reply_id: publicReplyId || null,
-          public_delivery_mode: 'threaded_reply',
-          public_error: null,
+          public_delivery_mode: verification.visibleToApi ? 'threaded_reply_verified_by_api' : 'threaded_reply_unverified',
+          public_error: verification.error,
         });
       } catch (error) {
         await updateEvent(db, eventId, {

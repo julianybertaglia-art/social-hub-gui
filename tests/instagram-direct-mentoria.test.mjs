@@ -62,7 +62,9 @@ test('Direct replies reuse live Mentoria text and real WhatsApp button exactly o
     assert.equal(await processMentoriaDirectKeywords(input('MENTORIA'),db),0);
     assert.equal(sent.length,1);
     const msg=sent[0].body.message.attachment.payload;
-    assert.match(msg.text,/Vi seu comentário no meu post/);
+    assert.match(msg.text,/Vi sua mensagem/);
+    assert.doesNotMatch(msg.text,/Vi seu comentário/);
+    assert.match(msg.text,/Me chama no WhatsApp pra eu entender melhor o seu momento/);
     assert.equal(msg.buttons.length,1);
     assert.equal(msg.buttons[0].type,'web_url');
     assert.equal(msg.buttons[0].url,GUI_WHATSAPP_URL);

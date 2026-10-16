@@ -851,7 +851,7 @@ function HomeWorkspace({workspace}) {
   }
 
   const content = {
-    dashboard: () => <ExecutiveDashboard workspace={workspace} tasks={tasks} posts={posts} onTask={openTask} onToggle={toggleTask}/>,
+    dashboard: renderDashboard,
     calendar: renderCalendar,
     tasks: () => <TaskManager tasks={tasks} setTasks={setTasks} onOpen={openTask} onToggle={toggleTask}/>,
     ideas: renderIdeas,

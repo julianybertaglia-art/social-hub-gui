@@ -72,7 +72,8 @@ export async function processMentoriaDirectKeywords(payload,db){
     try{
       // Same saved start text and WhatsApp CTA as when the follower comments.
       // Do not send a public comment reply for a private incoming message.
-      const result=await sendNodeToRecipient(db,event.accountId,event.senderId,flow,flow.start,{includeAudio:false});
+      const directStart={...flow.start,text:String(flow.start.text||'').replace('Vi seu comentário no meu post','Vi sua mensagem')};
+      const result=await sendNodeToRecipient(db,event.accountId,event.senderId,flow,directStart,{includeAudio:false});
       if(!result?.message_id)throw new Error('Meta não confirmou o envio da resposta.');
       await updateReceipt(db,event,'sent');
       sent++;

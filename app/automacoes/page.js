@@ -641,7 +641,7 @@ export default function AutomacoesPage() {
                 onClick={() => setSelectedId(flow.id)}
               >
                 <i className={flow.active ? styles.on : ''} />
-                <span><strong>{flow.name || 'Nova automação'}</strong><small>{flow.keyword ? 'Comentário: ' + flow.keyword : 'Defina uma palavra-chave'}</small></span>
+                <span><strong>{flow.name || 'Nova automação'}</strong><small>{flow.keyword ? (String(flow.keyword).toUpperCase()==='MENTORIA' ? 'Comentário + Direct: ' : 'Comentário: ') + flow.keyword : 'Defina uma palavra-chave'}</small></span>
               </button>
             ))}
           </aside>
@@ -669,7 +669,7 @@ export default function AutomacoesPage() {
                       <input value={selected.name || ''} onChange={(event) => patchFlow(selected.id, { name: event.target.value })} placeholder="Ex.: Mentoria" />
                     </label>
                     <label className={styles.field}>
-                      <span>Palavra-chave no comentário</span>
+                      <span>{String(selected.keyword || '').toUpperCase() === 'MENTORIA' ? 'Palavra-chave no comentário e no Direct' : 'Palavra-chave no comentário'}</span>
                       <input value={selected.keyword || ''} onChange={(event) => patchFlow(selected.id, { keyword: event.target.value.toUpperCase() })} placeholder="Ex.: MENTORIA" />
                     </label>
                   </div>

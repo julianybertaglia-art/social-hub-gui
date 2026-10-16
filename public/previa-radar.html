@@ -24,9 +24,11 @@
 
 .post-footer,.post-metrics,.post-top,.toolbar,.hero,.profile-table{flex-wrap:wrap}.profile-label{min-width:0;max-width:100%}.nav-item{line-height:1.4}.sidebar{overflow-y:auto}.filters{align-items:stretch}.filter,.sort{min-height:46px}.post-actions button{white-space:normal;line-height:1.45}.scope-tabs{flex-wrap:wrap}
 @media(max-width:900px){.feed-grid{grid-template-columns:1fr}}
+body.embedded .sidebar,body.embedded .topbar{display:none!important}body.embedded .app{margin-left:0!important}body.embedded .content{padding:6px 6px 30px;max-width:none}body.embedded .preview-notice{margin-bottom:18px}body.embedded .hero{margin-bottom:20px}body.embedded .sidebar-foot{display:none}
 </style>
 </head>
 <body>
+<script>const tideRadarParams = new URL(window.location.href).searchParams; if(tideRadarParams.get('embed')==='1'){document.body.classList.add('embedded')}else{window.location.replace('/radar'+window.location.search)}</script>
 <aside class="sidebar" id="sidebar" aria-label="Navegação da prévia">
   <button class="icon-button close-mobile" data-action="menu" aria-label="Fechar menu">✕</button>
   <a class="brand" href="https://social-hub-gui.vercel.app/"><img src="/brand/tideplace-mark.svg" alt=""><span><strong><b>TIDE</b>PLACE</strong><small>Flow with your audience.</small></span></a>
@@ -63,8 +65,8 @@ const editorial={
 const ORIGINAL_POSTS = [...DATA.posts];
 function initialSelection() {
   try {
-    const params = new URL(window.location.href).searchParams, workspace = params.get('marca'), hot = params.get('aba') === 'em-alta';
-    return { workspace: ['gui-nonato', 'vital-decor'].includes(workspace) ? workspace : 'gui-nonato', ...(hot ? { page: 'feed', scope: 'trending', sort: 'trending' } : {}) };
+    const params = new URL(window.location.href).searchParams, workspace = params.get('marca'), tab = params.get('aba'), embedded = params.get('embed') === '1';
+    return { workspace: ['gui-nonato', 'vital-decor'].includes(workspace) ? workspace : 'gui-nonato', ...(tab === 'em-alta' ? { page: 'feed', scope: 'trending', sort: 'trending' } : tab === 'ideas' ? { page: 'ideas' } : embedded || tab === 'feed' ? { page: 'feed' } : {}) };
   } catch { return {}; }
 }
 const state = { workspace: 'gui-nonato', page: 'dashboard', scope: 'all', type: 'all', search: '', sort: 'recent', profile: 'all', slides: {}, ...initialSelection() };
@@ -185,6 +187,7 @@ function render() {
   document.querySelectorAll('.nav-item').forEach(el => { const active = el.dataset.page === state.page && (el.dataset.scope === 'trending' ? state.scope === 'trending' : el.dataset.page !== 'feed' || state.scope !== 'trending'); el.classList.toggle('active', active); if (active) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current'); });
   if (state.page === 'feed') renderCards();
 }
+document.addEventListener('click', event => { if (!document.body.classList.contains('embedded')) return; const link = event.target.closest('a[href]'); if (!link) return; const url = new URL(link.href, window.location.origin); if (url.origin === window.location.origin && url.pathname !== '/previa-radar.html' && url.pathname !== '/radar') { event.preventDefault(); window.parent.location.assign(url.href); } }, true);
 function navigate(page) { state.page = page; document.getElementById('sidebar').classList.remove('open'); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 function setScope(scope) { state.scope = scope; state.profile = 'all'; state.search = ''; state.type = 'all'; state.sort = scope === 'trending' ? 'trending' : state.sort === 'trending' ? 'recent' : state.sort; navigate('feed'); }
 let lastFocus, modalPost, editingIdea;

@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { after } from 'next/server';
 import { extractTestMessages, processAudioTests } from '../audio-test/service';
 import { processFlowComments, processFlowSelections } from '../flow-automations/service.js';
+import { processMentoriaDirectKeywords } from '../flow-automations/direct.mjs';
 import { serverClient } from '../audio-automation/service.js';
 import { processVitalInstagramDirect } from '../../vital-connections/instagram/direct.mjs';
 import { GUI_INSTAGRAM_ID } from '../../vital-connections/helpers.mjs';
@@ -93,13 +94,14 @@ export async function POST(request) {
       // The Gui's keyword/comment flows must never intercept Vital Decor conversations.
       const guiPayload = { ...payload, entry: (payload.entry || [])
         .filter((entry) => String(entry?.id || '') === GUI_INSTAGRAM_ID) };
-      const [comments, selections, vitalDirect] = await Promise.all([
+      const [comments, selections, mentoriaDirect, vitalDirect] = await Promise.all([
         processFlowComments(guiPayload),
         processFlowSelections(guiPayload),
+        processMentoriaDirectKeywords(guiPayload, serverClient()),
         processVitalInstagramDirect(payload, serverClient()),
       ]);
-      if (comments || selections || vitalDirect) {
-        console.info('TIDEPLACE:FLOW', { comments, selections, vitalDirect });
+      if (comments || selections || mentoriaDirect || vitalDirect) {
+        console.info('TIDEPLACE:FLOW', { comments, selections, mentoriaDirect, vitalDirect });
       }
     } catch (error) {
       console.error('TIDEPLACE:FLOW: falha no processamento', error instanceof Error ? error.message : String(error));

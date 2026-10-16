@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from './CloudGate';
 import styles from './workspace-switcher.module.css';
+import { hasVerifiedGuiConnection } from './lib/gui-instagram-connection.mjs';
 
 export const WORKSPACES = [
-  { id: 'gui-nonato', name: 'Gui Nonato', handle: '@gui_nonato', platform: 'Instagram', initials: 'GN', connected: true },
+  { id: 'gui-nonato', name: 'Gui Nonato', handle: '@gui_nonato', platform: 'Instagram', initials: 'GN', connected: null },
   { id: 'vital-decor', name: 'Vital Decor', handle: '@vitaldecor_', platform: 'Instagram', initials: 'VD', connected: false },
 ];
 
@@ -85,23 +86,46 @@ export default function WorkspaceSwitcher() {
   const [workspace, setWorkspace] = useWorkspace();
   const [open, setOpen] = useState(false);
   const vital = useVitalConnectionStatus();
-  const currentConnected = workspace.id === 'gui-nonato' ? true : vital.instagram === true && vital.whatsapp === true;
   const [guiProfile, setGuiProfile] = useState(null);
+  const [guiConnection, setGuiConnection] = useState({ loading: true, connected: null });
+  const currentConnected = workspace.id === 'gui-nonato'
+    ? guiConnection.connected === true
+    : vital.instagram === true && vital.whatsapp === true;
   const rootRef = useRef(null);
 
   useEffect(() => {
-    let cancelled = false;
+    let active = true;
 
-    fetch('/api/instagram/profile', { cache: 'no-store' })
-      .then((response) => response.json())
-      .then((data) => {
-        if (cancelled || !data?.profilePictureUrl) return;
-        setGuiProfile(data);
-      })
-      .catch(() => {});
+    async function checkGuiConnection() {
+      try {
+        const response = await fetch('/api/instagram/profile', { cache: 'no-store' });
+        const profile = await response.json().catch(() => ({}));
+        if (!response.ok || !hasVerifiedGuiConnection(profile)) {
+          throw new Error('A Meta não confirmou a conexão do Instagram do Gui.');
+        }
+        if (!active) return;
+        setGuiProfile(profile);
+        setGuiConnection({ loading: false, connected: true });
+      } catch {
+        if (!active) return;
+        setGuiProfile(null);
+        setGuiConnection({ loading: false, connected: null });
+      }
+    }
+
+    void checkGuiConnection();
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void checkGuiConnection();
+    }, 3 * 60 * 1000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void checkGuiConnection();
+    };
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
-      cancelled = true;
+      active = false;
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
 
@@ -157,7 +181,7 @@ export default function WorkspaceSwitcher() {
           <div className={styles.options}>
             {WORKSPACES.map((item) => {
               const selected = item.id === workspace.id;
-              const connected = item.id === 'gui-nonato' ? true : vital.instagram === true && vital.whatsapp === true;
+              const connected = item.id === 'gui-nonato' ? guiConnection.connected === true : vital.instagram === true && vital.whatsapp === true;
               return (
                 <button
                   key={item.id}
@@ -182,7 +206,9 @@ export default function WorkspaceSwitcher() {
                     <span>{item.handle}</span>
                   </span>
                   <span className={connected ? styles.statusOk : styles.statusPending}>
-                    {connected ? 'Conectada' : item.id === 'vital-decor' && vital.loading ? 'Verificando' : item.id === 'vital-decor' && vital.instagram === true ? 'Parcial' : 'Verificar'}
+                    {item.id === 'gui-nonato'
+                      ? (guiConnection.loading ? 'Verificando' : connected ? 'Conectada' : 'Não verificada')
+                      : (connected ? 'Conectada' : vital.loading ? 'Verificando' : vital.instagram === true ? 'Parcial' : 'Verificar')}
                   </span>
                   {selected && <span className={styles.check}>✓</span>}
                 </button>
@@ -192,7 +218,8 @@ export default function WorkspaceSwitcher() {
 
           <div className={styles.menuFooter}>
             Cada conta mantém calendário, tarefas, ideias e métricas separadas.
-            <Link href="/conexoes/vital-decor" onClick={() => setOpen(false)} style={{ display: 'block', marginTop: 10, textDecoration: 'underline' }}>Gerenciar conexões da Vital Decor →</Link>
+            <Link href="/admin/conexoes" onClick={() => setOpen(false)} style={{ display: 'block', marginTop: 10, textDecoration: 'underline' }}>Verificar conexão do Gui →</Link>
+            <Link href="/conexoes/vital-decor" onClick={() => setOpen(false)} style={{ display: 'block', marginTop: 8, textDecoration: 'underline' }}>Gerenciar conexões da Vital Decor →</Link>
           </div>
         </div>
       )}

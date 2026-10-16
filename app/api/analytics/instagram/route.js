@@ -40,19 +40,29 @@ export async function GET(request){
     if(!response.ok||data.error)throw fail('A Meta não disponibilizou esta consulta.',502);
     return data;
   }
+  // Instagram Login also accepts /me/insights and /me/media. Try it if the ID endpoint is unavailable.
+  async function accountGraph(path,query={}){
+    try { return await graph(path,query); }
+    catch(error){
+      if(connection?.host==='graph.instagram.com' && path.startsWith(accountId+'/')){
+        return graph('me/'+path.slice(accountId.length+1),query);
+      }
+      throw error;
+    }
+  }
   // All ranges refer to the same Brasília-local start and exclusive end.
   const seconds=d=>Math.floor(Date.parse(d)/1000);
   async function totals(start,end){
     const query={period:'day',metric_type:'total_value',since:seconds(start),until:seconds(end)};
     const result={reach:null,views:null,total_interactions:null};
     try{
-      const data=await graph(accountId+'/insights',{...query,metric:Object.keys(result).join(',')});
+      const data=await accountGraph(accountId+'/insights',{...query,metric:Object.keys(result).join(',')});
       for(const row of data.data||[])if(row.name in result)result[row.name]=numberOrNull(row.total_value?.value);
     }catch{
       // A permission may grant only individual metrics. Never invent missing values.
       await Promise.all(Object.keys(result).map(async metric=>{
         try{
-          const d=await graph(accountId+'/insights',{...query,metric});
+          const d=await accountGraph(accountId+'/insights',{...query,metric});
           result[metric]=numberOrNull(d.data?.find(r=>r.name===metric)?.total_value?.value);
         }catch{}
       }));
@@ -65,8 +75,8 @@ export async function GET(request){
       : graph(accountId,{fields:'id,username,followers_count,media_count,profile_picture_url'}),
     totals(range.start,range.end),
     totals(range.previousStart,range.start),
-    graph(accountId+'/insights',{metric:'reach',period:'day',metric_type:'time_series',since:seconds(range.start),until:seconds(range.end)}),
-    graph(accountId+'/media',{fields:'id,caption,media_type,media_product_type,permalink,timestamp,thumbnail_url,media_url,like_count,comments_count',limit:30}),
+    accountGraph(accountId+'/insights',{metric:'reach',period:'day',metric_type:'time_series',since:seconds(range.start),until:seconds(range.end)}),
+    accountGraph(accountId+'/media',{fields:'id,caption,media_type,media_product_type,permalink,timestamp,thumbnail_url,media_url,like_count,comments_count',limit:30}),
   ]);
   const value=i=>settled[i].status==='fulfilled'?settled[i].value:null;
   profile=value(0);
@@ -76,7 +86,7 @@ export async function GET(request){
     const batch=await Promise.all(media.slice(i,i+4).map(async item=>{
       let metrics={};
       try{
-        const d=await graph(item.id+'/insights',{metric:'reach,views,total_interactions,saved,shares'});
+        const d=await accountGraph(item.id+'/insights',{metric:'reach,views,total_interactions,saved,shares'});
         metrics=Object.fromEntries((d.data||[]).map(row=>[row.name,numberOrNull(row.total_value?.value??row.values?.[0]?.value)]));
       }catch{}
       return {id:item.id,caption:item.caption||'',type:item.media_product_type||item.media_type,

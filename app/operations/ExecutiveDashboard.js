@@ -66,6 +66,7 @@ export default function ExecutiveDashboard({workspace,mode='metrics'}) {
       </div>
     </header>
     <p className={s.periodHint}>{period ? period.startDate.split('-').reverse().join('/') + ' a ' + period.endDate.split('-').reverse().join('/') + ' · Brasília' : 'Carregando período…'} · Fonte: Meta e CRM</p>
+    {data?.notice && <div className={s.notice} role="status">{data.notice} <Link href="/admin/conexoes">Ver permissões</Link>.</div>}
     {ig.error && <div className={s.notice} role="status"><strong>Dados do Instagram indisponíveis.</strong> {ig.error} <Link href="/admin/conexoes">Verificar conexão</Link>. O CRM continua separado.</div>}
     {op.error && <div className={s.notice} role="status"><strong>CRM indisponível.</strong> {op.error} <Link href="/crm">Abrir CRM</Link>.</div>}
     {operations?.truncated && <div className={s.notice}>A consulta do CRM atingiu o limite de registros. A distribuição mostra apenas o conjunto consultado.</div>}

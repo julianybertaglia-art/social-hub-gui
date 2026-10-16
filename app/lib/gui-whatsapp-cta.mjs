@@ -10,6 +10,20 @@ const WA_LINK = /https?:\/\/(?:www\.)?wa\.me\/(?:55)?11923990244(?:\?[^\s]*)?/gi
 export function upgradeGuiWhatsappNode(node) {
   if (!node || typeof node !== 'object') return node;
   const originalText = String(node.text || '');
+  // Opt-out for flows that must show a plain phone number in the text,
+  // without converting it into a WhatsApp link or adding a CTA button.
+  if (node.whatsappPhoneOnly === true) {
+    return {
+      ...node,
+      text: originalText.replace(WA_LINK, '').trim(),
+      whatsappButton: false,
+      sharedNext: node.sharedNext ? upgradeGuiWhatsappNode(node.sharedNext) : null,
+      buttons: (node.buttons || []).map((button) => ({
+        ...button,
+        next: button.next ? upgradeGuiWhatsappNode(button.next) : button.next,
+      })),
+    };
+  }
   const hasContact = PHONE_NUMBER.test(originalText) || WA_LINK.test(originalText);
   PHONE_NUMBER.lastIndex = 0;
   WA_LINK.lastIndex = 0;

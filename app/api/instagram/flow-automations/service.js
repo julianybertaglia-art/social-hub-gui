@@ -52,6 +52,7 @@ function sanitizeNode(node, depth = 0) {
     id: String(node?.id || crypto.randomUUID()).slice(0, 80),
     text: String(node?.text || '').trim().slice(0, 1000),
     whatsappButton: Boolean(node?.whatsappButton),
+    whatsappPhoneOnly: Boolean(node?.whatsappPhoneOnly),
     audioPath: String(node?.audioPath || '').trim().slice(0, 500),
     audioName: String(node?.audioName || '').trim().slice(0, 120),
     audioBucket: String(node?.audioBucket || AUDIO_BUCKET).trim().slice(0, 120),

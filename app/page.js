@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import ExecutiveDashboard from './operations/ExecutiveDashboard';
+import DashboardDistributions from './operations/DashboardDistributions';
 import TaskManager from './operations/TaskManager';
 import EditorialCalendar from './operations/EditorialCalendar';
 import DetailDialog from './DetailDialog';
@@ -554,6 +555,8 @@ function HomeWorkspace({workspace}) {
             <small>Direct e comentários</small>
           </Link>
         </section>
+
+        <DashboardDistributions workspace={workspace} posts={posts} />
 
         <section className="home-layout">
           <div className="home-primary">

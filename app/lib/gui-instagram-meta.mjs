@@ -2,18 +2,20 @@ import { matchesGuiInstagramProfile, GUI_INSTAGRAM_ACCOUNT_ID } from './gui-inst
 
 const GRAPH_VERSION = 'v26.0';
 const EXPECTED_ID = GUI_INSTAGRAM_ACCOUNT_ID;
-let memo = null;
+const memo = new Map();
 const TIMEOUT_MS = 8500;
 
-function candidates() {
+function candidates(preferInsights = false) {
   const access = String(process.env.META_INSTAGRAM_ACCESS_TOKEN || '').trim();
   const insights = String(process.env.META_INSTAGRAM_INSIGHTS_ACCESS_TOKEN || '').trim();
-  const result = [
-    {host:'graph.instagram.com',token:access,source:'Instagram Login'},
-    {host:'graph.instagram.com',token:insights,source:'Instagram Insights'},
-    {host:'graph.facebook.com',token:insights,source:'Facebook Insights'},
-    {host:'graph.facebook.com',token:access,source:'Facebook Login'},
-  ].filter(c=>c.token);
+  const choices = {
+    login:{host:'graph.instagram.com',token:access,source:'Instagram Login'},
+    insights:{host:'graph.instagram.com',token:insights,source:'Instagram Insights'},
+    fbInsights:{host:'graph.facebook.com',token:insights,source:'Facebook Insights'},
+    fbLogin:{host:'graph.facebook.com',token:access,source:'Facebook Login'},
+  };
+  const ordered = preferInsights ? ['insights','login','fbInsights','fbLogin'] : ['login','insights','fbInsights','fbLogin'];
+  const result = ordered.map(key=>choices[key]).filter(c=>c.token);
   return result.filter((c,i)=>result.findIndex(x=>x.host===c.host&&x.token===c.token)===i);
 }
 async function graphRead(candidate,path,query={}) {
@@ -59,9 +61,11 @@ async function probe(candidate){
   }
   return null;
 }
-export async function verifiedGuiInstagram(){
-  if(memo && Date.now()-memo.time<60000)return memo.connection;
-  const list=candidates();
+export async function verifiedGuiInstagram({preferInsights = false} = {}){
+  const key=preferInsights?'insights':'profile';
+  const cached=memo.get(key);
+  if(cached && Date.now()-cached.time<60000)return cached.connection;
+  const list=candidates(preferInsights);
   if(!list.length)throw Object.assign(new Error('Nenhuma credencial do Instagram configurada.'),{status:409,code:'META_CREDENTIAL_MISSING'});
   // Prioritize the regular token; try remaining credentials if it is invalid
   // or belongs to a different account. All results must verify BOTH id and username.
@@ -72,7 +76,7 @@ export async function verifiedGuiInstagram(){
     connection=checks.find(Boolean)||null;
   }
   if(!connection)throw Object.assign(new Error('A Meta não confirmou o perfil @gui_nonato. Verifique a autorização ou as permissões das credenciais.'),{status:502,code:'META_IDENTITY_UNVERIFIED'});
-  memo={connection,time:Date.now()};
+  memo.set(key,{connection,time:Date.now()});
   return connection;
 }
 export async function verifiedGuiGraph(connection,path,query={}){

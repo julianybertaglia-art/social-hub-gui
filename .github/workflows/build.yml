@@ -49,5 +49,8 @@ jobs:
       - name: Testar redirecionamento Direct Vital para WhatsApp
         run: node --test tests/vital-instagram-direct.test.mjs tests/vital-instagram-automation-panel.test.mjs
 
+      - name: Testar calendário de ideias de Mentoria do Gui
+        run: node --test tests/gui-mentoria-calendar.test.mjs
+
       - name: Testar build
         run: npm run build

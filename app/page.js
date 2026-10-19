@@ -9,6 +9,7 @@ import EditorialCalendar from './operations/EditorialCalendar';
 import DetailDialog from './DetailDialog';
 import VitalInstagramMetrics from './VitalInstagramMetrics';
 import WorkspaceSwitcher, { getWorkspaceStorageKey, useWorkspace, useVitalConnectionStatus } from './WorkspaceSwitcher';
+import { addGuiMentoriaCalendarOnce } from './lib/gui-mentoria-calendar-20261019.mjs';
 
 const SECTION_IDS = ['dashboard', 'calendar', 'tasks', 'ideas', 'metrics', 'goals'];
 
@@ -132,7 +133,7 @@ const defaultGoals = [
   { id: 4, name: 'Conversas comerciais', current: 7, target: 15, unit: 'conversas' },
 ];
 
-function useStoredState(key, initialValue) {
+function useStoredState(key, initialValue, hydrate = null) {
   const [value, setValue] = useState(initialValue);
   const [ready, setReady] = useState(false);
 
@@ -140,7 +141,8 @@ function useStoredState(key, initialValue) {
     function readStoredValue() {
       try {
         const saved = window.localStorage.getItem(key);
-        setValue(saved ? JSON.parse(saved) : initialValue);
+        const restored = saved ? JSON.parse(saved) : initialValue;
+        setValue(hydrate ? hydrate(restored, window.localStorage) : restored);
       } catch (error) {
         console.warn(`Não foi possível carregar ${key}`, error);
         setValue(initialValue);
@@ -164,7 +166,7 @@ function useStoredState(key, initialValue) {
       window.removeEventListener('storage', handleStorageUpdate);
       window.removeEventListener('tideplace:storage-update', handleStorageUpdate);
     };
-  }, [key]);
+  }, [key, hydrate]);
 
   useEffect(() => {
     if (!ready) return;
@@ -297,7 +299,8 @@ function HomeWorkspace({workspace}) {
   );
   const [posts, setPosts] = useStoredState(
     getWorkspaceStorageKey('guihub-posts', workspace.id),
-    []
+    [],
+    isGuiWorkspace ? addGuiMentoriaCalendarOnce : null
   );
   const [ideas, setIdeas] = useStoredState(
     getWorkspaceStorageKey('guihub-ideas', workspace.id),

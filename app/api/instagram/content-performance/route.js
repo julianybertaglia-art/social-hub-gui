@@ -2,7 +2,8 @@ export const dynamic = 'force-dynamic';
 
 const API_VERSION = 'v26.0';
 const GUI_ACCOUNT_ID = '17841401155694295';
-const MAX_MEDIA = 15;
+const MAX_MEDIA = 100;
+const MAX_DAYS = 90;
 
 function providerMessage(payload, text) {
   const raw = payload?.error?.message || payload?.error || payload?.message || text;
@@ -59,17 +60,17 @@ async function metaGet(path, params = {}) {
 
 function metricValue(metric) {
   const total = Number(metric?.total_value?.value);
-  if (Number.isFinite(total)) return total;
+  if (metric?.total_value?.value !== undefined && metric?.total_value?.value !== null && Number.isFinite(total)) return total;
 
   const values = Array.isArray(metric?.values) ? metric.values : [];
-  if (!values.length) return 0;
+  if (!values.length) return null;
 
   const last = values[values.length - 1]?.value;
 
   if (typeof last === 'number') return last;
   if (typeof last === 'string' && Number.isFinite(Number(last))) return Number(last);
 
-  return 0;
+  return null;
 }
 
 async function requestMetric(mediaId, metric) {
@@ -97,7 +98,7 @@ async function requestMetricsGroup(mediaId, metrics) {
     const result = {};
 
     rows.forEach((row) => {
-      if (row?.name) result[row.name] = metricValue(row);
+      if (row?.name && metricValue(row) !== null) result[row.name] = metricValue(row);
     });
 
     return result;
@@ -112,7 +113,7 @@ async function requestMetricsGroup(mediaId, metrics) {
 
 function rate(value, denominator) {
   const total = Number(denominator || 0);
-  if (!total) return 0;
+  if (!total || value == null || denominator == null) return null;
   return Number(((Number(value || 0) / total) * 100).toFixed(2));
 }
 
@@ -132,11 +133,11 @@ async function enrichMedia(media) {
     : {};
   const insights = { ...baseInsights, ...reelInsights };
 
-  const reach = Math.round(Number(insights.reach || 0));
-  const views = Math.round(Number(insights.views || 0));
-  const saved = Math.round(Number(insights.saved || 0));
-  const shares = Math.round(Number(insights.shares || 0));
-  const totalInteractions = Math.round(Number(insights.total_interactions || 0));
+  const reach = insights.reach == null ? null : Math.round(Number(insights.reach));
+  const views = insights.views == null ? null : Math.round(Number(insights.views));
+  const saved = insights.saved == null ? null : Math.round(Number(insights.saved));
+  const shares = insights.shares == null ? null : Math.round(Number(insights.shares));
+  const totalInteractions = insights.total_interactions == null ? null : Math.round(Number(insights.total_interactions));
   const likes = Math.round(Number(media?.like_count || 0));
   const comments = Math.round(Number(media?.comments_count || 0));
 
@@ -160,51 +161,65 @@ async function enrichMedia(media) {
     shareRate: rate(shares, reach),
     reel: isReel
       ? {
-          totalWatchTimeMs: Number(insights.ig_reels_video_view_total_time || 0),
-          avgWatchTimeMs: Number(insights.ig_reels_avg_watch_time || 0),
-          skipRate: Number(insights.reels_skip_rate || 0),
-          replays: Math.round(Number(insights.clips_replays_count || 0)),
+          totalWatchTimeMs: insights.ig_reels_video_view_total_time == null ? null : Number(insights.ig_reels_video_view_total_time),
+          avgWatchTimeMs: insights.ig_reels_avg_watch_time == null ? null : Number(insights.ig_reels_avg_watch_time),
+          skipRate: insights.reels_skip_rate == null ? null : Number(insights.reels_skip_rate),
+          replays: insights.clips_replays_count == null ? null : Math.round(Number(insights.clips_replays_count)),
         }
       : null,
   };
 }
 
-export async function GET() {
+export async function GET(request) {
+  const url = new URL(request.url);
+  const requestedDays = Number(url.searchParams.get('days') || 30);
+  const days = Number.isFinite(requestedDays) ? Math.min(MAX_DAYS, Math.max(1, Math.floor(requestedDays))) : 30;
+  const since = Date.now() - days * 86400000;
   try {
-    const mediaPayload = await metaGet(`${GUI_ACCOUNT_ID}/media`, {
-      fields: 'id,caption,media_type,media_product_type,permalink,timestamp,thumbnail_url,like_count,comments_count',
-      limit: MAX_MEDIA,
-    });
-
-    const media = Array.isArray(mediaPayload?.data)
-      ? mediaPayload.data.slice(0, MAX_MEDIA)
-      : [];
-
+    let next = null;
+    const media = [];
+    const visited = new Set();
+    for (let page = 0; page < 15 && media.length < MAX_MEDIA; page++) {
+      let payload;
+      if (next) {
+        const parsed = new URL(next);
+        if (parsed.hostname !== 'graph.instagram.com' || parsed.protocol !== 'https:') break;
+        const response = await fetch(next, { cache: 'no-store', headers: { Authorization: `Bearer ${String(process.env.META_INSTAGRAM_ACCESS_TOKEN || '').trim()}` } });
+        if (!response.ok) throw new Error('Erro ao consultar próxima página da Meta.');
+        payload = await response.json();
+      } else {
+        payload = await metaGet(`${GUI_ACCOUNT_ID}/media`, {
+          fields: 'id,caption,media_type,media_product_type,permalink,timestamp,thumbnail_url,like_count,comments_count',
+          limit: 50,
+        });
+      }
+      const rows = Array.isArray(payload?.data) ? payload.data : [];
+      if (!rows.length) break;
+      for (const item of rows) {
+        if (visited.has(item.id)) continue;
+        visited.add(item.id);
+        if (Date.parse(item.timestamp || '') >= since) media.push(item);
+      }
+      if (rows.some(item => Date.parse(item.timestamp || '') < since)) break;
+      next = payload?.paging?.next || null;
+      if (!next) break;
+    }
     const items = [];
-
-    // Fazemos em pequenos blocos para evitar uma rajada grande de chamadas à Meta.
     for (let index = 0; index < media.length; index += 3) {
       const batch = media.slice(index, index + 3);
-      const enriched = await Promise.all(batch.map(enrichMedia));
-      items.push(...enriched);
+      items.push(...await Promise.all(batch.map(enrichMedia)));
     }
-
     return Response.json({
       account: '@gui_nonato',
       source: 'Meta',
       updatedAt: new Date().toISOString(),
+      days,
       count: items.length,
       items,
+      note: 'Métricas representam totais acumulados por publicação, não snapshots históricos diários.',
     });
   } catch (error) {
     console.error('Erro ao buscar performance dos conteúdos na Meta:', error);
-
-    return Response.json(
-      {
-        error: 'Não foi possível carregar a performance dos conteúdos do Instagram.',
-        detail: error?.providerDetail || error?.message || undefined,
-      },
-      { status: 502 }
-    );
+    return Response.json({ error: 'Não foi possível carregar a performance dos conteúdos do Instagram.', detail: error?.providerDetail || error?.message || undefined }, { status: 502 });
   }
 }

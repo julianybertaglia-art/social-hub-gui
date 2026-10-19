@@ -46,6 +46,9 @@ function writeLocalState(data) {
   if (!data || typeof data !== 'object') return;
 
   STORAGE_KEYS.forEach((key) => {
+    // Editorial posts now have their own database records. Keep this device's legacy
+    // copy intact until useEditorialPosts archives/imports it; never hydrate over it.
+    if (key === 'guihub-posts' || key === 'guihub-posts:vital-decor') return;
     if (typeof data[key] === 'string') {
       window.localStorage.setItem(key, data[key]);
     }

@@ -92,6 +92,8 @@ export default function DetailDialog({ item, kind, relatedPosts, onOpenPost, onC
           {(isTask || activeSection === 'summary') && <>
             <p className="brief-lead">{brief.summary || (isTask ? 'Confira a tarefa, acompanhe a prioridade e marque como concluída quando terminar.' : 'Este conteúdo ainda não tem um roteiro detalhado. O formato e a data cadastrados estão abaixo.')}</p>
             <dl className="brief-facts">{facts.filter(([, value]) => value).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+            <CopyBlock title="Gancho" text={brief.hook} />
+            {brief.creativeDirection && <section className="brief-section"><h3>Direcionamento criativo</h3><p>{brief.creativeDirection}</p></section>}
             {brief.reuse && <p className="brief-reuse"><strong>Aproveite o que já existe</strong>{brief.reuse}</p>}
             <List title={isTask ? 'O que fazer' : 'Direção do conteúdo'} items={brief.steps} ordered />
             {brief.audience && <section className="brief-section"><h3>Para quem</h3><p>{brief.audience}</p></section>}
@@ -107,7 +109,7 @@ export default function DetailDialog({ item, kind, relatedPosts, onOpenPost, onC
             <CopyBlock title={brief.scriptTitle || 'Fala do Gui'} text={brief.script} />
             <Scenes scenes={brief.scenes} />
             <List title="Textos na tela" items={brief.onScreenText} />
-            {!brief.script && !brief.scenes?.length && <p className="brief-muted">O roteiro deste conteúdo ainda não foi preenchido.</p>}
+            {!brief.script && !brief.scenes?.length && (brief.steps?.length ? <List title="Estrutura do roteiro" items={brief.steps} ordered /> : <p className="brief-muted">O roteiro deste conteúdo ainda não foi preenchido.</p>)}
           </>}
 
           {!isTask && activeSection === 'production' && <>

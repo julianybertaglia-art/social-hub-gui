@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import ExecutiveDashboard from './operations/ExecutiveDashboard';
 import DashboardDistributions from './operations/DashboardDistributions';
 import TaskManager from './operations/TaskManager';
@@ -9,7 +9,8 @@ import EditorialCalendar from './operations/EditorialCalendar';
 import DetailDialog from './DetailDialog';
 import VitalInstagramMetrics from './VitalInstagramMetrics';
 import WorkspaceSwitcher, { getWorkspaceStorageKey, useWorkspace, useVitalConnectionStatus } from './WorkspaceSwitcher';
-import { addGuiMentoriaCalendarOnce } from './lib/gui-mentoria-calendar-20261019.mjs';
+import useEditorialPosts from './operations/useEditorialPosts';
+import calendarStyles from './operations/EditorialCalendar.module.css';
 
 const SECTION_IDS = ['dashboard', 'calendar', 'tasks', 'ideas', 'metrics', 'goals'];
 
@@ -297,11 +298,9 @@ function HomeWorkspace({workspace}) {
     getWorkspaceStorageKey('guihub-metrics', workspace.id),
     defaultMetrics
   );
-  const [posts, setPosts] = useStoredState(
-    getWorkspaceStorageKey('guihub-posts', workspace.id),
-    [],
-    isGuiWorkspace ? addGuiMentoriaCalendarOnce : null
-  );
+  const calendar = useEditorialPosts(workspace.id);
+  const { posts } = calendar;
+  const calendarToolsRef = useRef(null);
   const [ideas, setIdeas] = useStoredState(
     getWorkspaceStorageKey('guihub-ideas', workspace.id),
     []
@@ -450,10 +449,10 @@ function HomeWorkspace({workspace}) {
     setIdeaDraft({ title: '', audience: '', format: 'Reel', priority: 'Média' });
   }
 
-  function addPost() {
+  async function addPost() {
     if (!postDraft.title.trim() || !postDraft.date.trim()) return;
-    setPosts((current) => [{ id: Date.now(), ...postDraft }, ...current]);
-    setPostDraft({ date: '', time: '', format: 'Reel', title: '', objective: 'Autoridade', status: 'Ideia' });
+    const saved = await calendar.createPost({ id: crypto.randomUUID(), ...postDraft });
+    if (saved) setPostDraft({ date: '', time: '', format: 'Reel', title: '', objective: 'Autoridade', status: 'Ideia' });
   }
 
   function toggleTask(id) {
@@ -670,15 +669,14 @@ function HomeWorkspace({workspace}) {
   function renderCalendar() {
     return (
       <>
-        <EditorialCalendar posts={posts} onOpen={openPost}/>
-        <section className="page-heading">
-          <div>
-            <span className="eyebrow">PLANEJAMENTO</span>
-            <h1>Calendário de conteúdo</h1>
-            <p className="subtitle">Organize o que vai ao ar e clique em cada conteúdo para abrir roteiro e produção.</p>
-          </div>
-        </section>
-
+        <EditorialCalendar posts={posts} onOpen={openPost} workspaceName={workspace.name}
+          loading={calendar.loading} saving={calendar.saving} synced={calendar.synced}
+          error={calendar.error} onRetry={calendar.refresh}
+          onAdd={() => { if (calendarToolsRef.current) { calendarToolsRef.current.open = true; calendarToolsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }}/>
+        <details className={calendarStyles.tools} ref={calendarToolsRef}>
+          <summary>Gerenciar conteúdos<small>Adicionar, ajustar datas e acompanhar a produção</small></summary>
+          <div className={calendarStyles.toolsBody}>
+          <fieldset disabled={calendar.loading || calendar.saving || !calendar.synced}>
         <section className="two-column-form">
           <article className="panel form-panel">
             <h2>Novo conteúdo</h2>
@@ -720,14 +718,17 @@ function HomeWorkspace({workspace}) {
                       <small>{post.status} <span className="post-open-hint">· Ver roteiro →</span></small>
                     </span>
                   </button>
-                  <label style={{fontSize:15}}>Data<input type="date" aria-label={'Data de '+post.title} value={/^\d{4}-\d{2}-\d{2}$/.test(post.date)?post.date:''} onChange={e=>{const date=e.target.value;if(date)setPosts(current=>current.map(item=>item.id===post.id?{...item,date}:item));}}/></label>
-                  <label style={{fontSize:15}}>Status<select aria-label={'Status de '+post.title} value={post.status} onChange={e=>{const status=e.target.value;setPosts(current=>current.map(item=>item.id===post.id?{...item,status}:item));}}>{['Ideia','Roteiro','Em criação','Aguardando aprovação','Pronto para publicar','Publicado'].map(status=><option key={status}>{status}</option>)}</select></label>
-                  <button type="button" className="icon-button danger" onClick={() => removeItem(setPosts, post.id)} aria-label={`Excluir conteúdo: ${post.title}`}>×</button>
+                  <label style={{fontSize:15}}>Data<input type="date" aria-label={'Data de '+post.title} value={/^\d{4}-\d{2}-\d{2}$/.test(post.date)?post.date:''} onChange={e=>{const date=e.target.value;if(date)void calendar.updatePost(post,{date});}}/></label>
+                  <label style={{fontSize:15}}>Status<select aria-label={'Status de '+post.title} value={post.status} onChange={e=>{void calendar.updatePost(post,{status:e.target.value});}}>{['Ideia','Roteiro','Em criação','Aguardando aprovação','Pronto para publicar','Publicado'].map(status=><option key={status}>{status}</option>)}</select></label>
+                  <button type="button" className="icon-button danger" onClick={() => calendar.removePost(post)} aria-label={`Excluir conteúdo: ${post.title}`}>×</button>
                 </article>
               ))}
             </div>
           )}
         </section>
+          </fieldset>
+          </div>
+        </details>
       </>
     );
   }

@@ -1,0 +1,92 @@
+import { GUI_MENTORIA_OCT2026_POSTS } from './gui-mentoria-calendar-20261019.mjs';
+
+export const GUI_EDITORIAL_IMPORT_KEY = 'gui-editorial-october-2026-complete:v1';
+export const GUI_EDITORIAL_ADDITIONS = [
+  {
+    id: 'gui-editorial-20261027', date: '2026-10-27', time: '', format: 'Reel',
+    title: 'Seu anúncio não está ruim. Sua oferta está.', objective: 'Autoridade', status: 'Ideia',
+    brief: {
+      label: 'Oferta e posicionamento', format: 'Reel · diagnóstico prático', duration: '35–45 segundos', ratio: '9:16',
+      summary: 'Mostrar que fotos e títulos ajudam, mas a decisão de compra depende do conjunto da oferta. O objetivo é ensinar o seller a diagnosticar antes de investir mais em tráfego.',
+      hook: 'Você já trocou a foto, refez o título e aumentou o Ads. E se o problema for a oferta?',
+      creativeDirection: 'Gui falando para a câmera, intercalado com dois anúncios ilustrativos do mesmo produto. Destacar preço total, prazo, reputação e composição do kit, sem expor concorrentes reais.',
+      audience: 'Sellers com visitas nos anúncios, mas pouca conversão.',
+      steps: ['Abrir com o gancho e diferenciar anúncio de oferta.', 'Comparar preço total, frete e prazo de entrega com alternativas do comprador.', 'Analisar reputação, avaliações, fotos e clareza do benefício.', 'Avaliar kits, diferenciais e condições que aumentem valor percebido sem comprometer a margem.', 'Orientar a testar uma mudança por vez e comparar conversão e margem.'],
+      onScreenText: ['SEU ANÚNCIO NÃO ESTÁ RUIM.', 'Sua oferta está.', 'Preço total · prazo · confiança · valor'],
+      recording: ['Plano médio na operação do Gui, fala direta e natural.', 'Usar exemplos demonstrativos, sem apresentar números como resultados reais.'],
+      editing: ['Gancho em texto nos primeiros segundos.', 'Comparação simples lado a lado; legendas curtas.'],
+      cta: 'Salva este checklist para revisar sua oferta. Quer olhar sua operação com mais estratégia? Comenta MENTORIA.',
+      checklist: ['Revisar o exemplo com o Gui.', 'Conferir se o comparativo considera frete e margem.', 'Validar a resposta da palavra MENTORIA antes da publicação manual.'],
+    },
+  },
+  {
+    id: 'gui-editorial-20261028', date: '2026-10-28', time: '', format: 'Carrossel',
+    title: '5 métricas que um seller precisa olhar antes de escalar.', objective: 'Autoridade', status: 'Ideia',
+    brief: {
+      label: 'Indicadores para crescer', format: 'Carrossel · checklist de gestão', duration: '7 slides', ratio: '4:5',
+      summary: 'Ensinar cinco indicadores que ajudam a avaliar se uma operação está pronta para aumentar investimento e volume. Trabalhar com o histórico da própria conta, sem metas universais.',
+      hook: 'Mais vendas podem aumentar um problema que você ainda não está medindo.',
+      creativeDirection: 'Uma métrica por slide, com nome em destaque, pergunta prática e exemplo ilustrativo curto. Visual limpo do Gui, com espaço e poucos elementos.',
+      audience: 'Sellers que querem aumentar estoque ou Ads e precisam de uma visão de negócio.',
+      steps: ['Slide 1 — 5 métricas para olhar antes de escalar.', 'Slide 2 — Margem de contribuição: quanto sobra depois dos custos variáveis de cada venda?', 'Slide 3 — Conversão: as visitas estão virando pedidos? Compare produtos e períodos equivalentes.', 'Slide 4 — TACOS: quanto o investimento em Ads representa da receita total no mesmo período? Avalie junto da margem.', 'Slide 5 — Cobertura de estoque: por quantos dias o estoque sustenta o ritmo de vendas e o prazo de reposição?', 'Slide 6 — Ciclo de caixa: quando você paga fornecedor e quando o dinheiro da venda fica disponível?', 'Slide 7 — Crescer exige margem, estoque e caixa. Salve para revisar antes de escalar.'],
+      onScreenText: ['ANTES DE ESCALAR, OLHE OS NÚMEROS.', 'Margem · Conversão · TACOS · Estoque · Caixa'],
+      recording: ['Montar sete lâminas; usar gráficos apenas com exemplos claramente identificados.'],
+      editing: ['Repetir a mesma hierarquia visual nos cinco indicadores.', 'Evitar painéis lotados, metas genéricas e siglas sem explicação.'],
+      cta: 'Salva para usar na próxima análise da sua conta e envia para quem cuida da operação com você.',
+      checklist: ['Validar as definições com o Gui.', 'Identificar todo número como exemplo.', 'Revisar a leitura no celular.'],
+    },
+  },
+  {
+    id: 'gui-editorial-20261029', date: '2026-10-29', time: '', format: 'Reel',
+    title: 'O erro que faz muita operação vender muito e lucrar pouco.', objective: 'Conversão', status: 'Ideia',
+    brief: {
+      label: 'Margem e diagnóstico', format: 'Reel · problema e próximo passo', duration: '35–50 segundos', ratio: '9:16',
+      summary: 'Apontar o erro de decidir pelo faturamento sem enxergar o resultado por produto e a estrutura de custos. Aproximar sellers que precisam de acompanhamento estratégico.',
+      hook: 'O faturamento subiu. O trabalho dobrou. Mas o lucro não apareceu. Você está medindo a coisa certa?',
+      creativeDirection: 'Gui começa com uma situação reconhecível e abre uma conta ilustrativa em tela. A progressão visual vai de receita para custos e margem, sem promessas de resultado.',
+      audience: 'Donos de operações com volume de vendas, mas sem clareza de lucro.',
+      steps: ['Apresentar o erro: usar faturamento como único sinal de saúde.', 'Abrir o resultado por produto, incluindo compra, taxas, frete, impostos, Ads e devoluções.', 'Explicar que um mix com margem ruim pode consumir o ganho dos produtos saudáveis.', 'Conectar a margem de contribuição aos custos fixos e ao resultado da operação.', 'Convidar para conhecer o acompanhamento personalizado da mentoria.'],
+      onScreenText: ['VENDE MUITO. MAS SOBRA QUANTO?', 'Olhe produto, margem e caixa.', 'MENTORIA'],
+      recording: ['Gui em tom de diagnóstico, sem atacar o seller.', 'Mostrar apenas dados fictícios identificados como exemplo.'],
+      editing: ['Cortes entre a fala e uma conta simples, fácil de acompanhar.', 'Final com palavra-chave e pausa para leitura.'],
+      cta: 'Se você já vende no Mercado Livre e quer entender onde sua operação perde margem, comenta MENTORIA para falar com minha equipe.',
+      checklist: ['Conferir a conta e os custos do exemplo.', 'Revisar a oferta vigente da mentoria.', 'Validar a automação MENTORIA antes da publicação manual.'],
+    },
+  },
+  {
+    id: 'gui-editorial-20261030', date: '2026-10-30', time: '', format: 'Carrossel',
+    title: '4 sinais de que você pode estar vendendo no prejuízo.', objective: 'Conversão', status: 'Ideia',
+    brief: {
+      label: 'Diagnóstico de lucratividade', format: 'Carrossel · sinais de atenção', duration: '6 slides', ratio: '4:5',
+      summary: 'Gerar identificação com quatro sinais que pedem investigação. Os sinais, isoladamente, não comprovam prejuízo: o conteúdo conduz a uma análise de custos, margem e caixa.',
+      hook: 'As vendas entram todos os dias. Mesmo assim, seu caixa nunca melhora?',
+      creativeDirection: 'Capa com pergunta forte; um sinal por lâmina, seguido de “o que conferir”. Encerrar com convite para diagnóstico, usando a identidade do Gui.',
+      audience: 'Sellers que fazem promoções ou aumentam volume sem calcular o resultado completo.',
+      steps: ['Slide 1 — 4 sinais de que você pode estar vendendo no prejuízo.', 'Slide 2 — Você define preço olhando só o concorrente. Confira custo total e margem mínima por produto.', 'Slide 3 — O desconto e o Ads comem a sobra. Recalcule a margem após cada promoção e investimento.', 'Slide 4 — Devoluções, frete e perdas ficam fora da conta. Inclua esses custos no resultado do período.', 'Slide 5 — Falta dinheiro para repor mesmo com vendas crescendo. Investigue margem, prazos e estoque; caixa apertado também pode ter outras causas.', 'Slide 6 — Reconheceu algum sinal? Procure o gargalo antes de aumentar o volume.'],
+      onScreenText: ['VENDA NÃO É GARANTIA DE LUCRO.', 'Preço · Desconto · Custos · Caixa', 'Comenta MENTORIA'],
+      recording: ['Produzir seis lâminas, com um sinal e uma ação concreta em cada uma.'],
+      editing: ['Pouco texto e números de 1 a 4 em destaque.', 'Não usar prints inventados de clientes nem afirmar prejuízo sem análise.'],
+      cta: 'Se você já vende e se identificou com esses sinais, comenta MENTORIA. Minha equipe te explica como funciona o acompanhamento do Gui.',
+      checklist: ['Revisar as distinções entre lucro e fluxo de caixa.', 'Validar CTA e condições atuais do programa.', 'Conferir a leitura das lâminas no celular.'],
+    },
+  },
+  {
+    id: 'gui-editorial-20261031', date: '2026-10-31', time: '', format: 'Reel',
+    title: 'Quando vale a pena começar a importar?', objective: 'Autoridade', status: 'Ideia',
+    brief: {
+      label: 'Importação com estratégia', format: 'Reel · critérios para decidir', duration: '40–60 segundos', ratio: '9:16',
+      summary: 'Responder com critérios práticos, sem sugerir que importar sempre reduz custos ou que basta atingir um faturamento específico.',
+      hook: 'Importar pode melhorar sua margem. Mas, se você entrar antes da hora, pode travar seu caixa.',
+      creativeDirection: 'Gui responde como uma pergunta recebida de seller. Usar quatro critérios em tela, com imagens da operação e exemplos de produto sem revelar informações comerciais sensíveis.',
+      audience: 'Sellers que já vendem e avaliam comprar diretamente de fornecedores internacionais.',
+      steps: ['Confirmar demanda validada e giro do produto, antes de assumir um lote maior.', 'Comparar custo total posto no Brasil, incluindo tributos, frete, câmbio, taxas e operação.', 'Checar capital para lote, reposição e prazo até o estoque voltar a virar caixa.', 'Validar fornecedor, qualidade e exigências aplicáveis com especialistas da operação.', 'Concluir: faz sentido quando demanda, margem e caixa sustentam a decisão; não existe um único faturamento mínimo para todos.'],
+      onScreenText: ['É A HORA DE IMPORTAR?', 'Demanda · Custo total · Caixa · Fornecedor'],
+      recording: ['Fala direta do Gui, intercalada com bastidores autorizados.', 'Não citar alíquotas ou requisitos específicos sem validação atualizada.'],
+      editing: ['Destacar um critério por vez e legendar os pontos principais.', 'Encerrar com convite a salvar os critérios e pedir análise personalizada.'],
+      cta: 'Salva esses critérios. Já vende e quer avaliar seu próximo passo com estratégia? Comenta MENTORIA.',
+      checklist: ['Validar o conteúdo técnico com o Gui e a equipe responsável.', 'Evitar promessa de margem ou prazo.', 'Confirmar CTA antes da publicação manual.'],
+    },
+  },
+];
+
+export const GUI_EDITORIAL_OCTOBER_POSTS = [...GUI_MENTORIA_OCT2026_POSTS, ...GUI_EDITORIAL_ADDITIONS];

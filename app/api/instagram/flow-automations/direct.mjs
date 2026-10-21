@@ -67,10 +67,6 @@ export async function processMentoriaDirectKeywords(payload,db){
   if(!flow)return 0;
   let sent=0;
   for(const event of events){
-    const {data:pausedThread}=await db.from('instagram_direct_threads')
-      .select('automation_paused').eq('account_id',event.accountId)
-      .eq('sender_id',event.senderId).maybeSingle();
-    if(pausedThread?.automation_paused)continue;
     const claimed=await claimDirectMessage(db,event,flow);
     if(!claimed)continue;
     try{

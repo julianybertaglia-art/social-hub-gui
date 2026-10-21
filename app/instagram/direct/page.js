@@ -25,6 +25,7 @@ export default function InstagramDirectPage(){
  const [personalOpen,setPersonalOpen]=useState(false),[search,setSearch]=useState('');
  const [loading,setLoading]=useState(true),[loadingMessages,setLoadingMessages]=useState(false),[busy,setBusy]=useState('');
  const [draft,setDraft]=useState(''),[notice,setNotice]=useState(''),[hasMore,setHasMore]=useState(false);
+ const [syncProgress,setSyncProgress]=useState(''),[pendingCursor,setPendingCursor]=useState(null);
  const selected=threads.find(t=>t.id===selectedId)||null;
  const allowed=workspace.id==='gui-nonato';
 
@@ -77,11 +78,32 @@ export default function InstagramDirectPage(){
  }
  async function sync(){
   setBusy('sync');setNotice('');
+  let cursor=pendingCursor;
+  const sum={reviewed:0,saved:0,checked:0,unavailable:0,failures:0};
+  let finished=false;
   try{
-   const result=await api('/api/instagram/direct/sync',{method:'POST',body:'{}'});
-   await loadThreads();
-   setNotice('Sincronização concluída: '+result.saved+' mensagens consultadas em '+result.reviewed+' conversas. Histórico limitado pela Meta.');
-  }catch(e){setNotice(e.message);}finally{setBusy('');}
+   // Each request imports a bounded Meta page. Repeat until all accessible
+   // conversations active in the last 24 hours have been inspected.
+   for(let index=0;index<20;index++){
+    setSyncProgress('Consultando página '+(index+1)+' · '+sum.reviewed+' conversas verificadas');
+    const result=await api('/api/instagram/direct/sync',{
+      method:'POST',body:JSON.stringify(cursor?{cursor}:{})
+    });
+    for(const key of Object.keys(sum))sum[key]+=Number(result[key]||0);
+    cursor=result.nextCursor||null;
+    setPendingCursor(cursor);
+    await loadThreads({silent:true});
+    if(result.done||!cursor){finished=true;break;}
+   }
+   if(selectedId)await loadMessages(selectedId,{silent:true});
+   const detail=sum.unavailable?' '+sum.unavailable+' mensagens sem conteúdo disponível pela Meta.':'';
+   const warning=sum.failures?' '+sum.failures+' itens não puderam ser consultados.':'';
+   setNotice((finished?'Últimas 24 horas verificadas':'Verificação parcial, há mais páginas para consultar')+
+    ': '+sum.reviewed+' conversas e '+sum.saved+' mensagens processadas.'+detail+warning+
+    (finished?'':' Clique novamente para continuar.'));
+  }catch(e){
+   setNotice(e.message+' Foram verificadas '+sum.reviewed+' conversas. Clique novamente para continuar.');
+  }finally{setSyncProgress('');setBusy('');}
  }
  function chooseFolder(folder){setView(folder);setSelectedId(null);setSearch('');setCategory('all');setKeyword('all');if(folder==='personal')setPersonalOpen(true);}
  if(!allowed)return <section className={styles.unavailable}><h1>Direct · Gui Nonato</h1><p>O Direct do Gui fica disponível apenas no workspace Gui Nonato. As mensagens da Vital Decor permanecem separadas.</p></section>;
@@ -90,7 +112,7 @@ export default function InstagramDirectPage(){
    <div><span className={styles.eyebrow}>INSTAGRAM / @GUI_NONATO</span><h1>Direct</h1><p>Uma caixa exclusiva para conversas do Instagram. O WhatsApp não aparece aqui.</p></div>
    <div className={styles.headerActions}>
     <span className={styles.status}><span/> Integração Meta</span>
-    <button className={styles.sync} onClick={sync} disabled={Boolean(busy)}>{busy==='sync'?'Sincronizando…':'↻ Sincronizar histórico'}</button>
+    <button className={styles.sync} onClick={sync} disabled={Boolean(busy)}>{busy==='sync'?(syncProgress||'Sincronizando…'):(pendingCursor?'↻ Continuar sincronização':'↻ Sincronizar últimas 24h')}</button>
    </div>
   </header>
   {notice&&<div className={styles.notice} role="status">{notice}<button aria-label="Fechar aviso" onClick={()=>setNotice('')}>×</button></div>}
@@ -139,7 +161,7 @@ export default function InstagramDirectPage(){
       <label>Perfil<select value={selected.category} disabled={Boolean(busy)} onChange={e=>patch({category:e.target.value})}>{CATEGORIES.map(c=><option key={c.value} value={c.value}>{c.label}</option>)}</select></label>
      </div>
      <div className={styles.settingsBottom}><label className={styles.switch}><input type="checkbox" checked={selected.automation_paused} disabled={Boolean(busy)} onChange={e=>patch({automationPaused:e.target.checked})}/> Atendimento humano · pausar automações</label><button className={styles.mark} disabled={Boolean(busy)} onClick={()=>patch({needsReply:!selected.needs_reply})}>{selected.needs_reply?'✓ Marcar como respondida':'Marcar para responder'}</button></div>
-     <div className={styles.messages}>{loadingMessages?<p>Carregando histórico…</p>:messages.length===0?<p>Nenhuma mensagem registrada nesta conversa.</p>:messages.map(m=><div key={m.id} className={m.direction==='outbound'?styles.outbound:styles.inbound}><p>{m.body||'['+m.message_type+']'}</p><small>{hours(m.sent_at)}{m.source==='manual'?' · Enviada pelo TidePlace':''}</small></div>)}</div>
+     <div className={styles.messages}>{loadingMessages?<p>Carregando histórico…</p>:messages.length===0?<p>Nenhuma mensagem registrada nesta conversa.</p>:messages.map(m=><div key={m.id} className={m.direction==='outbound'?styles.outbound:styles.inbound}><p>{m.body || (m.message_type==='text'?'Texto não disponibilizado pela Meta':'Mídia não disponibilizada pela Meta')}</p><small>{hours(m.sent_at)}{m.source==='manual'?' · Enviada pelo TidePlace':''}</small></div>)}</div>
      <form className={styles.composer} onSubmit={send}><textarea value={draft} onChange={e=>setDraft(e.target.value)} placeholder={canReply?'Escreva sua resposta ao Direct…':'Aguardando nova mensagem para abrir a janela de atendimento…'} aria-label="Mensagem para o Direct" rows={2} maxLength={1000} disabled={!canReply||busy==='send'}/><div><span>{canReply?'Janela de atendimento aberta · Meta':'A Meta permite resposta livre na janela de 24 horas após a última mensagem recebida.'}</span><button type="submit" disabled={!canReply||!draft.trim()||Boolean(busy)}>{busy==='send'?'Enviando…':'Enviar ↗'}</button></div></form>
     </>}
    </section>

@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { saveWebhookDirect } from '../direct/store.mjs';
 import { after } from 'next/server';
 import { extractTestMessages, processAudioTests } from '../audio-test/service';
 import { processFlowComments, processFlowSelections } from '../flow-automations/service.js';
@@ -88,6 +89,12 @@ export async function POST(request) {
       }
     });
   }
+
+  // Persist private inbox messages independently of all existing automation flows.
+  after(async () => {
+    try { await saveWebhookDirect(payload, serverClient()); }
+    catch (error) { console.error('TIDEPLACE:DIRECT: failed to persist webhook event',String(error?.code||'unknown')); }
+  });
 
   after(async () => {
     try {

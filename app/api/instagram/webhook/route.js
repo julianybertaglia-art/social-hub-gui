@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { saveWebhookDirect } from '../direct/store.mjs';
 import { after } from 'next/server';
 import { extractTestMessages, processAudioTests } from '../audio-test/service';
 import { processFlowComments, processFlowSelections } from '../flow-automations/service.js';
@@ -89,16 +90,39 @@ export async function POST(request) {
     });
   }
 
+  // Persist private inbox messages independently of all existing automation flows.
+  after(async () => {
+    try { await saveWebhookDirect(payload, serverClient()); }
+    catch (error) { console.error('TIDEPLACE:DIRECT: failed to persist webhook event',String(error?.code||'unknown')); }
+  });
+
   after(async () => {
     try {
       // The Gui's keyword/comment flows must never intercept Vital Decor conversations.
       const guiPayload = { ...payload, entry: (payload.entry || [])
         .filter((entry) => String(entry?.id || '') === GUI_INSTAGRAM_ID) };
+      const db = serverClient();
+      const senders = [...new Set(guiPayload.entry.flatMap(entry =>
+        (entry.messaging || []).map(event => String(event?.sender?.id || ''))
+      ).filter(id => /^\d{5,40}$/.test(id)))];
+      let paused = new Set();
+      if (senders.length) {
+        const { data, error } = await db.from('instagram_direct_threads')
+          .select('sender_id').eq('account_id', GUI_INSTAGRAM_ID)
+          .eq('automation_paused', true).in('sender_id', senders);
+        if (!error) paused = new Set((data || []).map(item => String(item.sender_id)));
+      }
+      // Inbound messages are persisted from the original payload. Only the
+      // automation executor is filtered after a human takes ownership.
+      const automationPayload = { ...guiPayload, entry: guiPayload.entry.map(entry => ({
+        ...entry, messaging: (entry.messaging || []).filter(event =>
+          !paused.has(String(event?.sender?.id || '')))
+      })) };
       const [comments, selections, mentoriaDirect, vitalDirect] = await Promise.all([
         processFlowComments(guiPayload),
-        processFlowSelections(guiPayload),
-        processMentoriaDirectKeywords(guiPayload, serverClient()),
-        processVitalInstagramDirect(payload, serverClient()),
+        processFlowSelections(automationPayload, db),
+        processMentoriaDirectKeywords(automationPayload, db),
+        processVitalInstagramDirect(payload, db),
       ]);
       if (comments || selections || mentoriaDirect || vitalDirect) {
         console.info('TIDEPLACE:FLOW', { comments, selections, mentoriaDirect, vitalDirect });

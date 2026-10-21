@@ -46,6 +46,9 @@ jobs:
       - name: Testar palavra Mentoria no Direct do Gui
         run: node --test tests/instagram-direct-mentoria.test.mjs
 
+      - name: Testar caixa independente e segmentação do Direct
+        run: node --test tests/instagram-direct-inbox.test.mjs
+
       - name: Testar redirecionamento Direct Vital para WhatsApp
         run: node --test tests/vital-instagram-direct.test.mjs tests/vital-instagram-automation-panel.test.mjs
 

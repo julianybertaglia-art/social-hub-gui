@@ -12,6 +12,7 @@ export const NAV_GROUPS = [
     label: 'INSTAGRAM',
     items: [
       { href: '/?section=metrics', label: 'Métricas', icon: 'chart', section: 'metrics', description: 'Desempenho do Instagram' },
+      { href: '/instagram/direct', label: 'Direct', icon: 'instagram', only: ['gui-nonato'], description: 'Caixa de entrada separada do WhatsApp' },
       { href: '/automacoes', label: 'Automações', icon: 'instagram', description: 'Direct e comentários do Instagram' },
       { href: '/?section=goals', label: 'Metas', icon: 'target', section: 'goals', description: 'Metas da conta do Instagram' },
       { href: '/?section=calendar', label: 'Calendário', icon: 'calendar', section: 'calendar', description: 'Calendário editorial' },

@@ -80,13 +80,28 @@ export async function saveDirectMessage(db, item, {keywords=[], enrich=true}={})
     },{onConflict:'account_id,sender_id',ignoreDuplicates:true});
     if(insertError)throw insertError;
   }
-  const {error:messageError}=await db.from('instagram_direct_messages').upsert({
-    account_id:accountId,sender_id:senderId,meta_message_id:messageId,
-    direction,body:text,
-    message_type:String(item.type||'text').slice(0,40),
-    source:String(item.source||'webhook').slice(0,30),sent_at:when
-  },{onConflict:'account_id,meta_message_id',ignoreDuplicates:true});
-  if(messageError)throw messageError;
+  // Previous syncs imported IDs without the real message text. Repair those
+  // rows when Meta returns details, without overwriting a valid manual reply.
+  const {data:oldMessage,error:oldError}=await db.from('instagram_direct_messages')
+    .select('id,body,source').eq('account_id',accountId)
+    .eq('meta_message_id',messageId).maybeSingle();
+  if(oldError)throw oldError;
+  const isPlaceholder=(body)=>!String(body||'').trim() || /^\\[(text|attachment|Mídia ou mensagem sem texto|mensagem)\\]$/i.test(String(body).trim());
+  const canRepair=oldMessage && !isPlaceholder(text) && isPlaceholder(oldMessage.body);
+  if(canRepair){
+    const {error}=await db.from('instagram_direct_messages').update({
+      body:text,message_type:String(item.type||'text').slice(0,40),
+      source:String(item.source||'meta-history').slice(0,30)
+    }).eq('id',oldMessage.id).eq('account_id',accountId);
+    if(error)throw error;
+  }else if(!oldMessage){
+    const {error}=await db.from('instagram_direct_messages').upsert({
+      account_id:accountId,sender_id:senderId,meta_message_id:messageId,
+      direction,body:text,message_type:String(item.type||'text').slice(0,40),
+      source:String(item.source||'webhook').slice(0,30),sent_at:when
+    },{onConflict:'account_id,meta_message_id',ignoreDuplicates:true});
+    if(error)throw error;
+  }
   const match=direction==='inbound'?keywordFromText(text,keywords):null;
   const inferredCategory=direction==='inbound'?classifyDirect(text):'unclassified';
   const newest=!existing?.last_message_at || new Date(when)>=new Date(existing.last_message_at);
@@ -101,8 +116,9 @@ export async function saveDirectMessage(db, item, {keywords=[], enrich=true}={})
   if(inferredCategory!=='unclassified' && !existing?.category_manual && existing?.category==='unclassified') patch.category=inferredCategory;
   if(newest){
     patch.last_message_at=when;
-    patch.last_excerpt=text.slice(0,230) || '['+String(item.type||'mensagem')+']';
-    patch.needs_reply=direction==='inbound';
+    // Never replace a previously known body with a blank Meta response.
+    if(text.trim() && (!oldMessage || canRepair)) patch.last_excerpt=text.slice(0,230);
+    if(!oldMessage) patch.needs_reply=direction==='inbound';
   }
   if(direction==='inbound' && (!existing?.last_inbound_at || new Date(when)>new Date(existing.last_inbound_at)))patch.last_inbound_at=when;
   const {error:updateError}=await db.from('instagram_direct_threads').update(patch)

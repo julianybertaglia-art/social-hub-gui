@@ -1,9 +1,21 @@
+import { classifyBeginner } from '../beginner-flow.mjs';
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 // redeploy-gemini-main
 // health-check-gemini-ready
 
-export async function GET() {
+export async function GET(request) {
+  // Static synthetic probe only: no lead data, contacts or WhatsApp sends.
+  if (request && new URL(request.url).searchParams.get('flow') === 'beginner') {
+    try {
+      const result = await classifyBeginner('Equipe: Você está começando do zero ou já tentou vender?\nLead: Nunca vendi e ainda estou procurando um produto para começar.');
+      const ok = result.intent === 'answer' && result.profile === 'zero' && result.product === 'searching' && result.confidence >= 0.8;
+      return Response.json({ ok, flow: 'beginner', classification: result }, { status: ok ? 200 : 503, headers: { 'Cache-Control': 'no-store' } });
+    } catch {
+      return Response.json({ ok: false, flow: 'beginner', error: 'A classificação não está disponível; o fluxo encaminha para atendimento humano.' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+    }
+  }
   const geminiKey = String(process.env.GEMINI_API_KEY || '').trim();
 
   if (geminiKey) {

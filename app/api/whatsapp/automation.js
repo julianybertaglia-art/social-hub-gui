@@ -4,6 +4,7 @@ import {
   sendWhatsAppText,
 } from './lib.js';
 import { sendWhatsAppReplyButtons } from './reply-buttons.js';
+import { startBeginnerFlow, processBeginnerFlow } from './beginner-flow.mjs';
 
 export const WHATSAPP_MENU_ROWS = [
   {
@@ -67,11 +68,6 @@ const TOPICS = {
     topic: 'Imersão',
     tag: 'Interesse — Imersão',
     text: 'Claro! A Imersão Ecommerce Mercado Livre Pro acontece no dia 26/09, no Tatuapé, em São Paulo. É um dia inteiro com o Gui, focado em operação e escala, análise de mercado, importação, estratégias para Mercado Livre e networking.\n\nAntes de eu te passar o ingresso, me conta: você já vende no Mercado Livre hoje ou ainda está começando?',
-  },
-  topic_mercado_livre: {
-    topic: 'Mercado Livre',
-    tag: 'Interesse — Começar no Mercado Livre',
-    text: 'Legal 😊 Antes de eu te indicar qualquer coisa, quero entender um pouquinho do seu momento. Hoje você trabalha CLT ou já tem algum negócio/atividade por conta própria?',
   },
   topic_mentoria: {
     topic: 'Mentoria',
@@ -392,7 +388,7 @@ async function sendImersaoLanding(supabase, contact, { source = 'ad' } = {}) {
 
 async function getAutomationSession(supabase, contactId) {
   const { data, error } = await supabase.from('whatsapp_automation_sessions')
-    .select('contact_id,current_topic,state,last_interaction_at')
+    .select('contact_id,current_topic,state,last_interaction_at,updated_at')
     .eq('contact_id', contactId)
     .maybeSingle();
   if (error) throw error;
@@ -524,6 +520,11 @@ async function influencerApplicationLink(supabase, contact, origin) {
 async function selectTopic(supabase, contact, selectionId, origin) {
   const now = new Date().toISOString();
 
+  if (selectionId === 'topic_mercado_livre') {
+    await startBeginnerFlow(supabase, contact);
+    return true;
+  }
+
   if (selectionId === 'topic_importacao') {
     await startImportacao(supabase, contact);
     return true;
@@ -618,6 +619,10 @@ export async function processWhatsAppAutomation(supabase, {
     if (countError) throw countError;
 
     const session = await getAutomationSession(supabase, contact.id);
+    if (!requestsMainMenu(message) && await processBeginnerFlow(supabase, { contact, message, session })) {
+      await finishEvent(supabase, messageId, 'processed');
+      return { handled: true, action: 'beginner_sales_conversation' };
+    }
     if (await handleImportacaoAnswer(supabase, contact, message, session)) {
       await finishEvent(supabase, messageId, 'processed');
       return { handled: true, action: 'importacao_qualification' };

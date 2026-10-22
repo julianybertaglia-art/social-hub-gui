@@ -180,7 +180,7 @@ Responda APENAS JSON válido neste formato:
 }`;
 }
 
-async function callAi({ model, system, history }) {
+export async function callAi({ model, system, history }) {
   const geminiKey = String(process.env.GEMINI_API_KEY || '').trim();
 
   if (geminiKey) {

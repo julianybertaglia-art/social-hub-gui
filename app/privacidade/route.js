@@ -22,12 +22,13 @@ export async function GET() {
   <main>
     <p class="eyebrow">GUI SOCIAL HUB</p>
     <h1>Política de Privacidade</h1>
-    <p class="updated">Última atualização: 27 de agosto de 2026.</p>
+    <p class="updated">Última atualização: 22 de outubro de 2026.</p>
 
     <p>Esta Política de Privacidade descreve como o Gui Social Hub trata informações obtidas por meio das integrações oficiais da Meta e do Instagram para apoiar a gestão de conteúdo, comentários, mensagens e relacionamento com a audiência do perfil conectado.</p>
 
     <h2>1. Informações tratadas</h2>
     <p>Quando autorizado pelo titular da conta profissional do Instagram, o Gui Social Hub pode receber e processar dados disponibilizados pela API oficial, como identificadores de conta, nome de usuário, comentários, mensagens, informações básicas de mídia e dados necessários para executar automações configuradas pelo administrador da conta.</p>
+    <p>Nos formulários de candidatura à consultoria do Gui Nonato, recebemos os dados fornecidos pelo participante: nome, WhatsApp, Instagram, experiência, faixa de faturamento, produto ou nicho, link opcional da loja, dificuldade relatada e preferência sobre participação em conteúdos. Também registramos as escolhas de autorização e informações técnicas de segurança para evitar envios repetidos.</p>
 
     <h2>2. Finalidades</h2>
     <p>Os dados são utilizados exclusivamente para operar funcionalidades autorizadas, incluindo:</p>
@@ -36,6 +37,8 @@ export async function GET() {
       <li>responder a interações conforme regras configuradas pelo administrador;</li>
       <li>registrar leads e histórico de atendimento;</li>
       <li>apresentar métricas e informações de gestão dentro do Hub.</li>
+      <li>analisar candidaturas às consultorias e entrar em contato com os selecionados pelo WhatsApp;</li>
+      <li>enviar conteúdos e informações sobre treinamentos e mentoria somente quando o participante escolher receber essas comunicações no formulário.</li>
     </ul>
 
     <h2>3. Compartilhamento</h2>

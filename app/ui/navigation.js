@@ -31,6 +31,7 @@ export const NAV_GROUPS = [
     label: 'CRM · WHATSAPP',
     items: [
       { href: '/crm', label: 'Funil e indicadores', icon: 'chart', description: 'Oportunidades e atendimento por setor' },
+      { href: '/crm/consultorias', label: 'Consultorias', icon: 'users', only: ['gui-nonato'], description: 'Candidaturas e seleção para a consultoria do Gui' },
       { href: '/whatsapp', label: 'Caixa de entrada', icon: 'chat', only: ['gui-nonato'], description: 'CRM e mensagens do Gui' },
       { href: '/whatsapp', label: 'Caixa geral', icon: 'chat', only: ['vital-decor'], description: 'Todas as mensagens da Vital Decor' },
       { href: '/whatsapp/setores', label: 'Meus setores', icon: 'users', only: ['vital-decor'], description: 'Conversas atribuídas ao seu atendimento' },

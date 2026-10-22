@@ -5,7 +5,7 @@ const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300
 const MENTORIA_KEYWORD = 'MENTORIA';
 const DIRECT_RECEIPTS = 'instagram_direct_keyword_deliveries';
 
-export function extractMentoriaDirectMessages(payload) {
+function extractKeywordDirectMessages(payload, keyword) {
   if (payload?.object !== 'instagram' || !Array.isArray(payload.entry)) return [];
   return payload.entry.flatMap(entry => {
     const accountId = String(entry?.id || '');
@@ -23,15 +23,18 @@ export function extractMentoriaDirectMessages(payload) {
          message.is_echo || message.is_deleted || message.is_unsupported ||
          message.quick_reply || event.postback ||
          event.reaction || message.attachments ||
-         !/(^|[^A-Z0-9])MENTORIA(?=$|[^A-Z0-9])/.test(text)) return [];
+         !(new RegExp('(^|[^A-Z0-9])' + keyword + '(?=$|[^A-Z0-9])')).test(text)) return [];
       const timestamp=Number(event.timestamp);
       // Old notification replays must not message someone out of the blue.
       if(Number.isFinite(timestamp) && timestamp>0 &&
         (timestamp<Date.now()-24*60*60*1000 || timestamp>Date.now()+5*60*1000))return [];
-      return [{ accountId,senderId,messageId,keyword:MENTORIA_KEYWORD }];
+      return [{ accountId,senderId,messageId,keyword }];
     });
   });
 }
+
+export const extractMentoriaDirectMessages = payload => extractKeywordDirectMessages(payload, MENTORIA_KEYWORD);
+export const extractConsultoriaDirectMessages = payload => extractKeywordDirectMessages(payload, 'CONSULTORIA');
 
 async function claimDirectMessage(db,event,flow) {
   // Primary key (account_id,message_id) makes a Meta retry a no-op.
@@ -58,12 +61,12 @@ async function updateReceipt(db,event,status,errorMessage=null) {
   if(error)console.error('TIDEPLACE:DIRECT: não foi possível atualizar o status da resposta.');
 }
 
-export async function processMentoriaDirectKeywords(payload,db){
-  const events=extractMentoriaDirectMessages(payload);
+async function processKeywordDirect(payload,db,keyword){
+  const events=extractKeywordDirectMessages(payload,keyword);
   if(!events.length)return 0;
   const flows=(await loadLatestFlows(db)).filter(flow=>flow.active);
   // The exact configured comment flow is the source of truth for the Direct.
-  const flow=flows.find(f=>normalize(f.keyword)===MENTORIA_KEYWORD);
+  const flow=flows.find(f=>normalize(f.keyword)===keyword);
   if(!flow)return 0;
   let sent=0;
   for(const event of events){
@@ -80,8 +83,11 @@ export async function processMentoriaDirectKeywords(payload,db){
     }catch(error){
       // Never auto-retry. The Meta may have accepted a message before timing out.
       await updateReceipt(db,event,'failed',String(error?.message||'Falha no envio.').slice(0,300));
-      console.error('TIDEPLACE:DIRECT: falha ao enviar resposta de Mentoria.');
+      console.error('TIDEPLACE:DIRECT: falha ao enviar resposta de palavra-chave.');
     }
   }
   return sent;
 }
+
+export const processMentoriaDirectKeywords = (payload,db) => processKeywordDirect(payload,db,MENTORIA_KEYWORD);
+export const processConsultoriaDirectKeywords = (payload,db) => processKeywordDirect(payload,db,'CONSULTORIA');

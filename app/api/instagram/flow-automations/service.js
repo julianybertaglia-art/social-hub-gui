@@ -421,6 +421,8 @@ export async function processFlowComments(payload, db = null) {
     if (!flow) continue;
 
     const eventId = await claimEvent(db, event, flow);
+    // A webhook retry or a failed durable claim must never send a duplicate.
+    if (!eventId) continue;
     const replies = flow.publicReplies.filter(Boolean);
     const publicReply = replies.length ? replies[(Math.max(1, eventId) - 1) % replies.length] : '';
 

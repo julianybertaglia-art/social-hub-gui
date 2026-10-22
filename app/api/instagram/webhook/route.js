@@ -3,7 +3,7 @@ import { saveWebhookDirect } from '../direct/store.mjs';
 import { after } from 'next/server';
 import { extractTestMessages, processAudioTests } from '../audio-test/service';
 import { processFlowComments, processFlowSelections } from '../flow-automations/service.js';
-import { processMentoriaDirectKeywords } from '../flow-automations/direct.mjs';
+import { processMentoriaDirectKeywords, processConsultoriaDirectKeywords } from '../flow-automations/direct.mjs';
 import { serverClient } from '../audio-automation/service.js';
 import { processVitalInstagramDirect } from '../../vital-connections/instagram/direct.mjs';
 import { GUI_INSTAGRAM_ID } from '../../vital-connections/helpers.mjs';
@@ -118,14 +118,15 @@ export async function POST(request) {
         ...entry, messaging: (entry.messaging || []).filter(event =>
           !paused.has(String(event?.sender?.id || '')))
       })) };
-      const [comments, selections, mentoriaDirect, vitalDirect] = await Promise.all([
+      const [comments, selections, mentoriaDirect, consultoriaDirect, vitalDirect] = await Promise.all([
         processFlowComments(guiPayload),
         processFlowSelections(automationPayload, db),
         processMentoriaDirectKeywords(automationPayload, db),
+        processConsultoriaDirectKeywords(automationPayload, db),
         processVitalInstagramDirect(payload, db),
       ]);
-      if (comments || selections || mentoriaDirect || vitalDirect) {
-        console.info('TIDEPLACE:FLOW', { comments, selections, mentoriaDirect, vitalDirect });
+      if (comments || selections || mentoriaDirect || consultoriaDirect || vitalDirect) {
+        console.info('TIDEPLACE:FLOW', { comments, selections, mentoriaDirect, consultoriaDirect, vitalDirect });
       }
     } catch (error) {
       console.error('TIDEPLACE:FLOW: falha no processamento', error instanceof Error ? error.message : String(error));

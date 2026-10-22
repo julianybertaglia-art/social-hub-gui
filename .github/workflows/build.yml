@@ -46,6 +46,9 @@ jobs:
       - name: Testar palavra Mentoria no Direct do Gui
         run: node --test tests/instagram-direct-mentoria.test.mjs
 
+      - name: Testar formulário e automação de consultoria
+        run: node --test tests/consultoria.test.mjs
+
       - name: Verificar correção dos Directs das últimas 24 horas
         run: node --test tests/instagram-direct-sync-last24h.test.mjs
 

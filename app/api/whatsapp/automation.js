@@ -73,11 +73,6 @@ const TOPICS = {
     tag: 'Interesse — Começar no Mercado Livre',
     text: 'Legal 😊 Antes de eu te indicar qualquer coisa, quero entender um pouquinho do seu momento. Hoje você trabalha CLT ou já tem algum negócio/atividade por conta própria?',
   },
-  topic_importacao: {
-    topic: 'Importação',
-    tag: 'Interesse — Importação',
-    text: 'A importação costuma fazer mais sentido para quem já tem um produto validado. Me conte: você já vende algum produto e tem capital disponível para uma primeira operação?',
-  },
   topic_mentoria: {
     topic: 'Mentoria',
     tag: 'Interesse — Mentoria',
@@ -89,6 +84,121 @@ const TOPICS = {
     text: 'Pode me contar em uma frase o que você precisa? Assim eu encaminho para a pessoa certa da equipe.',
   },
 };
+
+// The qualification previously used in Instagram now runs in the Gui WhatsApp menu.
+export const IMPORTACAO_QUESTIONS = [
+  {
+    key: 'operacao',
+    tag: 'Operação',
+    text: 'Antes de te explicar melhor sobre importação, quero entender um pouco do seu momento atual 👇\n\nHoje você já tem uma operação de vendas? Toque na opção que melhor representa seu momento atual.',
+    buttons: [
+      { id: 'importacao_operacao_sim', title: 'Sim, já vendo' },
+      { id: 'importacao_operacao_comecando', title: 'Começando agora' },
+      { id: 'importacao_operacao_nao', title: 'Ainda não vendo' },
+    ],
+  },
+  {
+    key: 'experiencia',
+    tag: 'Experiência',
+    text: 'E você já fez alguma importação anteriormente?',
+    buttons: [
+      { id: 'importacao_experiencia_sim', title: 'Sim, já importei' },
+      { id: 'importacao_experiencia_pesquisei', title: 'Só pesquisei' },
+      { id: 'importacao_experiencia_nunca', title: 'Nunca importei' },
+    ],
+  },
+  {
+    key: 'produto',
+    tag: 'Produto',
+    text: 'Hoje você já tem algum produto validado, que vende e que gostaria de importar?',
+    buttons: [
+      { id: 'importacao_produto_validado', title: 'Produto validado' },
+      { id: 'importacao_produto_mente', title: 'Alguns em mente' },
+      { id: 'importacao_produto_buscando', title: 'Buscando produto' },
+    ],
+  },
+  {
+    key: 'investimento',
+    tag: 'Investimento',
+    text: 'Para eu entender melhor qual caminho faz sentido para você:\n\nQuanto você pretende investir inicialmente em uma importação?',
+    buttons: [
+      { id: 'importacao_investimento_5', title: 'Até R$ 5 mil' },
+      { id: 'importacao_investimento_100', title: 'Até R$ 100 mil' },
+      { id: 'importacao_investimento_500mais', title: 'Mais de R$ 500 mil' },
+    ],
+  },
+];
+
+function importacaoState(question) {
+  return 'importacao_waiting_' + question.key;
+}
+
+async function sendImportacaoQuestion(supabase, contact, index) {
+  const question = IMPORTACAO_QUESTIONS[index];
+  await sendAndStoreReplyButtons(supabase, contact, question.text, question.buttons);
+  const now = new Date().toISOString();
+  const { error } = await supabase.from('whatsapp_automation_sessions').upsert({
+    contact_id: contact.id,
+    current_topic: 'Importação',
+    state: importacaoState(question),
+    last_interaction_at: now,
+    updated_at: now,
+  }, { onConflict: 'contact_id' });
+  if (error) throw error;
+}
+
+async function startImportacao(supabase, contact) {
+  // Starting again replaces the previous qualification rather than mixing answers.
+  const tags = (Array.isArray(contact.tags) ? contact.tags : [])
+    .filter((tag) => !String(tag).startsWith('Importação · '));
+  const { error } = await supabase.from('whatsapp_contacts')
+    .update({ tags, updated_at: new Date().toISOString() }).eq('id', contact.id);
+  if (error) throw error;
+  contact.tags = tags;
+  await tagContact(supabase, contact, 'Interesse — Importação');
+  await sendImportacaoQuestion(supabase, contact, 0);
+}
+
+async function handleImportacaoAnswer(supabase, contact, message, session) {
+  const selectionId = interactiveSelectionId(message);
+  const index = IMPORTACAO_QUESTIONS.findIndex((question) => importacaoState(question) === session?.state);
+  const question = IMPORTACAO_QUESTIONS[index];
+  if (session?.current_topic !== 'Importação' || !question) {
+    // Expired/replayed buttons must never restart or advance a different topic.
+    return selectionId.startsWith('importacao_');
+  }
+  if (requestsMainMenu(message)) return false;
+  const answer = question.buttons.find((button) => button.id === selectionId);
+  if (!answer) {
+    await sendAndStoreReplyButtons(supabase, contact,
+      'Para continuar, toque em uma das opções desta pergunta 👇\n\n' + question.text,
+      question.buttons);
+    return true;
+  }
+  await tagContact(supabase, contact, 'Importação · ' + question.tag + ': ' + answer.title);
+  if (index < IMPORTACAO_QUESTIONS.length - 1) {
+    await sendImportacaoQuestion(supabase, contact, index + 1);
+    return true;
+  }
+
+  await sendAndStoreText(supabase, contact,
+    'Obrigado pelas respostas! 🙌\n\nNossa equipe vai analisar o seu momento e continuar o atendimento por aqui.');
+  await tagContact(supabase, contact, 'Importação · Qualificação concluída');
+  await tagContact(supabase, contact, 'Aguardando atendimento');
+  const now = new Date().toISOString();
+  const { error: contactError } = await supabase.from('whatsapp_contacts')
+    .update({ stage: 'Aguardando atendimento', updated_at: now }).eq('id', contact.id);
+  if (contactError) throw contactError;
+  const { error } = await supabase.from('whatsapp_automation_sessions').upsert({
+    contact_id: contact.id,
+    current_topic: 'Importação',
+    state: 'importacao_awaiting_human',
+    last_interaction_at: now,
+    updated_at: now,
+  }, { onConflict: 'contact_id' });
+  if (error) throw error;
+  return true;
+}
 
 function normalizeText(value) {
   return String(value || '')
@@ -414,6 +524,11 @@ async function influencerApplicationLink(supabase, contact, origin) {
 async function selectTopic(supabase, contact, selectionId, origin) {
   const now = new Date().toISOString();
 
+  if (selectionId === 'topic_importacao') {
+    await startImportacao(supabase, contact);
+    return true;
+  }
+
   if (selectionId === 'topic_imersao') {
     await sendImersaoLanding(supabase, contact, { source: 'organic' });
     return true;
@@ -503,6 +618,11 @@ export async function processWhatsAppAutomation(supabase, {
     if (countError) throw countError;
 
     const session = await getAutomationSession(supabase, contact.id);
+    if (await handleImportacaoAnswer(supabase, contact, message, session)) {
+      await finishEvent(supabase, messageId, 'processed');
+      return { handled: true, action: 'importacao_qualification' };
+    }
+
     if (session?.state === 'ad_imersao_waiting_next_action' && message?.type === 'text') {
       await markAwaitingHuman(supabase, contact);
       await finishEvent(supabase, messageId, 'processed');

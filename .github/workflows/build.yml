@@ -26,7 +26,7 @@ jobs:
         run: node --test tests/instagram-audio.test.mjs
 
       - name: Verificar saudação e atendimento WhatsApp
-        run: node --test tests/whatsapp-influencer-automation.test.mjs
+        run: node --test tests/whatsapp-influencer-automation.test.mjs tests/whatsapp-importacao.test.mjs
 
       - name: Testar retorno à guia sem carregamento
         run: node --test tests/tideplace-tab-resume.test.mjs

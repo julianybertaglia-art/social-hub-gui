@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 function html(options, status = 200) {
   return new Response(consultoriaHtml(options), { status, headers: {
     'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store, max-age=0',
-    'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+    'Content-Security-Policy': "default-src 'none'; style-src 'self'; img-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
     'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
   } });

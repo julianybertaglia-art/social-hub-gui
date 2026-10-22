@@ -7,7 +7,7 @@ import { saveConsultoria } from '../app/consultoria/service.mjs';
 import { GET as publicGet, POST as publicPost } from '../app/consultoria/route.js';
 import { GET as privateGet, PATCH as privatePatch } from '../app/api/consultoria/route.js';
 import { extractConsultoriaDirectMessages, processConsultoriaDirectKeywords } from '../app/api/instagram/flow-automations/direct.mjs';
-import { processFlowComments } from '../app/api/instagram/flow-automations/service.js';
+import { buttonTemplate, processFlowComments } from '../app/api/instagram/flow-automations/service.js';
 
 const values = () => ({ name: 'Pessoa de teste', phone: '(11) 99999-0000', instagram: '@teste.seller',
   experience: 'seller', revenue: '50k_100k', product: 'Casa e decoração', challenge: 'Vendo, mas tenho dificuldade para calcular a margem dos anúncios.',
@@ -113,7 +113,7 @@ function flowDb() {
     throw new Error('Unexpected table ' + table);
   } };
 }
-test('comments and private keyword send the real form and disclaimer exactly once, with no WhatsApp detour', async () => {
+test('comments and private keyword send one form URL button and disclaimer without displaying the long URL', async () => {
   const originalFetch = globalThis.fetch, token = process.env.META_INSTAGRAM_ACCESS_TOKEN;
   const sent = []; process.env.META_INSTAGRAM_ACCESS_TOKEN = 'test-token';
   globalThis.fetch = async (url, options) => { sent.push(JSON.parse(options.body)); return { ok: true, json: async () => ({ message_id: 'mid.sent' }) }; };
@@ -121,13 +121,28 @@ test('comments and private keyword send the real form and disclaimer exactly onc
     const db = flowDb();
     assert.equal(await processConsultoriaDirectKeywords(payload('CONSULTORIA'), db), 1);
     assert.equal(await processConsultoriaDirectKeywords(payload('CONSULTORIA'), db), 0);
-    assert.equal(sent.length, 1); assert.equal(sent[0].message.text, CONSULTORIA_DIRECT); assert.equal(sent[0].message.attachment, undefined);
+    assert.equal(sent.length, 1);
+    const template = sent[0].message.attachment.payload;
+    assert.equal(template.template_type, 'button');
+    assert.match(template.text, /30 minutos/);
+    assert.match(template.text, /vagas são limitadas/);
+    assert.match(template.text, /não garante a vaga/);
+    assert.ok(!template.text.includes(CONSULTORIA_URL));
+    assert.deepEqual(template.buttons, [{ type: 'web_url', title: 'Preencher formulário', url: CONSULTORIA_URL }]);
+    assert.ok(template.buttons[0].title.length <= 20);
     const comment = { object: 'instagram', entry: [{ id: gui, changes: [{ field: 'comments', value: { id: 'comment.1', text: 'CONSULTORIA', from: { username: 'teste' } } }] }] };
     assert.equal(await processFlowComments(comment, db), 1); assert.equal(await processFlowComments(comment, db), 0);
     assert.equal(sent.length, 2); assert.equal(sent[1].recipient.comment_id, 'comment.1');
-    assert.equal(sent[1].message.text, CONSULTORIA_DIRECT);
+    assert.deepEqual(sent[1].message.attachment.payload, template);
   } finally {
     globalThis.fetch = originalFetch;
     if (token === undefined) delete process.env.META_INSTAGRAM_ACCESS_TOKEN; else process.env.META_INSTAGRAM_ACCESS_TOKEN = token;
   }
+});
+
+test('form URL conversion is scoped to CONSULTORIA and never mutates the saved text', () => {
+  const original = JSON.stringify(flow);
+  assert.equal(buttonTemplate({ ...flow, keyword: 'OUTRO' }, flow.start), null);
+  assert.ok(buttonTemplate(flow, flow.start));
+  assert.equal(JSON.stringify(flow), original);
 });

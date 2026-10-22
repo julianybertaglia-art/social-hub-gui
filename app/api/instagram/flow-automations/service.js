@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { upgradeGuiWhatsappNode, guiWhatsappButtonTemplate, GUI_WHATSAPP_URL } from '../../../lib/gui-whatsapp-cta.mjs';
+import { CONSULTORIA_URL } from '../../../lib/consultoria.mjs';
 
 export const FLOW_STORAGE_KEY = 'tideplace-instagram-flow-automations';
 export const STATE_TITLE = '__SOCIAL_HUB_STATE__';
@@ -270,6 +271,7 @@ function quickReplies(flow, node, { includeAudioAction = false } = {}) {
 }
 
 export function buttonTemplate(flow, node, { includeAudioAction = false } = {}) {
+  let text = String(node?.text || '');
   const buttons = (node?.buttons || []).map((button) => ({
     type: 'postback',
     title: button.label,
@@ -286,15 +288,22 @@ export function buttonTemplate(flow, node, { includeAudioAction = false } = {}) 
 
   if (node?.whatsappButton) buttons.push(guiWhatsappButtonTemplate().attachment.payload.buttons[0]);
 
+  // Only the consultation campaign turns its official form URL into a URL action.
+  // Keep the saved copy intact so edits in the existing builder still round-trip.
+  if (normalizeText(flow?.keyword) === 'CONSULTORIA' && text.includes(CONSULTORIA_URL)) {
+    buttons.push({ type: 'web_url', title: 'Preencher formulário', url: CONSULTORIA_URL });
+    text = text.replaceAll(CONSULTORIA_URL, '').replace(/:\s*\n/g, '.\n\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
   // Meta button templates support up to 3 actions and only 640 characters.
   // Longer user-provided prompts must be sent as text, with the CTA separately.
-  if (!buttons.length || buttons.length > 3 || String(node?.text || '').length > 640) return null;
+  if (!buttons.length || buttons.length > 3 || text.length > 640) return null;
   return {
     attachment: {
       type: 'template',
       payload: {
         template_type: 'button',
-        text: node?.text || 'Escolha uma opção:',
+        text: text || 'Escolha uma opção:',
         buttons,
       },
     },

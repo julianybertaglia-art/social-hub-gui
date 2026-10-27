@@ -31,6 +31,7 @@ function pageLabel(pathname) {
   if (pathname.startsWith('/whatsapp/grupos')) return 'WhatsApp · Grupos';
   if (pathname.startsWith('/whatsapp/gato')) return 'WhatsApp · Gato';
   if (pathname === '/whatsapp') return 'WhatsApp · Caixa de entrada';
+  if (pathname.startsWith('/youtube')) return 'YouTube · Conexão';
   if (pathname.startsWith('/instagram/direct')) return 'Instagram · Direct';
   if (pathname.startsWith('/automacoes')) return 'Instagram · Automações';
   return 'Central estratégica';
@@ -62,7 +63,7 @@ export default function HubFrame({ children }) {
     window.dispatchEvent(new CustomEvent('tideplace:section-change', { detail: { section: next } }));
   }
 
-  const framed = pathname === '/' || pathname.startsWith('/whatsapp') || pathname.startsWith('/automacoes') || pathname.startsWith('/instagram') || pathname.startsWith('/tiktok') || pathname.startsWith('/admin') || pathname.startsWith('/criar-post') || pathname.startsWith('/crm') || pathname.startsWith('/conteudo') || pathname.startsWith('/radar');
+  const framed = pathname === '/' || pathname.startsWith('/whatsapp') || pathname.startsWith('/automacoes') || pathname.startsWith('/instagram') || pathname.startsWith('/tiktok') || pathname.startsWith('/youtube') || pathname.startsWith('/admin') || pathname.startsWith('/criar-post') || pathname.startsWith('/crm') || pathname.startsWith('/conteudo') || pathname.startsWith('/radar');
   if (!framed) return children;
 
   return (
@@ -132,7 +133,7 @@ export default function HubFrame({ children }) {
           </div>
         </header>
         <div className={styles.body}>
-          {workspace.id === 'gui-nonato' ? children : pathname === '/' ? children : pathname.startsWith('/admin') || pathname.startsWith('/criar-post') || pathname.startsWith('/crm') || pathname.startsWith('/conteudo') || pathname.startsWith('/radar') || pathname.startsWith('/instagram') ? children : pathname.startsWith('/tiktok') ? (
+          {workspace.id === 'gui-nonato' ? children : pathname === '/' ? children : pathname.startsWith('/admin') || pathname.startsWith('/criar-post') || pathname.startsWith('/crm') || pathname.startsWith('/conteudo') || pathname.startsWith('/radar') || pathname.startsWith('/instagram') || pathname.startsWith('/youtube') ? children : pathname.startsWith('/tiktok') ? (
             <VitalAffiliatePanel />
           ) : pathname === '/whatsapp' || pathname === '/whatsapp/setores' ? (
             <VitalWhatsAppInbox view={pathname === '/whatsapp/setores' ? 'mine' : 'all'} />

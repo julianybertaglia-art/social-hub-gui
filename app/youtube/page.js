@@ -120,6 +120,13 @@ export default function YoutubeConnectionPage() {
         {status?.connected && <button type="button" className={styles.secondary} disabled={busy} onClick={disconnect}>Desconectar</button>}
       </div>
     </section>
+    {status?.connected && <section className={styles.panel}>
+      <h2>Testar envio de um Short</h2>
+      <p>Seu canal já está autorizado. Use a nova tela de publicação para enviar um vídeo privado pelo TidePlace.</p>
+      <div className={styles.actions}>
+        <Link href="/youtube/publicar" className={styles.primary} style={{textDecoration:'none',display:'inline-block'}}>Publicar Short privado →</Link>
+      </div>
+    </section>}
     <section className={styles.panel}>
       <h2>Próximas funcionalidades</h2>
       <div className={styles.features}>

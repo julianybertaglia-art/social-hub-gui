@@ -23,6 +23,7 @@ export const NAV_GROUPS = [
     label: 'YOUTUBE',
     items: [
       { href: '/youtube', label: 'Conectar canal', icon: 'play', only: ['gui-nonato'], description: 'Autorizar o canal do Gui e gerenciar a conexão com o Google' },
+      { href: '/youtube/publicar', label: 'Publicar Shorts', icon: 'upload', only: ['gui-nonato'], description: 'Enviar um vídeo privado de teste diretamente para o YouTube do Gui' },
     ],
   },
   {

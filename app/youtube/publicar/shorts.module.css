@@ -1,0 +1,49 @@
+.page{max-width:1260px;margin:0 auto;padding:30px 28px 76px;color:var(--text,#272026);display:grid;gap:20px}
+.heading{display:flex;justify-content:space-between;align-items:center;gap:22px}
+.heading h1{font-size:clamp(28px,3vw,39px);letter-spacing:-.04em;line-height:1.15;margin:8px 0}
+.heading p,.panel p{color:var(--text-muted,#73717b);margin:5px 0;line-height:1.55}
+.eyebrow{color:#934760;text-transform:uppercase;font-size:11px;font-weight:850;letter-spacing:.13em}
+.back,.refresh{border:1px solid #d9c5ce;border-radius:11px;color:#7b314d;text-decoration:none;background:transparent;font-size:13px;font-weight:700;padding:11px 14px;white-space:nowrap;cursor:pointer}
+.notice{padding:17px 21px;background:rgba(141,83,103,.05);border:1px solid #e4d1d8;border-radius:14px}
+.notice strong{display:block;font-size:14px;color:#8e385a}
+.notice p{color:var(--text-muted,#69666c);margin:6px 0 0;font-size:13px;line-height:1.55}
+.layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(285px,.8fr);align-items:start;gap:20px}
+.panel{border:1px solid rgba(143,108,124,.23);background:var(--surface,#fff);border-radius:19px;padding:24px;box-shadow:0 14px 33px rgba(45,24,33,.035)}
+.sectionHeading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:21px}
+.sectionHeading h2{font-size:20px;margin:0;letter-spacing:-.025em}
+.sectionHeading p{font-size:13px}
+.privateBadge{font-size:12px;padding:7px 11px;border-radius:999px;background:#f3ebef;border:1px solid #e3ccd6;color:#71314a;font-weight:750}
+.form{display:grid;gap:17px}
+.uploadArea{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:30px 14px;text-align:center;border:1.6px dashed #c9aeb9;border-radius:15px;cursor:pointer;background:rgba(133,62,89,.027);transition:background .2s}
+.uploadArea:hover{background:rgba(133,62,89,.06)}
+.uploadGlyph{font-size:40px;color:#924260;font-weight:400;line-height:1}
+.uploadArea strong{font-size:15px;overflow-wrap:anywhere;max-width:100%}
+.uploadArea span:not(.uploadGlyph){font-size:12px;color:var(--text-muted,#747079)}
+.uploadArea input{width:100%;max-width:320px;color:#7b314d;font-size:12px;margin-top:9px}
+.preview{display:block;max-width:190px;max-height:260px;border-radius:10px;background:#111}
+.videoInfo{color:#7c5264}
+.field{font-weight:750;font-size:13px;display:grid;gap:8px}
+.field input,.field textarea{font:inherit;font-weight:400;font-size:14px;color:var(--text,#26232a);background:var(--surface,#fff);border:1px solid #d6cad0;padding:13px;border-radius:10px;width:100%;outline:none}
+.field input:focus,.field textarea:focus{border-color:#873852;box-shadow:0 0 0 3px rgba(135,56,82,.09)}
+.field textarea{resize:vertical;min-height:110px}
+.counter{justify-self:end;font-size:11px;font-weight:400;color:#8b8590}
+.publish{border:0;border-radius:12px;color:white;background:#802d4b;padding:15px 17px;font-weight:800;cursor:pointer;font-size:14px}
+.publish:hover{background:#682038}
+.publish:disabled{cursor:not-allowed;opacity:.5}
+.footnote{color:#8b8590;line-height:1.4}
+.history{display:grid;gap:10px}
+.historyItem{border:1px solid #e9e0e4;background:rgba(133,62,89,.025);border-radius:11px;padding:14px;display:grid;gap:5px}
+.historyItem strong{font-size:14px}
+.historyItem small{font-size:12px;color:#7d7680}
+.historyItem a{font-size:12px;font-weight:800;color:#8b3354}
+.historyError{color:#a04731!important}
+.empty{border:1px dashed #d7c6ce;border-radius:12px;padding:18px;font-size:13px}
+.divider{border:0;border-top:1px solid #e7dce1;margin:22px 0}
+.panel h3{font-size:15px;margin:0}
+.smallPrint{font-size:13px}
+.error,.success{margin:0;border-radius:12px;padding:16px 19px;font-size:14px}
+.error{background:#fff6f2;border:1px solid #eed1c5;color:#8a432e}
+.success{background:#f1f9f3;border:1px solid #c6dbc9;color:#315a39}
+.success p{margin:6px 0}
+.success a{font-weight:750;color:#265a34}
+@media(max-width:860px){.layout{grid-template-columns:1fr}.page{padding:22px 13px 65px}.heading{align-items:flex-start;flex-direction:column}.panel{padding:18px}}

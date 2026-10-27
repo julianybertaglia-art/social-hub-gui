@@ -63,9 +63,9 @@ export async function capabilities(db,ownerId){
       name:youtube.data?.channel_title||'Gui Nonato',
       note:youtubeConnected?'Envio disponível como privado; vídeos públicos dependem de autorização do Google.':
         'Conecte o canal do YouTube para enviar vídeos privados.'},
-    tiktok:{connected:tiktokConnected,enabled:tiktokPublish,
+    tiktok:{connected:tiktokConnected,enabled:false,
       name:tk?.display_name||'Gui Nonato',environment:tk?.environment||null,
-      note:tiktokPublish?'Permissão video.publish identificada; publicador TikTok aguarda integração de postagem.':
+      note:tiktokPublish?'Escopo de publicação identificado; o envio aguarda habilitação da Content Posting API no TidePlace.':
         tk?.environment==='sandbox'?'Sandbox autorizado apenas para testes; publicação indisponível.':
         'Aguardando aprovação do TikTok e permissão video.publish.'}
   };

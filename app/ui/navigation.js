@@ -20,6 +20,12 @@ export const NAV_GROUPS = [
     ],
   },
   {
+    label: 'YOUTUBE',
+    items: [
+      { href: '/youtube', label: 'Conectar canal', icon: 'play', only: ['gui-nonato'], description: 'Autorizar o canal do Gui e gerenciar a conexão com o Google' },
+    ],
+  },
+  {
     label: 'CRIAÇÃO DE CONTEÚDO',
     items: [
       { href: '/radar', label: 'Radar de conteúdo', icon: 'sparkle', description: 'Referências e ideias do nicho' },

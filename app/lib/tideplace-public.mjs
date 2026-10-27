@@ -3,7 +3,7 @@
 export const publicBase = 'https://social-hub-gui.vercel.app/tideplace';
 export const publicContact = 'juliany.bertaglia@gmail.com';
 
-const stylesheet = String.raw\`
+const stylesheet = String.raw`
 :root{color-scheme:light;--ink:#231921;--muted:#72646d;--wine:#762740;--wine-2:#52152d;--bg:#faf7f8;--stroke:#e9dce1}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif;line-height:1.7}
 a{color:var(--wine);text-underline-offset:3px}
@@ -46,32 +46,32 @@ nav{gap:12px}
 main{padding:32px 0 45px}
 .panel{padding:22px 19px}.tiles{grid-template-columns:1fr}
 }
-\`;
+`;
 
 export function publicPage({title,description,canonical,body}) {
   // Static authored HTML only: none of these props come from user input or URL params.
-  return \`<!doctype html>
+  return `<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="index,follow">
-<title>\${title} | TidePlace</title>
-<meta name="description" content="\${description}">
-<link rel="canonical" href="\${publicBase}\${canonical}">
-<style>\${stylesheet}</style>
+<title>${title} | TidePlace</title>
+<meta name="description" content="${description}">
+<link rel="canonical" href="${publicBase}${canonical}">
+<style>${stylesheet}</style>
 </head>
 <body>
 <header class="sitebar"><div class="shell">
 <a class="brand" href="/tideplace"><img src="/brand/tideplace-mark.svg" alt=""><span>TIDEPLACE</span></a>
 <nav aria-label="Navegação pública"><a href="/tideplace">Sobre</a><a href="/tideplace/termos">Termos de Uso</a><a href="/tideplace/privacidade">Privacidade</a><a href="/">Entrar no painel</a></nav>
 </div></header>
-<main class="shell">\${body}</main>
+<main class="shell">${body}</main>
 <footer><div class="shell">
-<small>© 2026 TidePlace · Flow with your audience.<br>Contato: <a href="mailto:\${publicContact}">\${publicContact}</a></small>
+<small>© 2026 TidePlace · Flow with your audience.<br>Contato: <a href="mailto:${publicContact}">${publicContact}</a></small>
 <div class="links"><a href="/tideplace">Sobre o TidePlace</a><a href="/tideplace/termos">Termos de Uso</a><a href="/tideplace/privacidade">Política de Privacidade</a></div>
 </div></footer>
-</body></html>\`;
+</body></html>`;
 }
 
 export function publicHtmlResponse(content) {

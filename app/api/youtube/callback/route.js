@@ -10,10 +10,16 @@ export const dynamic = 'force-dynamic';
 function finish(result) {
   const url = new URL('/youtube', YOUTUBE_REDIRECT_URI);
   url.searchParams.set('connection', result);
-  const response = Response.redirect(url, 303);
-  response.headers.set('Cache-Control', 'private, no-store');
-  response.headers.set('Set-Cookie', 'tide_youtube_oauth=; Path=/api/youtube; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
-  return response;
+  // Response.redirect() creates immutable headers in the Fetch API.
+  // Build the redirect with all headers up front so authorization does not end with HTTP 500.
+  return new Response(null, {
+    status: 303,
+    headers: {
+      Location: url.toString(),
+      'Cache-Control': 'private, no-store',
+      'Set-Cookie': 'tide_youtube_oauth=; Path=/api/youtube; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
+    },
+  });
 }
 function stateMatches(received, saved) {
   const a = Buffer.from(received || ''), b = Buffer.from(saved || '');

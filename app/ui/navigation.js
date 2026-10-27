@@ -35,6 +35,7 @@ export const NAV_GROUPS = [
   {
     label: 'CRIAÇÃO DE CONTEÚDO',
     items: [
+      { href: '/publicar', label: 'Publicar em redes', icon: 'upload', only: ['gui-nonato'], description: 'Publicação de um vídeo com seleção de Instagram, YouTube e TikTok' },
       { href: '/radar', label: 'Radar de conteúdo', icon: 'sparkle', description: 'Referências e ideias do nicho' },
       { href: '/conteudo/ia', label: 'Roteiros com IA', icon: 'sparkle', description: 'Criar conteúdo por marca com inteligência artificial' },
       { href: '/criar-post', label: 'Criar post', icon: 'layers', description: 'Editor de carrosséis, fotos, textos e exportação' },

@@ -27,6 +27,12 @@ export const NAV_GROUPS = [
     ],
   },
   {
+    label: 'TIKTOK',
+    items: [
+      { href: '/tiktok/conectar', label: 'Conectar conta', icon: 'tiktok', only: ['gui-nonato'], description: 'Conexão oficial TikTok Login Kit e permissões de publicação' },
+    ],
+  },
+  {
     label: 'CRIAÇÃO DE CONTEÚDO',
     items: [
       { href: '/radar', label: 'Radar de conteúdo', icon: 'sparkle', description: 'Referências e ideias do nicho' },

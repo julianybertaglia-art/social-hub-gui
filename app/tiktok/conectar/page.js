@@ -48,13 +48,13 @@ export default function TikTokConnectionPage(){
     void refresh();
   },[refresh,workspace.id]);
 
-  async function connect(posting=false){
+  async function connect(posting=false,environment='production'){
     setBusy(true);setError('');setNotice('');
     try{
       const token=await authToken();
       const response=await fetch('/api/tiktok/connect',{
         method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-        body:JSON.stringify({posting}),
+        body:JSON.stringify({posting,environment}),
       });
       const data=await response.json();
       if(!response.ok||!data.authorizationUrl)throw new Error(data.error||'O TikTok não iniciou a autorização.');
@@ -103,6 +103,7 @@ export default function TikTokConnectionPage(){
         {status.avatarUrl&&<img className={styles.avatar} src={status.avatarUrl} alt="" />}
         <div><strong>{status.displayName||'Conta TikTok'}</strong>
         <small>ID da conta: {status.openId}</small>
+        <small>Ambiente: {status.environment==='sandbox'?'Sandbox (teste)':'Production'}</small>
         <small>Permissões: {Array.isArray(status.scopes)?status.scopes.join(', '):'Sem dados'}</small>
         <small>Conectado em {new Date(status.connectedAt).toLocaleDateString('pt-BR')}</small></div>
       </div>:<p className={styles.empty}>{loading?'Consultando…':'Ainda não existe conta TikTok autorizada no TidePlace.'}</p>}
@@ -111,14 +112,20 @@ export default function TikTokConnectionPage(){
         <p>No projeto <b>social-hub-gui</b>, adicione <code>TIKTOK_CLIENT_KEY</code> e <code>TIKTOK_CLIENT_SECRET</code> em <b>Settings → Environment Variables</b> para Production. Copie os valores de <b>TidePlace → Credentials</b> no portal TikTok. Não cole o Client Secret aqui no chat. Depois faça um redeploy para aplicar as alterações.</p>
       </div>}
       <div className={styles.actions}>
-        <button type="button" className={styles.primary} disabled={!configured||loading||busy}
-          onClick={()=>connect(false)}>{busy?'Abrindo TikTok…':status?.connected?'Renovar conexão básica':'Conectar conta pelo TikTok'}</button>
+        <button type="button" className={styles.primary} disabled={!status?.sandboxConfigured||loading||busy}
+          onClick={()=>connect(false,'sandbox')}>{busy?'Abrindo TikTok…':'Conectar pelo Sandbox (teste)'}</button>
+        <button type="button" className={styles.secondary} disabled={!configured||loading||busy}
+          onClick={()=>connect(false,'production')}>Conectar em Production (após aprovação)</button>
         {status?.connected&&<button type="button" className={styles.secondary} onClick={disconnect}
           disabled={busy}>Desconectar e revogar</button>}
       </div>
     </section>
     <section className={styles.panel}>
       <h2>Etapa de testes e aprovação</h2>
+      {!loading&&!status?.sandboxConfigured&&<div className={styles.help}>
+        <strong>Para testar o perfil @gui_nonato no Sandbox:</strong>
+        <p>Adicione <code>TIKTOK_SANDBOX_CLIENT_KEY</code> e <code>TIKTOK_SANDBOX_CLIENT_SECRET</code> nas variáveis <b>Production</b> do projeto <b>social-hub-gui</b> na Vercel, usando os valores da seção <b>Sandbox → TidePlace Testes → Credentials</b> do TikTok. Não sobrescreva <code>TIKTOK_CLIENT_KEY</code> e <code>TIKTOK_CLIENT_SECRET</code>. Faça um redeploy de Production após salvar e atualize esta tela. Nunca compartilhe o segredo em conversa.</p>
+      </div>}
       <p>A conexão básica identifica a conta do Gui com a permissão <code>user.info.basic</code>. A publicação depende de permissões adicionais aprovadas pelo TikTok.</p>
       <div className={styles.features}>
         <div><span>01</span><strong>Conectar conta</strong><p>Configure a chave e o segredo da API e autorize o Gui pelo TikTok.</p></div>

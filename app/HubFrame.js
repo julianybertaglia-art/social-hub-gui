@@ -23,6 +23,7 @@ function pageLabel(pathname) {
   if (pathname.startsWith('/conteudo')) return 'Conteúdo · IA';
   if (pathname.startsWith('/criar-post')) return 'Criar post';
   if (pathname.startsWith('/admin')) return 'Administração · Central de Controle';
+  if (pathname.startsWith('/tiktok/conectar')) return 'TikTok · Conexão';
   if (pathname.startsWith('/tiktok/afiliados')) return 'TikTok · Afiliados';
   if (pathname === '/whatsapp/setores') return 'WhatsApp · Meus setores';
   if (pathname.startsWith('/whatsapp/automacoes')) return 'WhatsApp · Automações';

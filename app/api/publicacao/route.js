@@ -1,4 +1,4 @@
-import {publicationAuth,capabilities,publicPost,NO_STORE,publishError,PUBLISH_WORKSPACE} from '../../../lib/multichannel-publisher.mjs';
+import {publicationAuth,capabilities,publicPost,NO_STORE,publishError,PUBLISH_WORKSPACE} from '../../lib/multichannel-publisher.mjs';
 export const dynamic='force-dynamic';
 export async function GET(request){
   try{

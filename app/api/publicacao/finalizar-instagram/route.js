@@ -1,7 +1,7 @@
 import {
  publicationAuth,sameOrigin,requireUuid,publishError,NO_STORE,PUBLISH_WORKSPACE,
  instagramReelProgress,publishInstagramReel
-} from '../../../../lib/multichannel-publisher.mjs';
+} from '../../../lib/multichannel-publisher.mjs';
 export const dynamic='force-dynamic';
 export const maxDuration=60;
 export async function POST(request){

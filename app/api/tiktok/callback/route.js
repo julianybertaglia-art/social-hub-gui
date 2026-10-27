@@ -24,14 +24,15 @@ export async function GET(request) {
     const {data:pending,error:pendingError}=await db.from('tiktok_oauth_pending')
       .update({consumed_at:new Date().toISOString()}).eq('state_hash',digestTikTokState(state))
       .eq('workspace_id',TIKTOK_WORKSPACE).is('consumed_at',null)
-      .gt('expires_at',new Date().toISOString()).select('owner_user_id').maybeSingle();
+      .gt('expires_at',new Date().toISOString()).select('owner_user_id,environment').maybeSingle();
     if(pendingError||!pending)return finish('expired');
-    const tokens=await exchangeTikTokCode(code);
+    const environment=pending.environment==='sandbox'?'sandbox':'production';
+    const tokens=await exchangeTikTokCode(code,environment);
     const profile=await tiktokProfile(tokens.accessToken);
     if(profile.openId!==tokens.openId)throw new Error('O TikTok devolveu identificações de conta incompatíveis.');
     const now=Date.now();
     const {error:savingError}=await db.from('tiktok_account_connections').upsert({
-      owner_user_id:pending.owner_user_id,workspace_id:TIKTOK_WORKSPACE,
+      owner_user_id:pending.owner_user_id,workspace_id:TIKTOK_WORKSPACE,environment,
       open_id:tokens.openId,display_name:profile.displayName,avatar_url:profile.avatarUrl,
       oauth_scopes:tokens.scopes,access_token_ciphertext:encryptTikTokToken(tokens.accessToken),
       refresh_token_ciphertext:encryptTikTokToken(tokens.refreshToken),

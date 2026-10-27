@@ -13,10 +13,10 @@ export async function GET(request){
   try{
     const {db,ownerId}=await auth(request);
     const {data:row,error}=await db.from('tiktok_account_connections')
-      .select('open_id,display_name,avatar_url,oauth_scopes,connected_at,access_expires_at,refresh_expires_at')
+      .select('open_id,display_name,avatar_url,oauth_scopes,connected_at,access_expires_at,refresh_expires_at,environment')
       .eq('owner_user_id',ownerId).eq('workspace_id',TIKTOK_WORKSPACE).maybeSingle();
     if(error)throw new Error('A conexão TikTok não pôde ser consultada.');
-    return Response.json({...tiktokPublicStatus(row),configured:tiktokConfigured(),workspace:TIKTOK_WORKSPACE,
+    return Response.json({...tiktokPublicStatus(row),configured:tiktokConfigured(),sandboxConfigured:tiktokConfigured('sandbox'),workspace:TIKTOK_WORKSPACE,
       reviewRequired:true},{headers:cache});
   }catch(error){return Response.json({error:error.status?error.message:'Falha ao consultar a conexão TikTok.'},
     {status:error.status||503,headers:cache});}
@@ -27,16 +27,16 @@ export async function DELETE(request){
     if(origin&&origin!==new URL(request.url).origin)return Response.json({error:'Origem não autorizada.'},{status:403,headers:cache});
     const {db,ownerId}=await auth(request);
     const {data:row,error}=await db.from('tiktok_account_connections')
-      .select('id,access_token_ciphertext,refresh_token_ciphertext,access_expires_at')
+      .select('id,environment,access_token_ciphertext,refresh_token_ciphertext,access_expires_at')
       .eq('owner_user_id',ownerId).eq('workspace_id',TIKTOK_WORKSPACE).maybeSingle();
     if(error)throw new Error('Não foi possível localizar a conta TikTok.');
     if(row){
       let access=decryptTikTokToken(row.access_token_ciphertext);
       if(Date.parse(row.access_expires_at)<=Date.now()){
-        const refreshed=await refreshTikTokToken(decryptTikTokToken(row.refresh_token_ciphertext));
+        const refreshed=await refreshTikTokToken(decryptTikTokToken(row.refresh_token_ciphertext),row.environment||'production');
         access=refreshed.accessToken;
       }
-      await revokeTikTokToken(access);
+      await revokeTikTokToken(access,row.environment||'production');
       const {error:deleteError}=await db.from('tiktok_account_connections')
         .delete().eq('id',row.id).eq('owner_user_id',ownerId);
       if(deleteError)throw new Error('O TikTok revogou a autorização, mas falhou a exclusão local. Contate o suporte.');

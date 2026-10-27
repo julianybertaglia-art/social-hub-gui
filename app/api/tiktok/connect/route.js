@@ -11,11 +11,13 @@ export async function POST(request) {
     const db=getSupabaseAdmin();
     const ownerId=await connectionOwner(db,bearerToken(request));
     const body=await request.json().catch(()=>({}));
+    const environment=body?.environment==='sandbox'?'sandbox':'production';
+    if(body?.posting===true && environment==='sandbox')return Response.json({error:'Publicação pública indisponível no Sandbox.'},{status:400,headers:cache});
     const scopes=body?.posting===true?TIKTOK_SCOPE_POSTING:TIKTOK_SCOPE_BASIC;
     const state=newTikTokState();
-    const url=buildTikTokAuthUrl(state,scopes);
+    const url=buildTikTokAuthUrl(state,scopes,environment);
     const {error}=await db.from('tiktok_oauth_pending').insert({
-      state_hash:digestTikTokState(state),owner_user_id:ownerId,workspace_id:TIKTOK_WORKSPACE,
+      state_hash:digestTikTokState(state),owner_user_id:ownerId,workspace_id:TIKTOK_WORKSPACE,environment,
       expires_at:new Date(Date.now()+10*60*1000).toISOString(),
     });
     if(error)throw new Error('Falha ao preparar autorização do TikTok.');

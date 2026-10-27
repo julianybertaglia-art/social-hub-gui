@@ -53,3 +53,33 @@ test('Public TikTok status never returns access or refresh tokens',()=>{
   assert.equal(data.displayName,'Gui');
   assert.equal(JSON.stringify(data).includes('SECRET'),false);
 });
+
+test('Sandbox authorization selects its own Client Key and never overwrites production credentials',()=>{
+  const old={
+    key:process.env.TIKTOK_CLIENT_KEY,secret:process.env.TIKTOK_CLIENT_SECRET,
+    sandboxKey:process.env.TIKTOK_SANDBOX_CLIENT_KEY,sandboxSecret:process.env.TIKTOK_SANDBOX_CLIENT_SECRET,
+    encryption:process.env.TIKTOK_TOKEN_ENCRYPTION_KEY,
+  };
+  try {
+    process.env.TIKTOK_CLIENT_KEY='production-example-only';
+    process.env.TIKTOK_CLIENT_SECRET='production-secret-only';
+    process.env.TIKTOK_SANDBOX_CLIENT_KEY='sandbox-example-only';
+    process.env.TIKTOK_SANDBOX_CLIENT_SECRET='sandbox-secret-only';
+    process.env.TIKTOK_TOKEN_ENCRYPTION_KEY=Buffer.alloc(32,3).toString('base64url');
+    const production=new URL(buildTikTokAuthUrl('production-test'));
+    const sandbox=new URL(buildTikTokAuthUrl('sandbox-test',TIKTOK_SCOPE_BASIC,'sandbox'));
+    assert.equal(production.searchParams.get('client_key'),'production-example-only');
+    assert.equal(sandbox.searchParams.get('client_key'),'sandbox-example-only');
+    assert.equal(sandbox.searchParams.get('redirect_uri'),TIKTOK_REDIRECT_URI);
+    assert.equal(sandbox.searchParams.get('scope'),'user.info.basic');
+    assert.equal(tiktokConfigured('sandbox'),true);
+    assert.equal(tiktokConfigured('unknown'),false);
+  } finally {
+    const keys={key:'TIKTOK_CLIENT_KEY',secret:'TIKTOK_CLIENT_SECRET',
+      sandboxKey:'TIKTOK_SANDBOX_CLIENT_KEY',sandboxSecret:'TIKTOK_SANDBOX_CLIENT_SECRET',
+      encryption:'TIKTOK_TOKEN_ENCRYPTION_KEY'};
+    for(const [k,env] of Object.entries(keys)){
+      if(old[k]===undefined) delete process.env[env]; else process.env[env]=old[k];
+    }
+  }
+});

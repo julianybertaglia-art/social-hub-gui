@@ -22,6 +22,7 @@ function pageLabel(pathname) {
   if (pathname.startsWith('/crm')) return 'CRM · Funil';
   if (pathname.startsWith('/conteudo')) return 'Conteúdo · IA';
   if (pathname.startsWith('/criar-post')) return 'Criar post';
+  if (pathname.startsWith('/publicar')) return 'Publicação · Multicanal';
   if (pathname.startsWith('/admin')) return 'Administração · Central de Controle';
   if (pathname.startsWith('/tiktok/conectar')) return 'TikTok · Conexão';
   if (pathname.startsWith('/tiktok/afiliados')) return 'TikTok · Afiliados';
@@ -64,7 +65,7 @@ export default function HubFrame({ children }) {
     window.dispatchEvent(new CustomEvent('tideplace:section-change', { detail: { section: next } }));
   }
 
-  const framed = pathname === '/' || pathname.startsWith('/whatsapp') || pathname.startsWith('/automacoes') || pathname.startsWith('/instagram') || pathname.startsWith('/tiktok') || pathname.startsWith('/youtube') || pathname.startsWith('/admin') || pathname.startsWith('/criar-post') || pathname.startsWith('/crm') || pathname.startsWith('/conteudo') || pathname.startsWith('/radar');
+  const framed = pathname === '/' || pathname.startsWith('/whatsapp') || pathname.startsWith('/automacoes') || pathname.startsWith('/instagram') || pathname.startsWith('/tiktok') || pathname.startsWith('/youtube') || pathname.startsWith('/admin') || pathname.startsWith('/criar-post') || pathname.startsWith('/publicar') || pathname.startsWith('/crm') || pathname.startsWith('/conteudo') || pathname.startsWith('/radar');
   if (!framed) return children;
 
   return (
@@ -134,7 +135,7 @@ export default function HubFrame({ children }) {
           </div>
         </header>
         <div className={styles.body}>
-          {workspace.id === 'gui-nonato' ? children : pathname === '/' ? children : pathname.startsWith('/admin') || pathname.startsWith('/criar-post') || pathname.startsWith('/crm') || pathname.startsWith('/conteudo') || pathname.startsWith('/radar') || pathname.startsWith('/instagram') || pathname.startsWith('/youtube') ? children : pathname.startsWith('/tiktok') ? (
+          {workspace.id === 'gui-nonato' ? children : pathname === '/' ? children : pathname.startsWith('/admin') || pathname.startsWith('/criar-post') || pathname.startsWith('/publicar') || pathname.startsWith('/crm') || pathname.startsWith('/conteudo') || pathname.startsWith('/radar') || pathname.startsWith('/instagram') || pathname.startsWith('/youtube') ? children : pathname.startsWith('/tiktok') ? (
             <VitalAffiliatePanel />
           ) : pathname === '/whatsapp' || pathname === '/whatsapp/setores' ? (
             <VitalWhatsAppInbox view={pathname === '/whatsapp/setores' ? 'mine' : 'all'} />

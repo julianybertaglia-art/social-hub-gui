@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import {
   publicationAuth,sameOrigin,PUBLISH_WORKSPACE,PUBLISH_MAX_BYTES,PUBLISH_BUCKET,
   NO_STORE,publishError,validateTargetPlatforms,capabilities
-} from '../../../../lib/multichannel-publisher.mjs';
+} from '../../../lib/multichannel-publisher.mjs';
 export const dynamic='force-dynamic';
 export async function POST(request){
   try{

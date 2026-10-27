@@ -1,8 +1,8 @@
 import {
   publicationAuth,sameOrigin,requireUuid,NO_STORE,publishError,
   PUBLISH_BUCKET,PUBLISH_WORKSPACE,createInstagramReel
-} from '../../../../lib/multichannel-publisher.mjs';
-import {uploadPrivateVideoToYoutube} from '../../../../lib/youtube-upload.mjs';
+} from '../../../lib/multichannel-publisher.mjs';
+import {uploadPrivateVideoToYoutube} from '../../../lib/youtube-upload.mjs';
 export const dynamic='force-dynamic';
 export const maxDuration=300;
 export async function POST(request){

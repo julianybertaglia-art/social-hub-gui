@@ -17,14 +17,17 @@ export function safeUploadUrl(value){
 /**
  * The TikTok media guide requires 5–64MB chunks, except videos under 5MB.
  * A final chunk may be larger than chunk_size (up to 128MB).
- * For 31MB this returns 6 parts instead of a single large PUT.
+ * For 31MB this returns 3 parts of 10MB / 10MB / 11MB.
  */
 export function tikTokUploadPlan(size){
   if(!Number.isSafeInteger(size)||size<=0||size>50_000_000)
     throw Object.assign(new Error('Tamanho do vídeo TikTok inválido.'),{status:400});
-  const MIN_CHUNK=5_000_000;
-  const numParts=Math.max(1,Math.floor(size/MIN_CHUNK));
-  const chunkSize=numParts===1?size:MIN_CHUNK;
+  // 10,000,000 bytes follows the official guide's example exactly and avoids
+  // differing server interpretations of the 5 MB minimum at the boundary.
+  // Under 10MB we send the entire file; above it the last part absorbs the tail.
+  const CHUNK_BYTES=10_000_000;
+  const numParts=Math.max(1,Math.floor(size/CHUNK_BYTES));
+  const chunkSize=numParts===1?size:CHUNK_BYTES;
   if(numParts>1000)throw Object.assign(new Error('Número de partes excedido.'),{status:400});
   const parts=Array.from({length:numParts},(_,i)=>{
     const start=i*chunkSize;
@@ -67,9 +70,16 @@ async function tiktokPost(accessToken,path,body){
   const result=await response.json().catch(()=>({}));
   if(!response.ok||result?.error?.code!=='ok'){
     const reason=String(result?.error?.code||'request_failed').replace(/[^a-zA-Z0-9_]/g,'').slice(0,56);
-    const e=new Error('O TikTok recusou a solicitação ('+reason+'). Verifique as permissões e os limites de envio.');
+    // TikTok's error.message explains which field is invalid. Use only a
+    // tightly allowlisted summary, never a URL, token or raw server response.
+    const rawMessage=String(result?.error?.message||'');
+    const detail=rawMessage.length<=180&&/^[a-zA-Z0-9 _.,:;()\-]+$/.test(rawMessage)
+      ?' Detalhe: '+rawMessage : '';
+    const logId=String(result?.error?.log_id||'').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,64);
+    const e=new Error('O TikTok recusou os parâmetros ('+reason+').'+detail+
+      (logId?' Referência: '+logId+'.':''));
     e.status=response.status===401?401:response.status===429?429:409;
-    e.tiktokStage='init';e.tiktokCode=reason;
+    e.tiktokStage=path===TIKTOK_INIT?'init':'status';e.tiktokCode=reason;
     throw e;
   }
   return result.data||{};

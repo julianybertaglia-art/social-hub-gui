@@ -1,7 +1,7 @@
 import { getVitalCrmMember } from '../../../../lib/vital-crm-access.mjs';
 import { fail } from '../../../vital-connections/helpers.mjs';
 import {readRows} from '../../../../lib/operations.mjs';
-import {resolveVitalQueue,canAccessVitalQueue,queueStatus,VITAL_QUEUE_ORDER} from '../../../../lib/vital-crm-queues.mjs';
+import {resolveVitalQueue,canAccessVitalQueue,crmConversationStatus,VITAL_QUEUE_ORDER} from '../../../../lib/vital-crm-queues.mjs';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -37,14 +37,15 @@ function allowedQueue(ctx,queue){
 async function resolveOne(ctx,phone){
   const {db,organization,owner,connection}=ctx;
   const scope=query=>query.eq('owner_user_id',owner).eq('connection_id',connection.id).eq('contact_wa_id',phone);
-  const [manual,flow,assignment]=await Promise.all([
+  const [manual,flow,assignment,state]=await Promise.all([
     scope(db.from('crm_vital_queue_assignments').select('queue_code,updated_at')).eq('organization_id',organization.id).maybeSingle(),
     scope(db.from('vital_whatsapp_flow_sessions').select('selection,last_interaction_at')).maybeSingle(),
     scope(db.from('vital_whatsapp_assignments').select('sector,status,assigned_to,updated_at')).maybeSingle(),
+    scope(db.from('crm_vital_conversation_states').select('status,updated_at')).eq('organization_id',organization.id).maybeSingle(),
   ]);
-  if(manual.error||flow.error||assignment.error)throw fail('Não foi possível verificar o setor da conversa.',503);
+  if(manual.error||flow.error||assignment.error||state.error)throw fail('Não foi possível verificar o setor da conversa.',503);
   const queue=resolveVitalQueue({override:manual.data?.queue_code,selection:flow.data?.selection,sector:assignment.data?.sector});
-  return {queue,manual:manual.data,flow:flow.data,assignment:assignment.data};
+  return {queue,manual:manual.data,flow:flow.data,assignment:assignment.data,state:state.data};
 }
 function formatMessage(m){
   return {id:m.id,direction:m.direction,body:m.body||'',type:m.message_type||'text',
@@ -63,15 +64,16 @@ async function readOne(ctx,phone){
   if(error)throw fail('Falha ao carregar histórico.',503);
   if(!messages?.length)throw fail('Conversa não encontrada.',404);
   return {contact:{id:phone,phone,name:messages.find(m=>m.profile_name)?.profile_name||phone,
-      queue:info.queue,status:queueStatus({closed:info.assignment?.status==='closed',
-        lastDirection:messages[0].direction})},
+      queue:info.queue,status:crmConversationStatus({state:info.state,
+        legacyClosed:info.assignment?.status==='closed',lastDirection:messages[0].direction,
+        lastMessageAt:messages[0].sent_at||messages[0].created_at})},
     messages:messages.reverse().map(formatMessage),truncated:messages.length===150};
 }
 
 async function summary(ctx,page){
   const {db,owner,connection,organization}=ctx;
   const q=fn=>fn.eq('owner_user_id',owner).eq('connection_id',connection.id);
-  const [recent,flows,assignments,overrides]=await Promise.all([
+  const [recent,flows,assignments,overrides,states]=await Promise.all([
     readRows(()=>q(db.from('workspace_meta_messages')
       .select('contact_wa_id,direction,sent_at,id')
       .order('sent_at',{ascending:false}).order('id',{ascending:false})),3000),
@@ -84,14 +86,18 @@ async function summary(ctx,page){
     readRows(()=>q(db.from('crm_vital_queue_assignments')
       .select('contact_wa_id,queue_code,updated_at')
       .eq('organization_id',organization.id).order('contact_wa_id')),5000),
+    readRows(()=>q(db.from('crm_vital_conversation_states')
+      .select('contact_wa_id,status,updated_at')
+      .eq('organization_id',organization.id).order('contact_wa_id')),5000),
   ]);
-  if(recent.error||flows.error||assignments.error||overrides.error)throw fail('Falha ao consultar atendimentos.',503);
-  const latest=new Map(),flowMap=new Map(),assignMap=new Map(),overrideMap=new Map();
+  if(recent.error||flows.error||assignments.error||overrides.error||states.error)throw fail('Falha ao consultar atendimentos.',503);
+  const latest=new Map(),flowMap=new Map(),assignMap=new Map(),overrideMap=new Map(),stateMap=new Map();
   for(const m of recent.data||[])if(!latest.has(m.contact_wa_id))latest.set(m.contact_wa_id,m);
   for(const x of flows.data||[])flowMap.set(x.contact_wa_id,x);
   for(const x of assignments.data||[])assignMap.set(x.contact_wa_id,x);
   for(const x of overrides.data||[])overrideMap.set(x.contact_wa_id,x);
-  const allPhones=new Set([...latest.keys(),...flowMap.keys(),...assignMap.keys(),...overrideMap.keys()]);
+  for(const x of states.data||[])stateMap.set(x.contact_wa_id,x);
+  const allPhones=new Set([...latest.keys(),...flowMap.keys(),...assignMap.keys(),...overrideMap.keys(),...stateMap.keys()]);
   const rows=[];
   for(const phone of allPhones){
     if(!PHONE.test(phone))continue;
@@ -101,7 +107,8 @@ async function summary(ctx,page){
     if(!queue && ctx.access.role!=='owner')continue;
     if(queue&&!allowedQueue(ctx,queue))continue;
     rows.push({id:phone,phone,queue:queue||null,
-      status:queueStatus({closed:a?.status==='closed',lastDirection:last?.direction}),
+      status:crmConversationStatus({state:stateMap.get(phone),legacyClosed:a?.status==='closed',
+        lastDirection:last?.direction,lastMessageAt:last?.sent_at}),
       updatedAt:last?.sent_at||manual?.updated_at||f?.last_interaction_at||a?.updated_at||null,
       assignedTo:a?.assigned_to||null});
   }
@@ -128,7 +135,7 @@ async function summary(ctx,page){
     workspace:'vital-decor', role:ctx.access.role, counters,
     queues:ctx.queues.filter(q=>allowedQueue(ctx,q.queue_code)),
     conversations:enriched,page,hasMore:rows.length>(page+1)*30,
-    sampled:(recent.data||[]).length>=3000||(flows.data||[]).length>=5000,
+    sampled:(recent.data||[]).length>=3000||(flows.data||[]).length>=5000||(states.data||[]).length>=5000,
     readOnly:false,
   };
 }

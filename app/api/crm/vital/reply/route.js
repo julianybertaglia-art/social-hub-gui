@@ -12,7 +12,7 @@ export async function POST(request){
   const origin=request.headers.get('origin'),url=new URL(request.url),host=request.headers.get('host');
   if(!origin||(origin!==url.origin&&origin!==url.protocol+'//'+host))throw fail('Origem inválida.',403);
   const {db,userId,access,organization}=await getVitalCrmMember(request);
-  if(!['owner','supervisor','agent'].includes(access.role))throw fail('Usuário não autorizado.',403);
+  if(!['owner','agent'].includes(access.role))throw fail('Este perfil pode acompanhar e transferir, mas não responder mensagens.',403);
   const textBody=await request.text();
   if(textBody.length>10000)throw fail('Mensagem longa demais.',400);
   const input=JSON.parse(textBody);

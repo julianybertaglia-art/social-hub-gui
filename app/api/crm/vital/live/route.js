@@ -155,7 +155,7 @@ export async function GET(request){
 export async function PATCH(request){
   try{
     const origin=request.headers.get('origin');
-    if(origin&&origin!==new URL(request.url).origin)throw fail('Origem inválida.',403);
+    if(!origin||origin!==new URL(request.url).origin)throw fail('Origem inválida.',403);
     const ctx=await context(request);
     const body=await request.json().catch(()=>({}));
     const phone=String(body.contact||''),toQueue=String(body.toQueue||'');

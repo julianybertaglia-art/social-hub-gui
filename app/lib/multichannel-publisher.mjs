@@ -22,7 +22,7 @@ export function validateTargetPlatforms(value){
 }
 export function publicTarget(t){
   return {platform:t.platform,state:t.state,externalId:t.external_id||null,
-    error:t.error_message||null,updatedAt:t.updated_at};
+    error:t.error_message||null,updatedAt:t.updated_at,retryCount:t.retry_count||0};
 }
 export function publicPost(row){
   return {id:row.id,title:row.title,caption:row.caption,createdAt:row.created_at,

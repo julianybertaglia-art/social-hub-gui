@@ -54,9 +54,15 @@ export async function POST(request){
     return Response.json({platform,state:newState,externalId},{headers:NO_STORE});
   }catch(error){
     if(db&&target){
-      // Ambiguous third-party requests MUST NOT retry automatically: avoid duplicate posts.
-      await db.from('multichannel_post_targets').update({state:'unknown',
-        error_message:'Envio não confirmado. Verifique a conta antes de preparar outro vídeo.',
+      // An initialized upload already has a saved publish_id; never offer automatic retry.
+      // Before initialization we can safely show the sanitized TikTok API error code.
+      const isTikTok=post&&String((await db.from('multichannel_post_targets').select('platform')
+        .eq('id',target.id).single()).data?.platform||'')==='tiktok';
+      const reason=isTikTok&&error.status?String(error.message).slice(0,260):
+        'Envio não confirmado. Verifique a conta antes de preparar outro vídeo.';
+      await db.from('multichannel_post_targets').update({
+        state:isTikTok&&error.tiktokStage==='init'?'failed':'unknown',
+        error_message:reason,
         updated_at:new Date().toISOString()}).eq('id',target.id).eq('state','sending');
     }
     return publishError(null,error,'Falha ao enviar o vídeo. Confira o status antes de tentar novamente.');

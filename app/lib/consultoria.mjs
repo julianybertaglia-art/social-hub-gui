@@ -35,8 +35,8 @@ export function validateConsultoria(values) {
   if (!Object.hasOwn(EXPERIENCE, values.experience)) throw applicationError('Conte se você já vende no Mercado Livre.');
   if (!Object.hasOwn(REVENUE, values.revenue)) throw applicationError('Escolha sua faixa de faturamento.');
   if (values.experience === 'zero' && values.revenue !== 'none') throw applicationError('Se você ainda não vende, selecione “Ainda não faturo”.');
-  const product = clean(values.product, 2, 300, 'seu produto ou nicho');
-  const challenge = clean(values.challenge, 15, 1500, 'o problema que você gostaria de analisar (pelo menos 15 caracteres)');
+  const product = clean(values.product, 5, 300, 'seu produto ou nicho (pelo menos 5 caracteres)');
+  const challenge = clean(values.challenge, 30, 1500, 'o problema que você gostaria de analisar (pelo menos 30 caracteres)');
   if (!Object.hasOwn(RECORDING, values.recording)) throw applicationError('Responda à pergunta sobre os trechos da consultoria.');
   if (values.consent !== 'yes') throw applicationError('Autorize a análise dos dados e o contato sobre sua candidatura.');
   let storeUrl = String(values.storeUrl || '').trim();

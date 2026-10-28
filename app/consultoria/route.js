@@ -1,5 +1,5 @@
 import { serverClient } from '../api/instagram/audio-automation/service.js';
-import { validateConsultoria, applicationError } from '../lib/consultoria.mjs';
+import { validateConsultoria, applicationError, CONSULTORIA_URL } from '../lib/consultoria.mjs';
 import { consultoriaHtml } from './html.mjs';
 import { formTicket, verifyTicket, requestFingerprint } from './security.mjs';
 import { saveConsultoria } from './service.mjs';
@@ -33,11 +33,14 @@ async function readForm(request) {
   raw += decoder.decode(); return Object.fromEntries(new URLSearchParams(raw));
 }
 export async function POST(request) {
-  const origin = request.headers.get('origin');
-  if ((origin && origin !== new URL(request.url).origin) || request.headers.get('sec-fetch-site') === 'cross-site') return html({ error: 'Abra o formulário para enviar sua candidatura.' }, 403);
   let values = {};
   try {
     values = await readForm(request);
+    const origin = request.headers.get('origin');
+    const allowedOrigins = new Set([new URL(request.url).origin, new URL(CONSULTORIA_URL).origin]);
+    if ((origin && !allowedOrigins.has(origin)) || request.headers.get('sec-fetch-site') === 'cross-site') {
+      throw applicationError('Não foi possível confirmar o envio. Confira as respostas e tente reenviar.', 403);
+    }
     if (values.company_site) return html({ success: true });
     const id = verifyTicket(values.ticket);
     const application = validateConsultoria(values);

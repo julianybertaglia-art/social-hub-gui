@@ -54,3 +54,16 @@ export function canAccessVitalQueue(role,granted,queue) {
 export function queueStatus({closed=false,lastDirection}={}) {
   return closed ? 'closed' : lastDirection==='inbound' ? 'pending':'open';
 }
+
+
+export function crmConversationStatus({state=null,legacyClosed=false,lastDirection=null,lastMessageAt=null}={}) {
+  if(state?.status==='open') return queueStatus({lastDirection});
+  if(state?.status==='resolved') {
+    const messageTime=Date.parse(lastMessageAt||'');
+    const resolvedTime=Date.parse(state.updated_at||'');
+    if(Number.isFinite(messageTime)&&Number.isFinite(resolvedTime)&&messageTime>resolvedTime)
+      return queueStatus({lastDirection});
+    return 'closed';
+  }
+  return queueStatus({closed:legacyClosed,lastDirection});
+}

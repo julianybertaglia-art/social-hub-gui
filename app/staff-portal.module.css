@@ -48,3 +48,13 @@
 .empty{padding:26px 16px;text-align:center;color:var(--staff-muted);font-size:13px}
 @media(max-width:1000px){.shell{grid-template-columns:190px minmax(0,1fr)}.workspace{grid-template-columns:minmax(240px,42%) minmax(0,1fr)}.main{padding:24px 15px}}
 @media(max-width:760px){.shell{grid-template-columns:1fr}.sidebar{padding:13px 17px;flex-direction:row;align-items:center;justify-content:space-between;gap:14px}.brand{margin:0}.navHeading,.navActive,.navInfo,.sidebarBottom>span{display:none}.sidebarBottom{border:0;margin:0;padding:0}.sidebarBottom button{margin:0}.main{padding:20px 13px}.workspace{grid-template-columns:1fr}.listArea{border-right:0;border-bottom:1px solid var(--staff-line)}.conversation{min-height:300px}.header{align-items:flex-start;flex-wrap:wrap}.timeline{max-height:440px}}
+
+/* Live, self-contained mock preview: clearly fictional and role-switchable */
+.demoBanner{display:flex;align-items:center;flex-wrap:wrap;gap:6px 15px;padding:13px 16px;margin:-4px 0 15px;border:1px solid #d9bdc8;border-radius:11px;background:#fff0f5;line-height:1.5;color:#4f2638}
+.demoBanner strong{color:#8f2945;font-size:12px;font-weight:800;letter-spacing:.035em}
+.demoBanner span{font-size:12.5px}
+.demoRolePicker{display:flex;flex-direction:column;align-items:flex-start;gap:6px;color:#655765;font-size:12px;font-weight:700}
+.demoRolePicker select{border:1px solid var(--staff-line);background:#fff;color:#322632;padding:10px 12px;border-radius:8px;font-family:inherit;font-size:13px;font-weight:620;min-height:41px;max-width:min(370px,100%)}
+.backLink{display:block;color:#fff;font-size:12px;font-weight:700;text-decoration:none;margin:12px 0 0}
+.demoRolePicker select:focus-visible,.backLink:focus-visible{outline:3px solid #d29aae;outline-offset:2px}
+@media(max-width:760px){.demoRolePicker{width:100%}.demoRolePicker select{width:100%;max-width:none}.demoBanner{align-items:flex-start}.sidebarBottom .backLink{margin:0}}

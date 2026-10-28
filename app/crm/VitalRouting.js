@@ -6,25 +6,7 @@ import { api, useResource } from '../operations/useOperations';
 import Icon from '../ui/Icon';
 import styles from './vital-routing.module.css';
 
-// A sector is independent of the conversation subject, and the Argo
-// destination must be configured/enabled before a transfer is permitted.
-export const SECTOR_NAMES = {
-  comercial_vital: 'Comercial Vital',
-  bluetti: 'Bluetti',
-  vtx: 'VTX Fitness',
-  pos_venda: 'Pós-venda e pedidos',
-  atacado: 'Atacado / revendedores',
-  afiliados: 'Afiliados TikTok',
-};
-const WHO = { tide: 'TidePlace', andrey: 'Andrey · Argo', vitor: 'Vitor · Argo' };
-
-export function routingDestination(rule) {
-  if (!rule) return { active: false, assignee: null, title: 'Não configurado' };
-  if (rule.assignee === 'tide') return { active: true, assignee: 'tide', title: WHO.tide };
-  return rule.enabled
-    ? { active: true, assignee: rule.assignee, title: WHO[rule.assignee] || 'Argo' }
-    : { active: false, assignee: null, title: 'Argo não habilitado' };
-}
+import { VITAL_SECTOR_NAMES as SECTOR_NAMES, VITAL_ASSIGNEE_NAMES as WHO, routingDestination, sameVitalAssignment } from '../lib/vital-routing.mjs';
 
 function RuleList({ rules }) {
   return <div className={styles.ruleList}>
@@ -76,7 +58,7 @@ function LiveVitalContactRouting({ contactId, onAssigned }) {
   const currentSector = assigned?.sector || '';
   const chosenRule = rules.find(item => item.sector === sector);
   const destination = useMemo(() => routingDestination(chosenRule), [chosenRule]);
-  const sameAssignment = assigned?.status !== 'closed' && currentSector === sector && assigned?.assigned_to === destination.assignee;
+  const sameAssignment = sameVitalAssignment(assigned, sector, destination);
 
   async function handleSubmit(event) {
     event.preventDefault();

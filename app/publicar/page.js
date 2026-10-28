@@ -237,7 +237,7 @@ export default function UnifiedPublisher(){
         </div>
         <div className={styles.disclosure}>
           <strong>Como funciona o envio agora</strong>
-          <p><b>Instagram:</b> o Reel será enviado à Meta para processamento e poderá ser finalizado pelo histórico. <b>YouTube:</b> o vídeo será enviado como privado. <b>TikTok:</b> o vídeo será enviado para a caixa de entrada do aplicativo, onde você precisa finalizar a publicação manualmente. A publicação pública automática aguarda aprovação do TikTok.</p>
+          <p><b>Instagram:</b> o Reel será enviado à Meta para processamento e poderá ser finalizado pelo histórico. <b>YouTube:</b> o vídeo será enviado como privado. <b>TikTok:</b> o vídeo chegará como rascunho à caixa de entrada do aplicativo. Você deverá abrir a notificação, revisar a legenda e publicar manualmente. O envio por rascunho não adiciona a legenda automaticamente; a publicação pública direta depende de aprovação do TikTok.</p>
           {connections?.tiktok&&!connections.tiktok.enabled&&<p>Para liberar o rascunho no TikTok, <Link href="/tiktok/conectar">renove as permissões da conexão</Link>.</p>}
         </div>
         <button type="submit" className={styles.submit} disabled={!!phase||!file||!usable||loading}>

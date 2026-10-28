@@ -12,7 +12,10 @@ export async function POST(request) {
     const ownerId=await connectionOwner(db,bearerToken(request));
     const body=await request.json().catch(()=>({}));
     const environment=body?.environment==='sandbox'?'sandbox':'production';
-    if(body?.posting===true && environment==='sandbox')return Response.json({error:'Publicação pública indisponível no Sandbox.'},{status:400,headers:cache});
+    // Request video.upload / video.publish for real Sandbox API tests. The scopes
+    // grant access to endpoints; they do not override TikTok's publication audit.
+    if(body?.posting!==undefined && typeof body.posting!=='boolean')
+      return Response.json({error:'Opção de autorização inválida.'},{status:400,headers:cache});
     const scopes=body?.posting===true?TIKTOK_SCOPE_POSTING:TIKTOK_SCOPE_BASIC;
     const state=newTikTokState();
     const url=buildTikTokAuthUrl(state,scopes,environment);

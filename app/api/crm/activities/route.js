@@ -6,6 +6,32 @@ const headers = { 'Cache-Control': 'private, no-store', Vary: 'Authorization' };
 const UUID = /^[a-f0-9-]{36}$/i;
 const PHONE = /^\d{8,15}$/;
 
+
+// Public, clearly labeled fictional example for inspecting the CRM layout.
+// Never reads live contacts or the database and never allows mutations.
+function exampleRecord(workspace) {
+  const gui = workspace === 'gui-nonato';
+  const contact = {
+    id: 'crm-demo-contact', phone: '11 90000-0000', profile_name: 'Contato de exemplo',
+    last_message_at: '2026-10-28T12:45:00-03:00',
+    created_at: '2026-10-20T10:30:00-03:00',
+    source: 'WhatsApp', stage: 'Interessado',
+    sector: 'comercial_vital', assigned_to: 'Equipe comercial',
+    tags: ['Exemplo', gui ? 'Mentoria' : 'Jardim vertical'],
+    notes: gui ? 'Exemplo: interessado em conhecer as condições da mentoria.' : '',
+  };
+  const activities = [
+    {id:'example-a',direction:'inbound',type:'text',body:gui ? 'Olá! Gostaria de saber como funciona a mentoria.' : 'Oi, gostaria de um jardim vertical para minha parede.',date:'2026-10-28T12:45:00-03:00',status:'received'},
+    {id:'example-b',direction:'outbound',type:'text',body:gui ? 'Claro! Você já vende em marketplaces ou está começando?' : 'Temos opções de jardins artificiais. Qual é a medida da parede?',date:'2026-10-28T12:42:00-03:00',status:'sent'},
+    {id:'example-c',direction:'inbound',type:'text',body:gui ? 'Já vendo no Mercado Livre, mas quero melhorar os resultados.' : 'Ela mede 2 metros de altura por 3 metros de largura.',date:'2026-10-28T12:39:00-03:00',status:'received'},
+  ];
+  return {
+    workspace, example:true, contact, activities,
+    notes:[{id:'example-note',body:gui ? 'Exemplo: lead qualificado pelo WhatsApp, aguardando direcionamento comercial.' : 'Exemplo: cliente procura jardim vertical e precisa de orientação sobre a quantidade.',date:'2026-10-28T11:00:00-03:00'}],
+    companies:[],deals:[],truncated:false,
+  };
+}
+
 function publicActivity(row) {
   return {
     id: row.id, direction: row.direction, type: row.message_type || 'text',
@@ -18,11 +44,14 @@ function publicActivity(row) {
 // Gui contacts to Vital messages, even when phone numbers match.
 export async function GET(request) {
   try {
-    const { db, ownerId } = await authorize(request);
     const url = new URL(request.url);
     const workspace = url.searchParams.get('workspace');
     const contactId = url.searchParams.get('contactId') || '';
     if (!['gui-nonato', 'vital-decor'].includes(workspace)) throw fail('Selecione uma conta válida.', 400);
+    if (url.searchParams.get('demo') === '1' && contactId === 'crm-demo-contact') {
+      return Response.json(exampleRecord(workspace), { headers });
+    }
+    const { db, ownerId } = await authorize(request);
 
     if (workspace === 'gui-nonato') {
       if (!UUID.test(contactId)) throw fail('Contato inválido.', 400);

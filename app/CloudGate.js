@@ -620,14 +620,14 @@ export default function CloudGate({ children }) {
     // Employees never mount the admin shell or its background synchronization.
     return <VitalCRMReal onLogout={handleLogout}/>;
   }
-  if (session && (accessScope === 'denied' || accessScope === 'installer_pending')) {
+  if (session && (accessScope === 'denied' || accessScope === 'installer_pending' || accessScope === 'staff_pending')) {
     return <main className={styles.screen}>
       <section className={styles.statusCard}>
         <img className={styles.statusLogo} src="/brand/tideplace-mark.svg" alt="" />
-        <h1>{accessScope === 'installer_pending' ? 'Área de instalações em preparação' : 'Acesso não autorizado'}</h1>
+        <h1>{accessScope === 'installer_pending' ? 'Área de instalações em preparação' : accessScope === 'staff_pending' ? 'CRM da Vital em validação' : 'Acesso não autorizado'}</h1>
         <p>{accessScope === 'installer_pending'
           ? 'O perfil de prestador de serviço ainda não foi habilitado.'
-          : accessError || 'Sua conta não possui permissão para acessar o TidePlace.'}</p>
+          : accessScope === 'staff_pending' ? 'Sua conta está preparada, mas o atendimento ainda não foi liberado. Procure a administradora da Vital.' : accessError || 'Sua conta não possui permissão para acessar o TidePlace.'}</p>
         <button type="button" onClick={handleLogout}>Sair da conta</button>
       </section>
     </main>;

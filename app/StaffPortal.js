@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Icon from './ui/Icon';
 import styles from './staff-portal.module.css';
+import { DEMO_SCOPES, DEMO_CONTACTS, demoConversationDetail } from './lib/crm-portal-demo.mjs';
 
 const SECTORS = {
   comercial_vital:'Comercial Vital',atacado:'Atacado',pos_venda:'Pós-venda',
@@ -21,20 +22,22 @@ async function staffGet(url,token) {
   if(!result.ok) throw new Error(payload.error || 'Não foi possível consultar o atendimento.');
   return payload;
 }
-export default function StaffPortal({token,onLogout}){
+export default function StaffPortal({token,onLogout,demo=false}){
+  const [demoScope,setDemoScope]=useState('pos_venda');
   const [profile,setProfile]=useState(null);
-  const [contacts,setContacts]=useState([]);
+  const [contacts,setContacts]=useState(demo ? DEMO_CONTACTS : []);
   const [selected,setSelected]=useState(null);
   const [detail,setDetail]=useState(null);
   const [page,setPage]=useState(0);
   const [hasMore,setHasMore]=useState(false);
-  const [loading,setLoading]=useState(true);
+  const [loading,setLoading]=useState(!demo);
   const [detailLoading,setDetailLoading]=useState(false);
   const [error,setError]=useState('');
   const [filter,setFilter]=useState('all');
   const [revision,setRevision]=useState(0);
 
   const load=useCallback(async()=>{
+    if(demo)return;
     let active=true;
     setLoading(true);setError('');
     try{
@@ -51,11 +54,12 @@ export default function StaffPortal({token,onLogout}){
     }catch(e){if(active)setError(e.message);}
     finally{if(active)setLoading(false);}
     return()=>{active=false;};
-  },[token,page,revision]);
+  },[token,page,revision,demo]);
   useEffect(()=>{void load();},[load]);
 
   useEffect(()=>{
     if(!selected){setDetail(null);return;}
+    if(demo){setDetail(demoConversationDetail(demoScope,selected));setDetailLoading(false);return;}
     let active=true;
     setDetailLoading(true);setDetail(null);
     staffGet('/api/crm/staff/conversations?contact='+encodeURIComponent(selected),token)
@@ -63,10 +67,11 @@ export default function StaffPortal({token,onLogout}){
       .catch(e=>{if(active){setError(e.message);setSelected(null);}})
       .finally(()=>{if(active)setDetailLoading(false);});
     return()=>{active=false;};
-  },[selected,token,revision]);
+  },[selected,token,revision,demo,demoScope]);
 
-  const allowed=profile?.sectors||[];
-  const displayed=filter==='all'?contacts:contacts.filter(item=>item.sector===filter);
+  const allowed=demo ? DEMO_SCOPES[demoScope].sectors : (profile?.sectors||[]);
+  const permitted=demo ? contacts.filter(item=>allowed.includes(item.sector)) : contacts;
+  const displayed=filter==='all'?permitted:permitted.filter(item=>item.sector===filter);
 
   return <div className={styles.shell}>
     <aside className={styles.sidebar}>
@@ -78,8 +83,9 @@ export default function StaffPortal({token,onLogout}){
       <div className={styles.navActive}><Icon name="inbox" size={18}/> Minhas conversas</div>
       <div className={styles.navInfo}><Icon name="shield" size={18}/> Acesso por setor</div>
       <div className={styles.sidebarBottom}>
-        <span>CRM restrito · Vital Decor</span>
-        <button type="button" onClick={onLogout}><Icon name="logout" size={17}/> Sair da conta</button>
+        <span>{demo?'Ambiente fictício · sem acesso real':'CRM restrito · Vital Decor'}</span>
+        {demo ? <a className={styles.backLink} href="/crm">Voltar para o Tide</a>
+          : <button type="button" onClick={onLogout}><Icon name="logout" size={17}/> Sair da conta</button>}
       </div>
     </aside>
     <main className={styles.main}>
@@ -89,8 +95,14 @@ export default function StaffPortal({token,onLogout}){
           <h1>Central de atendimento</h1>
           <p>Somente conversas encaminhadas aos seus setores autorizados.</p>
         </div>
-        <button type="button" onClick={()=>setRevision(n=>n+1)}><Icon name="refresh" size={16}/> Atualizar</button>
+        {demo ? <label className={styles.demoRolePicker}>Simular acesso de
+          <select value={demoScope} aria-label="Simular funcionário" onChange={event=>{setDemoScope(event.target.value);setSelected(null);setFilter('all');}}>
+            {Object.entries(DEMO_SCOPES).map(([key,value])=><option key={key} value={key}>{value.label}</option>)}
+          </select>
+        </label> : <button type="button" onClick={()=>setRevision(n=>n+1)}><Icon name="refresh" size={16}/> Atualizar</button>}
       </header>
+      {demo && <div className={styles.demoBanner} role="status"><strong>PRÉVIA INTERATIVA · DADOS FICTÍCIOS</strong>
+        <span>Troque o perfil acima para ver como cada funcionário acessa apenas os setores permitidos. Nenhuma conversa ou dado real é consultado.</span></div>}
       <div className={styles.workspace}>
         <section className={styles.listArea} aria-label="Conversas do meu setor">
           <div className={styles.listHeading}>
@@ -116,11 +128,11 @@ export default function StaffPortal({token,onLogout}){
               </span>
               <Icon name="chevronRight" size={16}/>
             </button>)}
-            <div className={styles.pageControls}>
+            {!demo && <div className={styles.pageControls}>
               <button disabled={!page} onClick={()=>{setPage(n=>Math.max(0,n-1));setSelected(null);}}>Anterior</button>
               <span>Página {page+1}</span>
               <button disabled={!hasMore} onClick={()=>{setPage(n=>n+1);setSelected(null);}}>Próxima</button>
-            </div>
+            </div>}
           </>}
         </section>
         <section className={styles.conversation} aria-label="Histórico da conversa selecionada">
@@ -143,7 +155,7 @@ export default function StaffPortal({token,onLogout}){
               {!detail.messages.length && <p className={styles.empty}>Nenhuma mensagem registrada.</p>}
             </div>}
             <div className={styles.readOnly}>
-              <Icon name="shield" size={15}/> Histórico em modo de leitura nesta fase. As respostas serão habilitadas somente após os testes de permissões de envio.
+              <Icon name="shield" size={15}/> {demo ? 'Demonstração: não envia mensagens nem altera atendimentos.' : 'Histórico em modo de leitura nesta fase. As respostas serão habilitadas somente após os testes de permissões de envio.'}
             </div>
           </>}
         </section>

@@ -11,7 +11,7 @@ export async function POST(request){
   const body=await request.json().catch(()=>({}));
   const id=requireUuid(body.id);
   const {data:post,error:postError}=await db.from('multichannel_posts')
-    .select('id').eq('id',id).eq('owner_user_id',ownerId)
+    .select('id,size_bytes').eq('id',id).eq('owner_user_id',ownerId)
     .eq('workspace_id',PUBLISH_WORKSPACE).maybeSingle();
   if(postError||!post)throw Object.assign(new Error('Vídeo não encontrado.'),{status:404});
   const {data:row,error:targetError}=await db.from('multichannel_post_targets')
@@ -29,10 +29,22 @@ export async function POST(request){
     }).eq('id',row.id).in('state',['processing','draft']);
     if(error)throw new Error('TikTok confirmou o status, mas não foi possível salvar no histórico.');
   }
+  const totalBytes=Number(post.size_bytes);
+  const uploadedBytes=state.uploadedBytes;
+  let message;
+  if(state.state==='draft')message='TikTok confirmou a entrega à caixa de entrada. Abra a notificação no aplicativo para finalizar o rascunho.';
+  else if(state.state==='published')message='TikTok confirmou que o vídeo foi publicado.';
+  else if(state.state==='failed')message='O TikTok informou falha ('+(state.reason||'sem motivo informado')+'). Não reenvie sem avaliar.';
+  else if(state.status==='PROCESSING_UPLOAD'){
+    message=uploadedBytes===null
+      ?'TikTok informa PROCESSING_UPLOAD, mas não informou quantos bytes recebeu. Ainda não há confirmação de rascunho.'
+      :uploadedBytes===0
+      ?'O TikTok registrou a tarefa, mas informa ZERO bytes recebidos. O vídeo ainda não chegou à plataforma.'
+      :uploadedBytes<totalBytes
+      ?'O TikTok recebeu '+uploadedBytes+' de '+totalBytes+' bytes. A transferência ainda não está completa.'
+      :'O TikTok recebeu o arquivo, mas ainda não concluiu o processamento.';
+  }else message='O TikTok retornou '+state.status+'. Ainda não há confirmação de entrega à caixa de entrada.';
   return Response.json({state:state.state,status:state.status,reason:state.reason,
-   message:state.state==='draft'?'Vídeo disponível na caixa de entrada do TikTok para finalizar pelo aplicativo.':
-    state.state==='published'?'Publicação confirmada pelo TikTok.':
-    state.state==='failed'?'O TikTok informou falha. Confira os detalhes antes de reenviar.':
-    'O TikTok ainda está processando o vídeo.'},{headers:NO_STORE});
+    uploadedBytes,totalBytes,message},{headers:NO_STORE});
  }catch(error){return publishError(null,error,'Falha ao consultar o envio TikTok.');}
 }

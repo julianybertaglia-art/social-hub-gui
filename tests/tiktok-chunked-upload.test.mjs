@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {tikTokUploadPlan,safeUploadUrl} from '../app/lib/tiktok-posting.mjs';
 
-for(const size of [1,4_000_000,5_000_000,5_500_000,10_000_000,31_036_859,50_000_000]){
+for(const size of [1,4_000_000,5_000_000,5_500_000,9_999_999,10_000_000,10_000_001,31_036_859,50_000_000]){
  test('TikTok upload plan covers each byte exactly for '+size,()=>{
    const plan=tikTokUploadPlan(size);
    assert.equal(plan.videoSize,size);
@@ -21,14 +21,17 @@ for(const size of [1,4_000_000,5_000_000,5_500_000,10_000_000,31_036_859,50_000_
    assert.equal(next,size);assert.equal(sum,size);
  });
 }
-test('31MB file uses multiple sequential 5MB parts, not one large POST',()=>{
+test('31MB file uses exactly three 10MB-based parts, not 5MB boundary chunks',()=>{
  const plan=tikTokUploadPlan(31_036_859);
- assert.equal(plan.totalChunkCount,6);
- assert.equal(plan.chunkSize,5_000_000);
+ assert.equal(plan.totalChunkCount,3);
+ assert.equal(plan.chunkSize,10_000_000);
  assert.equal(plan.parts[0].start,0);
- assert.equal(plan.parts[0].end,5_000_000);
- assert.equal(plan.parts[5].start,25_000_000);
- assert.equal(plan.parts[5].end,31_036_859);
+ assert.equal(plan.parts[0].end,10_000_000);
+ assert.equal(plan.parts[1].start,10_000_000);
+ assert.equal(plan.parts[1].end,20_000_000);
+ assert.equal(plan.parts[2].start,20_000_000);
+ assert.equal(plan.parts[2].end,31_036_859);
+ assert.equal(plan.parts[2].size,11_036_859);
 });
 test('TikTok upload plan rejects oversized and invalid files',()=>{
  for(const size of [0,-1,50_000_001,Infinity,NaN,1.5])

@@ -143,7 +143,7 @@ export default function ContactRecord({ workspace, contact: summary, onBack, onM
           {ACTIVITY_TABS.map(([key, label]) =>
             <button key={key} type="button" className={tab === key ? s.selected : ''} onClick={() => { setTab(key); setOverview('activity'); }}>{label}</button>
           )}
-          {overview === 'overview' && <button className={s.selected} onClick={() => { setTab('all'); setOverview('activity'); }}>Ver todas</button>}
+          
         </nav>
 
         {(overview === 'overview' || tab === 'all') && <div className={s.activityFilters}>

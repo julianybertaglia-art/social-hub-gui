@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import styles from './cloudgate.module.css';
-import StaffPortal from './StaffPortal';
+import VitalCRMReal from './VitalCRMReal';
 import { hasAuthIdentityChanged, sameAuthenticatedUser } from './lib/session-gate.mjs';
 
 const STORAGE_KEYS = [
@@ -618,7 +618,7 @@ export default function CloudGate({ children }) {
 
   if (session && accessScope === 'staff') {
     // Employees never mount the admin shell or its background synchronization.
-    return <StaffPortal token={session.access_token} onLogout={handleLogout}/>;
+    return <VitalCRMReal onLogout={handleLogout}/>;
   }
   if (session && (accessScope === 'denied' || accessScope === 'installer_pending')) {
     return <main className={styles.screen}>

@@ -35,7 +35,7 @@ function RecordBlock({ title, count, children }) {
   </section>;
 }
 
-export default function ContactRecord({ workspace, contact: summary, onBack, onMove, busy }) {
+export default function ContactRecord({ workspace, contact: summary, onBack, onMove, busy, demo = false }) {
   const gui = workspace.id === 'gui-nonato';
   const [tab, setTab] = useState('all');
   const [overview, setOverview] = useState('overview');
@@ -43,14 +43,14 @@ export default function ContactRecord({ workspace, contact: summary, onBack, onM
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
-  const endpoint = '/api/crm/activities?workspace=' + workspace.id + '&contactId=' + encodeURIComponent(String(summary.id));
+  const endpoint = '/api/crm/activities?workspace=' + workspace.id + '&contactId=' + encodeURIComponent(String(summary.id)) + (demo ? '&demo=1' : '');
   const { data, loading, error } = useResource(endpoint);
   const contact = { ...(data?.contact || {}), ...summary };
   const activities = data?.activities || [];
   const notes = data?.notes || [];
   const name = contact.profile_name || contact.name || contact.phone || 'Contato sem nome';
   const phone = String(contact.phone || '').replace(/\D/g, '');
-  const callLink = phone ? 'tel:+' + phone : null;
+  const callLink = phone && !demo ? 'tel:+' + phone : null;
   const messageList = activities.filter(item => {
     if (messageFilter !== 'all' && item.direction !== messageFilter) return false;
     const text = String(item.body || '') + ' ' + String(item.type || '');
@@ -71,6 +71,7 @@ export default function ContactRecord({ workspace, contact: summary, onBack, onM
   }
 
   return <main className={s.record}>
+    {demo && <div className={s.demoNotice} role="status"><strong>Demonstração do layout</strong><span>Este contato e as mensagens são fictícios. Nenhuma ação será enviada pelo WhatsApp.</span></div>}
     <div className={s.breadcrumb}>
       <button type="button" onClick={onBack}><Icon name="arrowLeft" size={17}/> Voltar aos contatos</button>
       <span> / {workspace.name} / Ficha do contato</span>
@@ -87,11 +88,11 @@ export default function ContactRecord({ workspace, contact: summary, onBack, onM
             </div>
           </div>
           <div className={s.quickActions}>
-            <Link href="/whatsapp" title="Abrir a caixa de entrada" aria-label="Abrir a caixa de entrada"><Icon name="chat" size={19}/><small>WhatsApp</small></Link>
+            {demo ? <span className={s.disabledAction}><Icon name="chat" size={19}/><small>Exemplo</small></span> : <Link href="/whatsapp" title="Abrir a caixa de entrada" aria-label="Abrir a caixa de entrada"><Icon name="chat" size={19}/><small>WhatsApp</small></Link>}
             {callLink
               ? <a href={callLink} title="Ligar para o contato"><Icon name="phone" size={19}/><small>Ligar</small></a>
               : <span className={s.disabledAction}><Icon name="phone" size={19}/><small>Sem nº</small></span>}
-            <button onClick={copyPhone} disabled={!phone} title="Copiar telefone"><Icon name="copy" size={19}/><small>{copied ? 'Copiado' : 'Copiar'}</small></button>
+            <button onClick={copyPhone} disabled={!phone || demo} title="Copiar telefone"><Icon name="copy" size={19}/><small>{copied ? 'Copiado' : 'Copiar'}</small></button>
           </div>
         </div>
 
@@ -114,7 +115,7 @@ export default function ContactRecord({ workspace, contact: summary, onBack, onM
             {gui && <Property label="Etiquetas">{contact.tags?.length ? contact.tags.join(' · ') : 'Nenhuma etiqueta'}</Property>}
           </dl>
           {gui && <label className={s.moveLabel}>Alterar etapa
-            <select value={contact.stage || 'Sem etapa'} disabled={busy !== null || loading} onChange={event => onMove(contact, event.target.value)}>
+            <select value={contact.stage || 'Sem etapa'} disabled={demo || busy !== null || loading} onChange={event => onMove(contact, event.target.value)}>
               {!STAGES.includes(contact.stage) && <option value={contact.stage || 'Sem etapa'}>{contact.stage || 'Sem etapa'}</option>}
               {STAGES.map(stage => <option key={stage} value={stage}>{stage}</option>)}
             </select>
@@ -211,7 +212,7 @@ export default function ContactRecord({ workspace, contact: summary, onBack, onM
             <Property label={gui ? 'Etapa' : 'Setor'}>{crmLaneLabel(crmLane(workspace.id, contact))}</Property>
             {!gui && <Property label="Atribuído a">{contact.assigned_to || 'Não atribuído'}</Property>}
           </dl>
-          <Link href="/whatsapp" className={s.sideLink}>Abrir caixa de entrada <Icon name="arrowRight" size={16}/></Link>
+          {demo ? <span className={s.sideLink}>Ação indisponível nesta demonstração</span> : <Link href="/whatsapp" className={s.sideLink}>Abrir caixa de entrada <Icon name="arrowRight" size={16}/></Link>}
         </RecordBlock>
       </aside>
     </div>

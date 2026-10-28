@@ -54,7 +54,7 @@ async function tiktokPost(accessToken,path,body){
   }
   return result.data||{};
 }
-export async function uploadTikTokDraft({db,ownerId,file,mimeType}){
+export async function uploadTikTokDraft({db,ownerId,file,mimeType,onInitialized}){
   const size=file.size;
   if(mimeType!=='video/mp4'||!Number.isSafeInteger(size)||size<1||size>50_000_000)
     throw Object.assign(new Error('Envie um MP4 de até 50 MB.'),{status:400});
@@ -67,6 +67,7 @@ export async function uploadTikTokDraft({db,ownerId,file,mimeType}){
   if(!publishId||publishId.length>64||!data.upload_url)
     throw new Error('TikTok não confirmou o ID da tarefa de upload.');
   const uploadUrl=safeUploadUrl(data.upload_url);
+  if(onInitialized)await onInitialized(publishId);
   const result=await fetch(uploadUrl,{
     method:'PUT',redirect:'error',headers:{
       'Content-Type':mimeType,'Content-Length':String(size),

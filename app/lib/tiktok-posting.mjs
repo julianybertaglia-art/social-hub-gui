@@ -50,6 +50,7 @@ async function tiktokPost(accessToken,path,body){
     const reason=String(result?.error?.code||'request_failed').replace(/[^a-zA-Z0-9_]/g,'').slice(0,56);
     const e=new Error('O TikTok recusou a solicitação ('+reason+'). Verifique as permissões e os limites de envio.');
     e.status=response.status===401?401:response.status===429?429:409;
+    e.tiktokStage='init';e.tiktokCode=reason;
     throw e;
   }
   return result.data||{};
@@ -65,7 +66,7 @@ export async function uploadTikTokDraft({db,ownerId,file,mimeType,onInitialized}
   });
   const publishId=String(data.publish_id||'');
   if(!publishId||publishId.length>64||!data.upload_url)
-    throw new Error('TikTok não confirmou o ID da tarefa de upload.');
+    throw Object.assign(new Error('TikTok não confirmou o identificador da transferência.'),{status:502,tiktokStage:'init'});
   const uploadUrl=safeUploadUrl(data.upload_url);
   if(onInitialized)await onInitialized(publishId);
   const result=await fetch(uploadUrl,{
@@ -74,8 +75,9 @@ export async function uploadTikTokDraft({db,ownerId,file,mimeType,onInitialized}
       'Content-Range':'bytes 0-'+(size-1)+'/'+size
     },body:file,cache:'no-store',signal:AbortSignal.timeout(200000)
   });
-  if(result.status!==201)throw new Error('O TikTok iniciou a tarefa '+publishId+
-    ', mas não confirmou o upload do vídeo (HTTP '+result.status+'). Confira o status antes de tentar novamente.');
+  if(result.status!==201)throw Object.assign(new Error(
+    'TikTok não confirmou a transferência do arquivo (HTTP '+result.status+'). Use Verificar no TikTok antes de tentar outro envio.'
+  ),{status:502,tiktokStage:'transfer'});
   return publishId;
 }
 export async function checkTikTokTask({db,ownerId,publishId}){

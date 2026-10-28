@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import {TopicFilter,TopicBadge,TopicPicker,useConversationTopics} from '../ui/ConversationTopics';
+import {resolvedTopic,topicsFor} from '../lib/conversation-topics.mjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import styles from './whatsapp.module.css';
 import ServiceWindowControls from './ServiceWindowControls.js';
@@ -79,6 +81,8 @@ export default function WhatsAppPage() {
   const [search, setSearch] = useState('');
   const [activePriority, setActivePriority] = useState('all');
   const [activeTopic, setActiveTopic] = useState('all');
+  const [conversationSubject,setConversationSubject]=useState('all');
+  const subjectStore=useConversationTopics('gui-nonato','whatsapp');
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
@@ -154,10 +158,14 @@ export default function WhatsAppPage() {
     return counts;
   }, [contacts, activePriority, activeTopic]);
 
+  const subjectCounts={all:contacts.length};
+  for(const option of topicsFor('gui-nonato')) subjectCounts[option.id]=contacts.filter(c=>resolvedTopic('gui-nonato',c,subjectStore.assignments)===option.id).length;
+
   const filteredContacts = useMemo(() => {
     const term = search.trim().toLowerCase();
     return contacts.filter((contact) => {
       if (!matchesFilter(contact, activePriority) || !matchesFilter(contact, activeTopic)) return false;
+      if(conversationSubject!=='all' && resolvedTopic('gui-nonato',contact,subjectStore.assignments)!==conversationSubject)return false;
       if (!term) return true;
       return [
         contact.profile_name,
@@ -170,7 +178,7 @@ export default function WhatsAppPage() {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term));
     });
-  }, [contacts, search, activePriority, activeTopic]);
+  }, [contacts, search, activePriority, activeTopic, conversationSubject, subjectStore.assignments]);
 
   function chooseFilter(priority = activePriority, topic = activeTopic) {
     setActivePriority(priority);
@@ -376,6 +384,11 @@ export default function WhatsAppPage() {
             </button>
           ))}
         </div>
+        <div style={{padding:'12px 18px',borderTop:'1px solid var(--border,#e9e5e8)'}}>
+          <p style={{fontSize:12,fontWeight:700,margin:'0 0 8px'}}>Assunto da conversa</p>
+          <TopicFilter workspace="gui-nonato" counts={subjectCounts} value={conversationSubject} onChange={next=>{setConversationSubject(next);setSelectedId(null);}}/>
+          {subjectStore.error && <p role="alert" style={{color:'#9b352c',fontSize:12}}>{subjectStore.error}</p>}
+        </div>
       </section>
 
       <section className={styles.workspace}>
@@ -394,6 +407,7 @@ export default function WhatsAppPage() {
             {!filteredContacts.length && <div className={styles.empty}>{notice ? "Não foi possível confirmar os leads. Verifique o erro acima." : "Nenhum lead nesta fila agora."}</div>}
             {filteredContacts.map((contact) => {
               const topic = contact.smart_categories?.[0];
+              const labelTopic=resolvedTopic('gui-nonato',contact,subjectStore.assignments);
               const attention = contact.needs_reply
                 ? 'Responder agora'
                 : contact.needs_follow_up
@@ -411,6 +425,7 @@ export default function WhatsAppPage() {
                     <strong>{contact.profile_name || formatPhone(contact.phone)}</strong>
                     <span>{contact.profile_name ? formatPhone(contact.phone) : contact.source}</span>
                     <small className={contact.needs_reply ? styles.needsReply : contact.needs_follow_up ? styles.needsFollowUp : ''}>{attention}</small>
+                    <TopicBadge workspace="gui-nonato" topic={labelTopic}/>
                   </div>
                   <time>{formatTime(contact.last_message_sent_at || contact.last_message_at)}</time>
                 </button>
@@ -432,9 +447,12 @@ export default function WhatsAppPage() {
                   <strong>{selected.profile_name || formatPhone(selected.phone)}</strong>
                   <span>{formatPhone(selected.phone)} · {(selected.smart_categories || []).join(' · ') || selected.source}</span>
                 </div>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+                <TopicPicker workspace="gui-nonato" value={resolvedTopic('gui-nonato',selected,subjectStore.assignments)} disabled={subjectStore.saving} onChange={async next=>{if(await subjectStore.save(selected.id,next))setNotice('Assunto atualizado.');}}/>
                 <select value={selected.stage} onChange={(event) => updateContact({ stage: event.target.value })} disabled={saving}>
                   {STAGES.map((stage) => <option key={stage}>{stage}</option>)}
                 </select>
+                </div>
               </div>
 
               <div className={styles.messages}>

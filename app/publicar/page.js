@@ -13,7 +13,7 @@ const NETWORKS=[
 ];
 const STATE={
   ready:'Preparado',sending:'Enviando',processing:'Processando na Meta',
-  published:'Publicado',private:'Enviado como privado',draft:'Enviado à caixa do TikTok',
+  published:'Publicado',private:'Enviado como privado',draft:'Notificação sinalizada pela API',
   pending_approval:'Aguardando aprovação',failed:'Falhou',unknown:'Conferir manualmente',
 };
 const sizeLabel=n=>(n/1024/1024).toFixed(1)+' MB';
@@ -37,7 +37,7 @@ function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutu
   return <div className={styles.targetRow}>
     <span className={styles.networkSymbol}>{label?.symbol||'•'}</span>
     <span className={styles.targetBody}><strong>{label?.name||target.platform}</strong>
-      <small>{target.error||(target.platform==='tiktok'&&target.state==='processing'?'Aguardando confirmação de entrega do TikTok':platformStatus)}</small></span>
+      <small>{target.platform==='tiktok'&&target.state==='draft'?'TikTok informou envio da notificação; confirme se ela aparece no aplicativo.':target.error||(target.platform==='tiktok'&&target.state==='processing'?'Aguardando confirmação de entrega do TikTok':platformStatus)}</small></span>
     <span className={[styles.tag,
       ['published','private'].includes(target.state)?styles.doneTag:
       ['pending_approval','processing'].includes(target.state)?styles.pendingTag:styles.neutralTag].join(' ')}>

@@ -19,14 +19,20 @@ export async function POST(request){
   if(targetError||!row||!row.external_id)throw Object.assign(
     new Error('Ainda não há tarefa de envio TikTok confirmada.'),{status:409});
   const state=await checkTikTokTask({db,ownerId,publishId:row.external_id});
-  // Do not regress terminal state in case the TikTok API temporarily lags.
-  if(!['published','failed','unknown'].includes(row.state)){
+  // Only a confirmed TikTok terminal state may replace an ambiguous local
+  // upload failure. A PROCESSING_UPLOAD result does NOT mean the video arrived.
+  const confirmed=['draft','published','failed'].includes(state.state);
+  const shouldStore=confirmed
+    ? !['published','failed'].includes(row.state)
+    : row.state==='processing';
+  if(shouldStore){
     const detail=state.state==='draft'
-      ?'Rascunho enviado ao TikTok. Abra a notificação no aplicativo para editar e publicar.'
-      :state.state==='failed'?'TikTok não concluiu o processamento ('+(state.reason||'erro')+').':null;
+      ?'TikTok confirmou a entrega do vídeo à caixa de entrada para edição e publicação.'
+      :state.state==='failed'?'TikTok não concluiu o envio ('+(state.reason||'erro')+').':
+      state.state==='processing'?'O TikTok ainda não confirmou a entrega do vídeo.':null;
     const {error}=await db.from('multichannel_post_targets').update({
       state:state.state,error_message:detail,updated_at:new Date().toISOString()
-    }).eq('id',row.id).in('state',['processing','draft']);
+    }).eq('id',row.id).in('state',['processing','draft','unknown']);
     if(error)throw new Error('TikTok confirmou o status, mas não foi possível salvar no histórico.');
   }
   const totalBytes=Number(post.size_bytes);

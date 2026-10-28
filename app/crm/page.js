@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import Icon from '../ui/Icon';
+import { TopicFilter, TopicBadge, useConversationTopics } from '../ui/ConversationTopics';
+import { resolvedTopic, topicsFor } from '../lib/conversation-topics.mjs';
 import { useWorkspace } from '../WorkspaceSwitcher';
 import { api, useResource } from '../operations/useOperations';
 import { KPI } from '../operations/Charts';
@@ -33,6 +35,8 @@ function Board({ workspace }) {
   const [lane, setLane] = useState('all');
   const [sort, setSort] = useState('recent');
   const [pageSize, setPageSize] = useState(25);
+  const [subject, setSubject] = useState('all');
+  const subjectStore = useConversationTopics(workspace.id,'whatsapp');
   const [selectedId, setSelectedId] = useState(null);
   const [selectedContact, setSelectedContact] = useState(null);
   const [busy, setBusy] = useState(null);
@@ -40,7 +44,10 @@ function Board({ workspace }) {
   const { data, loading, error: loadError } = useResource('/api/operations?workspace=' + workspace.id + '&days=' + days, revision);
   const allContacts = data?.contacts || [];
   const contacts = crmFilter(allContacts, workspace.id, { search, lane, sort });
-  const visibleContacts = contacts.slice(0, pageSize);
+  const subjectCounts = {all:contacts.length};
+  for(const topic of topicsFor(workspace.id)) subjectCounts[topic.id]=contacts.filter(contact=>resolvedTopic(workspace.id,contact,subjectStore.assignments)===topic.id).length;
+  const subjectContacts = subject==='all' ? contacts : contacts.filter(contact=>resolvedTopic(workspace.id,contact,subjectStore.assignments)===subject);
+  const visibleContacts = subjectContacts.slice(0, pageSize);
   const columns = crmLanes(workspace.id, allContacts);
   const selected = allContacts.find(c => crmContactKey(workspace.id, c) === selectedId) || selectedContact;
 
@@ -73,6 +80,9 @@ function Board({ workspace }) {
     onBack={() => { setSelectedId(null); setSelectedContact(null); }}
     onMove={move}
     busy={busy}
+    subject={resolvedTopic(workspace.id,selected,subjectStore.assignments)}
+    onSaveSubject={next=>subjectStore.save(selected.id,next)}
+    subjectSaving={subjectStore.saving}
   />;
 
   return (
@@ -125,6 +135,9 @@ function Board({ workspace }) {
               </div>
             </div>
 
+            <div className={s.crmSubjectFilter}><span className={s.crmSectionEyebrow}>FILTRAR POR ASSUNTO</span><TopicFilter workspace={workspace.id} value={subject} onChange={next=>{setSubject(next);setPageSize(25);}} counts={subjectCounts}/></div>
+            {subjectStore.error && <p role="alert" className={s.notice}>{subjectStore.error}</p>}
+
             {(error || loadError) && <div role="alert" className={s.notice}>
               <strong>Não foi possível carregar os contatos desta versão.</strong>
               <p>{error || loadError}</p>
@@ -137,7 +150,7 @@ function Board({ workspace }) {
                 <h2>{view === 'contacts' ? 'Todos os contatos' : (gui ? 'Etapas da negociação' : 'Distribuição por setor')}</h2>
                 <p className={s.muted}>{view === 'contacts' ? 'Selecione um contato para abrir sua ficha e o histórico de atividades.' : gui ? 'Organize as oportunidades conforme o avanço comercial.' : 'A organização por setor não altera as etapas de venda.'}</p>
               </div>
-              <span>{contacts.length} {contacts.length === 1 ? 'registro' : 'registros'}</span>
+              <span>{subjectContacts.length} {subjectContacts.length === 1 ? 'registro' : 'registros'}</span>
             </div>
 
             {loading
@@ -162,23 +175,24 @@ function Board({ workspace }) {
                             {!!contact.tags?.length && <span className={s.crmContactTags}>{contact.tags.slice(0,2).join(' · ')}</span>}
                           </span>
                           <span className={s.crmContactMeta}>
+                            <TopicBadge workspace={workspace.id} topic={resolvedTopic(workspace.id,contact,subjectStore.assignments)}/>
                             <span className={s.crmPill}>{crmLaneLabel(crmLane(workspace.id, contact))}</span>
                             <small>{formattedDate(contact.last_message_at)}</small>
                           </span>
                           <Icon name="chevronRight" size={18}/>
                         </button>;
                       })}
-                      {!contacts.length && <div className={s.empty}>Nenhum contato encontrado com estes filtros.</div>}
-                      {contacts.length > pageSize && <button type="button" className={s.crmLoadMore} onClick={() => setPageSize(n => n + 25)}>Mostrar mais 25 contatos <Icon name="chevronDown" size={16}/></button>}
+                      {!subjectContacts.length && <div className={s.empty}>Nenhuma conversa encontrada nesta categoria.</div>}
+                      {subjectContacts.length > pageSize && <button type="button" className={s.crmLoadMore} onClick={() => setPageSize(n => n + 25)}>Mostrar mais 25 contatos <Icon name="chevronDown" size={16}/></button>}
                     </div>
                   : <div className={s.crmStages}>
                       {columns.map(column => {
-                        const list = contacts.filter(c => crmLane(workspace.id, c) === column);
+                        const list = subjectContacts.filter(c => crmLane(workspace.id, c) === column);
                         return <details className={s.crmStageGroup} key={column} open={false}>
                           <summary><span className={s.crmStageTitle}><span className={s.crmStageDot}/>{crmLaneLabel(column)}</span><span className={s.crmStageCount}>{list.length} contatos <Icon name="chevronDown" size={16}/></span></summary>
                           <div className={s.crmStageContents}>
                             {list.map(contact => <div className={s.crmStageContact} key={crmContactKey(workspace.id, contact)}>
-                              <div><strong>{contact.profile_name || contact.phone || 'Contato sem nome'}</strong><small>{contact.phone}</small></div>
+                              <div><strong>{contact.profile_name || contact.phone || 'Contato sem nome'}</strong><small>{contact.phone}</small><TopicBadge workspace={workspace.id} topic={resolvedTopic(workspace.id,contact,subjectStore.assignments)}/></div>
                               <button type="button" className={s.crmOpen} onClick={() => openContact(contact)}>Ver ficha <Icon name="arrowRight" size={14}/></button>
                               {gui && <select aria-label={'Etapa de ' + (contact.profile_name || contact.phone)} value={contact.stage || 'Sem etapa'} disabled={busy !== null} onChange={e => move(contact, e.target.value)}>
                                 {!STAGES.includes(contact.stage) && <option value={contact.stage || 'Sem etapa'}>{contact.stage || 'Sem etapa'}</option>}

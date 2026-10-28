@@ -86,3 +86,31 @@
 @media(max-width:520px){.breadcrumb{flex-wrap:wrap}.overviewStrip{grid-template-columns:1fr 1fr;margin:14px 12px 0}.overviewStrip>div:last-child{grid-column:1/-1}.activityHeader{padding:20px 14px 0}.activityTabs{margin:16px 14px 0;gap:5px 13px}.activityFilters{margin:14px 14px 0;flex-wrap:wrap}.activityFilters input,.activityFilters select{flex:1 1 100%;max-width:none}.activityBody{padding:12px 14px 25px}.activityCardTop time{white-space:normal}.identity h1{font-size:20px}}
 
 .demoNotice{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;margin:4px 0 12px;padding:13px 16px;border:1px solid #dcc4cd;border-radius:10px;background:var(--tp-wine-tint,#f7e8ee);color:var(--record-wine);font-size:13px;line-height:1.5}.demoNotice strong{font-weight:800}.demoNotice span{color:var(--tp-text,#30272b);font-size:12px}
+
+
+/* Contact record typography · consistent hierarchy across 3 columns */
+.record{font-size:14px;line-height:1.5}
+.breadcrumb{font-size:13px}
+.identity h1{font-size:22px;font-weight:720}
+.overline{font-size:11px}
+.identity p{font-size:13px}
+.quickActions small{font-size:12px}
+.propertyPanel summary{font-size:14px}
+.property dt{font-size:12px}
+.property dd{font-size:13.5px}
+.stagePill{font-size:12.5px}
+.moveLabel{font-size:13px}
+.recordTabs button{font-size:14px}
+.overviewStrip span,.activityCardTop time,.channel,.noteTitle time,.groupTitle span{font-size:12px}
+.overviewStrip strong{font-size:14px}
+.activityHeader h2{font-size:20px}
+.activityHeader p{font-size:13px}
+.activityTabs button{font-size:13px}
+.activityFilters input,.activityFilters select{font-size:13.5px}
+.noteGroup h3,.groupTitle h3{font-size:14px}
+.noteCard p,.activityCard p{font-size:13.5px}
+.activityCardTop strong{font-size:14px}
+.associationHeading h3{font-size:15px}
+.noAssociation p{font-size:13px}
+.noAssociation small{font-size:12px}
+.record .sideProperties .property{margin-bottom:10px}

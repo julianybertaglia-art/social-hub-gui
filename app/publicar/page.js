@@ -32,14 +32,16 @@ async function call(path,options={}){
 }
 function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutube,youtubeCheck,onVerifyTikTok,verifyingTikTok,tiktokCheck,onRetryTikTok,retryingTikTok,onDiagnoseTikTok,diagnosingTikTok,tiktokDiagnostic,onPrepareNewTikTok,preparingNewTikTok,onSendSavedTikTok,sendingSavedTikTok}){
   const label=NETWORKS.find(n=>n.id===target.platform);
+  const platformStatus=target.platform==='tiktok'&&target.state==='processing'?
+    'Processando no TikTok':STATE[target.state]||target.state;
   return <div className={styles.targetRow}>
     <span className={styles.networkSymbol}>{label?.symbol||'•'}</span>
     <span className={styles.targetBody}><strong>{label?.name||target.platform}</strong>
-      <small>{target.error||(target.platform==='tiktok'&&target.state==='processing'?'Aguardando TikTok':STATE[target.state]||target.state)}</small></span>
+      <small>{target.error||(target.platform==='tiktok'&&target.state==='processing'?'Aguardando confirmação de entrega do TikTok':platformStatus)}</small></span>
     <span className={[styles.tag,
       ['published','private'].includes(target.state)?styles.doneTag:
       ['pending_approval','processing'].includes(target.state)?styles.pendingTag:styles.neutralTag].join(' ')}>
-      {STATE[target.state]||target.state}</span>
+      {platformStatus}</span>
     {target.platform==='instagram'&&target.state==='processing'&&
       <button className={styles.finish} type="button" disabled={!!busy}
         onClick={()=>onFinish(postId)}>{busy===postId?'Verificando…':'Concluir Reel'}</button>}

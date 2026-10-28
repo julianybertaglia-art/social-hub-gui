@@ -6,6 +6,7 @@ import { useResource } from '../operations/useOperations';
 import { crmLane, crmLaneLabel } from '../lib/crm-view.mjs';
 import { STAGES } from '../lib/operations.mjs';
 import Icon from '../ui/Icon';
+import {TopicPicker,TopicBadge} from '../ui/ConversationTopics';
 import s from './contact-record.module.css';
 
 const ACTIVITY_TABS = [
@@ -35,7 +36,7 @@ function RecordBlock({ title, count, children }) {
   </section>;
 }
 
-export default function ContactRecord({ workspace, contact: summary, onBack, onMove, busy, demo = false }) {
+export default function ContactRecord({ workspace, contact: summary, onBack, onMove, busy, demo = false, subject = 'outros', onSaveSubject, subjectSaving = false }) {
   const gui = workspace.id === 'gui-nonato';
   const [tab, setTab] = useState('all');
   const [overview, setOverview] = useState('overview');
@@ -109,6 +110,8 @@ export default function ContactRecord({ workspace, contact: summary, onBack, onM
 
         <details className={s.propertyPanel} open>
           <summary>{gui ? 'Sobre a oportunidade' : 'Sobre o atendimento'} <Icon name="chevronDown" size={16}/></summary>
+          {!demo && <TopicPicker workspace={workspace.id} value={subject} disabled={subjectSaving} onChange={next=>onSaveSubject?.(next)} label="Assunto da conversa"/>}
+          {demo && <TopicBadge workspace={workspace.id} topic={subject}/>}
           <dl>
             <Property label={gui ? 'Etapa atual' : 'Setor'}><span className={s.stagePill}>{crmLaneLabel(crmLane(workspace.id, contact))}</span></Property>
             {!gui && <Property label="Responsável">{contact.assigned_to || 'Não atribuído'}</Property>}

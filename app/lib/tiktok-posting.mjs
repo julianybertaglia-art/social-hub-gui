@@ -6,12 +6,29 @@ const ROOT='https://open.tiktokapis.com';
 const TIKTOK_INIT='/v2/post/publish/inbox/video/init/';
 const TIKTOK_STATUS='/v2/post/publish/status/fetch/';
 
+// TikTok documentation shows open-upload.tiktokapis.com and
+// upload.us.tiktokapis.com, but the API may return a different regional
+// upload host. Accept only upload-named subdomains of TikTok's documented
+// tiktokapis.com service domain. Never accept an arbitrary TikTok-owned CDN,
+// third-party domain, URL credentials, insecure scheme, or redirected upload.
 export function safeUploadUrl(value){
   let url;
-  try{url=new URL(value);}catch{throw new Error('O TikTok retornou um endereço de upload inválido.');}
-  if(url.protocol!=='https:'||url.username||url.password||url.port||
-    !(url.hostname==='open-upload.tiktokapis.com'||/^upload\.[a-z]{2}\.tiktokapis\.com$/.test(url.hostname)))
-    throw new Error('O TikTok retornou um destino de upload não reconhecido.');
+  try{url=new URL(value);}catch{throw Object.assign(new Error(
+    'O TikTok retornou uma URL de upload inválida.'),{status:502,tiktokStage:'upload_url'});}
+  const hostname=url.hostname.toLowerCase();
+  const tikTokServiceDomain=hostname.endsWith('.tiktokapis.com') &&
+    hostname!=='tiktokapis.com';
+  const subdomain=tikTokServiceDomain?
+    hostname.slice(0,-'.tiktokapis.com'.length):'';
+  const uploadHost=/^(?:[a-z0-9-]*[-.])?upload(?:[-.][a-z0-9-]+)*$/.test(subdomain);
+  const safeHost=/^[a-z0-9.-]{1,140}$/.test(hostname)?hostname:'não_identificado';
+  if(url.protocol!=='https:'||url.username||url.password||url.port||url.hash||
+    !tikTokServiceDomain||!uploadHost){
+    // Report the HOST ONLY, never the query string (which carries upload_token).
+    throw Object.assign(new Error(
+      'O TikTok retornou um destino de upload não autorizado (domínio: '+safeHost+
+      '). Nenhum byte foi enviado.'),{status:502,tiktokStage:'upload_url'});
+  }
   return url.toString();
 }
 /**
@@ -106,7 +123,10 @@ export async function uploadTikTokDraft({db,ownerId,file,mimeType,onInitialized}
   try{
     uploadUrl=safeUploadUrl(data.upload_url);
   }catch(error){
-    throw Object.assign(new Error('O TikTok devolveu uma URL de upload fora dos domínios oficiais previstos. Nenhum byte foi enviado.'),
+    // Preserve the sanitized hostname to distinguish an unfamiliar regional
+    // TikTok upload endpoint from a genuinely unsafe third-party destination.
+    if(error?.tiktokStage==='upload_url')throw error;
+    throw Object.assign(new Error('O TikTok retornou um endereço de upload inválido. Nenhum byte foi enviado.'),
       {status:502,tiktokStage:'upload_url'});
   }
 

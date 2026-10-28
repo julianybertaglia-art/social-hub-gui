@@ -5,43 +5,45 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const headers = { 'Cache-Control': 'private, no-store', Vary: 'Authorization' };
 
-// The client never decides whether it is admin. This endpoint is the single
-// session-scope preflight before rendering/syncing the legacy admin console.
 export async function GET(request) {
   try {
     const db = getSupabaseAdmin();
-    const token = bearerToken(request);
-    const { data: session, error } = await db.auth.getUser(token);
-    const user = session?.user;
-    if (error || !user?.id || user.is_anonymous) throw fail('Sessão inválida.', 401);
+    const { data: result, error: authError } = await db.auth.getUser(bearerToken(request));
+    const user = result?.user;
+    if (authError || !user?.id || user.is_anonymous) throw fail('Sessão inválida.', 401);
 
-    // Existing admin accounts retain the behavior they already have. Regular
-    // employees have no SOCIAL_HUB_STATE row and cannot create one through RLS.
-    const { data: adminState, error: adminError } = await db.from('content_items')
-      .select('id').eq('title', '__SOCIAL_HUB_STATE__')
-      .eq('user_id', user.id).limit(1).maybeSingle();
-    if (adminError) throw fail('Não foi possível verificar a conta administradora.', 503);
-    if (adminState) return Response.json({ scope: 'admin', portalEnabled: true }, { headers });
+    // A staff membership always takes precedence over any legacy admin
+    // state row. A future employee must never self-promote with local data.
+    const {data:members,error:membersError} = await db.from('crm_organization_members')
+      .select('organization_id,role,status').eq('user_id',user.id).eq('status','active');
+    if (membersError) throw fail('Não foi possível conferir sua equipe.',503);
+    if (members?.length) {
+      const {data:orgs,error:orgsError} = await db.from('crm_organizations')
+        .select('id,workspace_code,owner_user_id')
+        .in('id',members.map(member=>member.organization_id))
+        .eq('workspace_code','vital-decor');
+      if (orgsError) throw fail('Não foi possível conferir a empresa.',503);
+      const membership=members.find(item=>(orgs||[]).some(org=>org.id===item.organization_id));
+      const organization=(orgs||[]).find(org=>org.id===membership?.organization_id);
+      if (membership && organization) {
+        if (['agent','supervisor'].includes(membership.role))
+          return Response.json({scope:'staff',portalEnabled:true},{headers});
+        if (membership.role==='installer')
+          return Response.json({scope:'installer_pending',portalEnabled:false},{headers});
+        if (membership.role==='owner' && organization.owner_user_id!==user.id)
+          throw fail('Conta proprietária inválida.',403);
+      }
+    }
 
-    const { data: members, error: memberError } = await db.from('crm_organization_members')
-      .select('organization_id,role,status').eq('user_id', user.id).eq('status', 'active');
-    if (memberError) throw fail('Não foi possível verificar as permissões.', 503);
-    if (!members?.length) throw fail('Você não possui acesso autorizado ao TidePlace.', 403);
-
-    const { data: orgs, error: orgError } = await db.from('crm_organizations')
-      .select('id,workspace_code').in('id', members.map(item => item.organization_id))
-      .eq('workspace_code', 'vital-decor');
-    if (orgError) throw fail('Não foi possível verificar a empresa.', 503);
-    const member = members.find(item => orgs?.some(org => org.id === item.organization_id));
-    if (!member || !['supervisor', 'agent', 'installer'].includes(member.role))
-      throw fail('Acesso não autorizado.', 403);
-
-    // Until appointment-scoped APIs exist, installers have no portal access.
-    if (member.role === 'installer')
-      return Response.json({ scope: 'installer_pending', portalEnabled: false }, { headers });
-    return Response.json({ scope: 'staff', portalEnabled: true }, { headers });
+    // Preserve existing administrator access, and only that.
+    const {data:adminState,error:adminError}=await db.from('content_items')
+      .select('id').eq('title','__SOCIAL_HUB_STATE__')
+      .eq('user_id',user.id).limit(1).maybeSingle();
+    if (adminError) throw fail('Não foi possível verificar a conta administradora.',503);
+    if (adminState) return Response.json({scope:'admin',portalEnabled:true},{headers});
+    throw fail('Sua conta não possui acesso autorizado ao TidePlace.',403);
   } catch (e) {
-    return Response.json({ error: e.status ? e.message : 'Não foi possível validar seu login.' },
-      { status: e.status || 503, headers });
+    return Response.json({error:e.status?e.message:'Não foi possível validar seu login.'},
+      {status:e.status||503,headers});
   }
 }

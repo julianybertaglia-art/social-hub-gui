@@ -39,3 +39,39 @@
 @media(max-width:1080px){.pieGrid,.dashboardDistributions{grid-template-columns:1fr}.donutVisual{width:180px;flex-basis:180px}}
 @media(max-width:750px){.metricsSummary{grid-template-columns:1fr 1fr}.donutLayout{align-items:flex-start}.donutVisual{flex-basis:145px;width:145px}.donutLine{font-size:13px}.metricsDetails summary{padding:16px}.metricsDetailsBody{padding:4px 13px 18px}}
 @media(max-width:510px){.metricsSummary{grid-template-columns:1fr}.donutVisual{width:155px;flex-basis:155px}.donutLegend{flex-basis:100%}.metricsHeading{align-items:flex-start}.metricsHeading .toolbar{width:100%}}
+
+
+/* CRM · fase 1: padrões de navegação inspirados nos CRMs profissionais */
+.crmTabs{display:flex;align-items:center;gap:5px;border-bottom:1px solid var(--tp-line,#e7e3e6);margin:4px 0 20px;overflow-x:auto}
+.surface .crmTabs button{border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;color:var(--tp-muted,#6b6369);padding:14px 17px;margin-bottom:-1px;font-size:15px;font-weight:650;white-space:nowrap;cursor:pointer}
+.surface .crmTabs button.crmTabActive{color:var(--op-wine);border-bottom-color:var(--op-wine)}
+.crmTabs button span{font-size:12px;margin-left:6px;background:var(--tp-surface-3,#f1eff2);padding:3px 7px;border-radius:15px}
+.crmToolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:22px 0}
+.crmToolbar input[type=search]{min-width:210px;flex:1 1 235px}
+.crmToolbar select{flex:0 1 auto;max-width:245px;font-size:14px}
+.crmResultHeading{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin:27px 0 16px}
+.crmResultHeading h2{font-size:21px}
+.crmResultHeading p{margin:4px 0 0}
+.crmResultHeading>span{font-size:13px;color:var(--tp-muted,#6b6369);white-space:nowrap}
+.crmPill{display:inline-flex;align-items:center;border:1px solid var(--tp-line,#e7e3e6);background:var(--tp-surface-2,#faf9fa);border-radius:50px;padding:5px 10px;font-size:13px;line-height:1.4;white-space:nowrap}
+.surface button.crmOpen{background:transparent;border:0;padding:5px 0;color:var(--op-wine);font-size:14px;font-weight:700;cursor:pointer;text-align:left;white-space:nowrap}
+.surface .tableWrap{background:var(--tp-surface,#fff);border:1px solid var(--tp-line,#e7e3e6);border-radius:12px;overflow-x:auto;margin-bottom:22px}
+.surface .table{margin:0}
+.surface .table td{font-size:14px}
+.surface .table td:first-child{min-width:200px}
+.crmBackdrop{position:fixed;inset:0;background:rgba(19,13,21,.52);display:flex;align-items:stretch;justify-content:flex-end;z-index:1000}
+.crmDrawer{background:var(--tp-surface,#fff);border-left:1px solid var(--tp-line,#e7e3e6);width:min(510px,100vw);padding:30px 28px;overflow-y:auto;box-shadow:-12px 0 40px rgba(0,0,0,.14)}
+.crmDrawerHeader{display:flex;align-items:flex-start;gap:12px;justify-content:space-between;margin-bottom:18px}
+.crmDrawerHeader h2{font-size:25px;overflow-wrap:anywhere}
+.surface button.crmClose{min-width:40px;min-height:40px;border-radius:9px;border:1px solid var(--tp-line,#e7e3e6);background:var(--tp-surface-2,#faf9fa);font-size:27px;line-height:1;cursor:pointer}
+.crmProperties{display:grid;gap:0;margin:23px 0;border-top:1px solid var(--tp-line,#e7e3e6)}
+.crmProperties div{padding:14px 0;border-bottom:1px solid var(--tp-line,#e7e3e6)}
+.crmProperties dt{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--tp-muted,#6b6369)}
+.crmProperties dd{font-size:15px;font-weight:500;margin:5px 0 0;overflow-wrap:anywhere}
+.crmNotes{white-space:pre-wrap}
+.crmField{display:grid;gap:8px;font-weight:650;font-size:14px;margin:20px 0}
+.crmField select{width:100%}
+.crmDrawerActions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:24px 0 16px}
+.surface>.links{margin-top:26px;margin-bottom:15px}
+@media(max-width:800px){.crmResultHeading{align-items:flex-start;flex-direction:column}.crmToolbar select{flex:1 1 180px;max-width:none}.crmDrawer{padding:23px 18px}}
+@media(max-width:520px){.crmToolbar input[type=search]{flex-basis:100%}.crmToolbar select{flex-basis:100%;width:100%}.crmToolbar .button{width:100%}.crmTabs{gap:0}.surface .crmTabs button{padding:12px}.crmDrawerActions>*{width:100%}}

@@ -30,7 +30,7 @@ async function call(path,options={}){
   if(!response.ok)throw new Error(result.error||'Não foi possível concluir a operação.');
   return result;
 }
-function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutube,youtubeCheck,onVerifyTikTok,verifyingTikTok,tiktokCheck}){
+function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutube,youtubeCheck,onVerifyTikTok,verifyingTikTok,tiktokCheck,onRetryTikTok,retryingTikTok}){
   const label=NETWORKS.find(n=>n.id===target.platform);
   return <div className={styles.targetRow}>
     <span className={styles.networkSymbol}>{label?.symbol||'•'}</span>
@@ -57,6 +57,9 @@ function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutu
           (youtubeCheck.message||youtubeCheck.reason||'Vídeo não encontrado pela API do YouTube.')}
       </div>}
     </>}
+    {target.platform==='tiktok'&&['failed','unknown'].includes(target.state)&&!target.externalId&&(target.retryCount||0)<2&&
+      <button type="button" className={styles.finish} disabled={!!retryingTikTok}
+        onClick={()=>onRetryTikTok(postId)}>{retryingTikTok===postId?'Reenviando…':'Repetir envio com diagnóstico'}</button>}
     {target.platform==='tiktok'&&target.externalId&&<>
       <button type="button" className={styles.finish} disabled={!!verifyingTikTok}
         onClick={()=>onVerifyTikTok(postId)}>{verifyingTikTok===postId?'Consultando...':'Verificar no TikTok'}</button>
@@ -82,6 +85,7 @@ export default function UnifiedPublisher(){
   const [finishing,setFinishing]=useState('');
   const [verifyingYoutube,setVerifyingYoutube]=useState('');
   const [verifyingTikTok,setVerifyingTikTok]=useState('');
+  const [retryingTikTok,setRetryingTikTok]=useState('');
   const [tiktokChecks,setTikTokChecks]=useState({});
   const [youtubeChecks,setYoutubeChecks]=useState({});
   const [currentId,setCurrentId]=useState('');
@@ -154,6 +158,17 @@ export default function UnifiedPublisher(){
       setFile(null);setMetadata(null);
     }catch(e){setError(e.message||'Não foi possível enviar.');}
     finally{setPhase('')}
+  }
+  async function retryTikTok(id){
+    if(!window.confirm('Repetir o envio deste vídeo armazenado para os rascunhos do TikTok? O TidePlace só permite tentar novamente quando a primeira transferência não recebeu um ID de tarefa.'))return;
+    setRetryingTikTok(id);setError('');setNotice('');
+    try{
+      const result=await call('/api/publicacao/repetir-tiktok',{
+        method:'POST',body:JSON.stringify({id})
+      });
+      setNotice(result.message||'Transferência iniciada. Confira o status no histórico.');
+    }catch(e){setError(e.message||'Falha ao repetir envio. Confira o motivo no histórico.');}
+    finally{await refresh();setRetryingTikTok('');}
   }
   async function verifyTikTok(id){
     setVerifyingTikTok(id);setError('');setNotice('');
@@ -271,7 +286,8 @@ export default function UnifiedPublisher(){
             {post.targets.map(t=><TargetState key={t.platform} target={t} postId={post.id}
               onFinish={finalize} busy={finishing} onVerifyYoutube={verifyYoutube}
               verifyingYoutube={verifyingYoutube} youtubeCheck={youtubeChecks[post.id]}
-              onVerifyTikTok={verifyTikTok} verifyingTikTok={verifyingTikTok} tiktokCheck={tiktokChecks[post.id]}/>)}
+              onVerifyTikTok={verifyTikTok} verifyingTikTok={verifyingTikTok} tiktokCheck={tiktokChecks[post.id]}
+              onRetryTikTok={retryTikTok} retryingTikTok={retryingTikTok}/>)}
           </article>)}</div>}
         </section>
       </aside>

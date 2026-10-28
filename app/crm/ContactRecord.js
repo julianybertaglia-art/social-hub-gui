@@ -7,6 +7,7 @@ import { crmLane, crmLaneLabel } from '../lib/crm-view.mjs';
 import { STAGES } from '../lib/operations.mjs';
 import Icon from '../ui/Icon';
 import {TopicPicker,TopicBadge} from '../ui/ConversationTopics';
+import { VitalContactRouting } from './VitalRouting';
 import s from './contact-record.module.css';
 
 const ACTIVITY_TABS = [
@@ -36,7 +37,7 @@ function RecordBlock({ title, count, children }) {
   </section>;
 }
 
-export default function ContactRecord({ workspace, contact: summary, onBack, onMove, busy, demo = false, subject = 'outros', onSaveSubject, subjectSaving = false }) {
+export default function ContactRecord({ workspace, contact: summary, onBack, onMove, busy, demo = false, subject = 'outros', onSaveSubject, subjectSaving = false, onAssigned }) {
   const gui = workspace.id === 'gui-nonato';
   const [tab, setTab] = useState('all');
   const [overview, setOverview] = useState('overview');
@@ -200,7 +201,8 @@ export default function ContactRecord({ workspace, contact: summary, onBack, onM
         </div>}
       </section>
 
-      <aside className={s.right} aria-label="Associações do contato">
+      <aside className={s.right} aria-label="Associações e encaminhamento do contato">
+        {!gui && <VitalContactRouting contactId={String(contact.id)} demo={demo} onAssigned={onAssigned}/>}
         <RecordBlock title="Empresas" count={data?.companies?.length || 0}>
           <div className={s.noAssociation}><Icon name="users" size={19}/><p>Nenhuma empresa vinculada a este contato.</p><small>Associações de empresas serão adicionadas ao CRM em uma próxima etapa.</small></div>
         </RecordBlock>

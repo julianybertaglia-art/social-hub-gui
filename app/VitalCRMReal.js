@@ -238,7 +238,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
        </article>)}
        {!detail.messages.length&&<p className={css.noContacts}>Sem mensagens registradas.</p>}
       </div>}
-      {detail&&<form className={css.reply} onSubmit={reply}>
+      {detail&&role!=='supervisor'&&<form className={css.reply} onSubmit={reply}>
         <label htmlFor="vital-reply-text">Responder pelo WhatsApp da Vital</label>
         <textarea id="vital-reply-text" value={draft} maxLength={4096} rows={3}
           placeholder="Digite sua resposta…" onChange={e=>setDraft(e.target.value)} disabled={busy}/>

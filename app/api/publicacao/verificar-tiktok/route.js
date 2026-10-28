@@ -29,7 +29,7 @@ export async function POST(request){
     const detail=state.state==='draft'
       ?'A API do TikTok sinalizou o envio de uma notificação à caixa de entrada. A visualização no aplicativo não foi confirmada.'
       :state.state==='failed'?'TikTok não concluiu o envio ('+(state.reason||'erro')+').':
-      state.state==='processing'?'O TikTok ainda não confirmou a entrega do vídeo.':null;
+      state.state==='processing'?(state.mode==='direct'?'Direct Post ainda está sendo processado pelo TikTok.':'O TikTok ainda não confirmou a entrega do vídeo.'):null;
     const {error}=await db.from('multichannel_post_targets').update({
       state:state.state,error_message:detail,updated_at:new Date().toISOString()
     }).eq('id',row.id).in('state',['processing','draft','unknown']);
@@ -39,18 +39,20 @@ export async function POST(request){
   const uploadedBytes=state.uploadedBytes;
   let message;
   if(state.state==='draft')message='A API retornou SEND_TO_USER_INBOX: TikTok informou ter enviado uma notificação. Isso não comprova que ela apareceu no aplicativo. Se estiver ausente, não reenvie: peça verificação ao suporte TikTok com o publish_id da tarefa.';
-  else if(state.state==='published')message='TikTok confirmou que o vídeo foi publicado.';
+  else if(state.state==='published')message=state.mode==='direct'?'TikTok confirmou a publicação direta.':'TikTok confirmou o envio.';
   else if(state.state==='failed')message='O TikTok informou falha ('+(state.reason||'sem motivo informado')+'). Não reenvie sem avaliar.';
   else if(state.status==='PROCESSING_UPLOAD'){
     message=uploadedBytes===null
-      ?'TikTok informa PROCESSING_UPLOAD, mas não informou quantos bytes recebeu. Ainda não há confirmação de rascunho.'
+      ?'TikTok informa PROCESSING_UPLOAD, mas não informou quantos bytes recebeu. A publicação ainda não foi confirmada.'
       :uploadedBytes===0
       ?'O TikTok registrou a tarefa, mas informa ZERO bytes recebidos. O vídeo ainda não chegou à plataforma.'
       :uploadedBytes<totalBytes
       ?'O TikTok recebeu '+uploadedBytes+' de '+totalBytes+' bytes. A transferência ainda não está completa.'
       :'O TikTok recebeu o arquivo, mas ainda não concluiu o processamento.';
-  }else message='O TikTok retornou '+state.status+'. Ainda não há confirmação de entrega à caixa de entrada.';
-  return Response.json({state:state.state,status:state.status,reason:state.reason,
+  }else message=state.mode==='direct'
+    ?'O TikTok retornou '+state.status+'. A publicação ainda está em processamento.'
+    :'O TikTok retornou '+state.status+'. Ainda não há confirmação de entrega à caixa de entrada.';
+  return Response.json({state:state.state,status:state.status,reason:state.reason,mode:state.mode,
     uploadedBytes,totalBytes,message},{headers:NO_STORE});
  }catch(error){return publishError(null,error,'Falha ao consultar o envio TikTok.');}
 }

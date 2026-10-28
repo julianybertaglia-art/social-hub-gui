@@ -56,7 +56,9 @@ export async function usableYoutubeAccessToken(db, ownerId) {
   return {accessToken:payload.access_token,channelId:row.channel_id};
 }
 
-export async function uploadPrivateVideoToYoutube({db,ownerId,file,title,description,mimeType}) {
+export async function uploadVideoToYoutube({db,ownerId,file,title,description,mimeType,privacyStatus='private'}) {
+  if(!['public','unlisted','private'].includes(privacyStatus))
+    throw Object.assign(new Error('Escolha público, não listado ou privado para o YouTube.'),{status:400});
   const {accessToken} = await usableYoutubeAccessToken(db,ownerId);
   const target = new URL('https://www.googleapis.com/upload/youtube/v3/videos');
   target.searchParams.set('uploadType','resumable');
@@ -71,7 +73,7 @@ export async function uploadPrivateVideoToYoutube({db,ownerId,file,title,descrip
     },
     body:JSON.stringify({
       snippet:{title,description,categoryId:'27',defaultLanguage:'pt-BR'},
-      status:{privacyStatus:'private',selfDeclaredMadeForKids:false},
+      status:{privacyStatus,selfDeclaredMadeForKids:false},
     }),cache:'no-store',signal:AbortSignal.timeout(30000),
   });
   if (!initialize.ok) {
@@ -101,5 +103,12 @@ export async function uploadPrivateVideoToYoutube({db,ownerId,file,title,descrip
   }
   const data=await result.json().catch(()=>({}));
   if(!data.id || !/^[A-Za-z0-9_-]{6,40}$/.test(data.id)) throw new Error('O Google recebeu o arquivo, mas não confirmou um ID de vídeo. Verifique o YouTube Studio antes de tentar novamente.');
-  return data.id;
+  return {videoId:data.id,privacyStatus:['public','unlisted','private'].includes(data.status?.privacyStatus)
+    ?data.status.privacyStatus:privacyStatus};
 }
+
+// Retain the existing private-only helper for older upload flows.
+export async function uploadPrivateVideoToYoutube(args) {
+  return (await uploadVideoToYoutube({...args,privacyStatus:'private'})).videoId;
+}
+

@@ -42,9 +42,9 @@ export const NAV_GROUPS = [
     ],
   },
   {
-    label: 'CRM · WHATSAPP',
+    label: 'CRM E RELACIONAMENTO',
     items: [
-      { href: '/crm', label: 'Funil e indicadores', icon: 'chart', description: 'Oportunidades e atendimento por setor' },
+      { href: '/crm', label: 'Contatos e pipeline', icon: 'users', description: 'Lista de contatos e etapas por empresa' },
       { href: '/crm/consultorias', label: 'Consultorias', icon: 'users', only: ['gui-nonato'], description: 'Candidaturas e seleção para a consultoria do Gui' },
       { href: '/whatsapp', label: 'Caixa de entrada', icon: 'chat', only: ['gui-nonato'], description: 'CRM e mensagens do Gui' },
       { href: '/whatsapp', label: 'Caixa geral', icon: 'chat', only: ['vital-decor'], description: 'Todas as mensagens da Vital Decor' },
@@ -77,6 +77,7 @@ export function visibleNavGroups(workspaceId = 'gui-nonato') {
 export function matchesNavigation(item, pathname, section = 'dashboard') {
   if (item.section) return pathname === '/' && section === item.section;
   if (item.href === '/whatsapp') return pathname === '/whatsapp';
+  if (item.href === '/crm') return pathname === '/crm';
   if (item.href === '/automacoes') return pathname === '/automacoes';
   return pathname === item.href || pathname.startsWith(item.href + '/');
 }

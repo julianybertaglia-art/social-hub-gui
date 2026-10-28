@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from './CloudGate';
 import styles from './vital-whatsapp-inbox.module.css';
+import {TopicFilter,TopicBadge,TopicPicker,useConversationTopics} from './ui/ConversationTopics';
+import {resolvedTopic,topicsFor} from './lib/conversation-topics.mjs';
 
 function clock(value) {
   if (!value) return '';
@@ -43,6 +45,8 @@ export default function VitalWhatsAppInbox({ view = 'all' }) {
   const [messages, setMessages] = useState([]);
   const [account, setAccount] = useState(null);
   const [search, setSearch] = useState('');
+  const [subject,setSubject]=useState('all');
+  const subjectStore=useConversationTopics('vital-decor','whatsapp');
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -110,17 +114,21 @@ export default function VitalWhatsAppInbox({ view = 'all' }) {
     return () => window.clearInterval(timer);
   }, [selectedId, load]);
 
+  const subjectCounts={all:contacts.length};
+  for(const t of topicsFor('vital-decor'))subjectCounts[t.id]=contacts.filter(c=>resolvedTopic('vital-decor',{...c,sector:routes.find(r=>r.contact_wa_id===c.id)?.sector},subjectStore.assignments)===t.id).length;
+
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase();
     return contacts.filter(item => {
       const mine = routes.some(assignment => assignment.contact_wa_id === item.id
         && assignment.status !== 'closed' && assignment.assigned_to === 'tide');
       if (view === 'mine' && !mine) return false;
+      if(subject!=='all' && resolvedTopic('vital-decor',{...item,sector:routes.find(r=>r.contact_wa_id===item.id)?.sector},subjectStore.assignments)!==subject)return false;
       return !term || [item.name, item.phone, item.lastMessage, sectorLabel(
         routes.find(assignment => assignment.contact_wa_id === item.id)?.sector
       )].some(value => String(value || '').toLowerCase().includes(term));
     });
-  }, [contacts, routes, search, view]);
+  }, [contacts, routes, search, view, subject, subjectStore.assignments]);
 
   const selected = visible.find(item => item.id === selectedId) || null;
   const lastInbound = selected?.lastInboundAt || null;
@@ -238,6 +246,9 @@ export default function VitalWhatsAppInbox({ view = 'all' }) {
             </p>}
             <input aria-label="Buscar contatos" placeholder="Buscar nome, número ou mensagem..."
               value={search} onChange={event => setSearch(event.target.value)} />
+            <p style={{fontSize:12,fontWeight:700,margin:'13px 0 5px'}}>Filtrar por assunto</p>
+            <TopicFilter workspace="vital-decor" value={subject} onChange={next=>{setSubject(next);setSelectedId('');}} counts={subjectCounts}/>
+            {subjectStore.error && <p role="alert" style={{fontSize:12,color:'#9d3527'}}>{subjectStore.error}</p>}
           </div>
           <div className={styles.contacts}>
             {loading && !contacts.length ? <p className={styles.empty}>Carregando conversas...</p> : null}
@@ -256,6 +267,7 @@ export default function VitalWhatsAppInbox({ view = 'all' }) {
                   <strong>{contact.name || phoneLabel(contact.phone)}</strong>
                   <small>{phoneLabel(contact.phone)} · {sectorLabel(routes.find(r => r.contact_wa_id === contact.id && r.status !== 'closed')?.sector)}</small>
                   <span>{contact.lastDirection === 'outbound' ? 'Você: ' : ''}{contact.lastMessage || 'Mensagem recebida'}</span>
+                  <TopicBadge workspace="vital-decor" topic={resolvedTopic('vital-decor',{...contact,sector:routes.find(r=>r.contact_wa_id===contact.id)?.sector},subjectStore.assignments)}/>
                 </span>
                 <time>{clock(contact.lastMessageAt)}</time>
               </button>
@@ -272,8 +284,16 @@ export default function VitalWhatsAppInbox({ view = 'all' }) {
                   ? sectorLabel(activeRoute.sector) + ' · ' + (inArgo ? activeRoute.assigned_to + ' / Argo' : 'TidePlace')
                   : 'Sem setor · não atribuída'}</span>
               </div>
+              <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',background:'var(--surface,#fff)',flexWrap:'wrap'}}>
+                <TopicPicker workspace="vital-decor" value={resolvedTopic('vital-decor',{...selected,sector:activeRoute?.sector},subjectStore.assignments)} disabled={subjectStore.saving} onChange={async next=>{if(await subjectStore.save(selected.id,next))setNotice('Assunto da conversa atualizado.');}}/>
+              </div>
+              <section className={styles.routingSection} aria-label="Encaminhar conversa para o responsável">
+                <div className={styles.routingHeading}>
+                  <strong>Encaminhar ao setor responsável</strong>
+                  <small>O TidePlace direciona ao Argo somente quando o setor estiver habilitado.</small>
+                </div>
               <form className={styles.transferBar} onSubmit={transferConversation}>
-                <label htmlFor="vital-transfer-sector">Encaminhar para</label>
+                <label htmlFor="vital-transfer-sector">Setor de destino</label>
                 <select id="vital-transfer-sector" value={destinationSector}
                   onChange={event => setDestinationSector(event.target.value)}
                   disabled={transferring || !routesReady}>
@@ -291,6 +311,8 @@ export default function VitalWhatsAppInbox({ view = 'all' }) {
                 </button>
                 <Link href="/whatsapp/integracao-argo" className={styles.transferSettings}>Configurar setores</Link>
               </form>
+
+              </section>
               <div className={styles.messages}>
                 {!messages.length && loading ? <p className={styles.empty}>Carregando mensagens...</p> : null}
                 {!messages.length && !loading ? <p className={styles.empty}>Sem mensagens sincronizadas para este contato.</p> : null}

@@ -287,8 +287,13 @@ export default function VitalWhatsAppInbox({ view = 'all' }) {
               <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',background:'var(--surface,#fff)',flexWrap:'wrap'}}>
                 <TopicPicker workspace="vital-decor" value={resolvedTopic('vital-decor',{...selected,sector:activeRoute?.sector},subjectStore.assignments)} disabled={subjectStore.saving} onChange={async next=>{if(await subjectStore.save(selected.id,next))setNotice('Assunto da conversa atualizado.');}}/>
               </div>
+              <section className={styles.routingSection} aria-label="Encaminhar conversa para o responsável">
+                <div className={styles.routingHeading}>
+                  <strong>Encaminhar ao setor responsável</strong>
+                  <small>O TidePlace direciona ao Argo somente quando o setor estiver habilitado.</small>
+                </div>
               <form className={styles.transferBar} onSubmit={transferConversation}>
-                <label htmlFor="vital-transfer-sector">Encaminhar para</label>
+                <label htmlFor="vital-transfer-sector">Setor de destino</label>
                 <select id="vital-transfer-sector" value={destinationSector}
                   onChange={event => setDestinationSector(event.target.value)}
                   disabled={transferring || !routesReady}>
@@ -306,6 +311,8 @@ export default function VitalWhatsAppInbox({ view = 'all' }) {
                 </button>
                 <Link href="/whatsapp/integracao-argo" className={styles.transferSettings}>Configurar setores</Link>
               </form>
+
+              </section>
               <div className={styles.messages}>
                 {!messages.length && loading ? <p className={styles.empty}>Carregando mensagens...</p> : null}
                 {!messages.length && !loading ? <p className={styles.empty}>Sem mensagens sincronizadas para este contato.</p> : null}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {viviQueue,resolveVitalQueue,canAccessVitalQueue,VITAL_QUEUE_ORDER,queueStatus} from '../app/lib/vital-crm-queues.mjs';
+import {viviQueue,resolveVitalQueue,canAccessVitalQueue,VITAL_QUEUE_ORDER,queueStatus,crmConversationStatus} from '../app/lib/vital-crm-queues.mjs';
 test('nine distinct queues with no accidental cross-postsale routing',()=>{
  assert.equal(VITAL_QUEUE_ORDER.length,9);
  assert.equal(new Set(VITAL_QUEUE_ORDER).size,9);
@@ -26,4 +26,13 @@ test('inbound pending; outbound in progress; explicit closed wins',()=>{
  assert.equal(queueStatus({lastDirection:'inbound'}),'pending');
  assert.equal(queueStatus({lastDirection:'outbound'}),'open');
  assert.equal(queueStatus({closed:true,lastDirection:'inbound'}),'closed');
+});
+
+test('explicit resolutions persist until the next new message',()=>{
+ const state={status:'resolved',updated_at:'2026-10-28T14:00:00Z'};
+ assert.equal(crmConversationStatus({state,lastDirection:'outbound',lastMessageAt:'2026-10-28T13:45:00Z'}),'closed');
+ assert.equal(crmConversationStatus({state,lastDirection:'inbound',lastMessageAt:'2026-10-28T14:01:00Z'}),'pending');
+ assert.equal(crmConversationStatus({state,lastDirection:'outbound',lastMessageAt:'2026-10-28T14:01:00Z'}),'open');
+ assert.equal(crmConversationStatus({state:{status:'open'},legacyClosed:true,lastDirection:'inbound'}),'pending');
+ assert.equal(crmConversationStatus({legacyClosed:true,lastDirection:'inbound'}),'closed');
 });

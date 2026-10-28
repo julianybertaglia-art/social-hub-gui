@@ -113,7 +113,8 @@ export default function TikTokConnectionPage(){
       </div>}
       <div className={styles.actions}>
         <button type="button" className={styles.primary} disabled={!status?.sandboxConfigured||loading||busy}
-          onClick={()=>connect(false,'sandbox')}>{busy?'Abrindo TikTok…':'Conectar pelo Sandbox (teste)'}</button>
+          onClick={()=>connect(true,'sandbox')}>{busy?'Abrindo TikTok…':
+            status?.connected&&status?.environment==='sandbox'?'Renovar permissões no Sandbox':'Conectar no Sandbox com permissões de vídeo'}</button>
         <button type="button" className={styles.secondary} disabled={!configured||loading||busy}
           onClick={()=>connect(false,'production')}>Conectar em Production (após aprovação)</button>
         {status?.connected&&<button type="button" className={styles.secondary} onClick={disconnect}
@@ -126,15 +127,15 @@ export default function TikTokConnectionPage(){
         <strong>Para testar o perfil @gui_nonato no Sandbox:</strong>
         <p>Adicione <code>TIKTOK_SANDBOX_CLIENT_KEY</code> e <code>TIKTOK_SANDBOX_CLIENT_SECRET</code> nas variáveis <b>Production</b> do projeto <b>social-hub-gui</b> na Vercel, usando os valores da seção <b>Sandbox → TidePlace Testes → Credentials</b> do TikTok. Não sobrescreva <code>TIKTOK_CLIENT_KEY</code> e <code>TIKTOK_CLIENT_SECRET</code>. Faça um redeploy de Production após salvar e atualize esta tela. Nunca compartilhe o segredo em conversa.</p>
       </div>}
-      <p>A conexão básica identifica a conta do Gui com a permissão <code>user.info.basic</code>. A publicação depende de permissões adicionais aprovadas pelo TikTok.</p>
+      <p>O TikTok está integrado em ambiente de teste. Clique em <b>Renovar permissões no Sandbox</b> para autorizar <code>user.info.basic</code>, <code>video.upload</code> e <code>video.publish</code>. A autorização anterior tinha apenas <code>user.info.basic</code>.</p>
+      <p>Com <code>video.upload</code> vamos enviar um vídeo à caixa de entrada do aplicativo TikTok, onde o criador poderá finalizar manualmente. Isso <b>não é uma publicação pública automática</b>. O Direct Post exige fluxo separado e aprovação da plataforma.</p>
       <div className={styles.features}>
         <div><span>01</span><strong>Conectar conta</strong><p>Configure a chave e o segredo da API e autorize o Gui pelo TikTok.</p></div>
         <div><span>02</span><strong>Sandbox e demonstração</strong><p>Teste a integração com usuários de teste autorizados. A gravação de tela deve mostrar o fluxo real, não uma simulação.</p></div>
-        <div><span>03</span><strong>Publicar vídeos</strong><p>Após aprovação de <code>video.upload</code> e <code>video.publish</code>, vamos habilitar o envio e a revisão dos vídeos.</p></div>
+        <div><span>03</span><strong>Rascunhos e revisão</strong><p>Com <code>video.upload</code> concedido, envie vídeos pelo publicador do TidePlace para revisar e finalizar no aplicativo TikTok. Publicação pública direta depende de aprovação.</p></div>
       </div>
       <div className={styles.actions}>
-        <button className={styles.secondary} type="button" disabled={!configured||loading||busy}
-          onClick={()=>connect(true)}>Solicitar autorização de publicação (após aprovação)</button>
+        <Link className={styles.secondary} href="/publicar">Abrir publicador multicanal ↗</Link>
         <a className={styles.secondary} href="https://developers.tiktok.com/portal/apps" target="_blank" rel="noopener noreferrer">Abrir TikTok for Developers ↗</a>
       </div>
       <p>Endereço de retorno cadastrado: <code>https://social-hub-gui.vercel.app/api/tiktok/callback</code></p>

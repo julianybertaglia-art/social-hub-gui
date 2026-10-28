@@ -14,6 +14,25 @@ export function safeUploadUrl(value){
     throw new Error('O TikTok retornou um destino de upload não reconhecido.');
   return url.toString();
 }
+/**
+ * The TikTok media guide requires 5–64MB chunks, except videos under 5MB.
+ * A final chunk may be larger than chunk_size (up to 128MB).
+ * For 31MB this returns 6 parts instead of a single large PUT.
+ */
+export function tikTokUploadPlan(size){
+  if(!Number.isSafeInteger(size)||size<=0||size>50_000_000)
+    throw Object.assign(new Error('Tamanho do vídeo TikTok inválido.'),{status:400});
+  const MIN_CHUNK=5_000_000;
+  const numParts=Math.max(1,Math.floor(size/MIN_CHUNK));
+  const chunkSize=numParts===1?size:MIN_CHUNK;
+  if(numParts>1000)throw Object.assign(new Error('Número de partes excedido.'),{status:400});
+  const parts=Array.from({length:numParts},(_,i)=>{
+    const start=i*chunkSize;
+    const end=i===numParts-1?size:Math.min(start+chunkSize,size);
+    return {index:i,start,end,size:end-start,last:i===numParts-1};
+  });
+  return {videoSize:size,chunkSize,totalChunkCount:numParts,parts};
+}
 export function tiktokPostingConfigured(scopes){
   return Array.isArray(scopes)&&scopes.includes('video.upload');
 }
@@ -61,27 +80,59 @@ export async function uploadTikTokDraft({db,ownerId,file,mimeType,onInitialized}
     throw Object.assign(new Error('Envie um MP4 de até 50 MB.'),{status:400});
   const {accessToken}=await usableTikTokToken(db,ownerId);
   // 50 MB fits TikTok's <=64 MB single-chunk limit; no third-party media URL needed.
+  const plan=tikTokUploadPlan(size);
   const data=await tiktokPost(accessToken,TIKTOK_INIT,{
-    source_info:{source:'FILE_UPLOAD',video_size:size,chunk_size:size,total_chunk_count:1},
+    source_info:{source:'FILE_UPLOAD',video_size:size,chunk_size:plan.chunkSize,
+      total_chunk_count:plan.totalChunkCount},
   });
   const publishId=String(data.publish_id||'');
   if(!publishId||publishId.length>64)
     throw Object.assign(new Error('TikTok não confirmou o identificador da transferência.'),{status:502,tiktokStage:'init'});
-  // Save the TikTok identifier BEFORE inspecting the returned upload URL.
-  // Even an unexpected upload host may correspond to a TikTok task; never permit
-  // a blind retry when the first API request may have created a task.
+  // Save the task ID before examining the URL or transmitting bytes. A saved
+  // task must never be replaced by a blind retry if transfer becomes ambiguous.
   if(onInitialized)await onInitialized(publishId);
   if(!data.upload_url)throw Object.assign(new Error('O TikTok não devolveu a URL de upload.'),{status:502,tiktokStage:'upload_url'});
-  const uploadUrl=safeUploadUrl(data.upload_url);
-  const result=await fetch(uploadUrl,{
-    method:'PUT',redirect:'error',headers:{
-      'Content-Type':mimeType,'Content-Length':String(size),
-      'Content-Range':'bytes 0-'+(size-1)+'/'+size
-    },body:file,cache:'no-store',signal:AbortSignal.timeout(200000)
-  });
-  if(result.status!==201)throw Object.assign(new Error(
-    'TikTok não confirmou a transferência do arquivo (HTTP '+result.status+'). Use Verificar no TikTok antes de tentar outro envio.'
-  ),{status:502,tiktokStage:'transfer'});
+  let uploadUrl;
+  try{
+    uploadUrl=safeUploadUrl(data.upload_url);
+  }catch(error){
+    throw Object.assign(new Error('O TikTok devolveu uma URL de upload fora dos domínios oficiais previstos. Nenhum byte foi enviado.'),
+      {status:502,tiktokStage:'upload_url'});
+  }
+
+  for(const part of plan.parts){
+    // Send actual binary bytes, not multipart/form-data. Each request is small
+    // enough to have its own meaningful HTTP acknowledgement and diagnosis.
+    const buffer=Buffer.from(await file.slice(part.start,part.end).arrayBuffer());
+    if(buffer.length!==part.size)
+      throw Object.assign(new Error('Parte local do vídeo com tamanho inesperado.'),
+        {status:422,tiktokStage:'transfer'});
+    const expected=part.last?201:206;
+    let result;
+    try{
+      result=await fetch(uploadUrl,{
+        method:'PUT',redirect:'error',headers:{
+          'Content-Type':mimeType,
+          'Content-Length':String(part.size),
+          'Content-Range':'bytes '+part.start+'-'+(part.end-1)+'/'+size,
+        },
+        body:buffer,
+        cache:'no-store',
+        signal:AbortSignal.timeout(30000),
+      });
+    }catch(error){
+      const reason=String(error?.cause?.code||error?.name||'network_error')
+        .replace(/[^a-zA-Z0-9_]/g,'').slice(0,42);
+      throw Object.assign(new Error('Falha de conexão com o TikTok na parte '+
+        (part.index+1)+'/'+plan.totalChunkCount+' ('+reason+'). Não inicie nova tarefa antes de conferir o status.'),
+        {status:502,tiktokStage:'transfer',chunkIndex:part.index+1});
+    }
+    if(result.status!==expected){
+      throw Object.assign(new Error('TikTok respondeu HTTP '+result.status+' na parte '+
+        (part.index+1)+'/'+plan.totalChunkCount+'. Envio não concluído; verifique os bytes recebidos antes de tentar novamente.'),
+        {status:502,tiktokStage:'transfer',chunkIndex:part.index+1});
+    }
+  }
   return publishId;
 }
 export async function checkTikTokTask({db,ownerId,publishId}){

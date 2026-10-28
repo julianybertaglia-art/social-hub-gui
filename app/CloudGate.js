@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import styles from './cloudgate.module.css';
+import StaffPortal from './StaffPortal';
 import { hasAuthIdentityChanged, sameAuthenticatedUser } from './lib/session-gate.mjs';
 
 const STORAGE_KEYS = [
@@ -163,6 +164,8 @@ export default function CloudGate({ children }) {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [syncStatus, setSyncStatus] = useState('Conectando...');
+  const [accessScope,setAccessScope] = useState(null);
+  const [accessError,setAccessError] = useState('');
 
   const rowIdRef = useRef(null);
   const lastSnapshotRef = useRef('');
@@ -187,6 +190,7 @@ export default function CloudGate({ children }) {
       if (hasAuthIdentityChanged(authUserIdRef.current, nextSession)) {
         authUserIdRef.current = nextSession?.user?.id ?? null;
         setReady(false);
+        setAccessScope(null);
       }
       setSession((current) => sameAuthenticatedUser(current, nextSession) ? current : nextSession);
       setInitializing(false);
@@ -204,6 +208,7 @@ export default function CloudGate({ children }) {
         rowIdRef.current = null;
         lastSnapshotRef.current = '';
         setReady(false);
+        setAccessScope(null);
       }
       setSession((current) => sameAuthenticatedUser(current, nextSession) ? current : nextSession);
     });
@@ -216,6 +221,33 @@ export default function CloudGate({ children }) {
 
   useEffect(() => {
     if (!supabase || !session) {
+      setAccessScope(null);
+      setAccessError('');
+      return undefined;
+    }
+    let active = true;
+    // The backend assigns scope BEFORE any admin data is read or synchronized.
+    setAccessScope(null);
+    setAccessError('');
+    fetch('/api/auth/access-scope', {
+      cache: 'no-store',
+      headers: { Authorization: 'Bearer ' + session.access_token },
+    }).then(async response => {
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Falha ao verificar suas permissões.');
+      return result;
+    }).then(result => {
+      if (active) setAccessScope(result.scope);
+    }).catch(error => {
+      if (!active) return;
+      setAccessError(error.message);
+      setAccessScope('denied');
+    });
+    return () => { active = false; };
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!supabase || !session || accessScope !== 'admin') {
       setReady(false);
       return undefined;
     }
@@ -294,10 +326,10 @@ export default function CloudGate({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [session?.user?.id]);
+  }, [session?.user?.id, accessScope]);
 
   useEffect(() => {
-    if (!supabase || !session || !ready) return undefined;
+    if (!supabase || !session || !ready || accessScope !== 'admin') return undefined;
 
     let cancelled = false;
 
@@ -350,10 +382,10 @@ export default function CloudGate({ children }) {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [ready, session]);
+  }, [ready, session, accessScope]);
 
   useEffect(() => {
-    if (!supabase || !session || !ready) return undefined;
+    if (!supabase || !session || !ready || accessScope !== 'admin') return undefined;
 
     let cancelled = false;
 
@@ -395,10 +427,10 @@ export default function CloudGate({ children }) {
       window.clearInterval(intervalId);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [ready, session]);
+  }, [ready, session, accessScope]);
 
   useEffect(() => {
-    if (!supabase || !session || !ready) return undefined;
+    if (!supabase || !session || !ready || accessScope !== 'admin') return undefined;
 
     async function saveCloudState() {
       if (saveInProgressRef.current) return;
@@ -459,7 +491,7 @@ export default function CloudGate({ children }) {
       window.clearTimeout(firstSaveId);
       window.clearInterval(intervalId);
     };
-  }, [ready, session]);
+  }, [ready, session, accessScope]);
 
   async function handleLogin(event) {
     event.preventDefault();
@@ -483,6 +515,8 @@ export default function CloudGate({ children }) {
     rowIdRef.current = null;
     lastSnapshotRef.current = '';
     setSession(null);
+    setAccessScope(null);
+    setAccessError('');
   }
 
   if (!supabase) {
@@ -498,7 +532,7 @@ export default function CloudGate({ children }) {
     );
   }
 
-  if (initializing || (session && !ready)) {
+  if (initializing || (session && (accessScope === null || (accessScope === 'admin' && !ready)))) {
     return (
       <main className={styles.loadingScreen} aria-live="polite">
         <div className={styles.loadingBrand}>
@@ -581,6 +615,24 @@ export default function CloudGate({ children }) {
       </main>
     );
   }
+
+  if (session && accessScope === 'staff') {
+    // Employees never mount the admin shell or its background synchronization.
+    return <StaffPortal token={session.access_token} onLogout={handleLogout}/>;
+  }
+  if (session && (accessScope === 'denied' || accessScope === 'installer_pending')) {
+    return <main className={styles.screen}>
+      <section className={styles.statusCard}>
+        <img className={styles.statusLogo} src="/brand/tideplace-mark.svg" alt="" />
+        <h1>{accessScope === 'installer_pending' ? 'Área de instalações em preparação' : 'Acesso não autorizado'}</h1>
+        <p>{accessScope === 'installer_pending'
+          ? 'O perfil de prestador de serviço ainda não foi habilitado.'
+          : accessError || 'Sua conta não possui permissão para acessar o TidePlace.'}</p>
+        <button type="button" onClick={handleLogout}>Sair da conta</button>
+      </section>
+    </main>;
+  }
+  if (session && accessScope !== 'admin') return null;
 
   return (
     <>

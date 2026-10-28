@@ -10,7 +10,8 @@ export async function GET(request){
       role:access.role, sectors:access.sectors,
       // This endpoint does not return CRM records, messages, credentials, or staff.
       // Real staff access to them remains disabled until all data APIs are gated.
-      portalEnabled:false,
+      portalEnabled: ['owner','supervisor','agent'].includes(access.role),
+      readOnly: true,
     },{headers});
   }catch(error){
     return Response.json({error:error.status ? error.message : 'Não foi possível verificar seu acesso.'},{status:error.status||503,headers});

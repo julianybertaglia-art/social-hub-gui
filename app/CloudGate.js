@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { usePathname } from 'next/navigation';
 import styles from './cloudgate.module.css';
 import StaffPortal from './StaffPortal';
 import { hasAuthIdentityChanged, sameAuthenticatedUser } from './lib/session-gate.mjs';
@@ -156,6 +157,8 @@ async function refreshInstagramContentPerformance() {
 }
 
 export default function CloudGate({ children }) {
+  const pathname = usePathname();
+  const portalPreview = pathname === '/crm/portal-exemplo';
   const [session, setSession] = useState(null);
   const [initializing, setInitializing] = useState(true);
   const [ready, setReady] = useState(false);
@@ -177,7 +180,7 @@ export default function CloudGate({ children }) {
   const authUserIdRef = useRef(null);
 
   useEffect(() => {
-    if (!supabase) {
+    if (!supabase || portalPreview) {
       setInitializing(false);
       return undefined;
     }
@@ -217,10 +220,10 @@ export default function CloudGate({ children }) {
       active = false;
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [portalPreview]);
 
   useEffect(() => {
-    if (!supabase || !session) {
+    if (!supabase || !session || portalPreview) {
       setAccessScope(null);
       setAccessError('');
       return undefined;
@@ -244,10 +247,10 @@ export default function CloudGate({ children }) {
       setAccessScope('denied');
     });
     return () => { active = false; };
-  }, [session?.user?.id]);
+  }, [session?.user?.id, portalPreview]);
 
   useEffect(() => {
-    if (!supabase || !session || accessScope !== 'admin') {
+    if (!supabase || !session || accessScope !== 'admin' || portalPreview) {
       setReady(false);
       return undefined;
     }
@@ -326,10 +329,10 @@ export default function CloudGate({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [session?.user?.id, accessScope]);
+  }, [session?.user?.id, accessScope, portalPreview]);
 
   useEffect(() => {
-    if (!supabase || !session || !ready || accessScope !== 'admin') return undefined;
+    if (!supabase || !session || !ready || accessScope !== 'admin' || portalPreview) return undefined;
 
     let cancelled = false;
 
@@ -382,10 +385,10 @@ export default function CloudGate({ children }) {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [ready, session, accessScope]);
+  }, [ready, session, accessScope, portalPreview]);
 
   useEffect(() => {
-    if (!supabase || !session || !ready || accessScope !== 'admin') return undefined;
+    if (!supabase || !session || !ready || accessScope !== 'admin' || portalPreview) return undefined;
 
     let cancelled = false;
 
@@ -427,10 +430,10 @@ export default function CloudGate({ children }) {
       window.clearInterval(intervalId);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [ready, session, accessScope]);
+  }, [ready, session, accessScope, portalPreview]);
 
   useEffect(() => {
-    if (!supabase || !session || !ready || accessScope !== 'admin') return undefined;
+    if (!supabase || !session || !ready || accessScope !== 'admin' || portalPreview) return undefined;
 
     async function saveCloudState() {
       if (saveInProgressRef.current) return;
@@ -491,7 +494,7 @@ export default function CloudGate({ children }) {
       window.clearTimeout(firstSaveId);
       window.clearInterval(intervalId);
     };
-  }, [ready, session, accessScope]);
+  }, [ready, session, accessScope, portalPreview]);
 
   async function handleLogin(event) {
     event.preventDefault();
@@ -518,6 +521,10 @@ export default function CloudGate({ children }) {
     setAccessScope(null);
     setAccessError('');
   }
+
+  // This route is a local, fictional UI walkthrough. It never queries Supabase,
+  // Cloud sync, Meta or customer data. It is not a staff login bypass.
+  if (portalPreview) return <StaffPortal demo />;
 
   if (!supabase) {
     return (

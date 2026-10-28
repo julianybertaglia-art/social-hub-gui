@@ -27,7 +27,7 @@ export async function POST(request){
     : row.state==='processing';
   if(shouldStore){
     const detail=state.state==='draft'
-      ?'TikTok confirmou a entrega do vídeo à caixa de entrada para edição e publicação.'
+      ?'A API do TikTok sinalizou o envio de uma notificação à caixa de entrada. A visualização no aplicativo não foi confirmada.'
       :state.state==='failed'?'TikTok não concluiu o envio ('+(state.reason||'erro')+').':
       state.state==='processing'?'O TikTok ainda não confirmou a entrega do vídeo.':null;
     const {error}=await db.from('multichannel_post_targets').update({
@@ -38,7 +38,7 @@ export async function POST(request){
   const totalBytes=Number(post.size_bytes);
   const uploadedBytes=state.uploadedBytes;
   let message;
-  if(state.state==='draft')message='TikTok confirmou a entrega à caixa de entrada. Abra a notificação no aplicativo para finalizar o rascunho.';
+  if(state.state==='draft')message='A API retornou SEND_TO_USER_INBOX: TikTok informou ter enviado uma notificação. Isso não comprova que ela apareceu no aplicativo. Se estiver ausente, não reenvie: peça verificação ao suporte TikTok com o publish_id da tarefa.';
   else if(state.state==='published')message='TikTok confirmou que o vídeo foi publicado.';
   else if(state.state==='failed')message='O TikTok informou falha ('+(state.reason||'sem motivo informado')+'). Não reenvie sem avaliar.';
   else if(state.status==='PROCESSING_UPLOAD'){

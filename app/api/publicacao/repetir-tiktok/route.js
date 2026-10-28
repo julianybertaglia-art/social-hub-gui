@@ -10,7 +10,7 @@ export const maxDuration=300;
 // Only jobs without a publish_id can be retried. The original code saves
 // publish_id BEFORE sending bytes, so this cannot resubmit an acknowledged file.
 export async function POST(request){
-  let db,claimed;
+  let db,claimed,stage='validando o registro';
   try{
     sameOrigin(request);
     const auth=await publicationAuth(request);
@@ -29,6 +29,7 @@ export async function POST(request){
       throw Object.assign(new Error('O TikTok já pode ter recebido este vídeo. Use Verificar no TikTok; não repita o envio.'),{status:409});
     if(Number(target.retry_count)>=2)
       throw Object.assign(new Error('Limite de tentativas atingido. Verifique a causa antes de tentar novamente.'),{status:429});
+    stage='obtendo o arquivo do armazenamento';
     const {data:file,error:fileError}=await db.storage.from(PUBLISH_BUCKET).download(post.storage_path);
     if(fileError||!file||file.size!==Number(post.size_bytes))
       throw Object.assign(new Error('Arquivo original não encontrado. Nenhuma tentativa foi realizada.'),{status:422});
@@ -40,13 +41,16 @@ export async function POST(request){
     if(claimError||!row)throw Object.assign(
       new Error('Outra tentativa já está em andamento. Atualize o histórico.'),{status:409});
     claimed=row;
+    stage='solicitando a inicialização ao TikTok';
     const publishId=await uploadTikTokDraft({db,ownerId,file,mimeType:post.mime_type,
       onInitialized:async(publishId)=>{
+        stage='registrando a tarefa do TikTok antes da transferência';
         const {data:saved,error}=await db.from('multichannel_post_targets')
           .update({external_id:publishId,updated_at:new Date().toISOString()})
           .eq('id',row.id).eq('state','sending').select('id').maybeSingle();
         if(error||!saved)throw Object.assign(new Error(
           'O TikTok iniciou o envio, mas houve falha ao registrar a tarefa. Não tente novamente.'),{status:503});
+        stage='transferindo o arquivo ao TikTok';
       }
     });
     const {error:updateError}=await db.from('multichannel_post_targets').update({
@@ -62,13 +66,23 @@ export async function POST(request){
       const {data:existing}=await db.from('multichannel_post_targets')
         .select('external_id').eq('id',claimed.id).maybeSingle();
       // A saved publish_id means the task may be progressing; never resubmit.
+      const networkCode=String(error?.cause?.code||'').replace(/[^A-Z0-9_]/g,'').slice(0,32);
+      const safeStage=error?.tiktokStage==='init'?'inicialização da tarefa TikTok':
+        error?.tiktokStage==='transfer'?'transferência de arquivo':stage;
       const safeMessage=error?.status?String(error.message).slice(0,280):
-        'A transferência não foi confirmada. Não tente novamente antes de conferir.';
+        'Falha durante '+safeStage+(networkCode?' ('+networkCode+')':'')+
+        '. Nenhuma confirmação de transferência; verifique antes de outra tentativa.';
       await db.from('multichannel_post_targets').update({
         state:existing?.external_id?'unknown':error.tiktokStage==='init'?'failed':'unknown',
         error_message:safeMessage,updated_at:new Date().toISOString()
       }).eq('id',claimed.id).eq('state','sending');
     }
-    return publishError(null,error,'Não foi possível repetir o envio. Confira o motivo no histórico.');
+    // A sanitized stage is visible to the user even when a runtime fetch/storage
+    // exception has no HTTP status; raw exception messages might contain secrets.
+    const networkCode=String(error?.cause?.code||'').replace(/[^A-Z0-9_]/g,'').slice(0,32);
+    const failure=error?.status?String(error.message).slice(0,280):
+      'Falha durante '+stage+(networkCode?' ('+networkCode+')':'')+
+      '. Nenhuma transferência confirmada; não repita automaticamente.';
+    return Response.json({error:failure},{status:error?.status||502,headers:NO_STORE});
   }
 }

@@ -45,7 +45,7 @@ export default function ContactRecord({ workspace, contact: summary, onBack, onM
   const [copied, setCopied] = useState(false);
   const endpoint = '/api/crm/activities?workspace=' + workspace.id + '&contactId=' + encodeURIComponent(String(summary.id));
   const { data, loading, error } = useResource(endpoint);
-  const contact = data?.contact || summary;
+  const contact = { ...(data?.contact || {}), ...summary };
   const activities = data?.activities || [];
   const notes = data?.notes || [];
   const name = contact.profile_name || contact.name || contact.phone || 'Contato sem nome';

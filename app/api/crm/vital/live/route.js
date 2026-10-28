@@ -52,7 +52,8 @@ function formatMessage(m){
 async function readOne(ctx,phone){
   if(!PHONE.test(phone))throw fail('Número de contato inválido.',400);
   const info=await resolveOne(ctx,phone);
-  if(!info.queue || !allowedQueue(ctx,info.queue))throw fail('Conversa não encontrada nas filas autorizadas.',404);
+  if((!info.queue && ctx.access.role!=='owner') || (info.queue && !allowedQueue(ctx,info.queue)))
+    throw fail('Conversa não encontrada nas filas autorizadas.',404);
   const {db,owner,connection}=ctx;
   const {data:messages,error}=await db.from('workspace_meta_messages')
     .select('id,profile_name,contact_wa_id,direction,body,message_type,status,sent_at,created_at')

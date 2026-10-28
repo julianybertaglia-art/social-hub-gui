@@ -10,6 +10,7 @@ import { api, useResource } from '../operations/useOperations';
 import { KPI } from '../operations/Charts';
 import { STAGES } from '../lib/operations.mjs';
 import ContactRecord from './ContactRecord';
+import { VitalRoutingOverview } from './VitalRouting';
 import { crmContactKey, crmFilter, crmLane, crmLaneLabel, crmLanes } from '../lib/crm-view.mjs';
 import s from '../operations/operations.module.css';
 
@@ -83,6 +84,7 @@ function Board({ workspace }) {
     subject={resolvedTopic(workspace.id,selected,subjectStore.assignments)}
     onSaveSubject={next=>subjectStore.save(selected.id,next)}
     subjectSaving={subjectStore.saving}
+    onAssigned={() => refresh(current => current + 1)}
   />;
 
   return (
@@ -226,6 +228,8 @@ function Board({ workspace }) {
                 <KPI label={gui ? 'Conversão dos encerrados' : 'Conversas atribuídas'} value={gui ? data?.crm?.closedWinRate : data ? allContacts.filter(c => c.assigned_to).length : undefined} suffix={gui ? '%' : ''} note={gui ? 'Vendas ÷ encerrados' : 'Com responsável registrado'} />
               </div>
             </section>
+
+            {!gui && <section className={s.crmSidePanel}><VitalRoutingOverview /></section>}
 
             <section className={s.crmSidePanel}>
               <div className={s.crmSideHead}><div><span className={s.crmSectionEyebrow}>ACESSOS RÁPIDOS</span><h2>Ferramentas</h2></div></div>

@@ -166,7 +166,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
      <div className={css.priority}><span style={{color:'#3286c7'}}>●</span> {counts.open} em andamento</div>
      <div className={css.priority}><span style={{color:'#259878'}}>●</span> {counts.closed} concluídas</div>
      {role==='owner'&&counts.unassigned>0&&<button className={css.unassigned} onClick={()=>{setPage('inbox');setQueueFilter('unassigned');}}>
-       <Icon name="alert-circle" size={16}/> {counts.unassigned} conversa(s) sem fila definida
+       <Icon name="alert" size={16}/> {counts.unassigned} conversa(s) sem fila definida
      </button>}
     </section>
     <section className={css.panel}>
@@ -206,7 +206,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
        <span className={css.contactText}><strong>{c.name||c.phone}</strong>
         <small><i style={{background:queueColor(c.queue)}}/>{queueName(c.queue)} · {date(c.updatedAt)}</small>
         <span>{c.preview||'Sem mensagem'}</span></span>
-       <Icon name="chevron-right" size={17}/>
+       <Icon name="chevronRight" size={17}/>
       </button>)}
       {!effective.length&&<p className={css.noContacts}>Nenhum atendimento nesta seleção.</p>}
      </div>
@@ -220,7 +220,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
      {!selected?<div className={css.placeholder}><Icon name="chat" size={30}/><h2>Selecione uma conversa</h2><p>Consulte o histórico e encaminhe para a próxima fila quando necessário.</p></div>:<>
       <div className={css.threadHeader}><div><h2>{detail?.contact?.name||'Conversa'}</h2>
        <p>{detail?.contact?.phone||''} · {queueName(detail?.contact?.queue)}</p></div>
-       <button aria-label="Fechar conversa" onClick={()=>setSelected(null)}><Icon name="x" size={18}/></button>
+       <button aria-label="Fechar conversa" onClick={()=>setSelected(null)}><Icon name="close" size={18}/></button>
       </div>
       {opening&&<p className={css.loading}>Verificando sua permissão de acesso…</p>}
       {detail&&<div className={css.messages}>
@@ -230,7 +230,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
        {!detail.messages.length&&<p className={css.noContacts}>Sem mensagens registradas.</p>}
       </div>}
       {detail&&<div className={css.transfer}>
-       <div><strong><Icon name="workflow" size={15} inline/> Encaminhar conversa</strong><p>Escolha a fila que dará continuidade ao atendimento.</p></div>
+       <div><strong><Icon name="flow" size={15} inline/> Encaminhar conversa</strong><p>Escolha a fila que dará continuidade ao atendimento.</p></div>
        <div className={css.transferControls}>
         <select aria-label="Fila de destino" value={destination} onChange={e=>setDestination(e.target.value)} disabled={!canMove||busy}>
          <option value="">Escolha a fila de destino…</option>
@@ -253,7 +253,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    <button className={page==='dashboard'?css.sidebarActive:css.sidebarButton} onClick={()=>setPage('dashboard')}><Icon name="chart" size={17}/> Dashboard</button>
    <button className={page==='inbox'?css.sidebarActive:css.sidebarButton} onClick={()=>setPage('inbox')}><Icon name="inbox" size={17}/> Atendimentos</button>
    <div className={css.sidebarBottom}><span>Acesso individual · Vital Decor</span>
-    {onLogout&&<button onClick={onLogout} type="button"><Icon name="log-out" size={16}/> Sair</button>}
+    {onLogout&&<button onClick={onLogout} type="button"><Icon name="logout" size={16}/> Sair</button>}
    </div>
   </aside>
   <main className={css.main}>{main}</main>

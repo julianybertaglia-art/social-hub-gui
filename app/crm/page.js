@@ -6,6 +6,7 @@ import { useWorkspace } from '../WorkspaceSwitcher';
 import { api, useResource } from '../operations/useOperations';
 import { KPI } from '../operations/Charts';
 import { STAGES } from '../lib/operations.mjs';
+import ContactRecord from './ContactRecord';
 import { crmContactKey, crmFilter, crmLane, crmLaneLabel, crmLanes } from '../lib/crm-view.mjs';
 import s from '../operations/operations.module.css';
 
@@ -31,13 +32,14 @@ function Board({ workspace }) {
   const [lane, setLane] = useState('all');
   const [sort, setSort] = useState('recent');
   const [selectedId, setSelectedId] = useState(null);
+  const [selectedContact, setSelectedContact] = useState(null);
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState('');
   const { data, loading, error: loadError } = useResource('/api/operations?workspace=' + workspace.id + '&days=' + days, revision);
   const allContacts = data?.contacts || [];
   const contacts = crmFilter(allContacts, workspace.id, { search, lane, sort });
   const columns = crmLanes(workspace.id, allContacts);
-  const selected = allContacts.find(c => crmContactKey(workspace.id, c) === selectedId);
+  const selected = allContacts.find(c => crmContactKey(workspace.id, c) === selectedId) || selectedContact;
 
   async function move(contact, stage) {
     if (!gui || busy !== null) return;
@@ -57,8 +59,18 @@ function Board({ workspace }) {
   }
 
   function openContact(contact) {
+    setSelectedContact(contact);
     setSelectedId(crmContactKey(workspace.id, contact));
   }
+
+  if (selected) return <ContactRecord
+    key={crmContactKey(workspace.id, selected)}
+    workspace={workspace}
+    contact={selected}
+    onBack={() => { setSelectedId(null); setSelectedContact(null); }}
+    onMove={move}
+    busy={busy}
+  />;
 
   return (
     <main className={s.surface}>
@@ -169,34 +181,7 @@ function Board({ workspace }) {
       </div>
       <p className={s.muted}>O período altera os indicadores de mensagens e novos leads, não a lista atual de contatos. O histórico completo permanece na caixa de entrada.</p>
 
-      {selected && <div className={s.crmBackdrop} onClick={() => setSelectedId(null)}>
-        <aside className={s.crmDrawer} role="dialog" aria-modal="true" aria-label={'Ficha de ' + (selected.profile_name || selected.phone)} onClick={e => e.stopPropagation()}>
-          <div className={s.crmDrawerHeader}>
-            <div><span className={s.eyebrow}>FICHA DO CONTATO</span><h2>{selected.profile_name || selected.phone || 'Contato sem nome'}</h2></div>
-            <button className={s.crmClose} onClick={() => setSelectedId(null)} aria-label="Fechar ficha">×</button>
-          </div>
-          <p className={s.muted}>Workspace: {workspace.name}</p>
-          <dl className={s.crmProperties}>
-            <div><dt>Telefone</dt><dd>{selected.phone || 'Não informado'}</dd></div>
-            <div><dt>{gui ? 'Etapa da negociação' : 'Setor responsável'}</dt><dd>{crmLaneLabel(crmLane(workspace.id, selected))}</dd></div>
-            {!gui && <div><dt>Atendente</dt><dd>{selected.assigned_to || 'Não atribuído'}</dd></div>}
-            <div><dt>Última interação</dt><dd>{formattedDate(selected.last_message_at)}</dd></div>
-            {gui && <div><dt>Tags</dt><dd>{selected.tags?.join(' · ') || 'Nenhuma'}</dd></div>}
-            {gui && <div><dt>Anotações</dt><dd className={s.crmNotes}>{selected.notes || 'Nenhuma anotação registrada.'}</dd></div>}
-          </dl>
-          {gui && <label className={s.crmField}>Mover para outra etapa
-            <select value={selected.stage || 'Sem etapa'} disabled={busy !== null} onChange={e => move(selected, e.target.value)}>
-              {!STAGES.includes(selected.stage) && <option value={selected.stage || 'Sem etapa'}>{selected.stage || 'Sem etapa'}</option>}
-              {STAGES.map(stage => <option key={stage} value={stage}>{stage}</option>)}
-            </select>
-          </label>}
-          <div className={s.crmDrawerActions}>
-            <Link href="/whatsapp" className={s.primary}>Abrir conversa no WhatsApp</Link>
-            {!gui && <Link href="/whatsapp/setores" className={s.button}>Ver atendimento por setor</Link>}
-          </div>
-          <p className={s.muted}>A ficha utiliza os dados já existentes; mensagens e transferências continuam disponíveis no atendimento atual.</p>
-        </aside>
-      </div>}
+
     </main>
   );
 }

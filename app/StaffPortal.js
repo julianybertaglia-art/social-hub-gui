@@ -125,7 +125,7 @@ export default function StaffPortal({token,onLogout}){
         </section>
         <section className={styles.conversation} aria-label="Histórico da conversa selecionada">
           {!selected && <div className={styles.intro}>
-            <Icon name="message-circle" size={32}/>
+            <Icon name="chat" size={32}/>
             <h2>Selecione uma conversa</h2>
             <p>Você verá somente o histórico dos atendimentos atribuídos a um dos seus setores.</p>
           </div>}

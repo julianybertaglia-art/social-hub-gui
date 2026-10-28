@@ -163,3 +163,46 @@
 @media(max-width:1100px){.crmWorkspaceLayout{grid-template-columns:minmax(0,1fr) 235px;gap:14px}.crmMainColumn{padding:17px}.crmSidePanel{padding:14px}.surface button.crmContactRow{grid-template-columns:38px minmax(0,1fr) 125px 16px;gap:9px;padding:14px 10px}.crmContactAvatar{height:38px;width:38px}}
 @media(max-width:860px){.crmWorkspaceLayout{grid-template-columns:1fr}.crmSideColumn{display:grid;grid-template-columns:1fr 1fr}.crmSideMetrics{display:grid;grid-template-columns:1fr 1fr}.crmTop{padding-bottom:16px}}
 @media(max-width:610px){.crmDashboard{padding:4px 0 28px}.crmTop{align-items:flex-start;flex-direction:column;gap:14px}.crmTop .primary{width:100%;justify-content:center}.crmMainColumn{padding:14px}.crmMainHead{flex-direction:column;gap:5px}.crmMainHead h2{font-size:19px}.crmCount{padding:0}.crmSideColumn{grid-template-columns:1fr}.crmFilterPanel .crmFilterRow{grid-template-columns:1fr}.crmMainColumn .crmResultHeading{flex-direction:column;gap:5px}.surface button.crmContactRow{grid-template-columns:35px minmax(0,1fr) 15px;gap:10px}.crmContactAvatar{width:35px;height:35px}.crmContactMeta{grid-column:2;grid-row:2;flex-direction:row;flex-wrap:wrap}.surface button.crmContactRow>svg{grid-column:3;grid-row:1}.crmSideMetrics{grid-template-columns:1fr 1fr}.surface .crmMainColumn .crmTabs button{padding:12px 8px;font-size:12px}.crmFilterPanel{padding:12px}}
+
+
+/* CRM · tipografia consistente (somente /crm; não altera demais páginas) */
+.crmDashboard{font-size:14px;line-height:1.5}
+.crmDashboard .crmTop h1{font-size:clamp(26px,2.4vw,30px);line-height:1.16;font-weight:730}
+.crmDashboard .crmTop p{font-size:14px;line-height:1.55}
+.crmDashboard .crmTop .eyebrow{font-size:12px;letter-spacing:.08em}
+.crmDashboard .crmTop .primary{font-size:13.5px}
+.crmDashboard .crmMainHead h2{font-size:21px;font-weight:720}
+.crmDashboard .crmSectionEyebrow{font-size:11.5px;letter-spacing:.08em;line-height:1.5}
+.crmDashboard .crmCount{font-size:12.5px;padding-top:9px}
+.surface .crmDashboard .crmTabs{flex-wrap:wrap;overflow:visible}
+.surface .crmDashboard .crmTabs button{font-size:13.5px;font-weight:650}
+.crmDashboard .crmFilterPanel label span,.crmDashboard .crmPeriodLabel span{font-size:12.5px;font-weight:650}
+.crmDashboard .crmFilterPanel input,.crmDashboard .crmFilterPanel select,.crmDashboard .crmPeriodLabel select{font-size:14px;line-height:1.35}
+.crmDashboard .crmSubjectFilter{margin:20px 0 8px}
+.crmDashboard .crmSubjectFilter>.crmSectionEyebrow{display:block;margin-bottom:10px}
+.crmDashboard .crmResultHeading h2{font-size:18px;font-weight:700}
+.crmDashboard .crmResultHeading p{font-size:13px;line-height:1.55}
+.crmDashboard .crmResultHeading>span{font-size:12.5px}
+.surface .crmDashboard button.crmContactRow{padding:17px 13px}
+.crmDashboard .crmContactIdentity strong{font-size:15px;font-weight:720}
+.crmDashboard .crmContactIdentity small,.crmDashboard .crmContactMeta small{font-size:12.5px}
+.crmDashboard .crmContactTags{font-size:12px}
+.crmDashboard .crmContactMeta .crmPill{font-size:12px}
+.crmDashboard .crmSideHead h2{font-size:18px;font-weight:720}
+.crmDashboard .crmSideMetrics .kpi{padding:15px}
+.crmDashboard .crmSideMetrics .kpi span{font-size:13.5px;line-height:1.5;font-weight:600}
+.crmDashboard .crmSideMetrics .kpi strong{font-size:27px;margin:6px 0;line-height:1.1}
+.crmDashboard .crmSideMetrics .kpi small{font-size:12px;line-height:1.4}
+.crmDashboard .crmSideLinks a{font-size:13px;line-height:1.45}
+.crmDashboard .crmStageTitle{font-size:14px}
+.crmDashboard .crmStageCount{font-size:12.5px}
+.crmDashboard .crmStageContact strong{font-size:14px}
+.crmDashboard .crmStageContact small{font-size:12px}
+.crmDashboard .crmEmptyState p{font-size:13px}
+.crmDashboard .crmEmptyState .button{font-size:13.5px}
+@media(max-width:610px){
+ .crmDashboard .crmMainHead h2{font-size:20px}
+ .surface .crmDashboard .crmTabs button{font-size:13px}
+ .crmDashboard .crmSideMetrics .kpi strong{font-size:25px}
+ .crmDashboard .crmSideMetrics .kpi span{font-size:13px}
+}

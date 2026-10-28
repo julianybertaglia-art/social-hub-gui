@@ -209,6 +209,8 @@ function Board({ workspace }) {
           </section>
 
           <aside className={s.crmSideColumn} aria-label="Indicadores e atalhos do CRM">
+            {!gui && <section className={s.crmSidePanel}><VitalRoutingOverview /></section>}
+
             <section className={s.crmSidePanel}>
               <div className={s.crmSideHead}>
                 <div><span className={s.crmSectionEyebrow}>VISÃO GERAL</span><h2>Indicadores</h2></div>
@@ -228,8 +230,6 @@ function Board({ workspace }) {
                 <KPI label={gui ? 'Conversão dos encerrados' : 'Conversas atribuídas'} value={gui ? data?.crm?.closedWinRate : data ? allContacts.filter(c => c.assigned_to).length : undefined} suffix={gui ? '%' : ''} note={gui ? 'Vendas ÷ encerrados' : 'Com responsável registrado'} />
               </div>
             </section>
-
-            {!gui && <section className={s.crmSidePanel}><VitalRoutingOverview /></section>}
 
             <section className={s.crmSidePanel}>
               <div className={s.crmSideHead}><div><span className={s.crmSectionEyebrow}>ACESSOS RÁPIDOS</span><h2>Ferramentas</h2></div></div>

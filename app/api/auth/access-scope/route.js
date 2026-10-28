@@ -27,8 +27,11 @@ export async function GET(request) {
       const organization=(orgs||[]).find(org=>org.id===membership?.organization_id);
       if (membership && organization) {
         if (membership.status !== 'active') throw fail('Sua conta está suspensa.',403);
-        if (['agent','supervisor'].includes(membership.role))
+        if (['agent','supervisor'].includes(membership.role)) {
+          if(process.env.VITAL_CRM_STAFF_ENABLED!=='true')
+            return Response.json({scope:'staff_pending',portalEnabled:false},{headers});
           return Response.json({scope:'staff',portalEnabled:true},{headers});
+        }
         if (membership.role==='installer')
           return Response.json({scope:'installer_pending',portalEnabled:false},{headers});
         if (membership.role==='owner' && organization.owner_user_id!==user.id)

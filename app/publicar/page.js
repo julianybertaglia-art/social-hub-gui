@@ -30,7 +30,7 @@ async function call(path,options={}){
   if(!response.ok)throw new Error(result.error||'Não foi possível concluir a operação.');
   return result;
 }
-function TargetState({target,postId,onFinish,busy}){
+function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutube,youtubeCheck}){
   const label=NETWORKS.find(n=>n.id===target.platform);
   return <div className={styles.targetRow}>
     <span className={styles.networkSymbol}>{label?.symbol||'•'}</span>
@@ -43,9 +43,20 @@ function TargetState({target,postId,onFinish,busy}){
     {target.platform==='instagram'&&target.state==='processing'&&
       <button className={styles.finish} type="button" disabled={!!busy}
         onClick={()=>onFinish(postId)}>{busy===postId?'Verificando…':'Concluir Reel'}</button>}
-    {target.platform==='youtube'&&target.externalId&&
+    {target.platform==='youtube'&&target.externalId&&<>
       <a className={styles.link} href={'https://studio.youtube.com/video/'+encodeURIComponent(target.externalId)+'/edit'}
-         target="_blank" rel="noreferrer">Abrir ↗</a>}
+         target="_blank" rel="noreferrer">Abrir no Studio ↗</a>
+      <button className={styles.finish} type="button" disabled={!!verifyingYoutube}
+         onClick={()=>onVerifyYoutube(postId)}>{verifyingYoutube===postId?'Consultando...':'Verificar no YouTube'}</button>
+      {youtubeCheck&&<div className={styles.youtubeVerification} role="status">
+        {youtubeCheck.error?youtubeCheck.error:
+          youtubeCheck.found?('YouTube confirmou o vídeo · Canal '+(youtubeCheck.channelMatches?'correto':'DIFERENTE')+
+            ' · Visibilidade: '+youtubeCheck.privacyStatus+
+            ' · Upload: '+youtubeCheck.uploadStatus+
+            ' · Processamento: '+youtubeCheck.processingStatus):
+          (youtubeCheck.message||youtubeCheck.reason||'Vídeo não encontrado pela API do YouTube.')}
+      </div>}
+    </>}
   </div>;
 }
 export default function UnifiedPublisher(){
@@ -62,6 +73,8 @@ export default function UnifiedPublisher(){
   const [notice,setNotice]=useState('');
   const [loading,setLoading]=useState(true);
   const [finishing,setFinishing]=useState('');
+  const [verifyingYoutube,setVerifyingYoutube]=useState('');
+  const [youtubeChecks,setYoutubeChecks]=useState({});
   const [currentId,setCurrentId]=useState('');
   const preview=useMemo(()=>file?URL.createObjectURL(file):null,[file]);
   useEffect(()=>()=>{if(preview)URL.revokeObjectURL(preview)},[preview]);
@@ -132,6 +145,14 @@ export default function UnifiedPublisher(){
       setFile(null);setMetadata(null);
     }catch(e){setError(e.message||'Não foi possível enviar.');}
     finally{setPhase('')}
+  }
+  async function verifyYoutube(id){
+    setVerifyingYoutube(id);
+    try{
+      const result=await call('/api/publicacao/verificar-youtube',{method:'POST',body:JSON.stringify({id})});
+      setYoutubeChecks(prev=>({...prev,[id]:result}));
+    }catch(e){setYoutubeChecks(prev=>({...prev,[id]:{error:e.message||'Falha ao verificar vídeo no YouTube.'}}));}
+    finally{setVerifyingYoutube('');}
   }
   async function finalize(id){
     setFinishing(id);setError('');setNotice('');
@@ -229,7 +250,8 @@ export default function UnifiedPublisher(){
           <div className={styles.history}>{history.map(post=><article className={[styles.historyItem,post.id===currentId?styles.highlight:''].join(' ')} key={post.id}>
             <div className={styles.postTitle}><strong>{post.title}</strong><small>{new Date(post.createdAt).toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</small></div>
             {post.targets.map(t=><TargetState key={t.platform} target={t} postId={post.id}
-              onFinish={finalize} busy={finishing}/>)}
+              onFinish={finalize} busy={finishing} onVerifyYoutube={verifyYoutube}
+              verifyingYoutube={verifyingYoutube} youtubeCheck={youtubeChecks[post.id]}/>)}
           </article>)}</div>}
         </section>
       </aside>

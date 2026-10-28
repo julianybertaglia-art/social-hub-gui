@@ -36,12 +36,18 @@ export async function GET(request) {
       }
     }
 
-    // Preserve existing administrator access, and only that.
-    const {data:adminState,error:adminError}=await db.from('content_items')
-      .select('id').eq('title','__SOCIAL_HUB_STATE__')
-      .eq('user_id',user.id).limit(1).maybeSingle();
-    if (adminError) throw fail('Não foi possível verificar a conta administradora.',503);
-    if (adminState) return Response.json({scope:'admin',portalEnabled:true},{headers});
+    // Admin is determined by protected organization ownership, never
+    // by content_items, localStorage, or editable user_metadata.
+    const {data:owned,error:ownerError}=await db.from('crm_organizations')
+      .select('id').eq('workspace_code','vital-decor')
+      .eq('owner_user_id',user.id).limit(1).maybeSingle();
+    if(ownerError)throw fail('Não foi possível verificar a conta proprietária.',503);
+    if(owned){
+      const membership=members?.find(member=>member.organization_id===owned.id);
+      if(membership?.status==='active' && membership.role==='owner')
+        return Response.json({scope:'admin',portalEnabled:true},{headers});
+      throw fail('Conta proprietária sem autorização ativa.',403);
+    }
     throw fail('Sua conta não possui acesso autorizado ao TidePlace.',403);
   } catch (e) {
     return Response.json({error:e.status?e.message:'Não foi possível validar seu login.'},

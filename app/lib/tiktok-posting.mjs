@@ -89,9 +89,11 @@ export async function checkTikTokTask({db,ownerId,publishId}){
     throw Object.assign(new Error('Identificador de envio TikTok inválido.'),{status:400});
   const {accessToken}=await usableTikTokToken(db,ownerId);
   const result=await tiktokPost(accessToken,TIKTOK_STATUS,{publish_id:publishId});
-  const status=String(result.status||'UNKNOWN');
+  const status=String(result.status||'UNKNOWN').replace(/[^A-Z_]/g,'').slice(0,48);
   const fail=String(result.fail_reason||'').replace(/[^a-zA-Z0-9_]/g,'').slice(0,64);
+  const uploadedBytes=Number.isSafeInteger(result.uploaded_bytes)&&result.uploaded_bytes>=0?
+    result.uploaded_bytes:null;
   const state=status==='SEND_TO_USER_INBOX'?'draft':
     status==='PUBLISH_COMPLETE'?'published':status==='FAILED'?'failed':'processing';
-  return {status,state,reason:fail};
+  return {status,state,reason:fail,uploadedBytes};
 }

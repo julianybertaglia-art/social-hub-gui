@@ -173,27 +173,17 @@ export async function PATCH(request){
       .select('id').eq('owner_user_id',ctx.owner).eq('connection_id',ctx.connection.id)
       .eq('contact_wa_id',phone).limit(1).maybeSingle();
     if(existsError||!exists)throw fail('Conversa não encontrada.',404);
-    const payload={organization_id:ctx.organization.id,connection_id:ctx.connection.id,
-      owner_user_id:ctx.owner,contact_wa_id:phone,queue_code:toQueue,
-      source:'manual',changed_by:ctx.userId,updated_at:new Date().toISOString()};
-    let change;
-    if(current.manual){
-      change=await ctx.db.from('crm_vital_queue_assignments').update(payload)
-        .eq('organization_id',ctx.organization.id).eq('connection_id',ctx.connection.id)
-        .eq('contact_wa_id',phone).eq('updated_at',current.manual.updated_at)
-        .select('queue_code').maybeSingle();
-    }else{
-      change=await ctx.db.from('crm_vital_queue_assignments')
-        .insert(payload).select('queue_code').maybeSingle();
-    }
-    if(change.error||!change.data)
-      throw fail('A conversa foi alterada por outra pessoa. Atualize antes de transferir.',409);
-    const audit=await ctx.db.from('crm_vital_transfer_audit').insert({
-      organization_id:ctx.organization.id,connection_id:ctx.connection.id,
-      contact_wa_id:phone,from_queue:current.queue,to_queue:toQueue,changed_by:ctx.userId,
+    const {data:result,error:transferError}=await ctx.db.rpc('crm_vital_transfer_atomic',{
+      p_org:ctx.organization.id,p_conn:ctx.connection.id,p_owner:ctx.owner,
+      p_phone:phone,p_to_queue:toQueue,p_expected_from:current.queue,
+      p_expected_override_at:current.manual?.updated_at||null,p_actor:ctx.userId,
     });
-    if(audit.error)console.error('[vital-crm] Transfer audit error:',audit.error.code||'unknown');
-    return Response.json({ok:true,toQueue,fromQueue:current.queue,auditRecorded:!audit.error},{headers});
+    if(transferError||result!==toQueue){
+      if(transferError?.code==='40001')throw fail('Esta conversa foi modificada. Atualize a página e tente novamente.',409);
+      if(transferError?.code==='42501')throw fail('Seu acesso a esta conversa foi alterado. Atualize a página.',403);
+      throw fail('Não foi possível registrar a transferência. Nenhuma alteração foi concluída.',503);
+    }
+    return Response.json({ok:true,toQueue,fromQueue:current.queue,auditRecorded:true},{headers});
   }catch(e){
     return Response.json({error:e.status?e.message:'Não foi possível transferir o atendimento.'},
       {status:e.status||503,headers});

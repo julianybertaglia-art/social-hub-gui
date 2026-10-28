@@ -80,7 +80,7 @@ function Board({ workspace }) {
           <h1>Central de relacionamento</h1>
           <p className={s.muted}>Contatos e atendimento de {workspace.name}, organizados em um único lugar. Os dados das duas contas permanecem separados.</p>
         </div>
-        <Link href="/whatsapp" className={s.primary}>Abrir caixa de entrada</Link>
+        <div className={s.crmHeaderActions}><Link href="/crm/exemplo" className={s.button}>Ver nova ficha (exemplo)</Link><Link href="/whatsapp" className={s.primary}>Abrir caixa de entrada</Link></div>
       </header>
 
       <div className={s.crmTabs} role="tablist" aria-label="Visualizações do CRM">
@@ -113,7 +113,7 @@ function Board({ workspace }) {
         <button className={s.button} onClick={() => refresh(current => current + 1)}>Atualizar</button>
       </div>
 
-      {(error || loadError) && <p role="alert" className={s.notice}>{error || loadError}</p>}
+      {(error || loadError) && <div role="alert" className={s.notice}><p>{error || loadError}</p>{loadError && <p>Os contatos não foram carregados nesta prévia. <Link href="/crm/exemplo">Clique aqui para conferir o novo layout com dados fictícios.</Link></p>}</div>}
       {data?.truncated && <p className={s.notice}>A consulta atingiu o limite de registros. Os indicadores representam a amostra retornada.</p>}
 
       <div className={s.crmResultHeading}>

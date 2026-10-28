@@ -125,3 +125,12 @@
 .outsideWindow strong, .empty, .welcome p { font-size: 14px; }
 .footnote, .sectorSummary, .transferBar label,
 .transferBar select, .transferBar button, .transferSettings { font-size: 13px; }
+
+/* Explicit transfer area: sector routing is separate from conversation subject */
+.routingSection{border-top:1px solid var(--tp-line,#e7e3e6);border-bottom:1px solid var(--tp-line,#e7e3e6);background:var(--tp-surface-2,#fbf9fa);padding:12px 15px}
+.routingHeading{display:flex;flex-direction:column;gap:3px;margin-bottom:9px}
+.routingHeading strong{font-size:14px;font-weight:720;line-height:1.35;color:var(--tp-text,#292229)}
+.routingHeading small{font-size:12.5px;line-height:1.45;color:var(--tp-muted,#716972)}
+.routingSection .transferBar{border:0!important;background:transparent!important;padding:0!important;margin:0!important;gap:9px}
+.routingSection .transferBar label{font-size:12.5px;font-weight:650}
+.routingSection .transferBar select,.routingSection .transferBar button,.routingSection .transferBar a{font-size:13px}

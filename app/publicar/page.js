@@ -80,7 +80,14 @@ function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutu
       <button type="button" className={styles.finish} disabled={!!verifyingTikTok}
         onClick={()=>onVerifyTikTok(postId)}>{verifyingTikTok===postId?'Consultando...':'Verificar no TikTok'}</button>
       {tiktokCheck&&<div className={styles.youtubeVerification} role="status">
-        {tiktokCheck.error||tiktokCheck.message||'Status TikTok: '+tiktokCheck.status}
+        {tiktokCheck.error||<>
+          <b>Status oficial:</b> {tiktokCheck.status||'Indisponível'}
+          {Number.isFinite(tiktokCheck.uploadedBytes)&&
+            <span>{' · '}<b>Bytes recebidos:</b> {tiktokCheck.uploadedBytes.toLocaleString('pt-BR')}
+              {Number.isFinite(tiktokCheck.totalBytes)?' / '+tiktokCheck.totalBytes.toLocaleString('pt-BR'):''}
+            </span>}
+          <div style={{marginTop:5}}>{tiktokCheck.message||'Ainda não há confirmação de entrega.'}</div>
+        </>}
       </div>}
     </>}
   </div>;

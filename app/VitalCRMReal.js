@@ -116,6 +116,16 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    setDraft('');setNotice(result.warning||'Mensagem enviada pelo WhatsApp da Vital.');reload();
   }catch(e){setError(e.message)}finally{setBusy(false)}
  }
+ async function setResolution(status){
+  if(!detail||busy)return;
+  setBusy(true);setError('');setNotice('');
+  try{
+   await api('/api/crm/vital/status',{method:'PATCH',
+     body:JSON.stringify({contact:detail.contact.id,status})});
+   setNotice(status==='resolved'?'Atendimento concluído.':'Atendimento reaberto.');
+   reload();
+  }catch(e){setError(e.message)}finally{setBusy(false)}
+ }
  const statusName=c=>STATUS.find(s=>s.code===c)?.label||'—';
  const main=<>
   <header className={css.header}>
@@ -237,6 +247,13 @@ export default function VitalCRMReal({embedded=false,onLogout}){
         <p>{m.body||'['+m.type+']'}</p><time>{date(m.at)}</time>
        </article>)}
        {!detail.messages.length&&<p className={css.noContacts}>Sem mensagens registradas.</p>}
+      </div>}
+      {detail&&role!=='supervisor'&&<div className={css.resolution}>
+       <div><strong>Situação do atendimento</strong><small>{statusName(detail.contact.status)}</small></div>
+       <button type="button" disabled={busy} onClick={()=>setResolution(detail.contact.status==='closed'?'open':'resolved')}>
+        <Icon name={detail.contact.status==='closed'?'refresh':'check'} size={15}/>
+        {detail.contact.status==='closed'?'Reabrir atendimento':'Marcar como resolvido'}
+       </button>
       </div>}
       {detail&&role!=='supervisor'&&<form className={css.reply} onSubmit={reply}>
         <label htmlFor="vital-reply-text">Responder pelo WhatsApp da Vital</label>

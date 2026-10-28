@@ -51,9 +51,9 @@ export async function capabilities(db,ownerId){
   const youtubeConnected=!youtube.error&&Boolean(youtube.data);
   const tiktokConnected=!tiktok.error&&Boolean(tiktok.data);
   const tk=tiktokConnected?tiktok.data:null;
-  // Production publishing is only enabled after review. Sandbox user.info.basic is insufficient.
-  const tiktokPublish=tiktokConnected&&tk.environment==='production'&&
-    (tk.oauth_scopes||[]).includes('video.publish');
+  // A verified video.upload grant allows creator-inbox drafts in Sandbox.
+  // Public Direct Post is a separate audited workflow; do not claim it here.
+  const tiktokDraft=tiktokConnected&&(tk.oauth_scopes||[]).includes('video.upload');
   return {
     instagram:{connected:instagram.connected,enabled:instagram.connected,
       name:instagram.connected?'@'+instagram.name:'@gui_nonato',
@@ -63,11 +63,11 @@ export async function capabilities(db,ownerId){
       name:youtube.data?.channel_title||'Gui Nonato',
       note:youtubeConnected?'Envio disponível como privado; vídeos públicos dependem de autorização do Google.':
         'Conecte o canal do YouTube para enviar vídeos privados.'},
-    tiktok:{connected:tiktokConnected,enabled:false,
+    tiktok:{connected:tiktokConnected,enabled:tiktokDraft,mode:'draft',
       name:tk?.display_name||'Gui Nonato',environment:tk?.environment||null,
-      note:tiktokPublish?'Escopo de publicação identificado; o envio aguarda habilitação da Content Posting API no TidePlace.':
-        tk?.environment==='sandbox'?'Sandbox autorizado apenas para testes; publicação indisponível.':
-        'Aguardando aprovação do TikTok e permissão video.publish.'}
+      note:tiktokDraft?'Envio para rascunho habilitado. Finalize a publicação no aplicativo TikTok.':
+        tk?.environment==='sandbox'?'Reconecte pelo Sandbox solicitando video.upload e video.publish.':
+        'Conecte o TikTok com a permissão video.upload para enviar rascunhos.'}
   };
 }
 export function instagramGraphError(payload,status){

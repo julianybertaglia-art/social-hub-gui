@@ -21,8 +21,8 @@ export async function POST(request){
       throw Object.assign(new Error('Instagram não está conectado. Confira as credenciais Meta.'),{status:409});
     if(targets.includes('youtube')&&!state.youtube.connected)
       throw Object.assign(new Error('YouTube não está conectado. Autorize o canal primeiro.'),{status:409});
-    if(targets.length===1&&targets[0]==='tiktok')
-      throw Object.assign(new Error('O TikTok está em Sandbox. Selecione também uma rede disponível; postagem pública aguarda aprovação.'),{status:409});
+    if(targets.includes('tiktok')&&!state.tiktok.enabled)
+      throw Object.assign(new Error('TikTok precisa da permissão video.upload. Reconecte a conta pelo Sandbox no TidePlace.'),{status:409});
     const {count,error:countError}=await db.from('multichannel_posts').select('id',{count:'exact',head:true})
        .eq('owner_user_id',ownerId).gte('created_at',new Date(Date.now()-3600000).toISOString());
     if(countError)throw new Error('Não foi possível validar o limite de envios.');
@@ -34,8 +34,7 @@ export async function POST(request){
     });
     if(saveError)throw new Error('Não foi possível registrar o novo vídeo.');
     const rows=targets.map(platform=>({post_id:id,platform,
-      state:platform==='tiktok'?'pending_approval':'ready',
-      error_message:platform==='tiktok'?'O TikTok ainda não concedeu autorização de publicação fora do Sandbox.':null
+      state:'ready',error_message:null
     }));
     const {error:targetError}=await db.from('multichannel_post_targets').insert(rows);
     if(targetError){await db.from('multichannel_posts').delete().eq('id',id).eq('owner_user_id',ownerId);throw new Error('Não foi possível preparar as redes selecionadas.');}

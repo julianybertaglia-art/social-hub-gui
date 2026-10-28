@@ -3,6 +3,7 @@ import {
   PUBLISH_BUCKET,PUBLISH_WORKSPACE,createInstagramReel
 } from '../../../lib/multichannel-publisher.mjs';
 import {uploadPrivateVideoToYoutube} from '../../../lib/youtube-upload.mjs';
+import {uploadTikTokDraft} from '../../../lib/tiktok-posting.mjs';
 export const dynamic='force-dynamic';
 export const maxDuration=300;
 export async function POST(request){
@@ -13,7 +14,7 @@ export async function POST(request){
     const input=await request.json().catch(()=>({}));
     const id=requireUuid(input.id);
     const platform=String(input.platform||'');
-    if(!['instagram','youtube'].includes(platform))
+    if(!['instagram','youtube','tiktok'].includes(platform))
       throw Object.assign(new Error('Esta rede ainda não possui publicação automática habilitada.'),{status:409});
     const {data,error}=await db.from('multichannel_posts').select('*')
       .eq('id',id).eq('owner_user_id',ownerId).eq('workspace_id',PUBLISH_WORKSPACE).maybeSingle();
@@ -32,6 +33,16 @@ export async function POST(request){
       externalId=await uploadPrivateVideoToYoutube({db,ownerId,file,
         title:post.title,description:post.caption,mimeType:post.mime_type});
       newState='private';
+    }else if(platform==='tiktok'){
+      externalId=await uploadTikTokDraft({db,ownerId,file,mimeType:post.mime_type,
+        onInitialized:async(publishId)=>{
+          const {error}=await db.from('multichannel_post_targets')
+            .update({external_id:publishId,updated_at:new Date().toISOString()})
+            .eq('id',claimed.id).eq('state','sending');
+          if(error)throw new Error('O TikTok iniciou um envio, mas o histórico não pôde registrá-lo. Confira a conta antes de tentar novamente.');
+        }
+      });
+      newState='processing';
     }else{
       externalId=await createInstagramReel({db,ownerId,row:post});
       newState='processing';

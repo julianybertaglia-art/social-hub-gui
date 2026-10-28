@@ -13,7 +13,7 @@ const NETWORKS=[
 ];
 const STATE={
   ready:'Preparado',sending:'Enviando',processing:'Processando na Meta',
-  published:'Publicado',private:'Enviado como privado',
+  published:'Publicado',private:'Enviado como privado',draft:'Enviado à caixa do TikTok',
   pending_approval:'Aguardando aprovação',failed:'Falhou',unknown:'Conferir manualmente',
 };
 const sizeLabel=n=>(n/1024/1024).toFixed(1)+' MB';
@@ -30,7 +30,7 @@ async function call(path,options={}){
   if(!response.ok)throw new Error(result.error||'Não foi possível concluir a operação.');
   return result;
 }
-function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutube,youtubeCheck}){
+function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutube,youtubeCheck,onVerifyTikTok,verifyingTikTok,tiktokCheck}){
   const label=NETWORKS.find(n=>n.id===target.platform);
   return <div className={styles.targetRow}>
     <span className={styles.networkSymbol}>{label?.symbol||'•'}</span>
@@ -57,6 +57,13 @@ function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutu
           (youtubeCheck.message||youtubeCheck.reason||'Vídeo não encontrado pela API do YouTube.')}
       </div>}
     </>}
+    {target.platform==='tiktok'&&target.externalId&&<>
+      <button type="button" className={styles.finish} disabled={!!verifyingTikTok}
+        onClick={()=>onVerifyTikTok(postId)}>{verifyingTikTok===postId?'Consultando...':'Verificar no TikTok'}</button>
+      {tiktokCheck&&<div className={styles.youtubeVerification} role="status">
+        {tiktokCheck.error||tiktokCheck.message||'Status TikTok: '+tiktokCheck.status}
+      </div>}
+    </>}
   </div>;
 }
 export default function UnifiedPublisher(){
@@ -74,6 +81,8 @@ export default function UnifiedPublisher(){
   const [loading,setLoading]=useState(true);
   const [finishing,setFinishing]=useState('');
   const [verifyingYoutube,setVerifyingYoutube]=useState('');
+  const [verifyingTikTok,setVerifyingTikTok]=useState('');
+  const [tiktokChecks,setTikTokChecks]=useState({});
   const [youtubeChecks,setYoutubeChecks]=useState({});
   const [currentId,setCurrentId]=useState('');
   const preview=useMemo(()=>file?URL.createObjectURL(file):null,[file]);
@@ -105,15 +114,15 @@ export default function UnifiedPublisher(){
           metadata.duration>180||metadata.width>metadata.height)
         throw new Error('Escolha um vídeo vertical ou quadrado com até 3 minutos.');
       if(!selected.length)throw new Error('Selecione ao menos uma rede.');
-      if(!selected.some(platform=>platform!=='tiktok'))
-        throw new Error('O TikTok ainda está em Sandbox. Escolha também Instagram ou YouTube.');
+      if(selected.includes('tiktok')&&!connections?.tiktok?.enabled)
+        throw new Error('O TikTok precisa de video.upload. Renove a autorização em Conexão TikTok.');
       if(selected.some(platform=>platform!=='tiktok'&&!connections?.[platform]?.connected))
         throw new Error('Uma das redes selecionadas está desconectada. Confira as conexões.');
       if(!title.trim()||title.trim().length>100||caption.length>2200)
         throw new Error('Preencha título de até 100 caracteres e legenda de até 2.200.');
       const summary=selected.map(x=>NETWORKS.find(n=>n.id===x)?.name).join(', ');
-      const warnings=selected.filter(x=>x==='tiktok').length?
-       '\nTikTok será marcado como aguardando aprovação, sem publicar.':'';
+      const warnings=selected.includes('tiktok')?
+       '\nTikTok: este envio cria um rascunho na caixa de entrada do aplicativo, NÃO publica para seguidores.':'';
       if(!window.confirm('Enviar '+file.name+' para: '+summary+'?\n\nO YouTube recebe como PRIVADO; o Instagram poderá publicar um Reel após o processamento.'+warnings))return;
       setPhase('preparing');
       const job=await call('/api/publicacao/preparar',{method:'POST',body:JSON.stringify({
@@ -126,7 +135,7 @@ export default function UnifiedPublisher(){
         .uploadToSignedUrl(job.path,job.uploadToken,file,{contentType:file.type,upsert:false});
       if(uploadError)throw new Error('Falha ao enviar vídeo ao armazenamento: '+uploadError.message);
       let problems=[];
-      for(const platform of selected.filter(x=>x!=='tiktok')){
+      for(const platform of selected){
         setPhase(platform);
         try{
           const result=await call('/api/publicacao/enviar',{method:'POST',
@@ -140,11 +149,20 @@ export default function UnifiedPublisher(){
       }
       await refresh();
       setNotice(problems.length?'Envio parcialmente concluído. Confira cada rede no histórico.':
-        'Arquivo recebido. Confira o resultado de cada rede no histórico; Reels podem aguardar processamento.');
+        'Arquivo recebido. Confira o resultado de cada rede no histórico; Instagram e TikTok podem aguardar processamento.');
       if(problems.length)setError(problems.join(' · '));
       setFile(null);setMetadata(null);
     }catch(e){setError(e.message||'Não foi possível enviar.');}
     finally{setPhase('')}
+  }
+  async function verifyTikTok(id){
+    setVerifyingTikTok(id);setError('');setNotice('');
+    try{
+      const result=await call('/api/publicacao/verificar-tiktok',{method:'POST',body:JSON.stringify({id})});
+      setTikTokChecks(old=>({...old,[id]:result}));
+      await refresh();
+    }catch(e){setTikTokChecks(old=>({...old,[id]:{error:e.message||'Falha ao verificar TikTok.'}}));}
+    finally{setVerifyingTikTok('');}
   }
   async function verifyYoutube(id){
     setVerifyingYoutube(id);
@@ -168,7 +186,7 @@ export default function UnifiedPublisher(){
   if(workspace.id!=='gui-nonato')return <main className={styles.page}>
     <section className={styles.panel}><h1>Publicação multicanal</h1>
       <p>Este publicador é exclusivo da conta Gui Nonato. Selecione o workspace do Gui no topo.</p></section></main>;
-  const usable=selected.some(x=>x!=='tiktok')&&selected.every(x=>x==='tiktok'||connections?.[x]?.connected);
+  const usable=selected.length>0&&selected.every(x=>x==='tiktok'?connections?.tiktok?.enabled:connections?.[x]?.connected);
   return <main className={styles.page}>
     <header className={styles.header}>
       <div><div className={styles.eyebrow}>TIDEPLACE / CENTRAL DE CONTEÚDO</div>
@@ -219,10 +237,11 @@ export default function UnifiedPublisher(){
         </div>
         <div className={styles.disclosure}>
           <strong>Como funciona o envio agora</strong>
-          <p><b>Instagram:</b> o Reel será enviado à Meta para processamento e poderá ser finalizado pelo histórico. <b>YouTube:</b> o vídeo será enviado como privado. <b>TikTok:</b> ficará marcado como pendente até aprovação da API; não será enviado neste momento.</p>
+          <p><b>Instagram:</b> o Reel será enviado à Meta para processamento e poderá ser finalizado pelo histórico. <b>YouTube:</b> o vídeo será enviado como privado. <b>TikTok:</b> o vídeo chegará como rascunho à caixa de entrada do aplicativo. Você deverá abrir a notificação, revisar a legenda e publicar manualmente. O envio por rascunho não adiciona a legenda automaticamente; a publicação pública direta depende de aprovação do TikTok.</p>
+          {connections?.tiktok&&!connections.tiktok.enabled&&<p>Para liberar o rascunho no TikTok, <Link href="/tiktok/conectar">renove as permissões da conexão</Link>.</p>}
         </div>
         <button type="submit" className={styles.submit} disabled={!!phase||!file||!usable||loading}>
-          {phase?({preparing:'Preparando publicação...',uploading:'Enviando arquivo...',instagram:'Enviando ao Instagram...',youtube:'Enviando ao YouTube...'}[phase]||'Processando...'):
+          {phase?({preparing:'Preparando publicação...',uploading:'Enviando arquivo...',instagram:'Enviando ao Instagram...',youtube:'Enviando ao YouTube...',tiktok:'Enviando rascunho ao TikTok...'}[phase]||'Processando...'):
             'Enviar para '+selected.length+' '+(selected.length===1?'rede selecionada':'redes selecionadas')}
         </button>
         <p className={styles.footnote}>Você confirma cada envio. Evite fechar esta aba durante o upload. A publicação não ocorre em redes desautorizadas.</p>
@@ -251,7 +270,8 @@ export default function UnifiedPublisher(){
             <div className={styles.postTitle}><strong>{post.title}</strong><small>{new Date(post.createdAt).toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</small></div>
             {post.targets.map(t=><TargetState key={t.platform} target={t} postId={post.id}
               onFinish={finalize} busy={finishing} onVerifyYoutube={verifyYoutube}
-              verifyingYoutube={verifyingYoutube} youtubeCheck={youtubeChecks[post.id]}/>)}
+              verifyingYoutube={verifyingYoutube} youtubeCheck={youtubeChecks[post.id]}
+              onVerifyTikTok={verifyTikTok} verifyingTikTok={verifyingTikTok} tiktokCheck={tiktokChecks[post.id]}/>)}
           </article>)}</div>}
         </section>
       </aside>

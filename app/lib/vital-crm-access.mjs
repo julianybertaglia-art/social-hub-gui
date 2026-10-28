@@ -31,5 +31,5 @@ export async function getVitalCrmMember(request) {
   if(grantError)throw fail('Não foi possível verificar seus setores.',503);
   const access=crmMemberAccess({role:member.role,status:member.status,sectors:(grants||[]).map(x=>x.sector_code)});
   if(!access)throw fail('Acesso não autorizado.',403);
-  return {db,userId,organization:{id:found.id,workspaceCode:found.workspace_code,displayName:found.display_name},access};
+  return {db,userId,organization:{id:found.id,workspaceCode:found.workspace_code,displayName:found.display_name,ownerUserId:found.owner_user_id},access};
 }

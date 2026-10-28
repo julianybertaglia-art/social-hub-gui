@@ -17,6 +17,28 @@ O publicador está limitado ao workspace **Gui Nonato** e à conta administrada 
 
 Antes de pedir análise, o TidePlace precisa oferecer um caminho real de uso para criadores independentes, com acesso e conexão de suas próprias contas TikTok, termos e política de privacidade acessíveis, e uso real por pessoas fora da equipe. Os números de usuários e publicações enviados no formulário devem refletir atividade verificável; não estimar dados que ainda não existem.
 
+## Restrições encontradas no código atual
+
+O suporte a criadores independentes exige uma etapa de produto e segurança antes de liberar cadastro público:
+
+- A tela de acesso hoje só oferece login por senha; não há cadastro ou onboarding para criadores.
+- O seletor de workspaces e o publicador assumem `gui-nonato`.
+- As migrações de publicações, conexões TikTok e conexões YouTube têm `workspace_id` limitado por constraint ao valor `gui-nonato`.
+- O Instagram usa credenciais de servidor e valida o perfil `@gui_nonato`; não há OAuth de Instagram por criador.
+- A moldura principal ainda mostra áreas internas do Gui/Vital. A sincronização do painel também consulta métricas globais do Instagram do Gui para toda sessão autenticada.
+
+Por isso, não basta remover a constraint de workspace nem ativar cadastro. O novo fluxo precisa separar papéis e telas, bloquear APIs e métricas internas para contas de criador e guardar cada conexão sob o usuário que a autorizou. Só depois desse isolamento é seguro convidar criadores externos.
+
+## Próxima sequência recomendada
+
+1. Definir uma área de criador separada da operação interna e uma regra explícita de papel para usuários existentes e novos.
+2. Criar onboarding com termos/privacidade, confirmação de conta e conexão/revogação da própria conta TikTok.
+3. Tornar publicações e tokens de cada criador isolados por `owner_user_id`; manter as conexões atuais do Gui sem migração destrutiva.
+4. Adicionar OAuth por criador para YouTube e Instagram antes de prometer publicação multicanal para contas externas.
+5. Liberar beta para criadores independentes, registrar atividade real e então preparar a demonstração e o pedido de auditoria.
+
+Essa ampliação é necessária para a elegibilidade, mas não pode ser substituída por contas de teste, números estimados ou uma simples configuração de ambiente.
+
 ## Preparação técnica e de produto
 
 - [ ] No portal TikTok for Developers, habilitar a configuração Direct Post e pedir aprovação do escopo `video.publish` para o aplicativo correto.

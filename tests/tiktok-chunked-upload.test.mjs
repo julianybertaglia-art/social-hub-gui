@@ -40,13 +40,29 @@ test('TikTok upload plan rejects oversized and invalid files',()=>{
 test('TikTok signed upload URL only targets documented HTTPS hosts',()=>{
  const valid=[
   'https://open-upload.tiktokapis.com/video/?upload_id=10&upload_token=private',
-  'https://upload.us.tiktokapis.com/video/?upload_id=12&upload_token=private'
+  'https://upload.us.tiktokapis.com/video/?upload_id=12&upload_token=private',
+  'https://open-upload-va.tiktokapis.com/video/?upload_id=13&upload_token=private',
+  'https://upload.eu.tiktokapis.com/video/?upload_id=14&upload_token=private',
+  'https://open-upload-us.tiktokapis.com/video/?upload_id=15&upload_token=private'
  ];
  valid.forEach(url=>assert.equal(safeUploadUrl(url),url));
  for(const url of [
   'https://open-upload.tiktokapis.com.evil.org/video/?token=secret',
   'http://open-upload.tiktokapis.com/video',
   'https://internal.example.org/',
-  'https://x@open-upload.tiktokapis.com/video'
+  'https://x@open-upload.tiktokapis.com/video',
+  'https://notupload.tiktokapis.com/video/?upload_token=private',
+  'https://upload.evil.tiktokapis.com.evil.org/video',
+  'https://upload.tiktokcdn.com/video/?upload_token=private',
+  'https://upload.tiktokapis.com:8443/video/?upload_token=private',
+  'https://upload.tiktokapis.com/video/#redirect',
+  'https://upload.tiktokapis.com.evil.org/video'
  ])assert.throws(()=>safeUploadUrl(url));
+ const refusal='https://upload.evil.example/video/?upload_token=SECRET_UPLOAD_TOKEN';
+ assert.throws(()=>safeUploadUrl(refusal),error=>{
+   assert.equal(error.status,502);
+   assert.ok(error.message.includes('upload.evil.example'));
+   assert.ok(!error.message.includes('SECRET_UPLOAD_TOKEN'));
+   return true;
+ });
 });

@@ -248,7 +248,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
        </article>)}
        {!detail.messages.length&&<p className={css.noContacts}>Sem mensagens registradas.</p>}
       </div>}
-      {detail&&role!=='supervisor'&&<div className={css.resolution}>
+      {detail&&role!=='supervisor'&&detail.contact.queue&&<div className={css.resolution}>
        <div><strong>Situação do atendimento</strong><small>{statusName(detail.contact.status)}</small></div>
        <button type="button" disabled={busy} onClick={()=>setResolution(detail.contact.status==='closed'?'open':'resolved')}>
         <Icon name={detail.contact.status==='closed'?'refresh':'check'} size={15}/>

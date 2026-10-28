@@ -34,7 +34,14 @@ export async function POST(request){
         title:post.title,description:post.caption,mimeType:post.mime_type});
       newState='private';
     }else if(platform==='tiktok'){
-      externalId=await uploadTikTokDraft({db,ownerId,file,mimeType:post.mime_type});
+      externalId=await uploadTikTokDraft({db,ownerId,file,mimeType:post.mime_type,
+        onInitialized:async(publishId)=>{
+          const {error}=await db.from('multichannel_post_targets')
+            .update({external_id:publishId,updated_at:new Date().toISOString()})
+            .eq('id',claimed.id).eq('state','sending');
+          if(error)throw new Error('O TikTok iniciou um envio, mas o histórico não pôde registrá-lo. Confira a conta antes de tentar novamente.');
+        }
+      });
       newState='processing';
     }else{
       externalId=await createInstagramReel({db,ownerId,row:post});

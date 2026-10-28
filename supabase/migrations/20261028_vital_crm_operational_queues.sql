@@ -63,16 +63,16 @@ grant select on public.crm_vital_queues, public.crm_vital_member_queues,
 -- Members may see queue definitions, but not other employees' permissions.
 create policy vital_queue_catalog_read on public.crm_vital_queues for select to authenticated
  using (exists(select 1 from public.crm_organization_members m
-   where m.organization_id=organization_id and m.user_id=(select auth.uid()) and m.status='active'));
+   where m.organization_id=crm_vital_queues.organization_id and m.user_id=(select auth.uid()) and m.status='active'));
 create policy vital_member_own_queues on public.crm_vital_member_queues for select to authenticated
  using (user_id=(select auth.uid()) and exists(select 1 from public.crm_organization_members m
-   where m.organization_id=organization_id and m.user_id=(select auth.uid()) and m.status='active'));
+   where m.organization_id=crm_vital_member_queues.organization_id and m.user_id=(select auth.uid()) and m.status='active'));
 create policy vital_queue_assignment_read on public.crm_vital_queue_assignments for select to authenticated
  using (owner_user_id=(select auth.uid()) or exists(
    select 1 from public.crm_vital_member_queues q
    join public.crm_organization_members m
      on m.organization_id=q.organization_id and m.user_id=q.user_id
-   where q.organization_id=organization_id and q.queue_code=queue_code
+   where q.organization_id=crm_vital_queue_assignments.organization_id and q.queue_code=crm_vital_queue_assignments.queue_code
      and q.user_id=(select auth.uid()) and m.status='active'
  ));
 -- transfer audit remains accessible only from the server.

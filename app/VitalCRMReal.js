@@ -45,7 +45,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const [revision,setRevision]=useState(0),[pageNumber,setPageNumber]=useState(0);
  const [queueFilter,setQueueFilter]=useState('all'),[statusFilter,setStatusFilter]=useState('all'),[search,setSearch]=useState('');
- const [destination,setDestination]=useState('');
+ const [destination,setDestination]=useState(''),[draft,setDraft]=useState('');
  const reload=useCallback(()=>setRevision(v=>v+1),[]);
  useEffect(()=>{
   let active=true;setLoading(true);setError('');
@@ -56,7 +56,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  },[revision,pageNumber]);
  useEffect(()=>{
   if(!selected){setDetail(null);return;}
-  let active=true;setOpening(true);setDetail(null);setDestination('');
+  let active=true;setOpening(true);setDetail(null);setDestination('');setDraft('');
   api('/api/crm/vital/live?contact='+encodeURIComponent(selected))
    .then(result=>{if(active)setDetail(result);})
    .catch(e=>{if(active){setSelected(null);setError(e.message);}})
@@ -106,6 +106,15 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    setSelected(null);reload();
   }catch(e){setError(e.message);}
   finally{setBusy(false);}
+ }
+ async function reply(event){
+  event.preventDefault();
+  if(!detail||!draft.trim()||busy)return;
+  setBusy(true);setError('');setNotice('');
+  try{
+   const result=await api('/api/crm/vital/reply',{method:'POST',body:JSON.stringify({to:detail.contact.id,text:draft.trim()})});
+   setDraft('');setNotice(result.warning||'Mensagem enviada pelo WhatsApp da Vital.');reload();
+  }catch(e){setError(e.message)}finally{setBusy(false)}
  }
  const statusName=c=>STATUS.find(s=>s.code===c)?.label||'—';
  const main=<>
@@ -229,6 +238,13 @@ export default function VitalCRMReal({embedded=false,onLogout}){
        </article>)}
        {!detail.messages.length&&<p className={css.noContacts}>Sem mensagens registradas.</p>}
       </div>}
+      {detail&&<form className={css.reply} onSubmit={reply}>
+        <label htmlFor="vital-reply-text">Responder pelo WhatsApp da Vital</label>
+        <textarea id="vital-reply-text" value={draft} maxLength={4096} rows={3}
+          placeholder="Digite sua resposta…" onChange={e=>setDraft(e.target.value)} disabled={busy}/>
+        <div><small>O envio respeita a janela de 24h da Meta e pausa a Vivi neste atendimento.</small>
+        <button type="submit" disabled={!draft.trim()||busy}>{busy?'Enviando…':'Enviar mensagem'}</button></div>
+       </form>}
       {detail&&<div className={css.transfer}>
        <div><strong><Icon name="flow" size={15} inline/> Encaminhar conversa</strong><p>Escolha a fila que dará continuidade ao atendimento.</p></div>
        <div className={css.transferControls}>
@@ -238,7 +254,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
         </select>
         <button type="button" disabled={!destination||busy||!canMove} onClick={transfer}>{busy?'Transferindo…':'Transferir'}</button>
        </div>
-       <span>Histórico em modo leitura. Respostas serão liberadas após validar as permissões de envio da Meta.</span>
+       <span>As respostas ficam disponíveis apenas dentro da janela de 24h e para conversas das suas filas. A transferência altera a fila do CRM, não configura o Argo.</span>
       </div>}
      </>}
     </section>

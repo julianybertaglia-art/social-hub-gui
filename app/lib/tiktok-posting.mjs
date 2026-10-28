@@ -65,10 +65,14 @@ export async function uploadTikTokDraft({db,ownerId,file,mimeType,onInitialized}
     source_info:{source:'FILE_UPLOAD',video_size:size,chunk_size:size,total_chunk_count:1},
   });
   const publishId=String(data.publish_id||'');
-  if(!publishId||publishId.length>64||!data.upload_url)
+  if(!publishId||publishId.length>64)
     throw Object.assign(new Error('TikTok não confirmou o identificador da transferência.'),{status:502,tiktokStage:'init'});
-  const uploadUrl=safeUploadUrl(data.upload_url);
+  // Save the TikTok identifier BEFORE inspecting the returned upload URL.
+  // Even an unexpected upload host may correspond to a TikTok task; never permit
+  // a blind retry when the first API request may have created a task.
   if(onInitialized)await onInitialized(publishId);
+  if(!data.upload_url)throw Object.assign(new Error('O TikTok não devolveu a URL de upload.'),{status:502,tiktokStage:'upload_url'});
+  const uploadUrl=safeUploadUrl(data.upload_url);
   const result=await fetch(uploadUrl,{
     method:'PUT',redirect:'error',headers:{
       'Content-Type':mimeType,'Content-Length':String(size),

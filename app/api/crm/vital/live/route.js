@@ -1,5 +1,6 @@
 import { getVitalCrmMember } from '../../../../lib/vital-crm-access.mjs';
 import { fail } from '../../../vital-connections/helpers.mjs';
+import {readRows} from '../../../../lib/operations.mjs';
 import {resolveVitalQueue,canAccessVitalQueue,queueStatus,VITAL_QUEUE_ORDER} from '../../../../lib/vital-crm-queues.mjs';
 
 export const runtime='nodejs';
@@ -71,15 +72,18 @@ async function summary(ctx,page){
   const {db,owner,connection,organization}=ctx;
   const q=fn=>fn.eq('owner_user_id',owner).eq('connection_id',connection.id);
   const [recent,flows,assignments,overrides]=await Promise.all([
-    q(db.from('workspace_meta_messages')
+    readRows(()=>q(db.from('workspace_meta_messages')
       .select('contact_wa_id,direction,sent_at,id')
-      .order('sent_at',{ascending:false}).limit(3000)),
-    q(db.from('vital_whatsapp_flow_sessions')
-      .select('contact_wa_id,selection,last_interaction_at')).limit(5000),
-    q(db.from('vital_whatsapp_assignments')
-      .select('contact_wa_id,sector,status,assigned_to,updated_at')).limit(5000),
-    q(db.from('crm_vital_queue_assignments')
-      .select('contact_wa_id,queue_code,updated_at')).eq('organization_id',organization.id).limit(5000),
+      .order('sent_at',{ascending:false}).order('id',{ascending:false})),3000),
+    readRows(()=>q(db.from('vital_whatsapp_flow_sessions')
+      .select('contact_wa_id,selection,last_interaction_at')
+      .order('contact_wa_id')),5000),
+    readRows(()=>q(db.from('vital_whatsapp_assignments')
+      .select('contact_wa_id,sector,status,assigned_to,updated_at')
+      .order('contact_wa_id')),5000),
+    readRows(()=>q(db.from('crm_vital_queue_assignments')
+      .select('contact_wa_id,queue_code,updated_at')
+      .eq('organization_id',organization.id).order('contact_wa_id')),5000),
   ]);
   if(recent.error||flows.error||assignments.error||overrides.error)throw fail('Falha ao consultar atendimentos.',503);
   const latest=new Map(),flowMap=new Map(),assignMap=new Map(),overrideMap=new Map();

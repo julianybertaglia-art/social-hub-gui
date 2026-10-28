@@ -15,7 +15,7 @@ export async function GET(request) {
     // A staff membership always takes precedence over any legacy admin
     // state row. A future employee must never self-promote with local data.
     const {data:members,error:membersError} = await db.from('crm_organization_members')
-      .select('organization_id,role,status').eq('user_id',user.id).eq('status','active');
+      .select('organization_id,role,status').eq('user_id',user.id);
     if (membersError) throw fail('Não foi possível conferir sua equipe.',503);
     if (members?.length) {
       const {data:orgs,error:orgsError} = await db.from('crm_organizations')
@@ -26,6 +26,7 @@ export async function GET(request) {
       const membership=members.find(item=>(orgs||[]).some(org=>org.id===item.organization_id));
       const organization=(orgs||[]).find(org=>org.id===membership?.organization_id);
       if (membership && organization) {
+        if (membership.status !== 'active') throw fail('Sua conta está suspensa.',403);
         if (['agent','supervisor'].includes(membership.role))
           return Response.json({scope:'staff',portalEnabled:true},{headers});
         if (membership.role==='installer')

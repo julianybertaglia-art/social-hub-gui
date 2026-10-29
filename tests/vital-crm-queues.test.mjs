@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {viviQueue,resolveVitalQueue,canAccessVitalQueue,VITAL_QUEUE_ORDER,queueStatus,crmConversationStatus} from '../app/lib/vital-crm-queues.mjs';
+import {viviQueue,resolveVitalQueue,canAccessVitalQueue,VITAL_QUEUE_ORDER,queueStatus,crmConversationStatus,vitalTransferDestinations} from '../app/lib/vital-crm-queues.mjs';
 test('nine distinct queues with no accidental cross-postsale routing',()=>{
  assert.equal(VITAL_QUEUE_ORDER.length,9);
  assert.equal(new Set(VITAL_QUEUE_ORDER).size,9);
@@ -35,4 +35,14 @@ test('explicit resolutions persist until the next new message',()=>{
  assert.equal(crmConversationStatus({state,lastDirection:'outbound',lastMessageAt:'2026-10-28T14:01:00Z'}),'open');
  assert.equal(crmConversationStatus({state:{status:'open'},legacyClosed:true,lastDirection:'inbound'}),'pending');
  assert.equal(crmConversationStatus({legacyClosed:true,lastDirection:'inbound'}),'closed');
+});
+
+test('staff can forward to all nine destinations while still reading only granted queues', () => {
+ const all=VITAL_QUEUE_ORDER.map(queue_code=>({queue_code,display_name:queue_code}));
+ const transfers=vitalTransferDestinations(all);
+ assert.equal(transfers.length,9);
+ assert.equal(transfers.some(q=>q.queue_code==='pos_ml'),true);
+ assert.equal(canAccessVitalQueue('agent',['pos_shopee'],'pos_ml'),false);
+ assert.equal(canAccessVitalQueue('agent',['pos_shopee'],'pos_shopee'),true);
+ assert.equal(vitalTransferDestinations([{queue_code:'unknown',display_name:'Outra empresa'}]).length,0);
 });

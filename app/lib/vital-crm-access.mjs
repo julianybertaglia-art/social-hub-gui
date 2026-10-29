@@ -25,6 +25,10 @@ export async function getVitalCrmMember(request) {
   if(!found)throw fail('Sua conta não tem acesso à Vital Decor.',403);
   const member=memberships.find(m=>m.organization_id===found.id);
   if(member.role==='owner' && found.owner_user_id!==userId)throw fail('Permissão de proprietário inválida.',403);
+  // Fail closed until a verified release explicitly enables staff access.
+  // This applies to every staff API, not just the login page.
+  if(member.role!=='owner' && process.env.VITAL_CRM_STAFF_ENABLED!=='true')
+    throw fail('Acesso dos funcionários ainda não liberado para atendimento.',403);
 
   const {data:grants,error:grantError}=await db.from('crm_organization_member_sectors')
     .select('sector_code').eq('organization_id',found.id).eq('user_id',userId);

@@ -17,10 +17,19 @@ export function bearerToken(request) {
 export async function connectionOwner(db, token) {
   const { data, error } = await db.auth.getUser(token);
   if (error || !data?.user?.id) throw fail('Sua sessão expirou. Entre novamente no TidePlace.', 401);
-  const { data: state, error: stateError } = await db.from('content_items')
-    .select('id').eq('title', '__SOCIAL_HUB_STATE__').eq('user_id', data.user.id).limit(1).maybeSingle();
-  if (stateError) throw fail('Não foi possível verificar seu acesso.', 503);
-  if (!state) throw fail('Esta conta não tem acesso ao TidePlace.', 403);
+  // This endpoint controls integrations for the owner, never the staff.
+  // A content_items state row is user-writeable and must NOT grant admin rights.
+  const { data: owned, error: ownerError } = await db.from('crm_organizations')
+    .select('id').eq('workspace_code', WORKSPACE)
+    .eq('owner_user_id', data.user.id).limit(1).maybeSingle();
+  if (ownerError) throw fail('Não foi possível verificar seu acesso.', 503);
+  if (!owned) throw fail('Acesso administrativo não autorizado.', 403);
+  const { data: membership, error: memberError } = await db.from('crm_organization_members')
+    .select('role,status').eq('organization_id',owned.id)
+    .eq('user_id',data.user.id).maybeSingle();
+  if (memberError) throw fail('Não foi possível verificar sua autorização.', 503);
+  if (membership?.role !== 'owner' || membership?.status !== 'active')
+    throw fail('Somente a proprietária pode administrar as integrações da Vital.', 403);
   return data.user.id;
 }
 

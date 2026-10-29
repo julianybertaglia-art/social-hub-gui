@@ -1,0 +1,36 @@
+name: Validar CRM Vital
+on:
+  push:
+    branches:
+      - feat/vital-crm-operational-queues
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vital-crm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests-and-build:
+    name: Tests and Next build (sem deploy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Test
+        run: npm test
+      - name: Compile Next.js (mesmo se os testes falharem)
+        if: ${{ !cancelled() }}
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: npm run build

@@ -46,6 +46,14 @@ export function resolveVitalQueue({override, selection, sector}={}) {
   // "pos_venda" is NOT unique: Shopee, TikTok, Mercado Livre and Nuvemshop.
   return UNIQUE_SECTOR_QUEUE[sector] || null;
 }
+// The destination list is public queue metadata within an authenticated Vital
+// session. It is NOT a read grant: staff can forward to a destination without
+// being able to view that destination's existing conversations.
+export function vitalTransferDestinations(queues) {
+  return (Array.isArray(queues) ? queues : [])
+    .filter(q => VITAL_QUEUE_ORDER.includes(q.queue_code))
+    .map(q => ({ queue_code: q.queue_code, display_name: q.display_name }));
+}
 export function canAccessVitalQueue(role,granted,queue) {
   if(!VITAL_QUEUE_SECTORS[queue])return false;
   return role==='owner' || (['agent','supervisor'].includes(role)

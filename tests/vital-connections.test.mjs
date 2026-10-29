@@ -15,22 +15,25 @@ const primary = { phoneNumberId: '111111', wabaId: '999999' };
 const event = (phone, waba = '999999') => ({ wabaId: waba, field: 'messages',
   value: { metadata: { phone_number_id: phone }, messages: [] } });
 
-test('verified owners with multiple saved Hub states can connect; other users cannot', async () => {
-  const states = Array.from({ length: 199 }, (_, id) => ({ id, user_id: 'owner', title: '__SOCIAL_HUB_STATE__' }));
-  let user = 'owner';
-  let authCalls = 0;
+test('only an active verified Vital owner can manage connections; Hub state never grants access', async () => {
+  let user = 'owner', role = 'owner', memberStatus = 'active', authCalls = 0;
+  const tables = {
+    crm_organizations: [{ id: 'vital-org', workspace_code: WORKSPACE, owner_user_id: 'owner' }],
+    crm_organization_members: [{ organization_id: 'vital-org', user_id: 'owner', role, status: memberStatus }],
+  };
   const db = {
     auth: { async getUser(token) { authCalls++; return token === 'valid-session'
       ? { data: { user: { id: user } } } : { error: new Error('invalid') }; } },
     from(table) {
-      assert.equal(table, 'content_items');
-      let rows = states;
+      assert.ok(table in tables, 'must never authorize via writable Hub content_items');
+      let rows = table === 'crm_organization_members'
+        ? [{ organization_id: 'vital-org', user_id: 'owner', role, status: memberStatus }]
+        : tables[table];
       const query = {
         select() { return query; },
-        eq(key, value) { rows = rows.filter((row) => row[key] === value); return query; },
+        eq(key, value) { rows = rows.filter(row => row[key] === value); return query; },
         limit(n) { rows = rows.slice(0, n); return query; },
-        async maybeSingle() { return rows.length > 1 ? { error: new Error('multiple records') }
-          : { data: rows[0] || null }; },
+        async maybeSingle() { return { data: rows[0] || null }; },
       };
       return query;
     },
@@ -38,6 +41,10 @@ test('verified owners with multiple saved Hub states can connect; other users ca
   assert.equal(await connectionOwner(db, 'valid-session'), 'owner');
   assert.equal(authCalls, 1);
   user = 'another-user';
+  await assert.rejects(connectionOwner(db, 'valid-session'), { status: 403 });
+  user = 'owner'; role = 'agent';
+  await assert.rejects(connectionOwner(db, 'valid-session'), { status: 403 });
+  role = 'owner'; memberStatus = 'disabled';
   await assert.rejects(connectionOwner(db, 'valid-session'), { status: 403 });
   await assert.rejects(connectionOwner(db, 'invalid-session'), { status: 401 });
   assert.throws(() => bearerToken(new Request('https://example.com')), { status: 401 });
@@ -62,7 +69,7 @@ test('public metadata never returns Meta credentials or pending authorization pa
   for (const data of [item, row]) {
     assert.doesNotMatch(JSON.stringify(data), /private-token|secret-code|access_token|accessToken|internal-waba/);
   }
-  assert.equal(row.automaticReplies, false);
+  assert.equal(row.automaticReplies, true); // Only the safe boolean flag is public; no secrets are exposed.
 });
 
 test('Meta token must belong to this app and remain valid', () => {
@@ -103,6 +110,7 @@ function fakeDb(rows = []) {
     const chain = {
       select() { return chain; },
       eq(key, value) { call.filters.push([key, value]); return chain; },
+      neq(key, value) { call.filters.push([key, '!==' + value]); return chain; },
       upsert(row, options) { call.row = row; call.options = options; return chain; },
       update(row) { call.row = row; return chain; },
       then(resolve, reject) { return Promise.resolve({ data: rows, error: null }).then(resolve, reject); },
@@ -119,7 +127,7 @@ test('Vital Decor incoming messages only write to the private workspace table', 
     timestamp: '1791467000', type: 'text', text: { body: 'Teste' } }];
   change.value.contacts = [{ wa_id: '5511971611999', profile: { name: 'Contato' } }];
   assert.equal(await dispatchWorkspaceWebhook(db, change, primary), WORKSPACE);
-  const writes = calls.filter((call) => call.row);
+  const writes = calls.filter((call) => call.row && call.table === 'workspace_meta_messages');
   assert.equal(writes.length, 1);
   assert.equal(writes[0].table, 'workspace_meta_messages');
   assert.equal(writes[0].row.connection_id, connection.id);
@@ -127,6 +135,12 @@ test('Vital Decor incoming messages only write to the private workspace table', 
   assert.equal(writes[0].row.direction, 'inbound');
   assert.equal(writes[0].row.body, 'Teste');
   assert.equal(writes[0].options.onConflict, 'connection_id,meta_message_id');
+  const activity = calls.find(call => call.table === 'vital_whatsapp_assignments' && call.row);
+  assert.ok(activity, 'the Argo activity timestamp should be updated only for this owner and connection');
+  assert.deepEqual(activity.filters.slice(0, 3), [
+    ['connection_id', connection.id], ['owner_user_id', connection.owner_user_id],
+    ['contact_wa_id', '5511971611999'],
+  ]);
   const unknown = fakeDb([connection]);
   assert.equal(await dispatchWorkspaceWebhook(unknown.db, event('333333'), primary), 'ignore');
   assert.equal(unknown.calls.filter((call) => call.row).length, 0);

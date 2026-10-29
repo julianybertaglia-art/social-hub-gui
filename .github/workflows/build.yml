@@ -4,10 +4,18 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validar-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  testes-e-build:
+    name: Testes e compilação (sem publicar na Vercel)
     runs-on: ubuntu-latest
     steps:
       - name: Baixar código
@@ -16,50 +24,16 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
           cache: npm
 
-      - name: Instalar dependências
-        run: npm install
+      - name: Instalar dependências conforme lockfile
+        run: npm ci
 
-      - name: Testar envio restrito de áudio
-        run: node --test tests/instagram-audio.test.mjs
+      - name: Executar todos os testes
+        run: npm test
 
-      - name: Verificar saudação e atendimento WhatsApp
-        run: node --test tests/whatsapp-influencer-automation.test.mjs tests/whatsapp-importacao.test.mjs tests/whatsapp-beginner-sales.test.mjs
-
-      - name: Testar retorno à guia sem carregamento
-        run: node --test tests/tideplace-tab-resume.test.mjs
-
-      - name: Testar inbox da Vital Decor e isolamento entre workspaces
-        run: node --test tests/vital-whatsapp-inbox.test.mjs
-
-      - name: Testar automação Vivi da Vital Decor
-        run: node --test tests/vivi-vital-flow.test.mjs
-
-      - name: Testar bridge TidePlace Argo
-        run: node --test tests/argo-vital-bridge.test.mjs
-
-      - name: Testar botões clicáveis do WhatsApp no Direct do Gui
-        run: node --test tests/gui-whatsapp-cta.test.mjs
-
-      - name: Testar palavra Mentoria no Direct do Gui
-        run: node --test tests/instagram-direct-mentoria.test.mjs
-
-      - name: Testar formulário e automação de consultoria
-        run: node --test tests/consultoria.test.mjs
-
-      - name: Verificar correção dos Directs das últimas 24 horas
-        run: node --test tests/instagram-direct-sync-last24h.test.mjs
-
-      - name: Testar caixa independente e segmentação do Direct
-        run: node --test tests/instagram-direct-inbox.test.mjs
-
-      - name: Testar redirecionamento Direct Vital para WhatsApp
-        run: node --test tests/vital-instagram-direct.test.mjs tests/vital-instagram-automation-panel.test.mjs
-
-      - name: Testar calendário de ideias de Mentoria do Gui
-        run: node --test tests/gui-mentoria-calendar.test.mjs
-
-      - name: Testar build
+      - name: Compilar Next.js
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
         run: npm run build

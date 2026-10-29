@@ -1,7 +1,7 @@
 import { getVitalCrmMember } from '../../../../lib/vital-crm-access.mjs';
 import { fail } from '../../../vital-connections/helpers.mjs';
 import {readRows} from '../../../../lib/operations.mjs';
-import {resolveVitalQueue,canAccessVitalQueue,crmConversationStatus,VITAL_QUEUE_ORDER} from '../../../../lib/vital-crm-queues.mjs';
+import {resolveVitalQueue,canAccessVitalQueue,crmConversationStatus,VITAL_QUEUE_ORDER,vitalTransferDestinations} from '../../../../lib/vital-crm-queues.mjs';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -134,6 +134,7 @@ async function summary(ctx,page){
   return {
     workspace:'vital-decor', role:ctx.access.role, counters,
     queues:ctx.queues.filter(q=>allowedQueue(ctx,q.queue_code)),
+    transferDestinations:vitalTransferDestinations(ctx.queues),
     conversations:enriched,page,hasMore:rows.length>(page+1)*30,
     sampled:(recent.data||[]).length>=3000||(flows.data||[]).length>=5000||(states.data||[]).length>=5000,
     readOnly:false,

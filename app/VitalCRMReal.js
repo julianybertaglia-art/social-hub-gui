@@ -39,7 +39,20 @@ function Donut({title,subtitle,segments,total,compact=false}){
 }
 const emptyCounts={total:0,pending:0,open:0,closed:0,unassigned:0,queues:{}};
 const SPLIT_WIDTH_KEY='tideplace:crm-vital:split-width';
-const DEFAULT_SPLIT_WIDTH=43;
+const DEFAULT_SPLIT_WIDTH=36;
+const COLOR_KEY='tideplace:crm-vital:colors';
+const DEFAULT_COLORS={primary:'#873154',background:'#f7f4f8'};
+const COLOR_PRESETS=[
+ {name:'TidePlace',primary:'#873154',background:'#f7f4f8'},
+ {name:'Azul',primary:'#275dad',background:'#edf3fa'},
+ {name:'Verde',primary:'#197f70',background:'#edf8f3'},
+ {name:'Lavanda',primary:'#7950aa',background:'#f5f0fa'},
+];
+const validHex=value=>/^#[0-9a-f]{6}$/i.test(value||'');
+function pageTextColor(hex){
+ const rgb=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16));
+ return (rgb[0]*299+rgb[1]*587+rgb[2]*114)/1000<135?'#ffffff':'#302833';
+}
 const clampSplitWidth=value=>Math.max(25,Math.min(70,Math.round(value)));
 export default function VitalCRMReal({embedded=false,onLogout}){
  const [page,setPage]=useState('dashboard'),[view,setView]=useState('all');
@@ -50,6 +63,23 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const [queueFilter,setQueueFilter]=useState('all'),[statusFilter,setStatusFilter]=useState('all'),[search,setSearch]=useState('');
  const [destination,setDestination]=useState(''),[draft,setDraft]=useState('');
  const [splitWidth,setSplitWidth]=useState(DEFAULT_SPLIT_WIDTH);
+ const [colors,setColors]=useState(DEFAULT_COLORS);
+ const [showColors,setShowColors]=useState(false);
+ useEffect(()=>{
+   try{
+     const saved=JSON.parse(window.localStorage.getItem(COLOR_KEY)||'null');
+     if(saved&&validHex(saved.primary)&&validHex(saved.background)){
+       setColors({primary:saved.primary,background:saved.background});
+     }
+   }catch{}
+ },[]);
+ function changeColors(next){
+   if(!validHex(next.primary)||!validHex(next.background))return;
+   setColors(next);
+   try{window.localStorage.setItem(COLOR_KEY,JSON.stringify(next));}catch{}
+ }
+ const themeStyle={'--wine':colors.primary,'--vital-page-bg':colors.background,
+  '--vital-page-text':pageTextColor(colors.background)};
  const splitBoard=useRef(null),splitDragging=useRef(false);
  useEffect(()=>{
    try {
@@ -171,9 +201,29 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    </div>
    <div className={css.topActions}>
     <span className={css.liveIndicator}><i/> DADOS REAIS</span>
+    <button type="button" aria-expanded={showColors} aria-controls="vital-colors-panel"
+      onClick={()=>setShowColors(value=>!value)}>
+      <Icon name="settings" size={15}/> Personalizar cores
+    </button>
     <button type="button" onClick={reload}><Icon name="refresh" size={15}/> Atualizar</button>
    </div>
   </header>
+  {showColors&&<section className={css.colorsPanel} id="vital-colors-panel" aria-label="Personalizar cores do CRM">
+    <div className={css.colorsPanelHead}><strong>Personalizar visual</strong><span>As cores ficam salvas neste navegador.</span></div>
+    <div className={css.colorControls}>
+      <label>Cor principal <input type="color" aria-label="Cor principal" value={colors.primary}
+        onChange={event=>changeColors({...colors,primary:event.target.value})}/></label>
+      <label>Cor de fundo <input type="color" aria-label="Cor de fundo" value={colors.background}
+        onChange={event=>changeColors({...colors,background:event.target.value})}/></label>
+      <button type="button" onClick={()=>changeColors(DEFAULT_COLORS)}>Restaurar padrão</button>
+    </div>
+    <div className={css.colorPresets} aria-label="Combinações de cores">
+      {COLOR_PRESETS.map(preset=><button type="button" key={preset.name}
+        onClick={()=>changeColors({primary:preset.primary,background:preset.background})}>
+        <i style={{background:preset.primary}}/><i style={{background:preset.background}}/>{preset.name}
+      </button>)}
+    </div>
+  </section>}
   <nav className={css.tabs} aria-label="Navegação do CRM">
    <button className={page==='dashboard'?css.active:''} onClick={()=>setPage('dashboard')}><Icon name="chart" size={17}/> Dashboard</button>
    <button className={page==='inbox'?css.active:''} onClick={()=>setPage('inbox')}><Icon name="inbox" size={17}/> Atendimentos</button>
@@ -322,8 +372,8 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    </div>
   </>}
  </>;
- if(embedded)return <main className={css.embedded}>{main}</main>;
- return <div className={css.shell}>
+ if(embedded)return <main className={css.embedded} style={themeStyle}>{main}</main>;
+ return <div className={css.shell} style={themeStyle}>
   <aside className={css.sidebar}>
    <div className={css.brand}><img src="/brand/tideplace-mark.svg" alt=""/><div><strong>TIDEPLACE</strong><span>Vital Decor · CRM</span></div></div>
    <div className={css.sidebarLabel}>CENTRAL DE ATENDIMENTO</div>

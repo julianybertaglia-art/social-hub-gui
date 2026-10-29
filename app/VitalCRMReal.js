@@ -65,7 +65,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  },[selected,revision]);
  const role=data?.role||'agent',manager=['owner','supervisor'].includes(role);
  const queues=data?.queues||[],counts=data?.counters||emptyCounts;
- const queueName=code=>queues.find(q=>q.queue_code===code)?.display_name||(code===null?'Sem classificação':code);
+ const queueName=code=>(data?.transferDestinations||queues).find(q=>q.queue_code===code)?.display_name||(code===null?'Sem classificação':code);
  const queueColor=code=>queues.find(q=>q.queue_code===code)?.color||'#a5a0a5';
  const source=data?.conversations||[];
  const effective=source.filter(c=>{
@@ -267,7 +267,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
        <div className={css.transferControls}>
         <select aria-label="Fila de destino" value={destination} onChange={e=>setDestination(e.target.value)} disabled={!canMove||busy}>
          <option value="">Escolha a fila de destino…</option>
-         {data.queues.filter(q=>q.queue_code!==detail.contact.queue).map(q=><option key={q.queue_code} value={q.queue_code}>{q.display_name} · {OWNER[q.queue_code]||'Equipe'}</option>)}
+         {(data.transferDestinations||[]).filter(q=>q.queue_code!==detail.contact.queue).map(q=><option key={q.queue_code} value={q.queue_code}>{q.display_name} · {OWNER[q.queue_code]||'Equipe'}</option>)}
         </select>
         <button type="button" disabled={!destination||busy||!canMove} onClick={transfer}>{busy?'Transferindo…':'Transferir'}</button>
        </div>

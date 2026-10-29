@@ -17,6 +17,7 @@ jobs:
   testes-e-build:
     name: Testes e compilação (sem publicar na Vercel)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
@@ -33,7 +34,8 @@ jobs:
       - name: Executar todos os testes
         run: npm test
 
-      - name: Compilar Next.js
+      - name: Compilar Next.js mesmo se algum teste falhar
+        if: ${{ !cancelled() }}
         env:
           NEXT_TELEMETRY_DISABLED: '1'
         run: npm run build

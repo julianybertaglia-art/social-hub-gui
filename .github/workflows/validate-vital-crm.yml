@@ -4,12 +4,19 @@ on:
     branches:
       - feat/vital-crm-operational-queues
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vital-crm-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   tests-and-build:
-    name: Tests and Next build
+    name: Tests and Next build (sem deploy)
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,7 +29,8 @@ jobs:
         run: npm ci
       - name: Test
         run: npm test
-      - name: Compile Next.js
+      - name: Compile Next.js (mesmo se os testes falharem)
+        if: ${{ !cancelled() }}
         env:
           NEXT_TELEMETRY_DISABLED: '1'
         run: npm run build

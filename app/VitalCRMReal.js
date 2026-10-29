@@ -1,5 +1,5 @@
 'use client';
-import {useCallback,useEffect,useMemo,useState} from 'react';
+import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import Icon from './ui/Icon';
 import {api} from './operations/useOperations';
 import css from './vital-crm-real.module.css';
@@ -38,6 +38,9 @@ function Donut({title,subtitle,segments,total,compact=false}){
  </div>;
 }
 const emptyCounts={total:0,pending:0,open:0,closed:0,unassigned:0,queues:{}};
+const SPLIT_WIDTH_KEY='tideplace:crm-vital:split-width';
+const DEFAULT_SPLIT_WIDTH=43;
+const clampSplitWidth=value=>Math.max(25,Math.min(70,Math.round(value)));
 export default function VitalCRMReal({embedded=false,onLogout}){
  const [page,setPage]=useState('dashboard'),[view,setView]=useState('all');
  const [data,setData]=useState(null),[selected,setSelected]=useState(null),[detail,setDetail]=useState(null);
@@ -46,6 +49,38 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const [revision,setRevision]=useState(0),[pageNumber,setPageNumber]=useState(0);
  const [queueFilter,setQueueFilter]=useState('all'),[statusFilter,setStatusFilter]=useState('all'),[search,setSearch]=useState('');
  const [destination,setDestination]=useState(''),[draft,setDraft]=useState('');
+ const [splitWidth,setSplitWidth]=useState(DEFAULT_SPLIT_WIDTH);
+ const splitBoard=useRef(null),splitDragging=useRef(false);
+ useEffect(()=>{
+   try {
+     const saved=Number(window.localStorage.getItem(SPLIT_WIDTH_KEY));
+     if(Number.isFinite(saved)&&saved>=25&&saved<=70)setSplitWidth(clampSplitWidth(saved));
+   }catch{}
+ },[]);
+ const changeSplitWidth=useCallback(value=>{
+   const next=clampSplitWidth(value);
+   setSplitWidth(next);
+   try{window.localStorage.setItem(SPLIT_WIDTH_KEY,String(next));}catch{}
+ },[]);
+ const startSplit=event=>{
+   if(event.pointerType==='mouse'&&event.button!==0)return;
+   splitDragging.current=true;
+   event.currentTarget.setPointerCapture(event.pointerId);
+   event.preventDefault();
+ };
+ const moveSplit=event=>{
+   if(!splitDragging.current||!splitBoard.current)return;
+   const bounds=splitBoard.current.getBoundingClientRect();
+   if(bounds.width>0)changeSplitWidth((event.clientX-bounds.left)/bounds.width*100);
+ };
+ const stopSplit=()=>{splitDragging.current=false;};
+ const splitKeyDown=event=>{
+   if(event.key==='ArrowLeft'||event.key==='ArrowRight'){
+     event.preventDefault();
+     changeSplitWidth(splitWidth+(event.key==='ArrowLeft'?-3:3));
+   }else if(event.key==='Home'){event.preventDefault();changeSplitWidth(25);}
+   else if(event.key==='End'){event.preventDefault();changeSplitWidth(70);}
+ };
  const reload=useCallback(()=>setRevision(v=>v+1),[]);
  useEffect(()=>{
   let active=true;setLoading(true);setError('');
@@ -204,7 +239,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
     <button className={view==='all'?css.active:''} onClick={()=>{setView('all');setQueueFilter('all');}}>Todas as filas</button>
     <button className={view==='mine'?css.active:''} onClick={()=>{setView('mine');setQueueFilter('all');}}>Minha operação</button>
    </div>}
-   <div className={css.board}>
+   <div ref={splitBoard} className={css.board} style={{'--vital-split-width':splitWidth+'%'}}>
     <section className={css.list}>
      <div className={css.listHeader}><h2>Atendimentos</h2><span>{effective.length} nesta página</span></div>
      <label className={css.search}><span>Buscar conversa</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Nome, número ou assunto…"/></label>
@@ -235,6 +270,15 @@ export default function VitalCRMReal({embedded=false,onLogout}){
       <button disabled={!data.hasMore} onClick={()=>{setPageNumber(n=>n+1);setSelected(null);}}>Próxima</button>
      </div>
     </section>
+    <div className={css.splitter} role="separator" tabIndex={0}
+      aria-label="Ajustar largura entre atendimentos e conversa"
+      aria-orientation="vertical" aria-valuemin={25} aria-valuemax={70}
+      aria-valuenow={splitWidth} title="Arraste para redimensionar · setas para ajustar · duplo clique para restaurar"
+      onPointerDown={startSplit} onPointerMove={moveSplit} onPointerUp={stopSplit}
+      onPointerCancel={stopSplit} onLostPointerCapture={stopSplit}
+      onKeyDown={splitKeyDown} onDoubleClick={()=>changeSplitWidth(DEFAULT_SPLIT_WIDTH)}>
+      <span className={css.splitterHandle} aria-hidden="true">↔</span>
+    </div>
     <section className={css.thread}>
      {!selected?<div className={css.placeholder}><Icon name="chat" size={30}/><h2>Selecione uma conversa</h2><p>Consulte o histórico e encaminhe para a próxima fila quando necessário.</p></div>:<>
       <div className={css.threadHeader}><div><h2>{detail?.contact?.name||'Conversa'}</h2>

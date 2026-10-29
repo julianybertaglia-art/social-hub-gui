@@ -21,8 +21,12 @@ export function validateTargetPlatforms(value){
   return value;
 }
 export function publicTarget(t){
+  const directMarker=String(t.error_message||'').startsWith('[tiktok-direct] ');
+  const isTikTok=t.platform==='tiktok';
+  const mode=isTikTok?(String(t.external_id||'').startsWith('v_pub')||directMarker?'direct':'draft'):null;
   return {platform:t.platform,state:t.state,externalId:t.external_id||null,
-    error:t.error_message||null,updatedAt:t.updated_at,retryCount:t.retry_count||0};
+    mode,error:directMarker?(String(t.error_message).slice('[tiktok-direct] '.length)||null):(t.error_message||null),
+    updatedAt:t.updated_at,retryCount:t.retry_count||0};
 }
 export function publicPost(row){
   return {id:row.id,title:row.title,caption:row.caption,createdAt:row.created_at,
@@ -51,9 +55,10 @@ export async function capabilities(db,ownerId){
   const youtubeConnected=!youtube.error&&Boolean(youtube.data);
   const tiktokConnected=!tiktok.error&&Boolean(tiktok.data);
   const tk=tiktokConnected?tiktok.data:null;
-  // A verified video.upload grant allows creator-inbox drafts in Sandbox.
-  // Public Direct Post is a separate audited workflow; do not claim it here.
+  // Keep the creator-inbox draft fallback separate from Direct Post. Direct
+  // Post still applies TikTok's pre-audit private-account/SELF_ONLY limits.
   const tiktokDraft=tiktokConnected&&(tk.oauth_scopes||[]).includes('video.upload');
+  const tiktokDirect=tiktokConnected&&(tk.oauth_scopes||[]).includes('video.publish');
   return {
     instagram:{connected:instagram.connected,enabled:instagram.connected,
       name:instagram.connected?'@'+instagram.name:'@gui_nonato',
@@ -61,13 +66,15 @@ export async function capabilities(db,ownerId){
         'Reconecte o Instagram para utilizar a publicação de Reels.'},
     youtube:{connected:youtubeConnected,enabled:youtubeConnected,
       name:youtube.data?.channel_title||'Gui Nonato',
-      note:youtubeConnected?'Envio disponível como privado; vídeos públicos dependem de autorização do Google.':
-        'Conecte o canal do YouTube para enviar vídeos privados.'},
-    tiktok:{connected:tiktokConnected,enabled:tiktokDraft,mode:'draft',
+      note:youtubeConnected?'Escolha público, não listado ou privado em cada envio.':
+        'Conecte o canal do YouTube para enviar vídeos.'},
+    tiktok:{connected:tiktokConnected,enabled:tiktokDraft||tiktokDirect,
+      mode:tiktokDirect?'direct':'draft',directAvailable:tiktokDirect,draftAvailable:tiktokDraft,
       name:tk?.display_name||'Gui Nonato',environment:tk?.environment||null,
-      note:tiktokDraft?'Envio para rascunho habilitado. Finalize a publicação no aplicativo TikTok.':
+      note:tiktokDirect?'Direct Post autorizado. A visibilidade depende do estado de auditoria do app e das opções da conta.':
+        tiktokDraft?'Rascunho habilitado. A finalização acontece no aplicativo TikTok.':
         tk?.environment==='sandbox'?'Reconecte pelo Sandbox solicitando video.upload e video.publish.':
-        'Conecte o TikTok com a permissão video.upload para enviar rascunhos.'}
+        'Conecte o TikTok com video.upload para rascunhos ou video.publish para Direct Post.'}
   };
 }
 export function instagramGraphError(payload,status){
@@ -111,3 +118,4 @@ export async function publishInstagramReel(connection,containerId){
   if(!/^\d{8,40}$/.test(String(result.id||'')))throw new Error('A Meta não confirmou o Reel publicado. Confira o perfil antes de tentar outra vez.');
   return result.id;
 }
+

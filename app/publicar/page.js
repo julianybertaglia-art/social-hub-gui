@@ -1,6 +1,6 @@
 'use client';
 
-import {useCallback,useEffect,useMemo,useState} from 'react';
+import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import Link from 'next/link';
 import {supabase} from '../CloudGate';
 import {useWorkspace} from '../WorkspaceSwitcher';
@@ -16,6 +16,9 @@ const STATE={
   published:'Publicado',private:'Enviado como privado',draft:'Notificação sinalizada pela API',
   pending_approval:'Aguardando aprovação',failed:'Falhou',unknown:'Conferir manualmente',
 };
+const TIKTOK_PRIVACY_LABELS={PUBLIC_TO_EVERYONE:'Todos',MUTUAL_FOLLOW_FRIENDS:'Amigos',
+  FOLLOWER_OF_CREATOR:'Seguidores',SELF_ONLY:'Somente eu'};
+const YOUTUBE_PRIVACY_LABELS={public:'Público',unlisted:'Não listado',private:'Privado'};
 const sizeLabel=n=>(n/1024/1024).toFixed(1)+' MB';
 async function auth(){
   const {data,error}=await supabase.auth.getSession();
@@ -30,21 +33,21 @@ async function call(path,options={}){
   if(!response.ok)throw new Error(result.error||'Não foi possível concluir a operação.');
   return result;
 }
-function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutube,youtubeCheck,onVerifyTikTok,verifyingTikTok,tiktokCheck,onRetryTikTok,retryingTikTok,onDiagnoseTikTok,diagnosingTikTok,tiktokDiagnostic,onPrepareNewTikTok,preparingNewTikTok,onSendSavedTikTok,sendingSavedTikTok}){
+function TargetState({target,postId,onVerifyYoutube,verifyingYoutube,youtubeCheck,onVerifyTikTok,verifyingTikTok,tiktokCheck,onRetryTikTok,retryingTikTok,onDiagnoseTikTok,diagnosingTikTok,tiktokDiagnostic,onPrepareNewTikTok,preparingNewTikTok,onSendSavedTikTok,sendingSavedTikTok}){
   const label=NETWORKS.find(n=>n.id===target.platform);
   const platformStatus=target.platform==='tiktok'&&target.state==='processing'?
-    'Processando no TikTok':STATE[target.state]||target.state;
+    (target.mode==='direct'?'Publicando no TikTok':'Processando no TikTok'):STATE[target.state]||target.state;
   return <div className={styles.targetRow}>
     <span className={styles.networkSymbol}>{label?.symbol||'•'}</span>
     <span className={styles.targetBody}><strong>{label?.name||target.platform}</strong>
-      <small>{target.platform==='tiktok'&&target.state==='draft'?'TikTok informou envio da notificação; confirme se ela aparece no aplicativo.':target.error||(target.platform==='tiktok'&&target.state==='processing'?'Aguardando confirmação de entrega do TikTok':platformStatus)}</small></span>
+      <small>{target.platform==='instagram'&&target.state==='processing'?'O TidePlace finalizará o Reel automaticamente quando a Meta terminar o processamento.':
+        target.platform==='tiktok'&&target.state==='draft'?'A API do TikTok sinalizou o envio para rascunho. Abra o app para revisar e publicar.':
+        target.platform==='tiktok'&&target.state==='processing'&&target.mode==='direct'?'O TidePlace está acompanhando a publicação direta.':
+        target.platform==='tiktok'&&target.state==='processing'?'Aguardando confirmação do TikTok.':target.error||platformStatus}</small></span>
     <span className={[styles.tag,
       ['published','private'].includes(target.state)?styles.doneTag:
       ['pending_approval','processing'].includes(target.state)?styles.pendingTag:styles.neutralTag].join(' ')}>
       {platformStatus}</span>
-    {target.platform==='instagram'&&target.state==='processing'&&
-      <button className={styles.finish} type="button" disabled={!!busy}
-        onClick={()=>onFinish(postId)}>{busy===postId?'Verificando…':'Concluir Reel'}</button>}
     {target.platform==='youtube'&&target.externalId&&<>
       <a className={styles.link} href={'https://studio.youtube.com/video/'+encodeURIComponent(target.externalId)+'/edit'}
          target="_blank" rel="noreferrer">Abrir no Studio ↗</a>
@@ -59,7 +62,7 @@ function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutu
           (youtubeCheck.message||youtubeCheck.reason||'Vídeo não encontrado pela API do YouTube.')}
       </div>}
     </>}
-    {target.platform==='tiktok'&&['failed','unknown'].includes(target.state)&&!target.externalId&&<>
+    {target.platform==='tiktok'&&target.mode!=='direct'&&['failed','unknown'].includes(target.state)&&!target.externalId&&<>
       <button type="button" className={styles.finish} disabled={!!diagnosingTikTok}
         onClick={()=>onDiagnoseTikTok(postId)}>
         {diagnosingTikTok===postId?'Verificando acesso…':'Diagnosticar TikTok (sem enviar)'}
@@ -78,7 +81,9 @@ function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutu
         <button type="button" className={styles.finish} disabled={!!retryingTikTok}
           onClick={()=>onRetryTikTok(postId)}>{retryingTikTok===postId?'Reenviando…':'Tentar novamente com diagnóstico ativo'}</button>}
     </>}
-    {target.platform==='tiktok'&&target.state==='ready'&&
+    {target.platform==='tiktok'&&target.state==='ready'&&target.mode==='direct'&&
+      <small className={styles.youtubeVerification}>Direct Post preparado, mas ainda sem envio. Reabra a publicação para escolher privacidade, interações e consentimento.</small>}
+    {target.platform==='tiktok'&&target.state==='ready'&&target.mode!=='direct'&&
       <button type="button" className={styles.finish} disabled={!!sendingSavedTikTok}
         onClick={()=>onSendSavedTikTok(postId)}>
         {sendingSavedTikTok===postId?'Enviando partes…':'Enviar vídeo salvo em partes'}
@@ -118,7 +123,18 @@ export default function UnifiedPublisher(){
   const [error,setError]=useState('');
   const [notice,setNotice]=useState('');
   const [loading,setLoading]=useState(true);
-  const [finishing,setFinishing]=useState('');
+  const [tiktokMode,setTikTokMode]=useState('draft');
+  const [tiktokInfo,setTikTokInfo]=useState(null);
+  const [tiktokInfoLoading,setTikTokInfoLoading]=useState(false);
+  const [privacyLevel,setPrivacyLevel]=useState('');
+  const [youtubePrivacy,setYoutubePrivacy]=useState('public');
+  const [allowComment,setAllowComment]=useState(false);
+  const [allowDuet,setAllowDuet]=useState(false);
+  const [allowStitch,setAllowStitch]=useState(false);
+  const [tiktokConsent,setTikTokConsent]=useState(false);
+  const [commercialDisclosure,setCommercialDisclosure]=useState(false);
+  const [brandContent,setBrandContent]=useState(false);
+  const [brandOrganic,setBrandOrganic]=useState(false);
   const [verifyingYoutube,setVerifyingYoutube]=useState('');
   const [verifyingTikTok,setVerifyingTikTok]=useState('');
   const [retryingTikTok,setRetryingTikTok]=useState('');
@@ -129,16 +145,74 @@ export default function UnifiedPublisher(){
   const [tiktokChecks,setTikTokChecks]=useState({});
   const [youtubeChecks,setYoutubeChecks]=useState({});
   const [currentId,setCurrentId]=useState('');
+  const tiktokModeInitialized=useRef(false);
+  const latestHistoryRef=useRef(history);
+  const autoBusyRef=useRef(new Set());
+  const tiktokSelected=selected.includes('tiktok');
   const preview=useMemo(()=>file?URL.createObjectURL(file):null,[file]);
   useEffect(()=>()=>{if(preview)URL.revokeObjectURL(preview)},[preview]);
   const refresh=useCallback(async()=>{
     try{
       const data=await call('/api/publicacao');
       setConnections(data.capabilities);setHistory(data.items||[]);
+      const tiktok=data.capabilities?.tiktok;
+      if(!tiktokModeInitialized.current&&tiktok?.connected){
+        setTikTokMode(tiktok.directAvailable?'direct':'draft');
+        tiktokModeInitialized.current=true;
+      }
     }catch(e){setError(e.message||'Falha ao carregar o publicador.');}
     finally{setLoading(false)}
   },[]);
   useEffect(()=>{if(workspace.id==='gui-nonato')void refresh()},[refresh,workspace.id]);
+  useEffect(()=>{latestHistoryRef.current=history},[history]);
+
+  useEffect(()=>{
+    const directSelected=tiktokSelected&&tiktokMode==='direct'&&connections?.tiktok?.directAvailable;
+    if(!directSelected){setTikTokInfo(null);setTikTokInfoLoading(false);setPrivacyLevel('');return;}
+    let active=true;
+    setTikTokInfo(null);setTikTokInfoLoading(true);setPrivacyLevel('');
+    call('/api/publicacao/tiktok-info').then(data=>{if(active)setTikTokInfo(data)}).catch(e=>{
+      if(active)setTikTokInfo({error:e.message||'Não foi possível consultar a conta TikTok.'});
+    }).finally(()=>{if(active)setTikTokInfoLoading(false)});
+    return()=>{active=false};
+  },[tiktokSelected,tiktokMode,connections?.tiktok?.directAvailable]);
+
+  useEffect(()=>{
+    const timer=setInterval(async()=>{
+      const pending=[];
+      for(const post of latestHistoryRef.current){
+        for(const target of post.targets||[]){
+          if(target.state!=='processing')continue;
+          if(target.platform==='instagram'||(target.platform==='tiktok'&&target.mode==='direct'))
+            pending.push({id:post.id,platform:target.platform});
+        }
+      }
+      for(const item of pending){
+        if(autoBusyRef.current.has(item.id))continue;
+        autoBusyRef.current.add(item.id);
+        try{
+          if(item.platform==='instagram'){
+            const result=await call('/api/publicacao/finalizar-instagram',{
+              method:'POST',body:JSON.stringify({id:item.id})
+            });
+            if(result.state==='published')setNotice('Reel publicado automaticamente no Instagram.');
+            if(result.state==='failed')setError(result.error||'A Meta não concluiu o processamento do Reel.');
+          }else{
+            const result=await call('/api/publicacao/verificar-tiktok',{
+              method:'POST',body:JSON.stringify({id:item.id})
+            });
+            setTikTokChecks(old=>({...old,[item.id]:result}));
+            if(result.state==='published')setNotice('TikTok confirmou a publicação direta.');
+            if(result.state==='failed')setError(result.message||'O TikTok não concluiu a publicação.');
+          }
+          await refresh();
+        }catch(e){
+          if(item.platform==='tiktok')setTikTokChecks(old=>({...old,[item.id]:{error:e.message||'Falha temporária ao consultar o TikTok.'}}));
+        }finally{autoBusyRef.current.delete(item.id)}
+      }
+    },10000);
+    return()=>clearInterval(timer);
+  },[refresh]);
 
   function toggle(platform){
     if(phase)return;
@@ -158,19 +232,47 @@ export default function UnifiedPublisher(){
           metadata.duration>180||metadata.width>metadata.height)
         throw new Error('Escolha um vídeo vertical ou quadrado com até 3 minutos.');
       if(!selected.length)throw new Error('Selecione ao menos uma rede.');
-      if(selected.includes('tiktok')&&!connections?.tiktok?.enabled)
-        throw new Error('O TikTok precisa de video.upload. Renove a autorização em Conexão TikTok.');
+      if(selected.includes('tiktok')){
+        const modeAvailable=tiktokMode==='direct'?connections?.tiktok?.directAvailable:connections?.tiktok?.draftAvailable;
+        if(!modeAvailable)throw new Error(tiktokMode==='direct'
+          ?'O TikTok precisa da permissão video.publish. Renove a autorização em Conexão TikTok.'
+          :'O TikTok precisa da permissão video.upload. Renove a autorização em Conexão TikTok.');
+      }
       if(selected.some(platform=>platform!=='tiktok'&&!connections?.[platform]?.connected))
         throw new Error('Uma das redes selecionadas está desconectada. Confira as conexões.');
       if(!title.trim()||title.trim().length>100||caption.length>2200)
         throw new Error('Preencha título de até 100 caracteres e legenda de até 2.200.');
+      if(selected.includes('tiktok')&&tiktokMode==='direct'){
+        if(tiktokInfoLoading||!tiktokInfo)throw new Error('Aguarde as configurações atuais da conta TikTok.');
+        if(tiktokInfo.error)throw new Error(tiktokInfo.error);
+        if(!tiktokInfo.canDirectPost)throw new Error(tiktokInfo.note||'A conta TikTok ainda não pode usar Direct Post.');
+        if(!privacyLevel)throw new Error('Escolha a privacidade para esta publicação no TikTok.');
+        if(!tiktokConsent)throw new Error('Confirme a declaração de uso de música do TikTok.');
+        if(tiktokInfo.maxVideoPostDurationSec&&metadata.duration>tiktokInfo.maxVideoPostDurationSec)
+          throw new Error('Este vídeo ultrapassa o limite de '+tiktokInfo.maxVideoPostDurationSec+' segundos da conta TikTok.');
+        if(commercialDisclosure&&!brandContent&&!brandOrganic)
+          throw new Error('Indique se o vídeo promove sua marca, uma terceira marca ou ambas.');
+        if(brandContent&&!['PUBLIC_TO_EVERYONE','MUTUAL_FOLLOW_FRIENDS'].includes(privacyLevel))
+          throw new Error('Conteúdo de marca exige visibilidade pública ou para amigos no TikTok.');
+        if((tiktokInfo.commentDisabled&&allowComment)||(tiktokInfo.duetDisabled&&allowDuet)||
+            (tiktokInfo.stitchDisabled&&allowStitch))
+          throw new Error('Uma interação escolhida está desativada nas configurações atuais da conta TikTok.');
+        const fresh=await call('/api/publicacao/tiktok-info');
+        if(!fresh.canDirectPost)throw new Error(fresh.note||'As configurações do TikTok mudaram. Atualize a conta antes de publicar.');
+        if(!fresh.privacyLevelOptions?.includes(privacyLevel))
+          throw new Error('A privacidade escolhida não está mais disponível. Selecione uma opção atual do TikTok.');
+      }
       const summary=selected.map(x=>NETWORKS.find(n=>n.id===x)?.name).join(', ');
-      const warnings=selected.includes('tiktok')?
-       '\nTikTok: este envio cria um rascunho na caixa de entrada do aplicativo, NÃO publica para seguidores.':'';
-      if(!window.confirm('Enviar '+file.name+' para: '+summary+'?\n\nO YouTube recebe como PRIVADO; o Instagram poderá publicar um Reel após o processamento.'+warnings))return;
+      const tiktokSummary=selected.includes('tiktok')?(tiktokMode==='direct'
+        ?'\nTikTok Direct Post: '+(tiktokInfo?.audited?'visibilidade '+TIKTOK_PRIVACY_LABELS[privacyLevel]+'.':'versão sem auditoria: conta privada e visibilidade Somente eu.')
+        :'\nTikTok: o vídeo será enviado à caixa de entrada como rascunho para revisão no aplicativo.') :'';
+      const youtubeSummary=selected.includes('youtube')?'\nYouTube: '+YOUTUBE_PRIVACY_LABELS[youtubePrivacy]+'.':'';
+      if(!window.confirm('Enviar '+file.name+' para: '+summary+'?'+youtubeSummary+
+        '\nInstagram: o Reel será finalizado automaticamente depois do processamento.'+tiktokSummary))return;
       setPhase('preparing');
       const job=await call('/api/publicacao/preparar',{method:'POST',body:JSON.stringify({
-        title:title.trim(),caption:caption.trim(),platforms:selected,mimeType:file.type,size:file.size
+        title:title.trim(),caption:caption.trim(),platforms:selected,mimeType:file.type,size:file.size,
+        tiktokMode
       })});
       setCurrentId(job.id);
       if(!supabase)throw new Error('Supabase indisponível.');
@@ -179,23 +281,31 @@ export default function UnifiedPublisher(){
         .uploadToSignedUrl(job.path,job.uploadToken,file,{contentType:file.type,upsert:false});
       if(uploadError)throw new Error('Falha ao enviar vídeo ao armazenamento: '+uploadError.message);
       let problems=[];
+      let actualYoutubePrivacy=null;
       for(const platform of selected){
         setPhase(platform);
         try{
           const result=await call('/api/publicacao/enviar',{method:'POST',
-            body:JSON.stringify({id:job.id,platform})});
-          if(result.state==='processing'){
-            // Container creation is asynchronous on Instagram. It is shown in history,
-            // and publishing requires a second confirmation once processing finishes.
+            body:JSON.stringify({id:job.id,platform,tiktokMode,youtubePrivacy,privacyLevel,
+              allowComment,allowDuet,allowStitch,tiktokConsent,commercialDisclosure,
+              brandContent,brandOrganic,videoDurationSec:metadata.duration})});
+          if(platform==='youtube'&&result.youtubePrivacyStatus){
+            actualYoutubePrivacy=result.youtubePrivacyStatus;
+            setYoutubeChecks(old=>({...old,[job.id]:{found:true,channelMatches:true,
+              privacyStatus:result.youtubePrivacyStatus,uploadStatus:'enviado',processingStatus:'em processamento'}}));
           }
         }catch(e){problems.push((NETWORKS.find(x=>x.id===platform)?.name||platform)+': '+e.message)}
         await refresh();
       }
       await refresh();
+      const youtubePrivacyMismatch=selected.includes('youtube')&&actualYoutubePrivacy&&actualYoutubePrivacy!==youtubePrivacy;
       setNotice(problems.length?'Envio parcialmente concluído. Confira cada rede no histórico.':
-        'Arquivo recebido. Confira o resultado de cada rede no histórico; Instagram e TikTok podem aguardar processamento.');
+        youtubePrivacyMismatch?'O YouTube recebeu o vídeo como '+YOUTUBE_PRIVACY_LABELS[actualYoutubePrivacy]+'. Confira a visibilidade no Studio.':
+        'Envio iniciado. O Instagram e o TikTok Direct Post serão acompanhados automaticamente nesta tela.');
       if(problems.length)setError(problems.join(' · '));
       setFile(null);setMetadata(null);
+      setPrivacyLevel('');setAllowComment(false);setAllowDuet(false);setAllowStitch(false);
+      setTikTokConsent(false);setCommercialDisclosure(false);setBrandContent(false);setBrandOrganic(false);
     }catch(e){setError(e.message||'Não foi possível enviar.');}
     finally{setPhase('')}
   }
@@ -264,21 +374,17 @@ export default function UnifiedPublisher(){
     }catch(e){setYoutubeChecks(prev=>({...prev,[id]:{error:e.message||'Falha ao verificar vídeo no YouTube.'}}));}
     finally{setVerifyingYoutube('');}
   }
-  async function finalize(id){
-    setFinishing(id);setError('');setNotice('');
-    try{
-      const result=await call('/api/publicacao/finalizar-instagram',{method:'POST',body:JSON.stringify({id})});
-      if(result.state==='processing')setNotice(result.message);
-      else if(result.state==='published')setNotice('Reel publicado no Instagram!');
-      else setError(result.error||'A Meta não concluiu o processamento.');
-      await refresh();
-    }catch(e){setError(e.message);await refresh()}
-    finally{setFinishing('')}
-  }
   if(workspace.id!=='gui-nonato')return <main className={styles.page}>
     <section className={styles.panel}><h1>Publicação multicanal</h1>
       <p>Este publicador é exclusivo da conta Gui Nonato. Selecione o workspace do Gui no topo.</p></section></main>;
-  const usable=selected.length>0&&selected.every(x=>x==='tiktok'?connections?.tiktok?.enabled:connections?.[x]?.connected);
+  const usable=selected.length>0&&selected.every(x=>x==='tiktok'
+    ?(tiktokMode==='direct'?connections?.tiktok?.directAvailable:connections?.tiktok?.draftAvailable)
+    :connections?.[x]?.connected);
+  const commercialSettingsValid=!selected.includes('tiktok')||tiktokMode!=='direct'||
+    !commercialDisclosure||brandContent||brandOrganic;
+  const tiktokDirectReady=!selected.includes('tiktok')||tiktokMode!=='direct'||
+    (!tiktokInfoLoading&&!tiktokInfo?.error&&Boolean(tiktokInfo?.canDirectPost)&&
+     Boolean(privacyLevel)&&tiktokConsent&&commercialSettingsValid);
   return <main className={styles.page}>
     <header className={styles.header}>
       <div><div className={styles.eyebrow}>TIDEPLACE / CENTRAL DE CONTEÚDO</div>
@@ -302,11 +408,11 @@ export default function UnifiedPublisher(){
         </label>
         {metadata&&<small className={styles.muted}>{Math.round(metadata.duration)} segundos · {metadata.width} × {metadata.height} px</small>}
         <div className={styles.fields}>
-          <label>Título <span className={styles.helper}>YouTube e organização interna</span>
+          <label>Título <span className={styles.helper}>Título do YouTube e organização interna</span>
             <input type="text" maxLength={100} value={title} onChange={e=>setTitle(e.target.value)}
               disabled={!!phase} placeholder="Ex.: 3 estratégias para vender mais no Mercado Livre" required/>
           </label>
-          <label>Legenda <span className={styles.helper}>Compartilhada com os canais selecionados</span>
+          <label>Legenda <span className={styles.helper}>TikTok, Instagram e descrição do YouTube</span>
             <textarea rows={5} maxLength={2200} value={caption} disabled={!!phase}
               onChange={e=>setCaption(e.target.value)} placeholder="Escreva a legenda e as hashtags..."/>
             <small className={styles.count}>{caption.length}/2200</small>
@@ -327,13 +433,113 @@ export default function UnifiedPublisher(){
             </label>;
           })}
         </div>
+        {selected.includes('youtube')&&<section className={styles.settings}>
+          <label className={styles.settingField}>Visibilidade no YouTube
+            <select value={youtubePrivacy} onChange={e=>setYoutubePrivacy(e.target.value)} disabled={!!phase}>
+              {Object.entries(YOUTUBE_PRIVACY_LABELS).map(([value,label])=><option key={value} value={value}>{label}</option>)}
+            </select>
+            <small>A visibilidade solicitada será confirmada pela resposta do YouTube e aparecerá no histórico.</small>
+          </label>
+        </section>}
+        {selected.includes('tiktok')&&<section className={styles.settings}>
+          <div className={styles.settingsTitle}>
+            <div><h3>Como enviar ao TikTok</h3><p>O rascunho continua disponível como alternativa.</p></div>
+            <Link href="/tiktok/conectar">Permissões ↗</Link>
+          </div>
+          <div className={styles.modeOptions}>
+            {connections?.tiktok?.directAvailable&&<label className={styles.modeOption}>
+              <input type="radio" name="tiktokMode" checked={tiktokMode==='direct'} disabled={!!phase}
+                onChange={()=>{setTikTokMode('direct');setPrivacyLevel('');setTikTokConsent(false);setCommercialDisclosure(false);setBrandContent(false);setBrandOrganic(false)}}/>
+              <span><strong>Publicar diretamente</strong><small>Publica pelo TidePlace e acompanha o status.</small></span>
+            </label>}
+            {connections?.tiktok?.draftAvailable&&<label className={styles.modeOption}>
+              <input type="radio" name="tiktokMode" checked={tiktokMode==='draft'} disabled={!!phase}
+                onChange={()=>{setTikTokMode('draft');setPrivacyLevel('');setTikTokConsent(false);setCommercialDisclosure(false);setBrandContent(false);setBrandOrganic(false)}}/>
+              <span><strong>Enviar como rascunho</strong><small>Abre no aplicativo para revisar e publicar.</small></span>
+            </label>}
+          </div>
+          {tiktokMode==='direct'?<>
+            {tiktokInfoLoading&&<p className={styles.settingsNote}>Consultando as opções atuais da conta TikTok…</p>}
+            {tiktokInfo?.error&&<p className={styles.settingsAlert}>{tiktokInfo.error} <Link href="/tiktok/conectar">Ver conexão</Link></p>}
+            {tiktokInfo&&!tiktokInfo.error&&<>
+              <div className={styles.creatorInfo}>
+                {tiktokInfo.creatorAvatarUrl&&<img src={tiktokInfo.creatorAvatarUrl} alt=""/>}
+                <div><strong>{tiktokInfo.creatorNickname}</strong>
+                  {tiktokInfo.creatorUsername&&<small>@{tiktokInfo.creatorUsername}</small>}
+                  {tiktokInfo.maxVideoPostDurationSec&&<small>Até {tiktokInfo.maxVideoPostDurationSec} segundos por vídeo</small>}
+                </div>
+              </div>
+              {!tiktokInfo.canDirectPost&&<p className={styles.settingsAlert}>{tiktokInfo.note||'Direct Post indisponível para esta conta.'}</p>}
+              {tiktokInfo.canDirectPost&&<>
+                {!tiktokInfo.audited&&<p className={styles.settingsNote}>O app ainda não passou pela auditoria do TikTok. Esta etapa permite publicar somente em conta privada, com visibilidade “Somente eu”.</p>}
+                <label className={styles.settingField}>Privacidade desta publicação
+                  <select required value={privacyLevel} disabled={!!phase||tiktokInfoLoading}
+                    onChange={e=>{const next=e.target.value;setPrivacyLevel(next);
+                      if(!['PUBLIC_TO_EVERYONE','MUTUAL_FOLLOW_FRIENDS'].includes(next))setBrandContent(false)}}>
+                    <option value="">Selecione uma opção</option>
+                    {(tiktokInfo.privacyLevelOptions||[]).map(value=><option key={value} value={value}>{TIKTOK_PRIVACY_LABELS[value]||value}</option>)}
+                  </select>
+                  <small>As opções vêm da conta conectada. Escolha uma em cada publicação.</small>
+                </label>
+                <div className={styles.settingGroup}>
+                  <strong>Interações permitidas</strong>
+                  <label className={styles.checkRow}>
+                    <input type="checkbox" checked={allowComment} disabled={!!phase||tiktokInfo.commentDisabled}
+                      onChange={e=>setAllowComment(e.target.checked)}/>
+                    <span>Permitir comentários{tiktokInfo.commentDisabled?' · desativado na conta':''}</span>
+                  </label>
+                  <label className={styles.checkRow}>
+                    <input type="checkbox" checked={allowDuet} disabled={!!phase||tiktokInfo.duetDisabled}
+                      onChange={e=>setAllowDuet(e.target.checked)}/>
+                    <span>Permitir Duet{tiktokInfo.duetDisabled?' · desativado na conta':''}</span>
+                  </label>
+                  <label className={styles.checkRow}>
+                    <input type="checkbox" checked={allowStitch} disabled={!!phase||tiktokInfo.stitchDisabled}
+                      onChange={e=>setAllowStitch(e.target.checked)}/>
+                    <span>Permitir Stitch{tiktokInfo.stitchDisabled?' · desativado na conta':''}</span>
+                  </label>
+                </div>
+                <label className={styles.checkRow}>
+                  <input type="checkbox" checked={commercialDisclosure} disabled={!!phase}
+                    onChange={e=>{const checked=e.target.checked;setCommercialDisclosure(checked);
+                      if(!checked){setBrandContent(false);setBrandOrganic(false)}}}/>
+                  <span><strong>Este conteúdo promove uma marca, produto ou serviço?</strong><small>Desativado por padrão. Selecione a divulgação quando necessário.</small></span>
+                </label>
+                {commercialDisclosure&&<div className={styles.settingGroup}>
+                  <label className={styles.checkRow}>
+                    <input type="checkbox" checked={brandOrganic} disabled={!!phase}
+                      onChange={e=>setBrandOrganic(e.target.checked)}/>
+                    <span>Sua marca · será identificado como conteúdo promocional</span>
+                  </label>
+                  <label className={styles.checkRow}>
+                    <input type="checkbox" checked={brandContent}
+                      disabled={!!phase||!['PUBLIC_TO_EVERYONE','MUTUAL_FOLLOW_FRIENDS'].includes(privacyLevel)}
+                      onChange={e=>setBrandContent(e.target.checked)}/>
+                    <span>Conteúdo de marca de terceiros · será identificado como parceria paga</span>
+                  </label>
+                  {brandContent&&!['PUBLIC_TO_EVERYONE','MUTUAL_FOLLOW_FRIENDS'].includes(privacyLevel)&&
+                    <small className={styles.settingsNote}>Conteúdo de marca de terceiros não pode usar a opção “Somente eu”.</small>}
+                  {!brandContent&&!brandOrganic&&<small className={styles.settingsAlert}>Selecione “Sua marca”, “Conteúdo de marca” ou ambos.</small>}
+                </div>}
+                <label className={styles.checkRow}>
+                  <input type="checkbox" required checked={tiktokConsent} disabled={!!phase}
+                    onChange={e=>setTikTokConsent(e.target.checked)}/>
+                  <span>{brandContent
+                    ?'Ao publicar, você concorda com a Política de Conteúdo de Marca e com a confirmação de uso de música do TikTok (“By posting, you agree to TikTok’s Branded Content Policy and Music Usage Confirmation”).'
+                    :'Ao publicar, você concorda com a confirmação de uso de música do TikTok (“By posting, you agree to TikTok’s Music Usage Confirmation”).'}</span>
+                </label>
+                <p className={styles.settingsNote}>O TidePlace mostrará o status. O TikTok pode levar alguns minutos para processar o vídeo.</p>
+              </>}
+            </>}
+          </>:<p className={styles.settingsNote}>O vídeo será enviado à caixa de entrada de rascunhos. Abra o TikTok para revisar e concluir a publicação.</p>}
+        </section>}
         <div className={styles.disclosure}>
           <strong>Como funciona o envio agora</strong>
-          <p><b>Instagram:</b> o Reel será enviado à Meta para processamento e poderá ser finalizado pelo histórico. <b>YouTube:</b> o vídeo será enviado como privado. <b>TikTok:</b> o vídeo chegará como rascunho à caixa de entrada do aplicativo. Você deverá abrir a notificação, revisar a legenda e publicar manualmente. O envio por rascunho não adiciona a legenda automaticamente; a publicação pública direta depende de aprovação do TikTok.</p>
-          {connections?.tiktok&&!connections.tiktok.enabled&&<p>Para liberar o rascunho no TikTok, <Link href="/tiktok/conectar">renove as permissões da conexão</Link>.</p>}
+          <p><b>Instagram:</b> o TidePlace concluirá o Reel automaticamente quando a Meta finalizar o processamento. <b>YouTube:</b> escolha público, não listado ou privado. <b>TikTok:</b> use Direct Post para publicar sem abrir o aplicativo ou mantenha o fluxo de rascunho como alternativa. A publicação pública do Direct Post depende da auditoria do TikTok.</p>
+          {connections?.tiktok&&!connections.tiktok.enabled&&<p>Para liberar rascunhos ou Direct Post, <Link href="/tiktok/conectar">renove as permissões da conexão</Link>.</p>}
         </div>
-        <button type="submit" className={styles.submit} disabled={!!phase||!file||!usable||loading}>
-          {phase?({preparing:'Preparando publicação...',uploading:'Enviando arquivo...',instagram:'Enviando ao Instagram...',youtube:'Enviando ao YouTube...',tiktok:'Enviando rascunho ao TikTok...'}[phase]||'Processando...'):
+        <button type="submit" className={styles.submit} disabled={!!phase||!file||!usable||!tiktokDirectReady||loading}>
+          {phase?({preparing:'Preparando publicação...',uploading:'Enviando arquivo...',instagram:'Enviando ao Instagram...',youtube:'Enviando ao YouTube...',tiktok:tiktokMode==='direct'?'Publicando diretamente no TikTok...':'Enviando rascunho ao TikTok...'}[phase]||'Processando...'):
             'Enviar para '+selected.length+' '+(selected.length===1?'rede selecionada':'redes selecionadas')}
         </button>
         <p className={styles.footnote}>Você confirma cada envio. Evite fechar esta aba durante o upload. A publicação não ocorre em redes desautorizadas.</p>
@@ -361,7 +567,7 @@ export default function UnifiedPublisher(){
           <div className={styles.history}>{history.map(post=><article className={[styles.historyItem,post.id===currentId?styles.highlight:''].join(' ')} key={post.id}>
             <div className={styles.postTitle}><strong>{post.title}</strong><small>{new Date(post.createdAt).toLocaleString('pt-BR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</small></div>
             {post.targets.map(t=><TargetState key={t.platform} target={t} postId={post.id}
-              onFinish={finalize} busy={finishing} onVerifyYoutube={verifyYoutube}
+              onVerifyYoutube={verifyYoutube}
               verifyingYoutube={verifyingYoutube} youtubeCheck={youtubeChecks[post.id]}
               onVerifyTikTok={verifyTikTok} verifyingTikTok={verifyingTikTok} tiktokCheck={tiktokChecks[post.id]}
               onRetryTikTok={retryTikTok} retryingTikTok={retryingTikTok}
@@ -375,3 +581,4 @@ export default function UnifiedPublisher(){
     </div>
   </main>;
 }
+

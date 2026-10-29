@@ -113,6 +113,7 @@ function fakeDb(rows = []) {
       neq(key, value) { call.filters.push([key, '!==' + value]); return chain; },
       upsert(row, options) { call.row = row; call.options = options; return chain; },
       update(row) { call.row = row; return chain; },
+      async maybeSingle() { return { data: rows[0] || null, error: null }; },
       then(resolve, reject) { return Promise.resolve({ data: rows, error: null }).then(resolve, reject); },
     };
     return chain;

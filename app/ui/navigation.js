@@ -1,94 +1,48 @@
-// Single navigation model for the TidePlace shell and command palette.
-// UI metadata only. No CRM, Meta or automation business rules are changed.
+// TidePlace visual organization only: routes, APIs and stored data remain untouched.
+// Studio + CRM are navigation areas inside the same workspace and same application.
 export const NAV_GROUPS = [
-  {
-    label: 'VISÃO GERAL',
-    items: [
-      { href: '/', label: 'Painel', icon: 'grid', section: 'dashboard', description: 'Resumo e prioridades' },
-      { href: '/?section=tasks', label: 'Tarefas', icon: 'check', section: 'tasks', description: 'Pendências e organização' },
-    ],
-  },
-  {
-    label: 'INSTAGRAM',
-    items: [
-      { href: '/?section=metrics', label: 'Métricas', icon: 'chart', section: 'metrics', description: 'Desempenho do Instagram' },
-      { href: '/instagram/direct', label: 'Direct', icon: 'instagram', only: ['gui-nonato'], description: 'Caixa de entrada separada do WhatsApp' },
-      { href: '/automacoes', label: 'Automações', icon: 'instagram', description: 'Direct e comentários do Instagram' },
-      { href: '/?section=goals', label: 'Metas', icon: 'target', section: 'goals', description: 'Metas da conta do Instagram' },
-      { href: '/?section=calendar', label: 'Calendário', icon: 'calendar', section: 'calendar', description: 'Calendário editorial' },
-      { href: '/?section=ideas', label: 'Ideias', icon: 'sparkle', section: 'ideas', description: 'Banco de ideias de conteúdo' },
-    ],
-  },
-  {
-    label: 'YOUTUBE',
-    items: [
-      { href: '/youtube', label: 'Conectar canal', icon: 'play', only: ['gui-nonato'], description: 'Autorizar o canal do Gui e gerenciar a conexão com o Google' },
-      { href: '/youtube/publicar', label: 'Publicar Shorts', icon: 'upload', only: ['gui-nonato'], description: 'Enviar um vídeo privado de teste diretamente para o YouTube do Gui' },
-    ],
-  },
-  {
-    label: 'TIKTOK',
-    items: [
-      { href: '/tiktok/conectar', label: 'Conectar conta', icon: 'tiktok', only: ['gui-nonato'], description: 'Conexão oficial TikTok Login Kit e permissões de publicação' },
-    ],
-  },
-  {
-    label: 'CRIAÇÃO DE CONTEÚDO',
-    items: [
-      { href: '/publicar', label: 'Publicar em redes', icon: 'upload', only: ['gui-nonato'], description: 'Publicação de um vídeo com seleção de Instagram, YouTube e TikTok' },
-      { href: '/radar', label: 'Radar de conteúdo', icon: 'sparkle', description: 'Referências e ideias do nicho' },
-      { href: '/conteudo/ia', label: 'Roteiros com IA', icon: 'sparkle', description: 'Criar conteúdo por marca com inteligência artificial' },
-      { href: '/criar-post', label: 'Criar post', icon: 'layers', description: 'Editor de carrosséis, fotos, textos e exportação' },
-    ],
-  },
-  {
-    label: 'CRM · WHATSAPP',
-    items: [
-      { href: '/crm', label: 'Funil e indicadores', icon: 'chart', description: 'Oportunidades e atendimento por setor' },
-      { href: '/crm/vital', label: 'CRM Vital · Operação', icon: 'inbox', only: ['vital-decor'], description: 'Dashboard com conversas reais e encaminhamentos por fila' },
-      { href: '/crm/vital/equipe', label: 'Equipe e permissões', icon: 'shield', only: ['vital-decor'], description: 'Convites, perfis e filas de atendimento da Vital' },
-      { href: '/crm/consultorias', label: 'Consultorias', icon: 'users', only: ['gui-nonato'], description: 'Candidaturas e seleção para a consultoria do Gui' },
-      { href: '/whatsapp', label: 'Caixa de entrada', icon: 'chat', only: ['gui-nonato'], description: 'CRM e mensagens do Gui' },
-      { href: '/whatsapp', label: 'Caixa geral', icon: 'chat', only: ['vital-decor'], description: 'Todas as mensagens da Vital Decor' },
-      { href: '/whatsapp/setores', label: 'Meus setores', icon: 'users', only: ['vital-decor'], description: 'Conversas atribuídas ao seu atendimento' },
-      { href: '/whatsapp/automacoes', label: 'Automações', icon: 'flow', description: 'Fluxos e respostas automáticas do WhatsApp' },
-      { href: '/whatsapp/campanha', label: 'Campanhas', icon: 'send', only: ['gui-nonato'], description: 'Reengajamento e envios' },
-    ],
-  },
-  {
-    label: 'MAIS FERRAMENTAS',
-    items: [
-      { href: '/tiktok/afiliados', label: 'Afiliados TikTok', icon: 'tiktok', description: 'Parcerias e qualificação' },
-      { href: '/whatsapp/integracao-argo', label: 'Setores e Argo', icon: 'layers', only: ['vital-decor'], description: 'Configuração de responsáveis e integração Argo' },
-      { href: '/whatsapp/grupos', label: 'Grupos', icon: 'users', only: ['gui-nonato'], description: 'Gestão de grupos' },
-      { href: '/whatsapp/gato', label: 'Envios rápidos', icon: 'send', only: ['gui-nonato'], description: 'Ferramentas pontuais' },
-      { href: '/whatsapp/diagnostico', label: 'Diagnóstico WhatsApp', icon: 'shield', only: ['gui-nonato'], description: 'Verificação da integração Meta' },
-      { href: '/conexoes/vital-decor', label: 'Conexões Vital Decor', icon: 'plug', only: ['vital-decor'], description: 'Gerenciar canais e autorizações' },
-      { href: '/admin/conexoes', label: 'Central de Controle', icon: 'shield', description: 'Mapa e saúde das conexões' },
-    ],
-  },
+  { label:'SOCIAL STUDIO', area:'studio', items:[
+    {href:'/',label:'Visão geral',icon:'home',section:'dashboard',description:'Resumo e prioridades da marca'},
+    {href:'/?section=calendar',label:'Conteúdo',icon:'calendar',section:'calendar',description:'Calendário editorial; as ideias e roteiros serão unificados aqui na próxima fase'},
+    {href:'/publicar',label:'Publicar em redes',icon:'send',only:['gui-nonato'],description:'Publicação para Instagram, TikTok e YouTube'},
+    {href:'/automacoes',label:'Automações sociais',icon:'flow',description:'Fluxos e respostas do Instagram'},
+    {href:'/?section=metrics',label:'Métricas do Instagram',icon:'chart',section:'metrics',description:'Desempenho e tendências'},
+    {href:'/?section=goals',label:'Metas',icon:'target',section:'goals',description:'Metas existentes; acompanhamento por IA fica para a próxima fase'},
+  ]},
+  {label:'TIDE CRM',area:'crm',items:[
+    {href:'/crm',label:'Visão geral',icon:'chart',only:['gui-nonato'],description:'Funil e indicadores de relacionamento'},
+    {href:'/crm/vital',label:'Dashboard e atendimentos',icon:'inbox',only:['vital-decor'],description:'CRM Vital, nove filas e dashboards'},
+    {href:'/whatsapp',label:'WhatsApp',icon:'chat',only:['gui-nonato'],description:'Conversas e contatos do Gui'},
+    {href:'/whatsapp',label:'WhatsApp geral',icon:'chat',only:['vital-decor'],description:'Caixa geral do WhatsApp da Vital preservada'},
+    {href:'/instagram/direct',label:'Instagram Direct',icon:'instagram',only:['gui-nonato'],description:'Atendimento pelo Instagram'},
+    {href:'/crm/consultorias',label:'Consultorias',icon:'users',only:['gui-nonato'],description:'Leads da consultoria e mentoria'},
+    {href:'/whatsapp/automacoes',label:'Automações WhatsApp',icon:'flow',description:'Regras e respostas automatizadas do WhatsApp'},
+    {href:'/crm/vital/equipe',label:'Equipe e permissões',icon:'shield',only:['vital-decor'],description:'Convites e acessos por filas'},
+    {href:'/whatsapp/campanha',label:'Campanhas',icon:'send',only:['gui-nonato'],description:'Envios e reengajamento'},
+  ]},
+  {label:'CONFIGURAÇÕES',area:'settings',items:[
+    {href:'/conexoes/vital-decor',label:'Conexões Vital Decor',icon:'plug',only:['vital-decor'],description:'Autorizações de canais da Vital'},
+    {href:'/whatsapp/integracao-argo',label:'Setores e Argo',icon:'layers',only:['vital-decor'],description:'Responsáveis e integração Argo'},
+    {href:'/youtube',label:'Conectar YouTube',icon:'play',only:['gui-nonato'],description:'Autorização do canal'},
+    {href:'/tiktok/conectar',label:'Conectar TikTok',icon:'tiktok',only:['gui-nonato'],description:'Autorização de canal'},
+    {href:'/admin/conexoes',label:'Central de controle',icon:'settings',description:'Saúde das integrações e diagnóstico'},
+  ]}
 ];
-
-export function visibleNavGroups(workspaceId = 'gui-nonato') {
-  return NAV_GROUPS.map((group) => ({
-    ...group,
-    items: group.items.filter((item) => !item.only || item.only.includes(workspaceId)),
-  })).filter((group) => group.items.length > 0);
+export function visibleNavGroups(workspaceId='gui-nonato',area=null){
+ return NAV_GROUPS.filter(group=>area===null||group.area===area||(group.area==='settings'&&area==='settings'))
+ .map(group=>({...group,items:group.items.filter(item=>!item.only||item.only.includes(workspaceId))}))
+ .filter(group=>group.items.length>0);
 }
-
-export function matchesNavigation(item, pathname, section = 'dashboard') {
-  if (item.section) return pathname === '/' && section === item.section;
-  if (item.href === '/whatsapp') return pathname === '/whatsapp';
-  if (item.href === '/automacoes') return pathname === '/automacoes';
-  return pathname === item.href || pathname.startsWith(item.href + '/');
+export function matchesNavigation(item,pathname,section='dashboard'){
+ if(item.section)return pathname==='/'&&section===item.section;
+ if(item.href==='/crm/vital')return pathname==='/crm/vital';
+ if(item.href==='/whatsapp')return pathname==='/whatsapp';
+ if(item.href==='/automacoes')return pathname==='/automacoes';
+ return pathname===item.href||pathname.startsWith(item.href+'/');
 }
-
-export function searchNavigation(query, workspaceId = 'gui-nonato') {
-  const normalized = String(query || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-  const results = visibleNavGroups(workspaceId).flatMap((group) =>
-    group.items.map((item) => ({ ...item, group: group.label }))
-  );
-  if (!normalized) return results;
-  return results.filter((item) => (item.label + ' ' + item.description + ' ' + item.group)
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(normalized));
+export function searchNavigation(query,workspaceId='gui-nonato'){
+ const normalized=String(query||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+ const results=visibleNavGroups(workspaceId).flatMap(group=>group.items.map(item=>({...item,group:group.label})));
+ if(!normalized)return results;
+ return results.filter(item=>(item.label+' '+item.description+' '+item.group).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(normalized));
 }

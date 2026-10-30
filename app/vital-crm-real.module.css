@@ -1,4 +1,4 @@
-.embedded,.shell{--wine:#873154;--teal:#008c8a;--paper:#fff;--line:#ebe2e9;--muted:#736c79;--ink:#302833;background:#f7f4f8;color:var(--ink);font-size:14px;line-height:1.5;min-width:0}
+.embedded,.shell{--wine:var(--gold,#8F2945);--teal:#008c8a;--paper:var(--surface,#fff);--line:var(--border,#ebe2e9);--ink:var(--text,#302833);background:var(--bg,#F8F5F4);color:var(--ink);font-size:14px;line-height:1.5;min-width:0}
 .shell{display:grid;grid-template-columns:218px minmax(0,1fr);min-height:100vh}
 .embedded{padding:20px clamp(15px,2vw,32px) 42px}
 .main{min-width:0;padding:32px clamp(16px,2.5vw,40px)}
@@ -181,18 +181,6 @@
 .reply button{font-size:14px}
 .resolution strong,.transfer strong{font-size:14px}
 .resolution small,.transfer p{font-size:12px}
-.colorsPanel{border:1px solid var(--line);border-radius:12px;background:#fff;padding:17px 20px;margin:0 0 16px;box-shadow:0 5px 18px #2416240b}
-.colorsPanelHead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
-.colorsPanelHead strong{font-size:16px}
-.colorsPanelHead span{font-size:12px;color:var(--muted)}
-.colorControls{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.colorControls label{display:flex;align-items:center;gap:10px;font-weight:700;font-size:13px;color:var(--ink)}
-.colorControls input[type=color]{width:49px;height:39px;padding:3px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
-.colorControls>button{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font-size:13px;padding:10px 13px;cursor:pointer}
-.colorPresets{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
-.colorPresets button{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:24px;padding:8px 12px;color:var(--ink);font-size:12.5px;cursor:pointer}
-.colorPresets i{width:13px;height:13px;display:block;border-radius:50%;border:1px solid #ddd}
-.topActions{flex-wrap:wrap}
 @media(max-width:700px){
  .board{min-height:0}.thread{min-height:440px}
  .contact,.contactActive{min-height:76px;padding:13px}
@@ -200,3 +188,114 @@
  .messages article{max-width:94%}
  .colorControls{align-items:flex-start;flex-direction:column}
 }
+
+/* CRM now inherits the identical Tide 'Experiência' theme; no separate local storage. */
+.embedded,.shell{background:var(--bg,#F8F5F4);color:var(--text,#302833)}
+.header h1{color:var(--text,#302833)}.header p{color:var(--muted,#756D70);opacity:1}
+.eyebrow{color:var(--gold,#8F2945)}
+.sidebar{background:var(--tp-side-bg,#151216)}
+.sidebar button.sidebarActive,.tabs button.active,.scopeTabs button.active{background:var(--gold,#8F2945);border-color:var(--gold,#8F2945);color:#fff}
+.splitterHandle{background:var(--gold,#8F2945)}
+.splitter:hover .splitterHandle,.splitter:focus-visible .splitterHandle,.splitter:active .splitterHandle{background:var(--gold-dark,#751F36)}
+.panel,.stat,.board,.threadHeader,.list,.search input,.filters select,.transfer select,.reply,.transfer,.resolution,.topActions button,.thread{background:var(--surface,#fff);color:var(--text,#302833);border-color:var(--border,#EADFE2)}
+.thread{background:var(--surface-soft,#FBF9F8)}
+.contact,.contactActive{color:var(--text,#302833);border-color:var(--border,#EADFE2)}
+.contactText strong,.listHeader h2,.threadHeader h2{color:var(--text,#302833)}
+.contactText>span,.contactText small,.listHeader span,.threadHeader p{color:var(--muted,#756D70)}
+.messages article{background:var(--surface,#fff);color:var(--text,#302833);border-color:var(--border,#EADFE2)}
+.messages article.sent{background:var(--gold-soft,#F6EAEE);border-color:var(--border,#EADFE2)}
+.messages article time{color:var(--muted,#756D70)}
+.reply textarea{background:var(--surface,#fff);color:var(--text,#302833);border-color:var(--border,#EADFE2)}
+.reply button,.transferControls button{background:var(--gold,#8F2945)}
+.resolution button{border-color:var(--border,#EADFE2)}
+@media(prefers-reduced-motion:reduce){.splitterHandle{transition:none}}
+
+
+/* HubSpot-inspired readability: no changes to the Tide identity or data flow. */
+.embedded,.shell{font-size:15px;font-weight:450;line-height:1.55}
+.header h1{font-weight:750}
+.header p{font-size:14px;font-weight:500}
+.listHeader h2,.threadHeader h2,.sectionTitle h2{font-weight:760}
+.panel h2,.chart h3{font-size:17px;font-weight:750}
+.stat span,.summaryPill span{font-size:13px;font-weight:650;color:var(--muted)}
+.stat strong{font-size:31px;font-weight:800}
+.queueTile strong{font-size:14px;font-weight:750}
+.queueTile span{font-size:12px;font-weight:500}
+.queueTile b{font-size:17px;font-weight:800}
+.legendLabel{font-size:13px;font-weight:540}
+.legendRow strong{font-size:13px;font-weight:750}
+.contactText strong{font-size:15px;font-weight:750}
+.contactText small{font-size:12px;font-weight:500}
+.contactText>span{font-size:14px;line-height:1.5;font-weight:480}
+.messages article p{font-size:15px;line-height:1.58;font-weight:480}
+.messages article time{font-size:11.5px;font-weight:500}
+.search,.filters label,.reply label,.transfer strong,.resolution strong{font-weight:750}
+.summaryPill strong{font-weight:800}
+.tabs button,.scopeTabs button,.topActions button{font-weight:700}
+.priority{font-size:14px;font-weight:600}
+/* Every canvas, card, chart, input and conversation inherits the original Tide theme. */
+.analyticsPair .chart,.queueTile,.queueTile:hover,.summaryPill,.scopeTabs button,.contact,.contactActive,
+.pagination button,.threadHeader button,.donutHole,.smallNotice,.unassigned,.resolution button,
+.avatar{border-color:var(--border,#EADFE2)}
+.analyticsPair .chart{background:var(--surface-soft,#FBF9F8);color:var(--text)}
+.queueTile,.summaryPill,.scopeTabs button,.contact,.pagination button,
+.threadHeader button{background:var(--surface);color:var(--text)}
+.queueTile:hover,.contact:hover,.contactActive{background:var(--surface-soft)}
+.donutHole{background:var(--surface);color:var(--text)}
+.donutHole strong{color:var(--text)}
+.smallNotice{background:var(--surface);color:var(--muted)}
+.avatar{background:color-mix(in srgb,var(--gold) 14%,var(--surface));color:var(--gold-dark)}
+.unassigned{background:color-mix(in srgb,#d79b32 13%,var(--surface));color:var(--text)}
+.resolution button{background:var(--surface-soft);color:var(--text)}
+.scopeTabs button.active{background:var(--gold);color:#fff}
+.contactText>span{color:var(--muted)}
+/* In dark mode the old pastel accent would remain white: replace it with a dark tint. */
+:global(html[data-appearance="dark"]) .embedded,
+:global(html[data-appearance="dark"]) .shell{
+ --crm-accent-dark:color-mix(in srgb,var(--gold) 23%,var(--surface));
+ --crm-secondary:color-mix(in srgb,var(--gold) 12%,var(--surface));
+}
+:global(html[data-appearance="dark"]) .messages article.sent{
+ background:var(--crm-accent-dark);
+ border-color:color-mix(in srgb,var(--gold) 34%,var(--border));
+ color:var(--text);
+}
+:global(html[data-appearance="dark"]) .queueTile:hover,
+:global(html[data-appearance="dark"]) .contact:hover,
+:global(html[data-appearance="dark"]) .contactActive{background:var(--crm-secondary)}
+:global(html[data-appearance="dark"]) .avatar{color:var(--text);background:var(--crm-accent-dark)}
+:global(html[data-appearance="dark"]) .stat strong,
+:global(html[data-appearance="dark"]) .queueTile b{color:var(--text)}
+:global(html[data-appearance="dark"]) .tab,
+:global(html[data-appearance="dark"]) .legendRow{color:var(--text)}
+:global(html[data-appearance="dark"]) .panel,
+:global(html[data-appearance="dark"]) .stat,
+:global(html[data-appearance="dark"]) .board,
+:global(html[data-appearance="dark"]) .summaryPill,
+:global(html[data-appearance="dark"]) .queueTile,
+:global(html[data-appearance="dark"]) .analyticsPair .chart,
+:global(html[data-appearance="dark"]) .donutHole,
+:global(html[data-appearance="dark"]) .contact,
+:global(html[data-appearance="dark"]) .list,
+:global(html[data-appearance="dark"]) .threadHeader,
+:global(html[data-appearance="dark"]) .reply,
+:global(html[data-appearance="dark"]) .transfer,
+:global(html[data-appearance="dark"]) .search input,
+:global(html[data-appearance="dark"]) .filters select,
+:global(html[data-appearance="dark"]) .transfer select,
+:global(html[data-appearance="dark"]) .reply textarea{
+ background:var(--surface);
+ color:var(--text);
+ border-color:var(--border);
+}
+:global(html[data-appearance="dark"]) .thread,
+:global(html[data-appearance="dark"]) .messages{background:var(--surface-soft);color:var(--text)}
+:global(html[data-appearance="dark"]) .messages article.received{background:var(--surface);color:var(--text);border-color:var(--border)}
+:global(html[data-appearance="dark"]) .stat span,
+:global(html[data-appearance="dark"]) .legendLabel,
+:global(html[data-appearance="dark"]) .queueTile span,
+:global(html[data-appearance="dark"]) .contactText small,
+:global(html[data-appearance="dark"]) .contactText>span{color:var(--muted)}
+:global(html[data-appearance="dark"]) .priority,
+:global(html[data-appearance="dark"]) .chart h3,
+:global(html[data-appearance="dark"]) .queueTile strong{color:var(--text)}

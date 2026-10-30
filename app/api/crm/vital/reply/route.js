@@ -8,7 +8,8 @@ export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const headers={'Cache-Control':'private, no-store',Vary:'Authorization'};
 export async function POST(request){
- try{
+ try{  if(process.env.VITAL_CRM_WRITES_ENABLED!=='true')throw fail('Envio pelo CRM em validação; use a caixa atual do WhatsApp.',403);
+
   const origin=request.headers.get('origin'),url=new URL(request.url),host=request.headers.get('host');
   if(!origin||(origin!==url.origin&&origin!==url.protocol+'//'+host))throw fail('Origem inválida.',403);
   const {db,userId,access,organization}=await getVitalCrmMember(request);

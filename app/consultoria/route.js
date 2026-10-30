@@ -1,7 +1,7 @@
 import { serverClient } from '../api/instagram/audio-automation/service.js';
 import { validateConsultoria, applicationError, CONSULTORIA_URL } from '../lib/consultoria.mjs';
 import { consultoriaHtml } from './html.mjs';
-import { formTicket, verifyTicket, requestFingerprint } from './security.mjs';
+import { formTicket, resolveFormTicket, requestFingerprint } from './security.mjs';
 import { saveConsultoria } from './service.mjs';
 
 export const runtime = 'nodejs';
@@ -42,7 +42,11 @@ export async function POST(request) {
       throw applicationError('Não foi possível confirmar o envio. Confira as respostas e tente reenviar.', 403);
     }
     if (values.company_site) return html({ success: true });
-    const id = verifyTicket(values.ticket);
+    const formTicketResult = resolveFormTicket(values.ticket);
+    if (!formTicketResult.verified && (!origin || !allowedOrigins.has(origin))) {
+      throw applicationError('Não foi possível confirmar o envio. Confira as respostas e tente reenviar.', 403);
+    }
+    const id = formTicketResult.id;
     const application = validateConsultoria(values);
     await saveConsultoria(serverClient(), application, { id, fingerprint: requestFingerprint(request) });
     return html({ success: true });

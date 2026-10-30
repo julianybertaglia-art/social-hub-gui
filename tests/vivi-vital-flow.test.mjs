@@ -29,7 +29,7 @@ test('Retail Vital answer links official store, requests customer question, and 
   assert.match(VIVI_VITAL_RETAIL, /equipe/);
   assert.ok(VIVI_VITAL_RETAIL.length < 600);
   const code = readFileSync(new URL('../app/api/vital-connections/vivi-flow.mjs',import.meta.url),'utf8');
-  assert.match(code, /choice === 'vivi_product_vital'[\\s\\S]*?sendText\\(db, connection, to, VIVI_VITAL_RETAIL\\)/);
+  assert.match(code, /choice === 'vivi_product_vital'[\s\S]*?sendText\(db, connection, to, VIVI_VITAL_RETAIL\)/);
   assert.match(code, /stage: 'await_human', selection: product, human_handoff: true/);
   assert.match(code, /choice === 'vivi_product_bluetti'/);
 });

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CONSULTORIA_DIRECT, CONSULTORIA_URL, validateConsultoria } from '../app/lib/consultoria.mjs';
-import { formTicket, verifyTicket, formSubmissionId } from '../app/consultoria/security.mjs';
+import { formTicket, verifyTicket, resolveFormTicket } from '../app/consultoria/security.mjs';
 import { consultoriaHtml } from '../app/consultoria/html.mjs';
 import { saveConsultoria } from '../app/consultoria/service.mjs';
 import { GET as publicGet, POST as publicPost } from '../app/consultoria/route.js';
@@ -47,13 +47,16 @@ test('signed form tickets reject tampering, a different secret, expiry and futur
   assert.throws(() => verifyTicket(ticket, 'test-secret', now + 3 * 3600000));
   assert.throws(() => verifyTicket(ticket, 'test-secret', now - 1));
 });
-test('an absent or stale form ticket does not block a valid submission', () => {
+test('an absent or stale form ticket does not block a same-origin submission', () => {
   const now = Date.now();
   const stale = formTicket('old-secret', now);
-  assert.match(formSubmissionId('', 'new-secret', now), /^[0-9a-f-]{36}$/);
-  assert.match(formSubmissionId(stale, 'new-secret', now), /^[0-9a-f-]{36}$/);
+  assert.equal(resolveFormTicket('', 'new-secret', now).verified, false);
+  assert.match(resolveFormTicket('', 'new-secret', now).id, /^[0-9a-f-]{36}$/);
+  assert.equal(resolveFormTicket(stale, 'new-secret', now).verified, false);
   const valid = formTicket('stable-secret', now);
-  assert.equal(formSubmissionId(valid, 'stable-secret', now), verifyTicket(valid, 'stable-secret', now));
+  const resolved = resolveFormTicket(valid, 'stable-secret', now);
+  assert.equal(resolved.verified, true);
+  assert.equal(resolved.id, verifyTicket(valid, 'stable-secret', now));
 });
 test('form escapes retained answers and errors and consistently discloses the selection and 30 minutes', () => {
   const html = consultoriaHtml({ ticket: 'ticket', values: { name: '"><script>alert(1)</script>', challenge: '</textarea><script>bad</script>' }, error: '<img src=x onerror=bad>' });
@@ -87,7 +90,8 @@ test('public form rejects cross-origin, oversized, and non-form writes', async (
     assert.match(await page.text(), /name="ticket"/);
     assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { origin: 'https://evil.example' }, body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 403);
     assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }))).status, 415);
-    assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 400);
+    assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 403);
+    assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { origin: url }, body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 400);
     assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ name: 'x'.repeat(18000) }) }))).status, 413);
     assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ company_site: 'spam' }) }))).status, 200);
   } finally { if (key === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = key; }

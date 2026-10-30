@@ -11,9 +11,8 @@ export const NAV_GROUPS = [
   ]},
   {label:'TIDE CRM',area:'crm',items:[
     {href:'/crm',label:'Visão geral',icon:'chart',only:['gui-nonato'],description:'Funil e indicadores de relacionamento'},
-    {href:'/crm/vital',label:'Visão geral',icon:'chart',only:['vital-decor'],description:'CRM Vital com nove filas e dashboards'},
+    {href:'/crm/vital',label:'Dashboard e atendimentos',icon:'inbox',only:['vital-decor'],description:'CRM Vital, nove filas e dashboards'},
     {href:'/whatsapp',label:'WhatsApp',icon:'chat',only:['gui-nonato'],description:'Conversas e contatos do Gui'},
-    {href:'/crm/vital',label:'Atendimentos',icon:'inbox',only:['vital-decor'],description:'Caixa de entrada da Vital por filas'},
     {href:'/instagram/direct',label:'Instagram Direct',icon:'instagram',only:['gui-nonato'],description:'Atendimento pelo Instagram'},
     {href:'/crm/consultorias',label:'Consultorias',icon:'users',only:['gui-nonato'],description:'Leads da consultoria e mentoria'},
     {href:'/whatsapp/automacoes',label:'Automações WhatsApp',icon:'flow',description:'Regras e respostas automatizadas do WhatsApp'},

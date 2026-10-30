@@ -22,6 +22,16 @@ export function verifyTicket(ticket, secret = key(), now = Date.now()) {
   }
   return parts[0];
 }
+export function formSubmissionId(ticket, secret = key(), now = Date.now()) {
+  try { return verifyTicket(ticket, secret, now); }
+  catch (error) {
+    // Keep an already-open form usable across deployments or missing hidden fields.
+    // Origin checks, honeypot, validation, and rate limits still run before saving.
+    if (error?.status === 403) return randomUUID();
+    throw error;
+  }
+}
+
 export function requestFingerprint(request, secret = key()) {
   const address = request.headers.get('x-vercel-forwarded-for') || request.headers.get('x-forwarded-for') || 'unknown';
   return createHmac('sha256', secret).update('consultoria-rate:' + address.split(',')[0].trim()).digest('hex');

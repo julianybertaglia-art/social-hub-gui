@@ -1,4 +1,4 @@
-.embedded,.shell{--wine:#873154;--teal:#008c8a;--paper:#fff;--line:#ebe2e9;--muted:#736c79;--ink:#302833;background:#f7f4f8;color:var(--ink);font-size:14px;line-height:1.5;min-width:0}
+.embedded,.shell{--wine:var(--gold,#8F2945);--teal:#008c8a;--paper:var(--surface,#fff);--line:var(--border,#ebe2e9);--ink:var(--text,#302833);background:var(--bg,#F8F5F4);color:var(--ink);font-size:14px;line-height:1.5;min-width:0}
 .shell{display:grid;grid-template-columns:218px minmax(0,1fr);min-height:100vh}
 .embedded{padding:20px clamp(15px,2vw,32px) 42px}
 .main{min-width:0;padding:32px clamp(16px,2.5vw,40px)}
@@ -181,18 +181,6 @@
 .reply button{font-size:14px}
 .resolution strong,.transfer strong{font-size:14px}
 .resolution small,.transfer p{font-size:12px}
-.colorsPanel{border:1px solid var(--line);border-radius:12px;background:#fff;padding:17px 20px;margin:0 0 16px;box-shadow:0 5px 18px #2416240b}
-.colorsPanelHead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
-.colorsPanelHead strong{font-size:16px}
-.colorsPanelHead span{font-size:12px;color:var(--muted)}
-.colorControls{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.colorControls label{display:flex;align-items:center;gap:10px;font-weight:700;font-size:13px;color:var(--ink)}
-.colorControls input[type=color]{width:49px;height:39px;padding:3px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
-.colorControls>button{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font-size:13px;padding:10px 13px;cursor:pointer}
-.colorPresets{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
-.colorPresets button{display:flex;align-items:center;gap:7px;background:#fff;border:1px solid var(--line);border-radius:24px;padding:8px 12px;color:var(--ink);font-size:12.5px;cursor:pointer}
-.colorPresets i{width:13px;height:13px;display:block;border-radius:50%;border:1px solid #ddd}
-.topActions{flex-wrap:wrap}
 @media(max-width:700px){
  .board{min-height:0}.thread{min-height:440px}
  .contact,.contactActive{min-height:76px;padding:13px}
@@ -200,3 +188,24 @@
  .messages article{max-width:94%}
  .colorControls{align-items:flex-start;flex-direction:column}
 }
+
+/* CRM now inherits the identical Tide 'Experiência' theme; no separate local storage. */
+.embedded,.shell{background:var(--bg,#F8F5F4);color:var(--text,#302833)}
+.header h1{color:var(--text,#302833)}.header p{color:var(--muted,#756D70);opacity:1}
+.eyebrow{color:var(--gold,#8F2945)}
+.sidebar{background:var(--tp-side-bg,#151216)}
+.sidebar button.sidebarActive,.tabs button.active,.scopeTabs button.active{background:var(--gold,#8F2945);border-color:var(--gold,#8F2945);color:#fff}
+.splitterHandle{background:var(--gold,#8F2945)}
+.splitter:hover .splitterHandle,.splitter:focus-visible .splitterHandle,.splitter:active .splitterHandle{background:var(--gold-dark,#751F36)}
+.panel,.stat,.board,.threadHeader,.list,.search input,.filters select,.transfer select,.reply,.transfer,.resolution,.topActions button,.thread{background:var(--surface,#fff);color:var(--text,#302833);border-color:var(--border,#EADFE2)}
+.thread{background:var(--surface-soft,#FBF9F8)}
+.contact,.contactActive{color:var(--text,#302833);border-color:var(--border,#EADFE2)}
+.contactText strong,.listHeader h2,.threadHeader h2{color:var(--text,#302833)}
+.contactText>span,.contactText small,.listHeader span,.threadHeader p{color:var(--muted,#756D70)}
+.messages article{background:var(--surface,#fff);color:var(--text,#302833);border-color:var(--border,#EADFE2)}
+.messages article.sent{background:var(--gold-soft,#F6EAEE);border-color:var(--border,#EADFE2)}
+.messages article time{color:var(--muted,#756D70)}
+.reply textarea{background:var(--surface,#fff);color:var(--text,#302833);border-color:var(--border,#EADFE2)}
+.reply button,.transferControls button{background:var(--gold,#8F2945)}
+.resolution button{border-color:var(--border,#EADFE2)}
+@media(prefers-reduced-motion:reduce){.splitterHandle{transition:none}}

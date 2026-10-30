@@ -99,7 +99,7 @@ export default function ViviAutomationPanel() {
       </section>
       <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(225px,1fr))',gap:12,marginTop:18}}>
         {[
-          ['Comprar produtos','Vital Decor, BLUETTI e VTX Fitness. Direciona para o comercial.'],
+          ['Comprar produtos','Vital Decor: link para comprar no site oficial ou falar com a equipe. BLUETTI e VTX Fitness: atendimento comercial.'],
           ['Meu pedido','Shopee, Mercado Livre, TikTok Shop, Amazon e loja oficial.'],
           ['Revendedores','Mínimo geral R$ 25 mil · Grama 1.000 m² · PVC R$ 3 mil.'],
           ['Afiliados TikTok','Formulário e qualificação individual da Vital Decor.'],

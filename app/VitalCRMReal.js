@@ -182,6 +182,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   </nav>
   {error&&<div className={css.alert} role="alert">{error}</div>}
   {notice&&<div className={css.notice} role="status">{notice}</div>}
+  {data?.readOnly&&<p className={css.smallNotice} role="status"><strong>CRM conectado, somente leitura:</strong> os dados e as mensagens são reais. Para responder, continue usando a caixa atual do WhatsApp enquanto validamos a integração com Argo e os acessos da equipe.</p>}
   {data?.sampled&&<p className={css.smallNotice}>Os indicadores consideram as conversas sincronizadas dentro do limite atual de consulta.</p>}
   {loading&&!data?<div className={css.loading}>Consultando conversas e permissões da Vital…</div>:null}
   {data && page==='dashboard' && <div className={css.dashboardLayout}>
@@ -296,19 +297,19 @@ export default function VitalCRMReal({embedded=false,onLogout}){
       </div>}
       {detail&&role!=='supervisor'&&detail.contact.queue&&<div className={css.resolution}>
        <div><strong>Situação do atendimento</strong><small>{statusName(detail.contact.status)}</small></div>
-       <button type="button" disabled={busy} onClick={()=>setResolution(detail.contact.status==='closed'?'open':'resolved')}>
+       {!data?.readOnly&&<button type="button" disabled={busy} onClick={()=>setResolution(detail.contact.status==='closed'?'open':'resolved')}>
         <Icon name={detail.contact.status==='closed'?'refresh':'check'} size={15}/>
         {detail.contact.status==='closed'?'Reabrir atendimento':'Marcar como resolvido'}
-       </button>
+       </button>}
       </div>}
-      {detail&&role!=='supervisor'&&<form className={css.reply} onSubmit={reply}>
+      {detail&&!data?.readOnly&&role!=='supervisor'&&<form className={css.reply} onSubmit={reply}>
         <label htmlFor="vital-reply-text">Responder pelo WhatsApp da Vital</label>
         <textarea id="vital-reply-text" value={draft} maxLength={4096} rows={3}
           placeholder="Digite sua resposta…" onChange={e=>setDraft(e.target.value)} disabled={busy}/>
         <div><small>O envio respeita a janela de 24h da Meta e pausa a Vivi neste atendimento.</small>
         <button type="submit" disabled={!draft.trim()||busy}>{busy?'Enviando…':'Enviar mensagem'}</button></div>
        </form>}
-      {detail&&<div className={css.transfer}>
+      {detail&&!data?.readOnly&&<div className={css.transfer}>
        <div><strong><Icon name="flow" size={15} inline/> Encaminhar conversa</strong><p>Escolha a fila que dará continuidade ao atendimento.</p></div>
        <div className={css.transferControls}>
         <select aria-label="Fila de destino" value={destination} onChange={e=>setDestination(e.target.value)} disabled={!canMove||busy}>

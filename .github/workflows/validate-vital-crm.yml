@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feat/vital-crm-operational-queues
+      - feat/tide-studio-crm-navigation-preview
   workflow_dispatch:
 
 permissions:

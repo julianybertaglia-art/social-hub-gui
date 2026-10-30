@@ -22,12 +22,11 @@ export function verifyTicket(ticket, secret = key(), now = Date.now()) {
   }
   return parts[0];
 }
-export function formSubmissionId(ticket, secret = key(), now = Date.now()) {
-  try { return verifyTicket(ticket, secret, now); }
+export function resolveFormTicket(ticket, secret = key(), now = Date.now()) {
+  try { return { id: verifyTicket(ticket, secret, now), verified: true }; }
   catch (error) {
     // Keep an already-open form usable across deployments or missing hidden fields.
-    // Origin checks, honeypot, validation, and rate limits still run before saving.
-    if (error?.status === 403) return randomUUID();
+    if (error?.status === 403) return { id: randomUUID(), verified: false };
     throw error;
   }
 }

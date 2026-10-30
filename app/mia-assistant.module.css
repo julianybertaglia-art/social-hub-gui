@@ -1,0 +1,32 @@
+
+.floating{position:fixed;right:24px;bottom:24px;z-index:88;width:56px;height:56px;touch-action:none}
+.bubble{display:grid;place-items:center;width:56px;height:56px;padding:0;border:2px solid #f4c8d6;border-radius:50%;background:radial-gradient(circle at 26% 15%,#ce547c 0%,var(--gold,#8F2945) 45%,#4b1027 100%);color:#fff;box-shadow:0 7px 25px rgba(30,12,23,.29);cursor:grab;user-select:none;touch-action:none}
+.bubble:active{cursor:grabbing}.bubble:focus-visible{outline:3px solid var(--gold,#8F2945);outline-offset:3px}
+.mark,.markSmall{display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff}
+.mark svg{width:40px;height:26px;margin-top:-1px}.mark strong{font-size:10px;line-height:1;font-weight:900;letter-spacing:.01em;margin-top:-1px}
+.markSmall{flex:none;width:43px;height:43px;border:1px solid #e5b0c4;border-radius:50%;background:radial-gradient(circle at 20% 15%,#c84874,var(--gold,#8F2945) 60%,#581327)}
+.markSmall svg{width:30px;height:20px}.markSmall strong{font-size:9px;line-height:1;font-weight:850}
+.panel{position:fixed;z-index:87;right:24px;bottom:92px;display:flex;flex-direction:column;width:min(365px,calc(100vw - 16px));max-height:min(550px,calc(100dvh - 28px));border:1px solid var(--border,#EADFE2);border-radius:19px;background:var(--surface,#fff);color:var(--text,#171417);box-shadow:0 18px 70px rgba(16,9,13,.32);overflow:hidden}
+.expanded{width:min(505px,calc(100vw - 16px));max-height:min(690px,calc(100dvh - 28px))}
+.header{display:flex;align-items:center;gap:10px;padding:14px 13px;border-bottom:1px solid var(--border,#EADFE2)}
+.heading{flex:1;min-width:0}.heading strong{display:block;color:var(--text);font-size:17px;font-weight:800}.heading span{font-size:11.5px;color:var(--muted)}
+.header button{border:0;background:transparent;color:var(--muted);padding:6px;border-radius:8px;cursor:pointer}.header button:hover{background:var(--surface-soft);color:var(--text)}
+.context{display:flex;align-items:center;gap:7px;padding:10px 16px;background:var(--surface-soft);border-bottom:1px solid var(--border);font-size:11.5px;color:var(--muted);font-weight:650}
+.statusDot{width:7px;height:7px;background:#34A979;border-radius:50%}
+.body{min-height:130px;overflow-y:auto;padding:18px 17px}
+.body h2{font-size:20px;font-weight:800;margin:0 0 9px;color:var(--text)}
+.body p{font-size:13.5px;line-height:1.55;color:var(--muted);margin:0 0 16px}
+.actions{display:flex;flex-direction:column;gap:7px}
+.actions button{display:flex;align-items:center;gap:10px;min-height:42px;border:1px solid var(--border);background:var(--surface-soft);color:var(--text);border-radius:11px;padding:10px 12px;text-align:left;font-weight:650;font-size:13px;cursor:pointer}
+.actions button:hover,.actions button.selected{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 13%,var(--surface))}
+.actions button svg{color:var(--gold);flex:none}
+.description{display:flex;flex-direction:column;gap:6px;margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-soft)}
+.description strong{font-size:12px;color:var(--text)}.description span{font-size:12px;line-height:1.5;color:var(--muted)}
+.footer{padding:10px 14px 14px;border-top:1px solid var(--border)}
+.footer>span{display:block;margin-bottom:9px;color:var(--muted);font-size:10.5px;font-weight:650}
+.compose{display:flex;align-items:center;gap:8px;padding:7px;background:var(--surface-soft);border:1px solid var(--border);border-radius:13px}
+.compose input{flex:1;min-width:0;border:0;padding:7px;background:transparent;color:var(--text);font-size:13px}
+.compose input::placeholder{color:var(--muted)}.compose button{display:grid;place-items:center;width:33px;height:33px;border:0;border-radius:10px;background:var(--gold);color:#fff}
+.compose button:disabled,.compose input:disabled{cursor:not-allowed;opacity:.75}
+@media(max-width:640px){.floating{right:14px;bottom:14px}.panel,.expanded{left:8px!important;right:8px!important;top:auto!important;bottom:81px!important;width:auto;max-height:calc(100dvh - 103px)}}
+@media(prefers-reduced-motion:reduce){.bubble,.panel{transition:none}}

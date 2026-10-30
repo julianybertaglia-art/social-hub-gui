@@ -25,7 +25,7 @@ function clean(value, min, max, label) {
 }
 
 export function validateConsultoria(values) {
-  const name = clean(values.name, 2, 120, 'seu nome');
+  const name = clean(values.name, 1, 120, 'seu nome');
   let phone = clean(values.phone, 10, 30, 'seu WhatsApp com DDD').replace(/\D/g, '');
   if (phone.length === 10 || phone.length === 11) phone = '55' + phone;
   if (!/^55[1-9]\d\d{8,9}$/.test(phone) || /^(\d)\1+$/.test(phone.slice(4))) throw applicationError('Informe um WhatsApp brasileiro válido com DDD.');
@@ -35,8 +35,8 @@ export function validateConsultoria(values) {
   if (!Object.hasOwn(EXPERIENCE, values.experience)) throw applicationError('Conte se você já vende no Mercado Livre.');
   if (!Object.hasOwn(REVENUE, values.revenue)) throw applicationError('Escolha sua faixa de faturamento.');
   if (values.experience === 'zero' && values.revenue !== 'none') throw applicationError('Se você ainda não vende, selecione “Ainda não faturo”.');
-  const product = clean(values.product, 5, 300, 'seu produto ou nicho (pelo menos 5 caracteres)');
-  const challenge = clean(values.challenge, 30, 1500, 'o problema que você gostaria de analisar (pelo menos 30 caracteres)');
+  const product = clean(values.product, 1, 300, 'seu produto ou nicho');
+  const challenge = clean(values.challenge, 1, 1500, 'o problema que você gostaria de analisar');
   if (!Object.hasOwn(RECORDING, values.recording)) throw applicationError('Responda à pergunta sobre os trechos da consultoria.');
   if (values.consent !== 'yes') throw applicationError('Autorize a análise dos dados e o contato sobre sua candidatura.');
   let storeUrl = String(values.storeUrl || '').trim();

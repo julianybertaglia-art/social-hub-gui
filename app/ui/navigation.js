@@ -1,92 +1,48 @@
-// Single navigation model for the TidePlace shell and command palette.
-// UI metadata only. No CRM, Meta or automation business rules are changed.
+// TidePlace: navigation metadata only. Existing routes, APIs, data and channel integrations stay intact.
 export const NAV_GROUPS = [
-  {
-    label: 'VISÃO GERAL',
-    items: [
-      { href: '/', label: 'Painel', icon: 'grid', section: 'dashboard', description: 'Resumo e prioridades' },
-      { href: '/?section=tasks', label: 'Tarefas', icon: 'check', section: 'tasks', description: 'Pendências e organização' },
-    ],
-  },
-  {
-    label: 'INSTAGRAM',
-    items: [
-      { href: '/?section=metrics', label: 'Métricas', icon: 'chart', section: 'metrics', description: 'Desempenho do Instagram' },
-      { href: '/instagram/direct', label: 'Direct', icon: 'instagram', only: ['gui-nonato'], description: 'Caixa de entrada separada do WhatsApp' },
-      { href: '/automacoes', label: 'Automações', icon: 'instagram', description: 'Direct e comentários do Instagram' },
-      { href: '/?section=goals', label: 'Metas', icon: 'target', section: 'goals', description: 'Metas da conta do Instagram' },
-      { href: '/?section=calendar', label: 'Calendário', icon: 'calendar', section: 'calendar', description: 'Calendário editorial' },
-      { href: '/?section=ideas', label: 'Ideias', icon: 'sparkle', section: 'ideas', description: 'Banco de ideias de conteúdo' },
-    ],
-  },
-  {
-    label: 'YOUTUBE',
-    items: [
-      { href: '/youtube', label: 'Conectar canal', icon: 'play', only: ['gui-nonato'], description: 'Autorizar o canal do Gui e gerenciar a conexão com o Google' },
-      { href: '/youtube/publicar', label: 'Publicar Shorts', icon: 'upload', only: ['gui-nonato'], description: 'Enviar um vídeo privado de teste diretamente para o YouTube do Gui' },
-    ],
-  },
-  {
-    label: 'TIKTOK',
-    items: [
-      { href: '/tiktok/conectar', label: 'Conectar conta', icon: 'tiktok', only: ['gui-nonato'], description: 'Conexão oficial TikTok Login Kit e permissões de publicação' },
-    ],
-  },
-  {
-    label: 'CRIAÇÃO DE CONTEÚDO',
-    items: [
-      { href: '/publicar', label: 'Publicar em redes', icon: 'upload', only: ['gui-nonato'], description: 'Publicação de um vídeo com seleção de Instagram, YouTube e TikTok' },
-      { href: '/radar', label: 'Radar de conteúdo', icon: 'sparkle', description: 'Referências e ideias do nicho' },
-      { href: '/conteudo/ia', label: 'Roteiros com IA', icon: 'sparkle', description: 'Criar conteúdo por marca com inteligência artificial' },
-      { href: '/criar-post', label: 'Criar post', icon: 'layers', description: 'Editor de carrosséis, fotos, textos e exportação' },
-    ],
-  },
-  {
-    label: 'CRM · WHATSAPP',
-    items: [
-      { href: '/crm', label: 'Funil e indicadores', icon: 'chart', description: 'Oportunidades e atendimento por setor' },
-      { href: '/crm/consultorias', label: 'Consultorias', icon: 'users', only: ['gui-nonato'], description: 'Candidaturas e seleção para a consultoria do Gui' },
-      { href: '/whatsapp', label: 'Caixa de entrada', icon: 'chat', only: ['gui-nonato'], description: 'CRM e mensagens do Gui' },
-      { href: '/whatsapp', label: 'Caixa geral', icon: 'chat', only: ['vital-decor'], description: 'Todas as mensagens da Vital Decor' },
-      { href: '/whatsapp/setores', label: 'Meus setores', icon: 'users', only: ['vital-decor'], description: 'Conversas atribuídas ao seu atendimento' },
-      { href: '/whatsapp/automacoes', label: 'Automações', icon: 'flow', description: 'Fluxos e respostas automáticas do WhatsApp' },
-      { href: '/whatsapp/campanha', label: 'Campanhas', icon: 'send', only: ['gui-nonato'], description: 'Reengajamento e envios' },
-    ],
-  },
-  {
-    label: 'MAIS FERRAMENTAS',
-    items: [
-      { href: '/tiktok/afiliados', label: 'Afiliados TikTok', icon: 'tiktok', description: 'Parcerias e qualificação' },
-      { href: '/whatsapp/integracao-argo', label: 'Setores e Argo', icon: 'layers', only: ['vital-decor'], description: 'Configuração de responsáveis e integração Argo' },
-      { href: '/whatsapp/grupos', label: 'Grupos', icon: 'users', only: ['gui-nonato'], description: 'Gestão de grupos' },
-      { href: '/whatsapp/gato', label: 'Envios rápidos', icon: 'send', only: ['gui-nonato'], description: 'Ferramentas pontuais' },
-      { href: '/whatsapp/diagnostico', label: 'Diagnóstico WhatsApp', icon: 'shield', only: ['gui-nonato'], description: 'Verificação da integração Meta' },
-      { href: '/conexoes/vital-decor', label: 'Conexões Vital Decor', icon: 'plug', only: ['vital-decor'], description: 'Gerenciar canais e autorizações' },
-      { href: '/admin/conexoes', label: 'Central de Controle', icon: 'shield', description: 'Mapa e saúde das conexões' },
-    ],
-  },
+ {label:'SOCIAL STUDIO',area:'studio',items:[
+  {href:'/',label:'Visão geral',icon:'grid',section:'dashboard',description:'Resumo da marca'},
+  {href:'/?section=calendar',label:'Calendário e conteúdo',icon:'calendar',section:'calendar',description:'Planejamento editorial'},
+  {href:'/?section=ideas',label:'Ideias',icon:'sparkle',section:'ideas',description:'Banco de ideias existente; integração com o calendário virá depois'},
+  {href:'/publicar',label:'Publicar em redes',icon:'upload',only:['gui-nonato'],description:'Publicação multicanal'},
+  {href:'/automacoes',label:'Automações do Instagram',icon:'instagram',description:'Fluxos de Instagram existentes'},
+  {href:'/?section=metrics',label:'Métricas',icon:'chart',section:'metrics',description:'Métricas do Instagram'},
+  {href:'/?section=goals',label:'Metas',icon:'target',section:'goals',description:'Metas atuais'},
+  {href:'/?section=tasks',label:'Tarefas',icon:'check',section:'tasks',description:'Tarefas atuais'},
+ ]},
+ {label:'TIDE CRM',area:'crm',items:[
+  {href:'/crm',label:'Funil e indicadores',icon:'chart',only:['gui-nonato'],description:'CRM atual do Gui'},
+  {href:'/crm/consultorias',label:'Consultorias',icon:'users',only:['gui-nonato'],description:'Leads da consultoria do Gui'},
+  {href:'/whatsapp',label:'Atendimentos WhatsApp',icon:'chat',description:'Caixa de entrada atual da marca'},
+  {href:'/whatsapp/setores',label:'Meus setores',icon:'users',only:['vital-decor'],description:'Setores de atendimento da Vital'},
+  {href:'/instagram/direct',label:'Instagram Direct',icon:'instagram',only:['gui-nonato'],description:'Direct do Gui'},
+  {href:'/whatsapp/automacoes',label:'Automações WhatsApp',icon:'flow',description:'Fluxos atuais do WhatsApp'},
+  {href:'/whatsapp/campanha',label:'Campanhas',icon:'send',only:['gui-nonato'],description:'Campanhas do Gui'},
+ ]},
+ {label:'CONFIGURAÇÕES',area:'settings',items:[
+  {href:'/conexoes/vital-decor',label:'Conexões Vital Decor',icon:'plug',only:['vital-decor'],description:'Conexões autorizadas da Vital'},
+  {href:'/whatsapp/integracao-argo',label:'Setores e Argo',icon:'layers',only:['vital-decor'],description:'Configuração atual do Argo'},
+  {href:'/tiktok/conectar',label:'Conectar TikTok',icon:'tiktok',only:['gui-nonato'],description:'Configurações TikTok'},
+  {href:'/youtube',label:'Conectar YouTube',icon:'play',only:['gui-nonato'],description:'Configurações YouTube'},
+  {href:'/admin/conexoes',label:'Central de controle',icon:'settings',description:'Diagnóstico das conexões'},
+ ]}
 ];
-
-export function visibleNavGroups(workspaceId = 'gui-nonato') {
-  return NAV_GROUPS.map((group) => ({
-    ...group,
-    items: group.items.filter((item) => !item.only || item.only.includes(workspaceId)),
-  })).filter((group) => group.items.length > 0);
+export function visibleNavGroups(workspaceId='gui-nonato',area=null){
+ return NAV_GROUPS.filter(g=>area===null||g.area===area)
+  .map(g=>({...g,items:g.items.filter(i=>!i.only||i.only.includes(workspaceId))}))
+  .filter(g=>g.items.length);
 }
-
-export function matchesNavigation(item, pathname, section = 'dashboard') {
-  if (item.section) return pathname === '/' && section === item.section;
-  if (item.href === '/whatsapp') return pathname === '/whatsapp';
-  if (item.href === '/automacoes') return pathname === '/automacoes';
-  return pathname === item.href || pathname.startsWith(item.href + '/');
+export function matchesNavigation(item,pathname,section='dashboard'){
+ if(!item)return false;
+ if(item.section)return pathname==='/'&&section===item.section;
+ if(item.href==='/whatsapp')return pathname==='/whatsapp';
+ if(item.href==='/crm')return pathname==='/crm';
+ if(item.href==='/automacoes')return pathname==='/automacoes';
+ return pathname===item.href||pathname.startsWith(item.href+'/');
 }
-
-export function searchNavigation(query, workspaceId = 'gui-nonato') {
-  const normalized = String(query || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-  const results = visibleNavGroups(workspaceId).flatMap((group) =>
-    group.items.map((item) => ({ ...item, group: group.label }))
-  );
-  if (!normalized) return results;
-  return results.filter((item) => (item.label + ' ' + item.description + ' ' + item.group)
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(normalized));
+export function searchNavigation(query,workspaceId='gui-nonato'){
+ const normalize=v=>String(v||'').normalize('NFD').replace(/\p{M}/gu,'').trim().toLowerCase();
+ const all=visibleNavGroups(workspaceId).flatMap(g=>g.items.map(i=>({...i,group:g.label})));
+ if(!normalize(query))return all;
+ return all.filter(i=>normalize(i.label+' '+i.description+' '+i.group).includes(normalize(query)));
 }

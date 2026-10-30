@@ -1,61 +1,55 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { visibleNavGroups, matchesNavigation, searchNavigation } from '../app/ui/navigation.js';
+import {visibleNavGroups,matchesNavigation,searchNavigation} from '../app/ui/navigation.js';
 
-const flatten = (workspace) => visibleNavGroups(workspace).flatMap((group) => group.items);
+const flatten=workspace=>visibleNavGroups(workspace).flatMap(g=>g.items);
 
-test('navigation keeps Gui and Vital tools isolated', () => {
-  const gui = flatten('gui-nonato').map((item) => item.href);
-  const vital = flatten('vital-decor').map((item) => item.href);
-  assert.ok(gui.includes('/whatsapp'));
-  assert.ok(vital.includes('/whatsapp'));
-  assert.ok(gui.includes('/whatsapp/campanha'));
-  assert.ok(!vital.includes('/whatsapp/campanha'));
-  assert.ok(vital.includes('/whatsapp/integracao-argo'));
-  assert.ok(!gui.includes('/whatsapp/integracao-argo'));
-  assert.ok(vital.includes('/conexoes/vital-decor'));
-  assert.ok(!gui.includes('/conexoes/vital-decor'));
+test('Social and CRM separate the existing functional navigation without duplicate routes',()=>{
+ for(const workspace of ['gui-nonato','vital-decor']){
+  const groups=visibleNavGroups(workspace);
+  assert.deepEqual(groups.map(g=>g.label),['SOCIAL STUDIO','TIDE CRM','CONFIGURAÇÕES']);
+  assert.equal(visibleNavGroups(workspace,'studio').length,1);
+  assert.equal(visibleNavGroups(workspace,'crm').length,1);
+  const urls=flatten(workspace).map(i=>i.href);
+  assert.equal(urls.length,new Set(urls).size);
+  assert.ok(urls.includes('/whatsapp'));
+  assert.ok(urls.includes('/?section=calendar'));
+  assert.ok(urls.includes('/?section=ideas'));
+  assert.ok(urls.includes('/?section=goals'));
+ }
 });
-
-test('all navigation destinations are unique in each workspace', () => {
-  for (const workspace of ['gui-nonato', 'vital-decor']) {
-    const paths = flatten(workspace).map((item) => item.href);
-    assert.equal(new Set(paths).size, paths.length);
-  }
+test('workspace permissions remain isolated and sensitive routes remain unchanged',()=>{
+ const gui=flatten('gui-nonato').map(i=>i.href);
+ const vital=flatten('vital-decor').map(i=>i.href);
+ assert.ok(gui.includes('/whatsapp/campanha'));
+ assert.ok(!vital.includes('/whatsapp/campanha'));
+ assert.ok(gui.includes('/crm'));
+ assert.ok(!vital.includes('/crm'));
+ assert.ok(vital.includes('/whatsapp/setores'));
+ assert.ok(!gui.includes('/whatsapp/setores'));
+ assert.ok(vital.includes('/whatsapp/integracao-argo'));
+ assert.ok(!gui.includes('/whatsapp/integracao-argo'));
+ assert.ok(vital.includes('/conexoes/vital-decor'));
+ assert.ok(!gui.includes('/conexoes/vital-decor'));
 });
-
-test('search is accent insensitive and respects workspace', () => {
-  assert.ok(searchNavigation('metricas', 'gui-nonato').some((item) => item.label === 'Métricas'));
-  assert.ok(searchNavigation('conexoes vital', 'vital-decor').some((item) => item.href === '/conexoes/vital-decor'));
-  assert.equal(searchNavigation('integracao argo', 'gui-nonato').length, 0);
+test('hide abandoned tools from menu without altering their routes or stored content',()=>{
+ const all=flatten('gui-nonato').map(i=>i.href);
+ assert.ok(!all.includes('/radar'));
+ assert.ok(!all.includes('/criar-post'));
+ assert.ok(!all.includes('/conteudo/ia'));
 });
-
-test('dashboard sections match only the currently active tab', () => {
-  const tasks = flatten('gui-nonato').find((item) => item.section === 'tasks');
-  assert.equal(matchesNavigation(tasks, '/', 'tasks'), true);
-  assert.equal(matchesNavigation(tasks, '/', 'dashboard'), false);
-  assert.equal(matchesNavigation(tasks, '/whatsapp', 'tasks'), false);
-  const crm = flatten('gui-nonato').find((item) => item.href === '/whatsapp');
-  assert.equal(matchesNavigation(crm, '/whatsapp'), true);
-  assert.equal(matchesNavigation(crm, '/whatsapp/gato'), false);
+test('search remains accent insensitive and scoped to selected workspace',()=>{
+ assert.ok(searchNavigation('metricas','gui-nonato').some(i=>i.label==='Métricas'));
+ assert.ok(searchNavigation('conexoes vital','vital-decor').some(i=>i.href==='/conexoes/vital-decor'));
+ assert.equal(searchNavigation('integracao argo','gui-nonato').length,0);
 });
-
-
-test('sidebar groups Instagram and CRM in the previous channel-based structure', () => {
-  const guiGroups = visibleNavGroups('gui-nonato');
-  const vitalGroups = visibleNavGroups('vital-decor');
-  for (const groups of [guiGroups, vitalGroups]) {
-    assert.ok(groups.find(group => group.label === 'INSTAGRAM'));
-    assert.ok(groups.find(group => group.label === 'CRM · WHATSAPP'));
-    const instagram = groups.find(group => group.label === 'INSTAGRAM').items.map(item => item.label);
-    assert.ok(instagram.includes('Métricas'));
-    assert.ok(instagram.includes('Automações'));
-    assert.ok(instagram.includes('Metas'));
-  }
-  assert.ok(flatten('vital-decor').some(item => item.href === '/whatsapp/setores'));
-  assert.ok(!flatten('gui-nonato').some(item => item.href === '/whatsapp/setores'));
-  const inbox = flatten('vital-decor').find(item => item.href === '/whatsapp');
-  const sectors = flatten('vital-decor').find(item => item.href === '/whatsapp/setores');
-  assert.equal(matchesNavigation(inbox, '/whatsapp/setores'), false);
-  assert.equal(matchesNavigation(sectors, '/whatsapp/setores'), true);
+test('active navigation only matches the intended section or route',()=>{
+ const studio=flatten('gui-nonato');
+ const tasks=studio.find(i=>i.section==='tasks');
+ assert.equal(matchesNavigation(tasks,'/','tasks'),true);
+ assert.equal(matchesNavigation(tasks,'/','dashboard'),false);
+ assert.equal(matchesNavigation(tasks,'/whatsapp','tasks'),false);
+ const inbox=studio.find(i=>i.href==='/whatsapp');
+ assert.equal(matchesNavigation(inbox,'/whatsapp'),true);
+ assert.equal(matchesNavigation(inbox,'/whatsapp/gato'),false);
 });

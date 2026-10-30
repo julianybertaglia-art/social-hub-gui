@@ -70,7 +70,7 @@ test('public form is unauthenticated but rejects cross-origin, unsigned, overlar
     const page = await publicGet(); assert.equal(page.status, 200);
     assert.match(page.headers.get('content-security-policy'), /frame-ancestors 'none'/);
     assert.match(await page.text(), /name="ticket"/);
-    assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { origin: 'https://evil.example' }, body: '' }))).status, 403);
+    assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { origin: 'https://evil.example' }, body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 403);
     assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }))).status, 415);
     assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 403);
     assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ name: 'x'.repeat(18000) }) }))).status, 413);

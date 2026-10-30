@@ -91,7 +91,7 @@ test('public form rejects cross-origin, oversized, and non-form writes', async (
     assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { origin: 'https://evil.example' }, body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 403);
     assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }))).status, 415);
     assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 403);
-    assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { origin: url }, body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 400);
+    assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { origin: new URL(url).origin }, body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 400);
     assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ name: 'x'.repeat(18000) }) }))).status, 413);
     assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ company_site: 'spam' }) }))).status, 200);
   } finally { if (key === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = key; }

@@ -135,6 +135,20 @@ export default function VitalInstagramAutomationPanel() {
     }
   }
 
+  async function activateExistingDirect() {
+    setBusy('existing');
+    setNotice('Conferindo com a Meta a autorização já salva da Vital Decor...');
+    try {
+      await api('/api/vital-connections/instagram/direct-control', { action: 'activate_existing' });
+      await refresh();
+      setNotice('Direct ativado com a conexão existente! Envie uma mensagem de outra conta do Instagram para testar.');
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setBusy('');
+    }
+  }
+
   async function pauseDirect() {
     setBusy('pausing');
     try {
@@ -202,16 +216,24 @@ export default function VitalInstagramAutomationPanel() {
 
         <div className={styles.actions}>
           <div className={styles.actionCopy}>
-            <strong>{loading ? 'Consultando a conexão...' : enabled ? 'Resposta automática ligada' : connected ? 'A conexão está ativa, mas os Directs precisam de autorização.' : 'É preciso reconectar o Instagram da Vital Decor.'}</strong>
+            <strong>{loading ? 'Consultando a conexão...' : enabled ? 'Resposta automática ligada' : connected ? 'Instagram conectado. Tente liberar as mensagens com a conexão atual ou autorize novamente.' : 'É preciso reconectar o Instagram da Vital Decor.'}</strong>
             <p>{enabled ? 'O TidePlace está autorizado a responder os novos Directs da Vital.' : 'Autorize o recebimento e o envio de mensagens na Meta. Nenhuma resposta será disparada até concluir.'}</p>
           </div>
           {enabled ? (
             <button type="button" className={styles.secondaryButton} onClick={pauseDirect} disabled={Boolean(busy)}> {busy === 'pausing' ? 'Pausando...' : 'Pausar automação'} </button>
           ) : (
-            <button type="button" className={styles.primaryButton} onClick={authorizeDirect}
-              disabled={!sdkReady || Boolean(busy) || loading}>
-              {busy === 'meta' ? 'Aguardando Meta...' : !sdkReady ? 'Carregando Meta...' : 'Autorizar e ativar Direct'}
-            </button>
+            <div className={styles.activationButtons}>
+              {connected && (
+                <button type="button" className={styles.primaryButton} onClick={activateExistingDirect}
+                  disabled={Boolean(busy) || loading}>
+                  {busy === 'existing' ? 'Conferindo autorização...' : 'Tentar ativar conexão atual'}
+                </button>
+              )}
+              <button type="button" className={connected ? styles.secondaryButton : styles.primaryButton}
+                onClick={authorizeDirect} disabled={!sdkReady || Boolean(busy) || loading}>
+                {busy === 'meta' ? 'Aguardando Meta...' : !sdkReady ? 'Carregando Meta...' : connected ? 'Autorizar novamente pela Meta' : 'Autorizar e ativar Direct'}
+              </button>
+            </div>
           )}
         </div>
       </section>

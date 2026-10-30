@@ -41,3 +41,27 @@ test('Direct button template offers site and WhatsApp, fallback preserves WhatsA
   assert.match(src,/\.eq\('automatic_replies_enabled', true\)/);
   assert.match(src,/claim_vital_instagram_direct_reply/);
 });
+
+test('Direct manual activation checks owner, account identity and Meta subscription before enabling',()=>{
+  const code=readFileSync(new URL('../app/api/vital-connections/instagram/direct-control/route.js',import.meta.url),'utf8');
+  assert.match(code,/authorize\(request\)/);
+  assert.match(code,/payload\?\.action !== 'activate_existing'|\['pause', 'activate_existing'\]/);
+  assert.match(code,/\.eq\('owner_user_id', ownerId\)/);
+  assert.match(code,/profile\?\.username/);
+  assert.match(code,/subscribed_apps/);
+  assert.match(code,/subscription\?\.success !== true/);
+  const check=code.indexOf('subscription?.success !== true');
+  const enabled=code.indexOf('automatic_replies_enabled: true');
+  assert.ok(check>=0&&enabled>check,'enable only after subscription success');
+  assert.match(code,/existing\.page_id/);
+  assert.match(code,/existing\.access_token/);
+  assert.doesNotMatch(code,/Response\.json\(\{[^}]*access_token/);
+});
+
+test('Direct UI exposes retry without pop-up while preserving reauthorization and pause',()=>{
+  const ui=readFileSync(new URL('../app/VitalInstagramAutomationPanel.js',import.meta.url),'utf8');
+  assert.match(ui,/Tentar ativar conexão atual/);
+  assert.match(ui,/action: 'activate_existing'/);
+  assert.match(ui,/Autorizar novamente pela Meta/);
+  assert.match(ui,/action: 'pause'/);
+});

@@ -10,7 +10,7 @@ const PHONE=/^\d{8,15}$/;
 
 async function context(request){
   const auth=await getVitalCrmMember(request);
-  if(!['owner','supervisor','agent'].includes(auth.access.role))throw fail('Acesso restrito ao atendimento da Vital.',403);
+  if(auth.access.role!=='owner')throw fail('Nesta fase o CRM real está liberado apenas para a administradora.',403);
   const {db,organization,access,userId}=auth;
   const owner=organization.ownerUserId;
   const {data:connection,error:connectionError}=await db.from('workspace_meta_connections')
@@ -137,7 +137,7 @@ async function summary(ctx,page){
     transferDestinations:vitalTransferDestinations(ctx.queues),
     conversations:enriched,page,hasMore:rows.length>(page+1)*30,
     sampled:(recent.data||[]).length>=3000||(flows.data||[]).length>=5000||(states.data||[]).length>=5000,
-    readOnly:false,
+    readOnly:process.env.VITAL_CRM_WRITES_ENABLED!=='true',
   };
 }
 export async function GET(request){
@@ -155,6 +155,7 @@ export async function GET(request){
 }
 export async function PATCH(request){
   try{
+    if(process.env.VITAL_CRM_WRITES_ENABLED!=='true')throw fail('Movimentação desativada até validar Argo e permissões.',403);
     const origin=request.headers.get('origin');
     if(!origin||origin!==new URL(request.url).origin)throw fail('Origem inválida.',403);
     const ctx=await context(request);

@@ -8,7 +8,8 @@ const headers={'Cache-Control':'private, no-store',Vary:'Authorization'};
 const PHONE=/^\d{8,15}$/;
 
 export async function PATCH(request){
- try {
+ try {  if(process.env.VITAL_CRM_WRITES_ENABLED!=='true')throw fail('Alteração de status em validação; nenhuma conversa foi modificada.',403);
+
   const url=new URL(request.url), origin=request.headers.get('origin');
   if(!origin||origin!==url.origin)throw fail('Origem inválida.',403);
   const raw=await request.text();

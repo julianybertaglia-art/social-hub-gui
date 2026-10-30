@@ -41,7 +41,7 @@ export function matchesNavigation(item,pathname,section='dashboard'){
  return pathname===item.href||pathname.startsWith(item.href+'/');
 }
 export function searchNavigation(query,workspaceId='gui-nonato'){
- const normalize=v=>String(v||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim().toLowerCase();
+ const normalize=v=>String(v||'').normalize('NFD').replace(/\\p{M}/gu,'').trim().toLowerCase();
  const all=visibleNavGroups(workspaceId).flatMap(g=>g.items.map(i=>({...i,group:g.label})));
  if(!normalize(query))return all;
  return all.filter(i=>normalize(i.label+' '+i.description+' '+i.group).includes(normalize(query)));

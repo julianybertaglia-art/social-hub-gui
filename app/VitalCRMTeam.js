@@ -32,7 +32,7 @@ export default function VitalCRMTeam(){
   <header className={styles.header}>
    <div><span className={styles.eyebrow}>TIDEPLACE / VITAL DECOR / ADMINISTRAÇÃO</span>
     <h1>Equipe e permissões</h1>
-    <p>Configure o que cada colaborador verá. Os acessos só serão ativados após os testes.</p>
+    <p>Confira a organização dos setores e convites planejados. A edição e ativação de funcionários só serão liberadas após os testes reais.</p>
    </div>
    <Link href="/crm/vital" className={styles.back}><Icon name="arrowLeft" size={16}/> Voltar ao CRM</Link>
   </header>
@@ -66,7 +66,7 @@ export default function VitalCRMTeam(){
      <div className={styles.queueList}>
       {data.queues.map(q=><label key={q.queue_code} className={styles.queue}>
        <input type="checkbox" checked={d.plannedQueues.includes(q.queue_code)}
-        disabled={Boolean(busy)}
+        disabled={true}
         onChange={event=>toggle(d.email,q.queue_code,event.target.checked)}/>
        <i style={{background:q.color}} aria-hidden="true"/>
        <span>{q.display_name}</span>

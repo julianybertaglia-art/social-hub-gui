@@ -13,6 +13,7 @@ export const NAV_GROUPS = [
     {href:'/crm',label:'Visão geral',icon:'chart',only:['gui-nonato'],description:'Funil e indicadores de relacionamento'},
     {href:'/crm/vital',label:'Dashboard e atendimentos',icon:'inbox',only:['vital-decor'],description:'CRM Vital, nove filas e dashboards'},
     {href:'/whatsapp',label:'WhatsApp',icon:'chat',only:['gui-nonato'],description:'Conversas e contatos do Gui'},
+    {href:'/whatsapp',label:'WhatsApp geral',icon:'chat',only:['vital-decor'],description:'Caixa geral do WhatsApp da Vital preservada'},
     {href:'/instagram/direct',label:'Instagram Direct',icon:'instagram',only:['gui-nonato'],description:'Atendimento pelo Instagram'},
     {href:'/crm/consultorias',label:'Consultorias',icon:'users',only:['gui-nonato'],description:'Leads da consultoria e mentoria'},
     {href:'/whatsapp/automacoes',label:'Automações WhatsApp',icon:'flow',description:'Regras e respostas automatizadas do WhatsApp'},

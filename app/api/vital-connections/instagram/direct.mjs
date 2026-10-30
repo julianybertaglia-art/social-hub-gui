@@ -1,8 +1,8 @@
 import { GUI_INSTAGRAM_ID } from '../helpers.mjs';
 
 const API_VERSION = 'v26.0';
-import { VITAL_WELCOME_TEXT, VITAL_WHATSAPP_LINK } from '../../../lib/vital-direct-copy.mjs';
-export { VITAL_WHATSAPP, VITAL_WELCOME_TEXT, VITAL_WHATSAPP_LINK } from '../../../lib/vital-direct-copy.mjs';
+import { VITAL_WELCOME_TEXT, VITAL_WHATSAPP_LINK, VITAL_STORE_LINK } from '../../../lib/vital-direct-copy.mjs';
+export { VITAL_WHATSAPP, VITAL_WHATSAPP_DISPLAY, VITAL_STORE_LINK, VITAL_WELCOME_TEXT, VITAL_WHATSAPP_LINK } from '../../../lib/vital-direct-copy.mjs';
 
 function id(value) {
   const result = String(value || '');
@@ -70,12 +70,15 @@ export async function processVitalInstagramDirect(payload, db) {
         attachment: { type: 'template', payload: {
           template_type: 'button',
           text: VITAL_WELCOME_TEXT,
-          buttons: [{ type: 'web_url', url: VITAL_WHATSAPP_LINK, title: 'Abrir WhatsApp' }],
+          buttons: [
+            { type: 'web_url', url: VITAL_STORE_LINK, title: 'Comprar no site' },
+            { type: 'web_url', url: VITAL_WHATSAPP_LINK, title: 'Falar no WhatsApp' },
+          ],
         } },
       });
     } catch (templateError) {
       console.warn('Vital Instagram: template unavailable, sending text with link.', templateError.message);
-      await sendMetaMessage(connection, event.senderId, { text: VITAL_WELCOME_TEXT + '\n\n' + VITAL_WHATSAPP_LINK });
+      await sendMetaMessage(connection, event.senderId, { text: VITAL_WELCOME_TEXT + '\n\nWhatsApp: ' + VITAL_WHATSAPP_LINK });
     }
     sent += 1;
   }

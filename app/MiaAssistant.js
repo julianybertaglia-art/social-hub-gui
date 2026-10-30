@@ -11,11 +11,7 @@ const DEFAULT_SIZE=56;
 function clamp(value,minimum,maximum){return Math.max(minimum,Math.min(maximum,value));}
 function MiaMark({small=false}){
  return <span className={small?css.markSmall:css.mark}>
-  <svg viewBox="0 0 100 57" aria-hidden="true">
-   <path d="M9 30 C21 6 40 12 58 21 C74 29 85 23 93 17 C90 32 79 43 65 43 C49 43 35 27 19 27 C15 27 12 28 9 30 Z"
-     fill="none" stroke="currentColor" strokeWidth="6.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-  <strong>MIA</strong>
+  <img src="/brand/mia-logo.webp" alt="" width={small?43:53} height={small?43:53}/>
  </span>;
 }
 const socialActions=[

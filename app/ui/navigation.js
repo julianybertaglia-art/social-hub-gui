@@ -13,6 +13,8 @@ export const NAV_GROUPS = [
  {label:'TIDE CRM',area:'crm',items:[
   {href:'/crm',label:'Funil e indicadores',icon:'chart',only:['gui-nonato'],description:'CRM atual do Gui'},
   {href:'/crm/consultorias',label:'Consultorias',icon:'users',only:['gui-nonato'],description:'Leads da consultoria do Gui'},
+  {href:'/crm/vital',label:'CRM Vital Decor',icon:'inbox',only:['vital-decor'],description:'Dashboard real e histórico protegido de conversas da Vital'},
+  {href:'/crm/vital/equipe',label:'Equipe planejada',icon:'users',only:['vital-decor'],description:'Rascunhos de equipe; nenhum acesso liberado'},
   {href:'/whatsapp',label:'Atendimentos WhatsApp',icon:'chat',description:'Caixa de entrada atual da marca'},
   {href:'/whatsapp/setores',label:'Meus setores',icon:'users',only:['vital-decor'],description:'Setores de atendimento da Vital'},
   {href:'/instagram/direct',label:'Instagram Direct',icon:'instagram',only:['gui-nonato'],description:'Direct do Gui'},

@@ -43,6 +43,7 @@ export async function GET(request){
 }
 export async function PATCH(request){
  try{
+  if(process.env.VITAL_CRM_WRITES_ENABLED!=='true')throw fail('Edição da equipe desativada durante a implantação do CRM.',403);
   const url=new URL(request.url),origin=request.headers.get('origin');
   if(!origin||origin!==url.origin)throw fail('Origem inválida.',403);
   const {db,organization}=await ownerContext(request);

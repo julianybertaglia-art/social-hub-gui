@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './CloudGate';
 import { launchMetaLogin } from './conexoes/vital-decor/meta-login.mjs';
-import { VITAL_WHATSAPP, VITAL_WHATSAPP_LINK, VITAL_WELCOME_TEXT } from './lib/vital-direct-copy.mjs';
+import { VITAL_WHATSAPP_DISPLAY, VITAL_WHATSAPP_LINK, VITAL_STORE_LINK, VITAL_WELCOME_TEXT } from './lib/vital-direct-copy.mjs';
 import styles from './vital-instagram-automation.module.css';
 
 const SCOPE = 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,pages_manage_metadata,instagram_manage_messages';
@@ -154,7 +154,7 @@ export default function VitalInstagramAutomationPanel() {
         <div>
           <span className={styles.eyebrow}>INSTAGRAM · VITAL DECOR</span>
           <h1>Automações do Direct</h1>
-          <p>Atendimento automático do Instagram para o WhatsApp comercial, sem misturar os contatos do Gui.</p>
+          <p>Resposta de boas-vindas que direciona clientes para a loja oficial ou para o WhatsApp da Vital Decor.</p>
         </div>
         <span className={enabled ? styles.activeBadge : styles.pendingBadge}>
           <span className={styles.bullet} />
@@ -166,7 +166,7 @@ export default function VitalInstagramAutomationPanel() {
         <div className={styles.cardHeader}>
           <div className={styles.appIcon}>◎</div>
           <div className={styles.cardTitle}>
-            <h2>Boas-vindas → WhatsApp</h2>
+            <h2>Boas-vindas → Site ou WhatsApp</h2>
             <p>@vitaldecor_ · Mensagem recebida no Direct</p>
           </div>
           <span className={enabled ? styles.activeBadge : styles.pendingBadge}>{enabled ? 'Ativa' : 'Pausada'}</span>
@@ -177,21 +177,24 @@ export default function VitalInstagramAutomationPanel() {
           <span className={styles.arrow}>→</span>
           <div><b>2</b><span>Recebe a mensagem e o botão</span></div>
           <span className={styles.arrow}>→</span>
-          <div><b>3</b><span>Abre o WhatsApp da Vital</span></div>
+          <div><b>3</b><span>Abre a loja ou o WhatsApp da Vital</span></div>
         </div>
 
         <div className={styles.previewGrid}>
           <div className={styles.preview}>
             <span className={styles.previewLabel}>PRÉVIA DA MENSAGEM AUTOMÁTICA</span>
             <div className={styles.message}>{VITAL_WELCOME_TEXT}</div>
+            <a href={VITAL_STORE_LINK} className={styles.whatsappButton} target="_blank" rel="noopener noreferrer">
+              Comprar no site ↗
+            </a>
             <a href={VITAL_WHATSAPP_LINK} className={styles.whatsappButton} target="_blank" rel="noopener noreferrer">
-              ◉ Abrir WhatsApp ↗
+              Falar no WhatsApp ↗
             </a>
           </div>
           <div className={styles.details}>
             <span className={styles.previewLabel}>COMO FUNCIONA</span>
             <div className={styles.detail}><strong>Canal</strong><span>Instagram @vitaldecor_</span></div>
-            <div className={styles.detail}><strong>Destino</strong><span>WhatsApp (11) {VITAL_WHATSAPP.slice(4,9)}-{VITAL_WHATSAPP.slice(9)}</span></div>
+            <div className={styles.detail}><strong>Destino</strong><span>{VITAL_STORE_LINK} ou WhatsApp {VITAL_WHATSAPP_DISPLAY}</span></div>
             <div className={styles.detail}><strong>Frequência</strong><span>Uma resposta no início da conversa, sem repetir durante 24h de interação</span></div>
             <div className={styles.detail}><strong>Outras automações</strong><span>As palavras-chave e os Directs do Gui permanecem separados</span></div>
           </div>

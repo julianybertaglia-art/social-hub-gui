@@ -37,7 +37,7 @@ test('required text responses have no arbitrary minimum character count', () => 
   assert.equal(short.name, 'A'); assert.equal(short.product, 'X'); assert.equal(short.challenge, 'Ok');
   const html = consultoriaHtml({ ticket: 'ticket' });
   assert.doesNotMatch(html, /minlength=/i);
-  assert.doesNotMatch(html, /Mínimo de \\d+ caracteres/i);
+  assert.doesNotMatch(html, /Mínimo de \d+ caracteres/i);
 });
 test('signed form tickets reject tampering, a different secret, expiry and future timestamps', () => {
   const now = Date.now(), ticket = formTicket('test-secret', now);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CONSULTORIA_DIRECT, CONSULTORIA_URL, validateConsultoria } from '../app/lib/consultoria.mjs';
-import { formTicket, verifyTicket } from '../app/consultoria/security.mjs';
+import { formTicket, verifyTicket, formSubmissionId } from '../app/consultoria/security.mjs';
 import { consultoriaHtml } from '../app/consultoria/html.mjs';
 import { saveConsultoria } from '../app/consultoria/service.mjs';
 import { GET as publicGet, POST as publicPost } from '../app/consultoria/route.js';
@@ -26,11 +26,18 @@ test('normalizes contacts, preserves candidacy context and keeps marketing optio
 });
 test('rejects invalid contacts, invented answers, missing consent and unsafe shop links', () => {
   for (const change of [{ phone: '00000000000' }, { instagram: '<script>' }, { experience: 'admin' },
-    { revenue: 'million' }, { consent: 'no' }, { recording: 'maybe' }, { challenge: 'oi' },
+    { revenue: 'million' }, { consent: 'no' }, { recording: 'maybe' },
     { experience: 'zero', revenue: '500k_plus' }, { storeUrl: 'javascript:alert(1)' },
     { storeUrl: 'https://mercadolivre.com.br.evil.example' }]) {
     assert.throws(() => validateConsultoria({ ...values(), ...change }));
   }
+});
+test('required text responses have no arbitrary minimum character count', () => {
+  const short = validateConsultoria({ ...values(), name: 'A', product: 'X', challenge: 'Ok' });
+  assert.equal(short.name, 'A'); assert.equal(short.product, 'X'); assert.equal(short.challenge, 'Ok');
+  const html = consultoriaHtml({ ticket: 'ticket' });
+  assert.doesNotMatch(html, /minlength=/i);
+  assert.doesNotMatch(html, /Mínimo de \\d+ caracteres/i);
 });
 test('signed form tickets reject tampering, a different secret, expiry and future timestamps', () => {
   const now = Date.now(), ticket = formTicket('test-secret', now);
@@ -39,6 +46,14 @@ test('signed form tickets reject tampering, a different secret, expiry and futur
   assert.throws(() => verifyTicket(ticket.replace(/.$/, ticket.endsWith('0') ? '1' : '0'), 'test-secret', now));
   assert.throws(() => verifyTicket(ticket, 'test-secret', now + 3 * 3600000));
   assert.throws(() => verifyTicket(ticket, 'test-secret', now - 1));
+});
+test('an absent or stale form ticket does not block a valid submission', () => {
+  const now = Date.now();
+  const stale = formTicket('old-secret', now);
+  assert.match(formSubmissionId('', 'new-secret', now), /^[0-9a-f-]{36}$/);
+  assert.match(formSubmissionId(stale, 'new-secret', now), /^[0-9a-f-]{36}$/);
+  const valid = formTicket('stable-secret', now);
+  assert.equal(formSubmissionId(valid, 'stable-secret', now), verifyTicket(valid, 'stable-secret', now));
 });
 test('form escapes retained answers and errors and consistently discloses the selection and 30 minutes', () => {
   const html = consultoriaHtml({ ticket: 'ticket', values: { name: '"><script>alert(1)</script>', challenge: '</textarea><script>bad</script>' }, error: '<img src=x onerror=bad>' });
@@ -63,7 +78,7 @@ test('rate-limited form submissions cannot write another candidacy', async () =>
     insert: () => { throw new Error('must not insert'); } }) };
   await assert.rejects(() => saveConsultoria(db, validateConsultoria(values()), { id: 'id', fingerprint: 'hash' }), error => error.status === 429);
 });
-test('public form is unauthenticated but rejects cross-origin, unsigned, overlarge and non-form writes', async () => {
+test('public form rejects cross-origin, oversized, and non-form writes', async () => {
   const url = 'https://social-hub-gui.vercel.app/consultoria';
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY; process.env.SUPABASE_SERVICE_ROLE_KEY = 'form-test-secret';
   try {
@@ -72,7 +87,7 @@ test('public form is unauthenticated but rejects cross-origin, unsigned, overlar
     assert.match(await page.text(), /name="ticket"/);
     assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { origin: 'https://evil.example' }, body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 403);
     assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }))).status, 415);
-    assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 403);
+    assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 400);
     assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ name: 'x'.repeat(18000) }) }))).status, 413);
     assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ company_site: 'spam' }) }))).status, 200);
   } finally { if (key === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = key; }

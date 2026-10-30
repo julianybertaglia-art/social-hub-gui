@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TidePlace | MIA · Prévia Social e CRM</title><meta name="robots" content="noindex,nofollow"><style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;color:#302833;background:#f7f4f8;font-size:14px}*{box-sizing:border-box}body{margin:0}button,select,textarea,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:not-allowed}.app{display:grid;grid-template-columns:226px minmax(0,1fr);min-height:100vh}.side{background:linear-gradient(180deg,#241624,#44263f);color:#f6e6f0;padding:24px 13px;display:flex;flex-direction:column;min-height:100vh}.logo{display:flex;align-items:center;gap:10px;padding:5px 8px 25px;border-bottom:1px solid #ffffff2b}.mark{width:39px;height:39px;border-radius:12px;background:#a84970;display:grid;place-items:center;font-weight:900;font-size:20px}.logo b{letter-spacing:.06em;font-size:16px;color:white}.logo small{display:block;color:#d5bacb;font-size:10px;margin-top:4px}.sideHead{font-size:10px;letter-spacing:.15em;color:#c4a8b9;font-weight:800;padding:25px 11px 10px}.nav{display:flex;align-items:center;gap:11px;width:100%;border:0;background:transparent;color:#ead8e4;text-align:left;border-radius:10px;padding:13px;font-size:13px;font-weight:720}.nav.active{background:#963959;color:white}.sideFoot{border-top:1px solid #ffffff26;margin-top:auto;padding:17px 10px;color:#ceb6c4;font-size:11px;line-height:1.7}.sideFoot b{color:#fff}.main{min-width:0;padding:28px clamp(14px,2.5vw,36px) 40px}.noticeTop{background:#fff4dc;border:1px solid #f0dba7;border-radius:9px;padding:10px 15px;color:#815a20;font-size:12px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px}.noticeTop strong{font-weight:800}.noticeTop a{color:#815a20}.head{display:flex;justify-content:space-between;gap:18px;align-items:start;margin-bottom:16px}.eyebrow{font-size:10px;font-weight:850;letter-spacing:.12em;color:#873154}.head h1{font-size:clamp(24px,2.5vw,34px);margin:5px 0 5px;letter-spacing:-.035em;line-height:1.2}.head p{color:#736c79;font-size:13px;margin:0}.headRight{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.chip{font-weight:800;font-size:11px;color:#268363;white-space:nowrap}.chip:before{content:'●';margin-right:7px}.btn{border:1px solid #e7dee5;border-radius:9px;background:white;padding:9px 13px;color:#463846;font-weight:700;font-size:12px}.tabs{display:flex;gap:7px;padding-bottom:16px;border-bottom:1px solid #ebe2e9;margin-bottom:18px}.tabs button{border:0;background:transparent;color:#746875;padding:11px 16px;border-radius:9px;font-size:13px;font-weight:700}.tabs button.active{background:#873154;color:white}.layout{display:grid;grid-template-columns:minmax(0,1fr) 285px;gap:15px}.column{display:flex;flex-direction:column;gap:14px;min-width:0}.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}.stat,.panel{background:#fff;border:1px solid #ebe2e9;border-radius:12px}.stat{padding:15px 17px;border-top:4px solid var(--color)}.stat span{font-size:12px;color:#695e6a;font-weight:640}.stat strong{font-size:30px;display:block;color:var(--color);line-height:1.15;margin-top:8px}.stat small{font-size:10px;color:#827880}.panel{padding:18px;min-width:0}.panel h2{font-size:16px;margin:0 0 5px}.panel p{font-size:12px;color:#817482;margin:0 0 13px;line-height:1.5}.charts{display:grid;grid-template-columns:1fr 1fr;gap:12px}.chartCard{border:1px solid #eee7ec;border-radius:10px;background:#fcfafb;padding:13px;min-width:0}.chartCard h3{font-size:13px;margin:0 0 4px}.chartCard>p{font-size:11px;margin:0 0 15px}.chartRow{display:flex;gap:13px;align-items:center;justify-content:space-between}.donut{width:122px;height:122px;flex:none;border-radius:50%;display:grid;place-items:center}.hole{border-radius:50%;width:84px;height:84px;background:white;display:flex;flex-direction:column;align-items:center;justify-content:center}.hole b{font-size:22px}.hole small{font-size:9px;color:#867982}.legend{min-width:0;flex:1;display:flex;flex-direction:column;gap:7px}.legrow{display:flex;justify-content:space-between;align-items:center;gap:7px;font-size:11px}.legrow span{display:flex;align-items:center;gap:6px;min-width:0}.legrow i{width:9px;height:9px;border-radius:3px;display:inline-block;flex:none}.legrow b{font-size:11px}.queueGrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.queueTile{display:flex;justify-content:space-between;gap:10px;align-items:center;background:#fcfafb;border:1px solid #ebe2e9;border-left:4px solid var(--qcolor);border-radius:9px;text-align:left;padding:12px}.queueTile:hover{background:#f5eaf0}.queueTile b{display:block;font-size:12px;color:#362935}.queueTile small{display:block;font-size:10px;color:#847583;margin-top:4px}.queueTile strong{font-size:16px;color:var(--qcolor)}.priority{padding:13px 0;border-bottom:1px solid #eee7ec;font-size:12px}.priority:last-child{border-bottom:0}.priority b{font-size:15px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.kpi{padding:12px;border-radius:9px;background:#faf6f9;border:1px solid #eee5ec}.kpi b{font-size:23px;display:block;color:#873154}.kpi small{font-size:11px;color:#716671}.rolesBar{background:#fff;border:1px solid #ebe2e9;border-radius:10px;margin:0 0 14px;padding:11px 13px;display:flex;align-items:center;justify-content:space-between;gap:12px}.rolesBar>div{font-size:12px;color:#786b76}.rolesBar strong{color:#3b2c39}.rolesBar select{border:1px solid #d9cbd5;background:#fff;border-radius:8px;padding:9px;min-width:175px}.summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin-bottom:14px}.summary button{border:1px solid #e8dfe7;border-left:4px solid var(--c);border-radius:10px;background:white;text-align:left;padding:12px}.summary button.active{background:#f8eaf1}.summary strong{font-size:24px;color:var(--c);display:block}.summary small{font-size:12px;color:#817482}.board{display:grid;grid-template-columns:minmax(0,var(--preview-left-width,42%)) minmax(0,1fr);min-height:590px;border:1px solid #ece2e9;border-radius:13px;background:#fff;overflow:hidden;position:relative}.splitter{position:absolute;left:var(--preview-left-width,42%);top:0;bottom:0;z-index:2;transform:translateX(-50%);width:22px;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:col-resize;user-select:none;background:transparent;outline:none}.splitterHandle{width:25px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#873154;color:white;font-size:20px;box-shadow:0 3px 12px #41203b38;border:2px solid #fff;transition:background .15s,box-shadow .15s}.splitter:hover .splitterHandle,.splitter:focus-visible .splitterHandle,.splitter.dragging .splitterHandle{background:#b34a77;box-shadow:0 4px 15px #41203b60}.splitter:focus-visible{outline:2px solid #b34a77;outline-offset:-4px}.board.resizing,.board.resizing *{cursor:col-resize!important;user-select:none!important}
+.list{border-right:1px solid #ede3e9;min-width:0;display:flex;flex-direction:column}.listHeading{display:flex;align-items:center;justify-content:space-between;padding:17px 15px 11px}.listHeading h2{margin:0;font-size:17px}.listHeading small{font-size:11px;color:#817482}.field{display:flex;flex-direction:column;gap:5px;padding:0 15px 13px}.field span{font-size:11px;color:#746873;font-weight:750}.field input,.field select,.transfer select,.compose textarea{border:1px solid #e4dce4;border-radius:8px;background:#fff;padding:10px;color:#3c303b;width:100%;outline-color:#ac6286}.filters{display:flex;gap:8px;padding:0 15px 12px}.filters select{flex:1;min-width:0;padding:8px;background:white;border:1px solid #e6dce5;border-radius:8px;font-size:12px}.contacts{overflow-y:auto;max-height:475px}.contact{border:0;border-top:1px solid #f0eaf0;background:#fff;padding:13px;display:flex;align-items:center;gap:10px;width:100%;text-align:left}.contact:hover,.contact.active{background:#fbf2f7}.avatar{width:38px;height:38px;flex:none;display:grid;place-items:center;border-radius:50%;font-weight:750;background:#f4e4ed;color:#843652}.contactText{flex:1;min-width:0}.contactText strong{display:block;font-size:12px;margin-bottom:5px}.contactText small{font-size:10px;color:#867782;display:block;margin-bottom:4px}.contactText span{display:block;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;color:#766975;font-size:11px}.empty{padding:22px 12px;color:#817482;font-size:12px;text-align:center}.thread{background:#fdfbfd;display:flex;flex-direction:column;min-width:0}.threadHead{border-bottom:1px solid #ede5ec;padding:17px 18px}.threadHead h2{font-size:16px;margin:0 0 4px}.threadHead p{font-size:11px;color:#817482;margin:0}.messages{overflow-y:auto;max-height:360px;min-height:200px;padding:20px;display:flex;flex-direction:column;gap:10px}.bubble{max-width:82%;padding:11px 13px;border-radius:12px;background:white;border:1px solid #eee6ed;align-self:flex-start}.bubble.out{align-self:flex-end;background:#f3e2ea;border-color:#e8d4df}.bubble p{font-size:12px;line-height:1.45;margin:0}.bubble small{font-size:9px;color:#907e8d;display:block;text-align:right;margin-top:6px}.threadTools{margin-top:auto;border-top:1px solid #ede5ec;padding:14px;display:flex;flex-direction:column;gap:12px}.toolRow{display:flex;justify-content:space-between;align-items:center;gap:8px}.toolRow strong{font-size:12px}.toolRow small{font-size:11px;color:#817482}.primary{background:#873154;border:1px solid #873154;border-radius:8px;color:#fff;padding:9px 12px;font-weight:700;font-size:12px}.primary:hover{background:#6f2543}.compose label{font-size:12px;font-weight:700;display:block;margin-bottom:6px}.compose textarea{min-height:62px;resize:vertical}.compose>div{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:7px}.compose small{font-size:10px;color:#8a7c87}.transfer{border-top:1px solid #ede5ec;padding-top:12px}.transfer>strong{font-size:12px}.transferControls{display:flex;gap:8px;margin-top:9px}.transfer select{min-width:0;flex:1}.hint{font-size:10px;color:#8a7c87;display:block;margin-top:7px}.toast{position:fixed;bottom:18px;right:18px;z-index:2;padding:13px 17px;border-radius:10px;background:#342032;color:#fff;box-shadow:0 10px 35px #29162a50;font-size:12px;max-width:320px;display:none}.placeholder{display:grid;place-items:center;flex:1;color:#847382;text-align:center;padding:30px}.placeholder h3{margin:0 0 5px;font-size:18px;color:#5b4054}.placeholder p{font-size:12px}.hidden{display:none!important}@media(max-width:1150px){.layout{grid-template-columns:1fr}.aside{display:grid;grid-template-columns:1fr 1fr;gap:14px}}@media(max-width:750px){.app{grid-template-columns:1fr}.side{min-height:auto;padding:10px;flex-direction:row;align-items:center;gap:10px;position:sticky;top:0;z-index:3}.logo{border:0;padding:0 8px}.logo small,.sideHead,.sideFoot{display:none}.nav{width:auto;white-space:nowrap;padding:10px;font-size:11px}.main{padding:16px 12px 25px}.head{flex-direction:column}.headRight{width:100%;justify-content:flex-start}.noticeTop{align-items:start}.charts{grid-template-columns:1fr}.chartRow{justify-content:flex-start;gap:24px}.board{grid-template-columns:1fr}.splitter{display:none}.list{border-right:0;border-bottom:1px solid #ebe2e9}.contacts{max-height:255px}.thread{min-height:430px}.stats{grid-template-columns:repeat(2,1fr)}.aside{grid-template-columns:1fr}.rolesBar{flex-direction:column;align-items:start;width:100%}.rolesBar select{width:100%}}
+
+/* Personalização e legibilidade, sem tocar em dados reais. */
+:root{--theme-primary:#873154;--theme-bg:#f7f4f8;--theme-text:#302833;font-size:15px}
+body{background:var(--theme-bg)}
+.main{background:var(--theme-bg)}
+.head h1,.head p{color:var(--theme-text)}
+.head p{opacity:.83}
+.side{background:linear-gradient(180deg,#241624,color-mix(in srgb,var(--theme-primary) 54%,#241624))}
+.mark,.nav.active,.tabs button.active,.splitterHandle,.primary{background:var(--theme-primary)}
+.primary{border-color:var(--theme-primary)}
+.splitter:hover .splitterHandle,.splitter:focus-visible .splitterHandle,.splitter.dragging .splitterHandle{background:color-mix(in srgb,var(--theme-primary) 81%,white)}
+.eyebrow,.kpi b{color:var(--theme-primary)}
+.summary button.active,.contact.active,.contact:hover{background:color-mix(in srgb,var(--theme-primary) 8%,#fff)}
+.board{grid-template-columns:minmax(0,var(--preview-left-width,36%)) minmax(0,1fr);min-height:680px}
+.splitter{left:var(--preview-left-width,36%)}
+.listHeading h2{font-size:19px}
+.contact{padding:17px 14px;min-height:91px}
+.avatar{width:43px;height:43px;font-size:16px}
+.contactText strong{font-size:15px;line-height:1.35}
+.contactText small{font-size:12px;line-height:1.35;margin-bottom:6px}
+.contactText span{font-size:14px;line-height:1.48;color:#594955;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.contacts{max-height:610px}
+.field span{font-size:12px}
+.field input,.field select,.filters select{font-size:14px;min-height:40px}
+.thread{min-height:680px}
+.threadHead h2{font-size:19px}
+.threadHead p{font-size:13px}
+.messages{min-height:360px;max-height:580px;padding:23px;gap:13px}
+.bubble{max-width:85%;padding:15px 18px;border-radius:13px}
+.bubble p{font-size:15px;line-height:1.6}
+.bubble small{font-size:11.5px;margin-top:7px}
+.bubble.out{background:color-mix(in srgb,var(--theme-primary) 12%,white);border-color:color-mix(in srgb,var(--theme-primary) 23%,white)}
+.threadTools{padding:18px;gap:16px}
+.toolRow strong,.compose label{font-size:14px}
+.toolRow small,.hint,.compose small{font-size:12px;line-height:1.5}
+.compose textarea{min-height:90px;font-size:15px;line-height:1.5;padding:13px}
+.primary{font-size:14px;padding:10px 14px}
+.themePanel[hidden]{display:none!important}
+.themePanel{background:white;border:1px solid #ebe2e9;border-radius:12px;margin:0 0 15px;padding:17px 20px;box-shadow:0 7px 20px #2416240b}
+.themePanelTitle{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.themePanelTitle strong{font-size:16px}
+.themePanelTitle span{font-size:12px;color:#817482}
+.themeControls{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.themeControls label{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;color:#342b33}
+.themeControls input[type=color]{height:39px;width:50px;border:1px solid #e2dbe2;border-radius:8px;background:#fff;padding:3px;cursor:pointer}
+.themePresets{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.themePresets button{display:flex;gap:7px;align-items:center;background:#fff;border:1px solid #ece3ea;color:#342b33;border-radius:24px;padding:8px 12px;font-size:12.5px}
+.themePresets i{width:13px;height:13px;border-radius:50%;border:1px solid #ddd;display:inline-block}
+@media(max-width:750px){.board{grid-template-columns:1fr;min-height:0}.thread{min-height:430px}.messages{min-height:270px;max-height:430px}.bubble{max-width:94%}.contact{min-height:75px}.themeControls{flex-direction:column;align-items:flex-start}}
+
+/* TidePlace reorganization — same brand identity, no new product theme. */
+:root{--gold:#8F2945;--gold-dark:#751F36;--gold-soft:#F6EAEE;--bg:#F8F5F4;--surface:#fff;--surface-soft:#FBF9F8;--text:#171417;--muted:#756D70;--border:#EADFE2;--theme-primary:#8F2945;--theme-bg:#F8F5F4;--theme-text:#171417}
+body{background:var(--bg);color:var(--text)}
+.app{grid-template-columns:272px minmax(0,1fr);background:var(--bg)}
+.side{position:sticky;top:0;height:100vh;min-height:0;background:#151216;padding:23px 13px 17px;color:#f4f1f3;z-index:2}
+.logo{margin:0 7px 15px;padding:4px 9px 22px;gap:12px;border-bottom:1px solid #ffffff15}
+.mark{width:42px;height:42px;flex:none;background:#ffffff0c;border:1px solid #ffffff20;border-radius:12px}
+.mark img{width:30px;height:30px;filter:brightness(0) invert(1)}
+.logo b{font-size:15px;letter-spacing:-.02em;font-weight:750}
+.logo small{color:#c6b9c2;font-size:11px}
+.areaSwitch{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:4px;margin:0 5px 17px;border-radius:12px;background:#ffffff0a;border:1px solid #ffffff18}
+.areaSwitch button{display:flex;align-items:center;justify-content:center;border:0;border-radius:9px;min-height:41px;background:transparent;color:#eae5ea;font-size:12px;font-weight:740}
+.areaSwitch button.areaOn{background:var(--gold);color:white;box-shadow:0 3px 14px #0002}
+.areaNav{overflow:auto;flex:1;min-height:0;padding:0 3px;scrollbar-width:thin}
+.areaNav[hidden]{display:none!important}
+.sideHead{padding:16px 11px 9px;font-size:10px;color:#c1b5c0}
+.nav{min-height:43px;border-radius:8px;font-weight:560;font-size:13px;color:#e6dde3}
+.nav.active{background:color-mix(in srgb,var(--gold) 30%,transparent);border:1px solid color-mix(in srgb,var(--gold) 36%,transparent)}
+.nav:not(.active):hover{background:#ffffff0d}
+.soonLabel{font-size:9px;font-weight:500;margin-left:auto;color:#c2abbc;white-space:nowrap}
+.sideFoot{margin-top:5px;padding:11px 7px 0;border-top:1px solid #ffffff20}
+.settingsLink{width:100%;text-align:left;border:0;background:transparent;color:#ebe4ea;padding:9px 6px;font-weight:650;font-size:12px;border-radius:7px}
+.settingsLink:hover{background:#ffffff10}
+.profileFoot{display:flex;align-items:center;gap:9px;padding:15px 4px 0;color:white}
+.profileCircle{background:var(--gold);width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-weight:740}
+.profileFoot b,.profileFoot small{display:block;font-size:12px}
+.profileFoot small{color:#aa97aa;font-size:11px;margin-top:3px}
+.workspaceWrap{min-width:0;width:100%}
+.topbar{position:sticky;top:0;z-index:5;height:72px;display:flex;align-items:center;gap:16px;padding:8px clamp(18px,2.3vw,32px);background:var(--surface);border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}
+.accountSelect{display:flex;align-items:center;gap:10px;min-width:197px}
+.accountAvatar{display:grid;place-items:center;border-radius:100%;width:36px;height:36px;background:var(--gold-soft);color:var(--gold);font-weight:760}
+.accountSelect label{display:flex;flex-direction:column;gap:2px}
+.accountSelect select{border:0;background:transparent;color:var(--text);font-weight:750;font-size:14px;max-width:190px;cursor:pointer}
+.accountSelect small{font-size:11px;color:var(--muted)}
+.globalSearch{display:flex;gap:8px;align-items:center;max-width:270px;width:25%;padding:11px 13px;border-radius:10px;background:var(--surface-soft);border:1px solid var(--border);color:var(--muted)}
+.globalSearch span{font-size:19px}
+.globalSearch input{outline:0;background:transparent;border:0;width:100%;min-width:45px;color:var(--text);font-size:12px}
+.globalSearch kbd{font-size:9px;white-space:nowrap;color:var(--muted)}
+.topThemeBtn{margin-left:auto;display:flex;align-items:center;gap:8px;padding:12px 15px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:740}
+.topThemeBtn:hover{border-color:var(--gold)}
+.demoDot{font-size:10px;color:#238563;font-weight:700;white-space:nowrap}
+.main{padding:32px clamp(18px,2.4vw,40px) 55px;background:var(--bg);color:var(--text)}
+.studioEyebrow{color:var(--gold-dark);font-size:10px;font-weight:850;letter-spacing:.12em;margin-bottom:12px}
+.studioWelcome{font-size:clamp(30px,3.2vw,42px);font-weight:650;letter-spacing:-.055em;margin:0 0 12px;line-height:1.16;color:var(--text)}
+.studioDesc{color:var(--muted);font-size:14px;margin:0 0 24px}
+.studioCards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:18px}
+.studioCard{padding:20px;border-radius:13px;background:var(--surface);border:1px solid var(--border);box-shadow:0 2px 4px #00000004;min-height:158px}
+.cardSymbol{display:grid;place-items:center;width:37px;height:37px;border-radius:10px;color:var(--gold);border:1px solid var(--gold-soft);background:var(--gold-soft);font-size:19px}
+.studioCard small{display:block;font-size:12px;color:var(--muted);margin:11px 0 6px}
+.studioCard strong{display:block;font-size:27px;letter-spacing:-.02em;color:var(--text)}
+.studioCard p{font-size:12px;color:var(--muted);margin:6px 0}
+.studioGrid{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
+.futurePanel{padding:24px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:14px;min-height:170px}
+.futurePanel h2{font-size:19px;letter-spacing:-.025em;margin:13px 0 8px}
+.futurePanel p{color:var(--muted);font-size:13px;line-height:1.6;margin:0 0 14px}
+.previewLinks{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}
+.demoCta{display:inline-flex;align-items:center;gap:8px;padding:10px 15px;background:var(--gold);color:#fff;border:0;border-radius:9px;font-size:13px;font-weight:700}
+.demoCta:hover{background:var(--gold-dark)}
+.pill{font-size:10px;font-weight:750;border-radius:20px;color:var(--gold-dark);background:var(--gold-soft);padding:6px 10px}
+#crmPage[hidden],#studioPage[hidden],#guiCrmPage[hidden]{display:none!important}
+.noticeTop{border-radius:10px;margin-bottom:19px;font-size:11px}
+.head h1{color:var(--text)}.head p{color:var(--muted)}
+.tabs button.active,.splitterHandle,.primary{background:var(--gold);color:#fff;border-color:var(--gold)}
+.panel,.stat,.board,.rolesBar,.list,.threadHead,.threadTools,.themePanel,.contact,.queueTile,.chartCard{border-color:var(--border)}
+.panel,.stat,.board,.rolesBar,.list,.threadHead,.threadTools,.chartCard,.themePanel{background:var(--surface);color:var(--text)}
+.thread{background:var(--surface-soft)}
+.bubble:not(.out){background:var(--surface);color:var(--text);border-color:var(--border)}
+.bubble.out{background:var(--gold-soft);color:var(--text);border-color:var(--border)}
+.contact{background:var(--surface);color:var(--text)}
+.contact.active,.contact:hover{background:var(--gold-soft)}
+.contactText strong,.chartCard h3,.panel h2,.listHeading h2,.threadHead h2{color:var(--text)}
+.contactText span,.contactText small,.threadHead p{color:var(--muted)}
+.field input,.field select,.filters select,.compose textarea,.toolRow select,.rolesBar select{background:var(--surface);color:var(--text);border-color:var(--border)}
+/* Same appearance drawer UI and settings as the original ThemeCustomizer. */
+.experienceOverlay[hidden],.experiencePanel[hidden]{display:none!important}
+.experienceOverlay{position:fixed;inset:0;z-index:79;background:rgba(20,15,17,.16);backdrop-filter:blur(2px)}
+.experiencePanel{position:fixed;z-index:80;top:18px;right:18px;width:min(380px,calc(100vw - 28px));max-height:calc(100dvh - 36px);overflow-y:auto;padding:18px;border:1px solid var(--border);border-radius:20px;background:var(--surface);color:var(--text);box-shadow:0 24px 80px #1e0f1433}
+.experienceHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:2px 2px 16px;border-bottom:1px solid var(--border)}
+.experienceHeader strong,.experienceHeader span{display:block}
+.experienceHeader strong{font-size:16px}.experienceHeader span{margin-top:5px;color:var(--muted);font-size:11px}
+.experienceHeader button{width:30px;height:30px;border:0;border-radius:50%;background:transparent;color:var(--muted);font-size:24px}
+.expSection{padding:18px 0;border-bottom:1px solid var(--border)}
+.expLabel{display:block;margin-bottom:12px;color:var(--muted);font-size:10px;font-weight:850;letter-spacing:.08em}
+.swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:9px}
+.swatches button{aspect-ratio:1;border:3px solid transparent;border-radius:12px;box-shadow:inset 0 0 0 1px #0001}
+.swatches button.selected{outline:2px solid var(--text);outline-offset:2px}
+.colorSummary{display:flex;align-items:center;gap:10px;margin-top:14px;padding:11px;border:1px solid var(--border);border-radius:12px;background:var(--surface-soft)}
+.colorSummary i{width:30px;height:30px;border-radius:9px}.colorSummary b,.colorSummary small{display:block;font-size:12px}.colorSummary small{font-size:10px;color:var(--muted);margin-top:3px}
+.modeSwitch{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;padding:5px;border:1px solid var(--border);border-radius:13px;background:var(--surface-soft)}
+.modeSwitch button{min-height:38px;border:0;border-radius:9px;background:transparent;color:var(--muted);font-size:11px;font-weight:700}
+.modeSwitch button.active{background:var(--surface);color:var(--text);box-shadow:0 2px 10px #140f1114}
+.rangeTop{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}
+.rangeTop b,.rangeTop small{display:block}.rangeTop b{font-size:12px}.rangeTop small{font-size:10px;color:var(--muted);margin-top:4px}
+#tintValue{font-size:12px;color:var(--gold-dark)}.range{width:100%;margin:16px 0 5px;accent-color:var(--gold)}
+.rangeLegend{display:flex;justify-content:space-between;color:var(--muted);font-size:9px}
+.resetExp{width:100%;margin-top:16px;padding:11px 14px;border:1px solid var(--border);border-radius:11px;background:var(--surface-soft);color:var(--text);font-size:11px;font-weight:750}
+@media(max-width:1100px){.globalSearch{display:none}.studioGrid{grid-template-columns:1fr}}
+@media(max-width:760px){.app{grid-template-columns:1fr}.side{position:relative;height:auto;padding:12px;min-height:0}.areaNav{display:flex;gap:5px;overflow:auto;max-height:60px}.sideHead,.sideFoot{display:none}.nav{flex:none;width:auto;white-space:nowrap;padding:10px}.areaSwitch{max-width:275px;margin:8px 0}.logo{padding:3px 8px 8px}.topbar{height:auto;min-height:65px}.accountSelect{min-width:0}.topThemeBtn{margin-left:auto}.demoDot{display:none}.studioCards{grid-template-columns:1fr 1fr}.studioGrid{grid-template-columns:1fr}.main{padding:20px 12px}.experiencePanel{top:8px;right:8px;max-height:calc(100dvh - 16px)}}
+@media(max-width:460px){.studioCards{grid-template-columns:1fr}.topThemeBtn{font-size:0}.globalSearch{display:none}}
+
+/* V3: surfaces and contrast all follow the same Tide Experiência palette. */
+:root{--mia-ink:var(--text);--mia-bg:var(--surface);--mia-soft:var(--surface-soft)}
+html[data-appearance="dark"]{color-scheme:dark;--gold-soft:color-mix(in srgb,var(--gold) 22%,var(--surface))}
+html[data-appearance="dark"] :is(.app,.main,.studioPage){background:var(--bg);color:var(--text)}
+html[data-appearance="dark"] :is(.panel,.stat,.chartCard,.queueTile,.kpi,.rolesBar,.board,.list,.threadHead,.threadTools,.contact,.bubble,.hole,.studioCard,.futurePanel,.summary button,.summaryPill,.filters select,.search input,.reply textarea,.compose textarea,.toolRow select,.rolesBar select,.globalSearch,.topThemeBtn,.pagination button,.placeholder,.notice,.alert,.smallNotice,.demoNotice,.dashboardAside>.panel,.legend,.priority){background:var(--surface);color:var(--text);border-color:var(--border)}
+html[data-appearance="dark"] :is(.chartCard,.thread,.contacts,.messages,.threadBody,.statusCard){background:var(--surface-soft);color:var(--text);border-color:var(--border)}
+html[data-appearance="dark"] :is(.contact.active,.contact:hover,.queueTile:hover,.summary button:hover,.navCard:hover){background:color-mix(in srgb,var(--gold) 10%,var(--surface));color:var(--text)}
+html[data-appearance="dark"] :is(.bubble.out,.messages article.sent){background:color-mix(in srgb,var(--gold) 23%,var(--surface));border-color:var(--border);color:var(--text)}
+html[data-appearance="dark"] :is(.bubble:not(.out),.messages article.received,.hole,.donutHole){background:var(--surface);color:var(--text);border-color:var(--border)}
+html[data-appearance="dark"] :is(.avatar,.cardSymbol,.topAccountAvatar,.contactAvatar){background:color-mix(in srgb,var(--gold) 23%,var(--surface));color:var(--text);border-color:var(--border)}
+html[data-appearance="dark"] :is(.stat span,.stat small,.panel p,.chartCard>p,.hole small,.legrow,.queueTile small,.kpi small,.contactText small,.contactText>span,.contactText span,.threadHead p,.rolesBar>div,.studioCard small,.futurePanel p,.field label,.hint,.subdued,.scopeDescription,.smallNotice,.emptyDescription){color:var(--muted)}
+html[data-appearance="dark"] :is(.queueTile b,.queueTile strong,.kpi b,.hole b,.donutHole strong,.panel h2,.panel h3,.chartCard h3,.threadHead h2,.listHeading h2,.contactText strong,.stat strong,.legend b,.summary strong,.studioCard strong,.studioWelcome,.head h1,.rolesBar strong){color:var(--text)}
+html[data-appearance="dark"] :is(.stats .stat,.summary button){background:var(--surface);border-color:var(--border)}
+html[data-appearance="dark"] input::placeholder,html[data-appearance="dark"] textarea::placeholder{color:#AEA5AB;opacity:1}
+/* Stronger headings and legible secondary labels, respecting existing Tide brand. */
+.app,.main{font-size:15px}
+.logo b,.studioWelcome,.head h1{font-weight:800;letter-spacing:-.025em}
+.nav{font-weight:690;font-size:14px}.nav.active,.areaSwitch button{font-weight:800}
+.panel h2,.futurePanel h2,.listHeading h2,.threadHead h2{font-weight:780;font-size:18px}
+.panel p,.futurePanel p{font-size:13.5px;line-height:1.6}
+.stat strong{font-size:31px;font-weight:800}.stat span{font-size:13px;font-weight:720}
+.stat small,.queueTile small,.kpi small,.hole small,.legrow{font-size:12px}
+.queueTile b{font-size:14px;font-weight:760}.queueTile strong{font-size:17px;font-weight:810}
+.kpi b,.hole b{font-weight:810}
+.contact{min-height:82px;padding:15px}.contactText strong{font-size:15px;font-weight:780}.contactText small{font-size:12px}.contactText>span,.contactText span{font-size:14px;line-height:1.5}
+.messages{min-height:340px;max-height:590px;gap:13px;padding:21px}
+.bubble{max-width:85%;padding:14px 16px}.bubble p{font-size:15px;line-height:1.55;font-weight:500}.bubble small{font-size:11px}
+/* Do not tint existing data-driven chart colors: preserve their meaning. */
+/* MIA global floating assistant — simulated UI only, no customer data or API calls. */
+.miaLaunch{position:fixed;z-index:110;left:calc(100vw - 100px);top:calc(100dvh - 105px);width:66px;height:66px;border:0;border-radius:50%;padding:3px;background:var(--surface);box-shadow:0 9px 30px #0a081055,0 0 0 2px var(--gold);cursor:grab;touch-action:none;user-select:none;display:grid;place-items:center;transition:box-shadow .2s ease}
+.miaLaunch:active{cursor:grabbing}.miaLaunch:hover{box-shadow:0 11px 32px #0a081068,0 0 0 4px color-mix(in srgb,var(--gold) 28%,transparent)}
+.miaLaunch:focus-visible{outline:3px solid var(--gold);outline-offset:5px}
+.miaLaunch img{width:100%;height:100%;object-fit:cover;border-radius:50%;pointer-events:none}
+.miaLaunchHint{position:absolute;right:74px;top:18px;background:var(--surface);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:12px;font-weight:760;padding:8px 12px;white-space:nowrap;box-shadow:0 6px 20px #0002;opacity:0;pointer-events:none}
+.miaLaunch:hover .miaLaunchHint,.miaLaunch:focus-visible .miaLaunchHint{opacity:1}
+.miaPanel[hidden]{display:none!important}
+.miaPanel{position:fixed;z-index:109;left:calc(100vw - 480px);top:calc(100dvh - 580px);width:min(385px,calc(100vw - 20px));height:min(500px,calc(100dvh - 24px));display:flex;flex-direction:column;border:1px solid var(--border);border-radius:18px;background:var(--surface);color:var(--text);box-shadow:0 20px 70px #09060a6d;overflow:hidden;isolation:isolate}
+.miaPanel.isExpanded{width:min(485px,calc(100vw - 18px));height:calc(100dvh - 30px);top:15px!important;left:auto!important;right:15px!important}
+.miaPanelHeader{display:flex;align-items:center;gap:11px;padding:15px 15px 13px;border-bottom:1px solid var(--border);background:var(--surface)}
+.miaPanelHeader img{width:41px;height:41px;border-radius:50%;border:1px solid var(--border)}
+.miaPanelTitle{flex:1;min-width:0}.miaPanelTitle strong{display:block;font-size:17px;font-weight:810;letter-spacing:-.02em;color:var(--text)}.miaPanelTitle small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+.miaIconBtn{background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:9px;font-size:18px;min-width:34px;height:34px;display:grid;place-items:center}
+.miaIconBtn:hover{background:var(--surface-soft);color:var(--text)}
+.miaContext{padding:10px 17px;font-size:12px;color:var(--muted);background:var(--surface-soft);border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center}
+.miaStatusDot{width:7px;height:7px;background:#31a77b;border-radius:50%;display:inline-block;flex:none}
+.miaPanelMain{flex:1;min-height:0;overflow-y:auto;padding:18px 17px;background:var(--surface);display:flex;flex-direction:column;gap:13px}
+.miaIntro{background:var(--surface-soft);border:1px solid var(--border);border-radius:13px;padding:15px}.miaIntro b{display:block;font-size:15px;font-weight:770;margin-bottom:6px}.miaIntro p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.6}
+.miaPromptGrid{display:grid;grid-template-columns:1fr;gap:8px}.miaPromptGrid button{text-align:left;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-size:13px;font-weight:650;line-height:1.4}.miaPromptGrid button:hover{border-color:var(--gold);background:var(--surface-soft)}
+.miaConversation{display:flex;flex-direction:column;gap:10px}.miaMessage{max-width:94%;padding:11px 13px;border-radius:12px;background:var(--surface-soft);border:1px solid var(--border);color:var(--text);font-size:13px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}.miaMessage.fromUser{align-self:flex-end;background:color-mix(in srgb,var(--gold) 16%,var(--surface))}
+.miaFooter{border-top:1px solid var(--border);padding:12px 14px;background:var(--surface)}.miaComposer{display:flex;gap:8px;align-items:center}.miaComposer input{min-width:0;flex:1;border:1px solid var(--border);border-radius:11px;background:var(--surface-soft);color:var(--text);padding:12px 13px;font-size:13.5px;outline:none}.miaComposer input:focus{border-color:var(--gold)}.miaComposer button{border:0;border-radius:50%;background:var(--gold);color:#fff;width:39px;height:39px;font-size:19px;font-weight:750;flex:none}.miaHint{font-size:10.5px;color:var(--muted);margin:8px 2px 0;text-align:center}
+@media(max-width:750px){.miaLaunch{width:58px;height:58px}.miaPanel{width:calc(100vw - 18px);max-width:420px;height:min(470px,calc(100dvh - 24px))}.miaPanel.isExpanded{left:9px!important;right:9px!important;width:calc(100vw - 18px)}}
+@media(prefers-reduced-motion:reduce){.miaLaunch{transition:none}}
+
+</style></head>
+<body><div class="app"><aside class="side" aria-label="Menu TidePlace">
+  <div class="logo"><span class="mark"><img src="/brand/tideplace-mark.svg" alt=""></span><div><b>TIDEPLACE</b><small>Flow with your audience.</small></div></div>
+  <div class="areaSwitch" role="group" aria-label="Área de trabalho">
+    <button id="switchStudio" class="areaOn" type="button">◫ &nbsp; Social</button>
+    <button id="switchCRM" type="button">▣ &nbsp; CRM</button>
+  </div>
+  <div id="studioNav" class="areaNav">
+    <div class="sideHead">SOCIAL STUDIO</div>
+    <button class="nav active" data-studio="home">⌂ &nbsp; Visão geral</button>
+    <button class="nav" data-studio="content">▦ &nbsp; Conteúdo</button>
+    <button class="nav" data-studio="publish">⇧ &nbsp; Publicar em redes</button>
+    <button class="nav" data-studio="automation"> Automações</button>
+    <button class="nav" data-studio="metrics">◫ &nbsp; Métricas do Instagram</button>
+    <button class="nav" data-studio="goals">◎ &nbsp; Metas</button>
+  </div>
+  <div id="crmNav" class="areaNav" hidden>
+    <div class="sideHead">TIDE CRM</div>
+    <button class="nav active" id="sideDashboard">◫ &nbsp; Visão geral</button>
+    <button class="nav" id="sideInbox">▣ &nbsp; Atendimentos</button>
+    <button class="nav" data-crm="customers">♙ &nbsp; Clientes <span class="soonLabel">Próxima fase</span></button>
+    <button class="nav" data-crm="deals">▤ &nbsp; Negócios <span class="soonLabel">Próxima fase</span></button>
+    <button class="nav" data-crm="tasks">☷ &nbsp; Tarefas e relatórios <span class="soonLabel">Próxima fase</span></button>
+    <button class="nav" data-crm="automations"> Automações</button>
+  </div>
+  <div class="sideFoot"><button id="settingsShortcut" class="settingsLink">⚙ &nbsp; Configurações e conexões</button>
+    <div class="profileFoot"><span class="profileCircle">J</span><span><b>Juliany</b><small>Social media</small></span></div></div>
+</aside><div class="workspaceWrap">
+<header class="topbar">
+  <div class="accountSelect"><span class="accountAvatar" id="accountAvatar">G</span>
+    <label><select id="workspacePicker" aria-label="Selecionar empresa"><option value="gui-nonato">Gui Nonato</option><option value="vital-decor">Vital Decor</option></select><small id="workspaceHandle">@gui_nonato · Instagram</small></label></div>
+  <label class="globalSearch"><span>⌕</span><input type="search" id="globalSearch" placeholder="Buscar no menu..." aria-label="Buscar no menu"><kbd>Ctrl K</kbd></label>
+  <button class="topThemeBtn" id="openExperience" type="button">☷ &nbsp; Personalizar</button>
+  <span class="demoDot">● Prévia</span>
+</header><main class="main">
+ <section id="studioPage" class="studioPage">
+   <div class="studioEyebrow" id="studioEyebrow">TIDEPLACE · GUI NONATO</div>
+   <h1 class="studioWelcome" id="studioWelcome">Bom dia, Juliany.</h1>
+   <p class="studioDesc" id="studioDescription">O que precisa da sua atenção, sem misturar tudo na mesma tela.</p>
+   <div id="studioContent"></div>
+ </section>
+ <section id="guiCrmPage" class="studioPage" hidden>
+   <div class="studioEyebrow">TIDEPLACE · GUI NONATO · CRM</div><h1 class="studioWelcome">CRM do Gui Nonato</h1>
+   <p class="studioDesc">A organização do atendimento, mentoria e treinamento ficará aqui. O CRM Vital já pode ser explorado na conta Vital Decor.</p>
+   <div class="futurePanel"><span class="pill">Próxima fase</span><h2>Organização por cliente, atendimento e oportunidade</h2><p>Esta prévia não conecta conversas reais nem modifica os fluxos do Gui. Selecione a Vital Decor para testar o CRM já estruturado.</p><button class="demoCta" id="openVitalFromGui">Visualizar CRM Vital Decor →</button></div>
+ </section>
+ <section id="crmPage" hidden><div class="noticeTop"><div><strong>PRÉVIA INTERATIVA · SIMULAÇÃO</strong> &nbsp; Você pode explorar as telas sem alterar nenhum atendimento real.</div><span>🔒 Sem envios reais</span></div><div class="head"><div><span class="eyebrow">TIDEPLACE / VITAL DECOR / CRM</span><h1 id="pageTitle">Visão geral da operação</h1><p id="pageSubtitle">Distribuição, acompanhamento e transferências de atendimentos.</p></div><div class="headRight"><span class="chip">DADOS DE DEMONSTRAÇÃO</span><button id="reset" class="btn">↻ Reiniciar simulação</button></div></div><div class="tabs"><button class="active" id="tabDashboard">◫ &nbsp; Dashboard</button><button id="tabInbox">▣ &nbsp; Atendimentos</button></div><div class="rolesBar"><div><strong>Visualizar como:</strong> <span id="roleDesc">Administradora com acesso a todas as filas</span></div><select id="role"><option value="owner">Juliany · Administradora</option><option value="andrey">Andrey · Pós-venda Shopee e TikTok</option><option value="vitor">Vitor · Atacado, VTX, Bluetti e ML</option><option value="guilherme">Guilherme · Supervisor (visualização)</option></select></div><div id="dashboard"></div><div id="inbox" class="hidden"></div></section></main></div></div><div id="toast" class="toast" role="status"></div><div class="experienceOverlay" id="experienceOverlay" hidden></div>
+<aside id="experiencePanel" class="experiencePanel" hidden aria-label="Personalizar experiência">
+ <div class="experienceHeader"><div><strong>Experiência</strong><span>Cor e aparência do seu jeito.</span></div><button id="closeExperience" type="button" aria-label="Fechar">×</button></div>
+ <section class="expSection"><span class="expLabel">◉ COR DA INTERFACE</span><div class="swatches"><button type="button" class="swatch" data-accent="#8F2945" title="Bordô" aria-label="Bordô" style="background:#8F2945"></button><button type="button" class="swatch" data-accent="#21A968" title="Verde" aria-label="Verde" style="background:#21A968"></button><button type="button" class="swatch" data-accent="#139B82" title="Esmeralda" aria-label="Esmeralda" style="background:#139B82"></button><button type="button" class="swatch" data-accent="#239DA5" title="Turquesa" aria-label="Turquesa" style="background:#239DA5"></button><button type="button" class="swatch" data-accent="#2C94C7" title="Azul" aria-label="Azul" style="background:#2C94C7"></button><button type="button" class="swatch" data-accent="#447CD5" title="Royal" aria-label="Royal" style="background:#447CD5"></button><button type="button" class="swatch" data-accent="#5D63CC" title="Índigo" aria-label="Índigo" style="background:#5D63CC"></button><button type="button" class="swatch" data-accent="#7958C5" title="Violeta" aria-label="Violeta" style="background:#7958C5"></button><button type="button" class="swatch" data-accent="#C25487" title="Rosa" aria-label="Rosa" style="background:#C25487"></button><button type="button" class="swatch" data-accent="#C65E5A" title="Terracota" aria-label="Terracota" style="background:#C65E5A"></button><button type="button" class="swatch" data-accent="#D9821B" title="Laranja" aria-label="Laranja" style="background:#D9821B"></button><button type="button" class="swatch" data-accent="#C89A25" title="Mostarda" aria-label="Mostarda" style="background:#C89A25"></button></div>
+  <div class="colorSummary"><i id="activeColor"></i><span><b id="colorName">Bordô</b><small id="colorHex">#8F2945</small></span></div>
+ </section>
+ <section class="expSection"><span class="expLabel">▣ APARÊNCIA</span><div class="modeSwitch" role="group" aria-label="Aparência">
+   <button type="button" data-mode="light">☼ Claro</button><button type="button" data-mode="neutral">▱ Neutro</button><button type="button" data-mode="dark">☾ Escuro</button>
+ </div></section>
+ <section class="expSection"><div class="rangeTop"><div><b>Tom no fundo</b><small>Quanto da sua cor entra no ambiente.</small></div><b id="tintValue">0%</b></div>
+ <input id="tintRange" class="range" type="range" min="0" max="20" value="0" step="1"><div class="rangeLegend"><span>Cor neutra</span><span>Mais cor</span></div></section>
+ <button id="resetExperience" type="button" class="resetExp">Restaurar aparência padrão</button>
+</aside>
+<script>
+'use strict';
+const queues=[
+{code:'varejo_nv',name:'Varejo Nuvemshop',owner:'Juliany',color:'#3878be'},
+{code:'pos_nv',name:'Pós-venda Nuvemshop',owner:'Juliany',color:'#c37b49'},
+{code:'afiliados',name:'Afiliados',owner:'Juliany',color:'#b54c8b'},
+{code:'pos_shopee',name:'Pós-venda Shopee',owner:'Andrey',color:'#d27a42'},
+{code:'pos_tiktok',name:'Pós-venda TikTok Shop',owner:'Andrey',color:'#d59d36'},
+{code:'atacado',name:'Atacado',owner:'Vitor',color:'#875bc1'},
+{code:'vtx',name:'VTX Fitness',owner:'Vitor',color:'#00a29b'},
+{code:'bluetti',name:'Bluetti',owner:'Vitor',color:'#4698ad'},
+{code:'pos_ml',name:'Pós-venda Mercado Livre',owner:'Vitor',color:'#a35ca3'},
+];
+const template=[
+['Cliente Exemplo 01','varejo_nv','pending','Olá, quantas placas de jardim vertical preciso para uma parede?'],
+['Cliente Exemplo 02','varejo_nv','open','Gostaria de comprar o modelo Samambaia.'],
+['Cliente Exemplo 03','pos_nv','closed','Obrigada, o pedido chegou certinho!'],
+['Cliente Exemplo 04','afiliados','pending','Quero saber sobre o programa de afiliados.'],
+['Cliente Exemplo 05','pos_shopee','pending','Meu pedido na Shopee ainda não chegou.'],
+['Cliente Exemplo 06','pos_shopee','open','Preciso de ajuda com a instalação.'],
+['Cliente Exemplo 07','pos_tiktok','pending','Fiz uma compra no TikTok Shop.'],
+['Cliente Exemplo 08','atacado','open','Qual é o pedido mínimo para revenda?'],
+['Cliente Exemplo 09','atacado','pending','Vocês trabalham com caixa fechada?'],
+['Cliente Exemplo 10','vtx','closed','Como ajusto o banco da bicicleta?'],
+['Cliente Exemplo 11','bluetti','pending','Vocês têm informação sobre a Bluetti?'],
+['Cliente Exemplo 12','pos_ml','open','Quero consultar uma troca do Mercado Livre.'],
+['Cliente Exemplo 13','pos_ml','pending','O pacote foi entregue com avaria.'],
+['Cliente Exemplo 14','pos_nv','open','Consigo retirar o produto pessoalmente?'],
+['Cliente Exemplo 15',null,'pending','Gostaria de falar com alguém da equipe.'],
+];
+let items=[],currentPage='dashboard',role='owner',selected=null,queueFilter='all',statusFilter='all',search='';
+const SPLIT_STORAGE='tideplace:crm-vital:split-width';
+const constrainWidth=value=>Math.max(25,Math.min(70,Math.round(value)));
+let leftWidth=36;
+try{const saved=Number(localStorage.getItem(SPLIT_STORAGE));if(Number.isFinite(saved)&&saved>=25&&saved<=70)leftWidth=constrainWidth(saved)}catch{};
+function setSplitWidth(value, persist=true){
+ leftWidth=constrainWidth(value);
+ const board=$('crmSplitBoard'),splitter=$('crmSplitter');
+ if(board)board.style.setProperty('--preview-left-width',leftWidth+'%');
+ if(splitter)splitter.setAttribute('aria-valuenow',String(leftWidth));
+ if(persist)try{localStorage.setItem(SPLIT_STORAGE,String(leftWidth))}catch{};
+}
+function initSplitter(){
+ const splitter=$('crmSplitter'),board=$('crmSplitBoard');
+ if(!splitter||!board)return;
+ setSplitWidth(leftWidth,false);
+ let pointer=null;
+ splitter.addEventListener('pointerdown',event=>{
+   if(event.button!==0 && event.pointerType==='mouse')return;
+   pointer=event.pointerId;splitter.setPointerCapture(pointer);
+   board.classList.add('resizing');splitter.classList.add('dragging');event.preventDefault();
+ });
+ splitter.addEventListener('pointermove',event=>{
+  if(pointer!==event.pointerId)return;
+  const bounds=board.getBoundingClientRect();
+  setSplitWidth((event.clientX-bounds.left)/bounds.width*100,false);
+ });
+ function endDrag(event){if(pointer!==event.pointerId)return;pointer=null;board.classList.remove('resizing');splitter.classList.remove('dragging');setSplitWidth(leftWidth,true)}
+ splitter.addEventListener('pointerup',endDrag);
+ splitter.addEventListener('pointercancel',endDrag);
+ splitter.addEventListener('lostpointercapture',()=>{if(pointer!==null){pointer=null;board.classList.remove('resizing');splitter.classList.remove('dragging');setSplitWidth(leftWidth,true)}});
+ splitter.addEventListener('dblclick',()=>setSplitWidth(36));
+ splitter.addEventListener('keydown',event=>{
+  if(event.key==='ArrowLeft'||event.key==='ArrowRight'){
+   event.preventDefault();setSplitWidth(leftWidth+(event.key==='ArrowLeft'?-3:3));
+  }else if(event.key==='Home'){event.preventDefault();setSplitWidth(25)}
+  else if(event.key==='End'){event.preventDefault();setSplitWidth(70)}
+ });
+}
+
+const $=id=>document.getElementById(id),ownerMap={owner:queues.map(x=>x.code),andrey:['pos_shopee','pos_tiktok'],vitor:['atacado','vtx','bluetti','pos_ml'],guilherme:queues.map(x=>x.code)};
+const roleLabels={owner:'Administradora com acesso a todas as filas',andrey:'Apenas pós-venda Shopee e TikTok',vitor:'Atacado, VTX, Bluetti e Mercado Livre',guilherme:'Supervisor com acesso de visualização a todas as filas'};
+function resetData(){items=template.map((x,i)=>({id:i+1,name:x[0],queue:x[1],status:x[2],preview:x[3],history:[{out:false,text:x[3],time:'14:32'}],phone:'(11) 90000-'+String(i+1).padStart(4,'0')}));selected=null;queueFilter='all';statusFilter='all';search='';render();}
+function esc(t){return String(t??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function visible(){return items.filter(x=>role==='owner'||(x.queue&&ownerMap[role].includes(x.queue)));}
+function meta(code){return queues.find(q=>q.code===code)||{code:null,name:'Sem classificação',owner:'Juliany',color:'#a4a0a5'};}
+function counts(){const d=visible();return {total:d.length,pending:d.filter(x=>x.status==='pending').length,open:d.filter(x=>x.status==='open').length,closed:d.filter(x=>x.status==='closed').length,unassigned:d.filter(x=>!x.queue).length};}
+function donut(title,subtitle,segments,total){let off=0;let g=segments.filter(x=>x.count).map(x=>{let s=off;off+=x.count/Math.max(total,1)*100;return `${x.color} ${s}% ${off}%`;}).join(',');return `<div class="chartCard"><h3>${esc(title)}</h3><p>${esc(subtitle)}</p><div class="chartRow"><div class="donut" style="background:conic-gradient(${g||'#e8e1e6 0% 100%'})"><div class="hole"><b>${total}</b><small>conversas</small></div></div><div class="legend">${segments.map(x=>`<div class="legrow"><span><i style="background:${x.color}"></i>${esc(x.name)}</span><b>${x.count}</b></div>`).join('')}</div></div></div>`;}
+function renderDashboard(){const list=visible(),c=counts(),totalQ=list.filter(x=>x.queue).length;const owners=(role==='andrey'?['Andrey']:role==='vitor'?['Vitor']:['Juliany','Andrey','Vitor']);const colors={Juliany:'#b54880',Andrey:'#e0783b',Vitor:'#009992'};const own=owners.map(name=>({name,color:colors[name],count:list.filter(x=>meta(x.queue).owner===name).length}));const areas=[{name:'Pós-venda',codes:['pos_nv','pos_shopee','pos_tiktok','pos_ml'],color:'#dd843f'},{name:'Varejo',codes:['varejo_nv'],color:'#327fc2'},{name:'Atacado',codes:['atacado'],color:'#845bb8'},{name:'Produtos',codes:['vtx','bluetti'],color:'#009c96'},{name:'Afiliados',codes:['afiliados'],color:'#bb4f84'}].map(x=>({...x,count:list.filter(q=>x.codes.includes(q.queue)).length}));const status=[{name:'Aguardando',count:c.pending,color:'#da8740'},{name:'Em andamento',count:c.open,color:'#3286c7'},{name:'Concluídas',count:c.closed,color:'#259878'}];const k=[['Conversas acompanhadas',c.total,'#9e4272'],['Aguardando resposta',c.pending,'#e38b40'],['Em andamento',c.open,'#3785c5'],['Concluídas',c.closed,'#259878']];$('dashboard').innerHTML=`<div class="layout"><div class="column"><div class="stats">${k.map(([t,v,color])=>`<div class="stat" style="--color:${color}"><span>${t}</span><strong>${v}</strong><small>Posição dos atendimentos simulados</small></div>`).join('')}</div><section class="panel"><h2>Distribuição dos atendimentos</h2><p>Quem atende e quais áreas recebem mais conversas.</p><div class="charts">${donut('Conversas por responsável','Volume por pessoa',own,totalQ)}${donut('Conversas por área','Origem e assunto do atendimento',areas,totalQ)}</div></section><section class="panel"><h2>Volume por fila</h2><p>Distribuição dos contatos conforme Vivi e encaminhamentos internos.</p><div class="queueGrid">${queues.filter(q=>ownerMap[role].includes(q.code)).map(q=>`<button class="queueTile" data-queue="${q.code}" style="--qcolor:${q.color}"><span><b>${esc(q.name)}</b><small>${q.owner}</small></span><strong>${list.filter(x=>x.queue===q.code).length}</strong></button>`).join('')}</div></section></div><aside class="column aside"><section class="panel">${donut('Situação dos atendimentos','Pendentes, em andamento e concluídas',status,c.total)}</section><section class="panel"><h2>Prioridades do dia</h2><div class="priority">🟠 <b>${c.pending}</b> aguardando resposta</div><div class="priority">🔵 <b>${c.open}</b> em andamento</div><div class="priority">🟢 <b>${c.closed}</b> concluídas</div>${c.unassigned?`<div class="priority">⚠ ${c.unassigned} sem classificação (admin)</div>`:''}</section><section class="panel"><h2>Origem dos encaminhamentos</h2><p>A Vivi direciona pela seleção de assunto. Conversas sem origem confiável ficam pendentes de classificação pela administração.</p></section><section class="panel"><h2>Equipe planejada</h2><div class="grid2"><div class="kpi"><b>3</b><small>convites em rascunho</small></div><div class="kpi"><b>0</b><small>acessos ativos</small></div></div><p style="margin-top:11px">Nesta prévia, você pode alternar entre perfis fictícios para simular permissões.</p></section></aside></div>`;document.querySelectorAll('[data-queue]').forEach(el=>el.onclick=()=>{queueFilter=el.dataset.queue;statusFilter='all';go('inbox')});}
+function renderInbox(){const all=visible(),c=counts();let matches=all.filter(x=>(queueFilter==='all'||(queueFilter==='unassigned'?!x.queue:x.queue===queueFilter))&&(statusFilter==='all'||x.status===statusFilter)&&(!search||[x.name,x.preview,x.phone,meta(x.queue).name].join(' ').toLowerCase().includes(search)));let sel=all.find(x=>x.id===selected);let roles=ownerMap[role];let canReply=role!=='guilherme';let options=queues.filter(q=>q.code!==sel?.queue).map(q=>`<option value="${q.code}">${esc(q.name)} · ${q.owner}</option>`).join('');$('inbox').innerHTML=`<div class="summary">${[['pending','Aguardando','#da8740'],['open','Em andamento','#3286c7'],['closed','Concluídos','#259878']].map(([s,t,color])=>`<button class="${statusFilter===s?'active':''}" data-status="${s}" style="--c:${color}"><strong>${c[s]}</strong><small>${t}</small></button>`).join('')}</div><div class="board" id="crmSplitBoard"><section class="list"><div class="listHeading"><h2>Atendimentos</h2><small>${matches.length} de ${all.length} conversas</small></div><label class="field"><span>Buscar conversa</span><input id="search" placeholder="Nome, número ou assunto…" value="${esc(search)}"></label><div class="filters"><select id="queueFilter"><option value="all">Todas as filas permitidas</option>${role==='owner'?'<option value="unassigned">Sem classificação</option>':''}${queues.filter(q=>roles.includes(q.code)).map(q=>`<option value="${q.code}" ${queueFilter===q.code?'selected':''}>${esc(q.name)}</option>`).join('')}</select><select id="statusFilter"><option value="all">Todos os status</option>${[['pending','Aguardando'],['open','Em andamento'],['closed','Concluídos']].map(([v,t])=>`<option value="${v}" ${statusFilter===v?'selected':''}>${t}</option>`).join('')}</select></div><div class="contacts">${matches.length?matches.map(x=>`<button class="contact ${x.id===selected?'active':''}" data-contact="${x.id}"><span class="avatar">${esc(x.name.substring(0,1))}</span><div class="contactText"><strong>${esc(x.name)}</strong><small><span style="color:${meta(x.queue).color};display:inline">●</span> ${esc(meta(x.queue).name)} · Hoje 14:32</small><span>${esc(x.preview)}</span></div><span>›</span></button>`).join(''):'<div class="empty">Nenhuma conversa nesta seleção.</div>'}</div></section><div id="crmSplitter" class="splitter" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Ajustar largura da lista de atendimentos" aria-valuemin="25" aria-valuemax="70" aria-valuenow="36" title="Arraste para os lados · use as setas ← → · duplo clique para restaurar"><span class="splitterHandle" aria-hidden="true">↔</span></div><section class="thread">${!sel?`<div class="placeholder"><div><h3>Selecione uma conversa</h3><p>Veja o histórico fictício, simule respostas e transferências.</p></div></div>`:`<div class="threadHead"><h2>${esc(sel.name)}</h2><p>${esc(sel.phone)} · ${esc(meta(sel.queue).name)} · ${esc(sel.status==='closed'?'Concluído':sel.status==='pending'?'Aguardando':'Em andamento')}</p></div><div class="messages">${sel.history.map(h=>`<div class="bubble ${h.out?'out':''}"><p>${esc(h.text)}</p><small>${esc(h.time)}</small></div>`).join('')}</div><div class="threadTools">${canReply?`<div class="toolRow"><div><strong>Situação do atendimento</strong><br><small>${sel.status==='closed'?'Concluído':'Em andamento'}</small></div><button class="btn" id="resolve">${sel.status==='closed'?'Reabrir atendimento':'Marcar resolvido'}</button></div><form id="compose" class="compose"><label>Responder pelo WhatsApp (simulação)</label><textarea maxlength="4096" id="replyText" placeholder="Digite uma resposta fictícia…"></textarea><div><small>Nenhum texto é enviado à Meta.</small><button class="primary" type="submit">Simular envio</button></div></form>`:'<div class="toolRow"><strong>Supervisão: leitura e encaminhamento</strong><small>Não pode responder</small></div>'}<div class="transfer"><strong>↪ Encaminhar conversa</strong><div class="transferControls"><select id="destination"><option value="">Escolha a fila de destino…</option>${options}</select><button class="primary" id="transfer">Transferir</button></div><small class="hint">A simulação muda somente os dados desta página. No sistema real, não altera atribuição no Argo.</small></div></div>`}</section></div>`;
+initSplitter();$('search').oninput=e=>{search=e.target.value;let pos=e.target.selectionStart;renderInbox();$('search').focus();$('search').setSelectionRange(pos,pos)};$('queueFilter').value=queueFilter;$('queueFilter').onchange=e=>{queueFilter=e.target.value;selected=null;renderInbox()};$('statusFilter').value=statusFilter;$('statusFilter').onchange=e=>{statusFilter=e.target.value;selected=null;renderInbox()};document.querySelectorAll('[data-status]').forEach(b=>b.onclick=()=>{statusFilter=statusFilter===b.dataset.status?'all':b.dataset.status;renderInbox()});document.querySelectorAll('[data-contact]').forEach(b=>b.onclick=()=>{selected=Number(b.dataset.contact);renderInbox()});if(sel){const res=$('resolve');if(res)res.onclick=()=>{sel.status=sel.status==='closed'?'open':'closed';toast('Situação alterada apenas na demonstração');render()};const comp=$('compose');if(comp)comp.onsubmit=e=>{e.preventDefault();let v=$('replyText').value.trim();if(!v)return;sel.history.push({out:true,text:v,time:'Agora'});sel.preview=v;sel.status='open';toast('Resposta fictícia adicionada. Nada foi enviado.');render()};$('transfer').onclick=()=>{const to=$('destination').value;if(!to)return;sel.queue=to;sel.status='pending';selected=null;toast('Transferência simulada para '+meta(to).name);render()}}}
+function toast(msg){const el=$('toast');el.textContent=msg;el.style.display='block';clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.style.display='none',3300)}
+function go(name){currentPage=name;for(const [d,i] of [['dashboard','Dashboard'],['inbox','Inbox']]){const on=d===name;$(d).classList.toggle('hidden',!on);$('tab'+i).classList.toggle('active',on);$('side'+i).classList.toggle('active',on)}$('pageTitle').textContent=name==='dashboard'?'Visão geral da operação':'Central de atendimento';$('pageSubtitle').textContent=name==='dashboard'?'Distribuição, acompanhamento e transferências de atendimentos.':'Atendimentos e conversas de exemplo, sem dados reais.';render()}
+function render(){$('roleDesc').textContent=roleLabels[role];$('role').value=role;if(selected&&!visible().some(x=>x.id===selected))selected=null;renderDashboard();renderInbox()}
+
+// Same exact appearance values as the existing TidePlace ThemeCustomizer.
+const EXP_PRESETS=[
+ {name:'Bordô',accent:'#8F2945',dark:'#751F36',soft:'#F6EAEE'},
+ {name:'Verde',accent:'#21A968',dark:'#168451',soft:'#E9F7F0'},
+ {name:'Esmeralda',accent:'#139B82',dark:'#0E7665',soft:'#E8F7F4'},
+ {name:'Turquesa',accent:'#239DA5',dark:'#187980',soft:'#E8F6F7'},
+ {name:'Azul',accent:'#2C94C7',dark:'#1F7199',soft:'#E8F4FA'},
+ {name:'Royal',accent:'#447CD5',dark:'#315FA8',soft:'#EBF1FB'},
+ {name:'Índigo',accent:'#5D63CC',dark:'#464BA3',soft:'#EEEFFB'},
+ {name:'Violeta',accent:'#7958C5',dark:'#5E42A0',soft:'#F0ECFA'},
+ {name:'Rosa',accent:'#C25487',dark:'#9B3D69',soft:'#FAEBF2'},
+ {name:'Terracota',accent:'#C65E5A',dark:'#9D4642',soft:'#FAECEB'},
+ {name:'Laranja',accent:'#D9821B',dark:'#AA6412',soft:'#FCF1E4'},
+ {name:'Mostarda',accent:'#C89A25',dark:'#997519',soft:'#FAF4E5'}
+];
+const EXP_MODES={
+ light:{bg:'#F8F5F4',surface:'#FFFFFF',softSurface:'#FBF9F8',text:'#171417',muted:'#756D70',border:'#EADFE2',topbar:'rgba(255,255,255,.95)'},
+ neutral:{bg:'#EEEAE9',surface:'#F8F6F5',softSurface:'#F2EFEE',text:'#1B1819',muted:'#6E6769',border:'#DDD4D6',topbar:'rgba(248,246,245,.95)'},
+ dark:{bg:'#171417',surface:'#211D1F',softSurface:'#292326',text:'#F7F3F4',muted:'#B8AFB2',border:'#3B3336',topbar:'rgba(33,29,31,.95)'}
+};
+const hexRgb=hex=>[0,2,4].map(i=>parseInt(hex.slice(1+i,3+i),16));
+const toHex=arr=>'#'+arr.map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('').toUpperCase();
+function mixHex(base,tint,amount){const a=hexRgb(base),b=hexRgb(tint);return toHex(a.map((v,i)=>v+(b[i]-v)*amount));}
+let appearance={accent:'#8F2945',mode:'light',tint:0};
+try{const stored=JSON.parse(localStorage.getItem('tideplace-theme')||'null');if(stored&&EXP_PRESETS.some(p=>p.accent===stored.accent)&&EXP_MODES[stored.mode]&&Number.isFinite(Number(stored.tint)))appearance={accent:stored.accent,mode:stored.mode,tint:Math.min(20,Math.max(0,Number(stored.tint)))};}catch{}
+function applyExperience(){
+ const p=EXP_PRESETS.find(x=>x.accent===appearance.accent)||EXP_PRESETS[0],m=EXP_MODES[appearance.mode]||EXP_MODES.light,t=appearance.tint/100,root=document.documentElement;
+ const vals={'--gold':p.accent,'--gold-dark':p.dark,'--gold-soft':p.soft,'--bg':mixHex(m.bg,p.accent,t*.42),'--surface':mixHex(m.surface,p.accent,t*.12),'--surface-soft':mixHex(m.softSurface,p.accent,t*.22),'--text':m.text,'--muted':m.muted,'--border':mixHex(m.border,p.accent,t*.18),'--theme-primary':p.accent,'--theme-bg':mixHex(m.bg,p.accent,t*.42),'--theme-text':m.text};
+ for(const [k,v] of Object.entries(vals))root.style.setProperty(k,v);
+ root.dataset.appearance=appearance.mode;
+ document.querySelectorAll('[data-accent]').forEach(b=>{const active=b.dataset.accent===p.accent;b.classList.toggle('selected',active);b.setAttribute('aria-pressed',String(active));});
+ document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===appearance.mode));
+ $('activeColor').style.background=p.accent;$('colorName').textContent=p.name;$('colorHex').textContent=p.accent;
+ $('tintRange').value=appearance.tint;$('tintValue').textContent=appearance.tint+'%';
+ try{localStorage.setItem('tideplace-theme',JSON.stringify(appearance));}catch{}
+}
+const toggleExperience=show=>{$('experienceOverlay').hidden=!show;$('experiencePanel').hidden=!show;};
+$('openExperience').onclick=()=>toggleExperience(true);$('closeExperience').onclick=$('experienceOverlay').onclick=()=>toggleExperience(false);
+$('resetExperience').onclick=()=>{appearance={accent:'#8F2945',mode:'light',tint:0};applyExperience();};
+$('tintRange').oninput=e=>{appearance.tint=Number(e.target.value);applyExperience();};
+document.querySelectorAll('[data-accent]').forEach(el=>el.onclick=()=>{appearance.accent=el.dataset.accent;applyExperience();});
+document.querySelectorAll('[data-mode]').forEach(el=>el.onclick=()=>{appearance.mode=el.dataset.mode;applyExperience();});
+document.addEventListener('keydown',event=>{if(event.key==='Escape')toggleExperience(false);if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();$('globalSearch').focus();}});
+applyExperience();
+let activeArea='studio',workspace='gui-nonato',studioTab='home';
+const demoSections={
+ home:{title:'Bom dia, Juliany.',desc:'O que precisa da sua atenção, sem misturar tudo na mesma tela.'},
+ content:{title:'Conteúdo',desc:'Calendário, ideias e roteiros reunidos em uma única área. A integração completa é a próxima fase.'},
+ publish:{title:'Publicar em redes',desc:'Mantemos a publicação multicanal existente, sem mudar as integrações.'},
+ automation:{title:'Automações sociais',desc:'Os fluxos de Instagram continuam preservados. Esta é uma prévia de navegação.'},
+ metrics:{title:'Métricas do Instagram',desc:'A área de métricas já existe no Tide original. Ela continuará aqui, sem perder dados.'},
+ goals:{title:'Metas',desc:'Metas existentes preservadas. Sugestões automáticas por IA serão adicionadas depois.'}
+};
+function studioMarkup(tab){
+ if(tab==='home')return `<div class="studioCards"><div class="studioCard"><span class="cardSymbol">☷</span><small>Tarefas pendentes</small><strong>—</strong><p>Dados originais preservados</p></div><div class="studioCard"><span class="cardSymbol">▤</span><small>Conteúdos programados</small><strong>—</strong><p>Seu calendário não foi alterado</p></div><div class="studioCard"><span class="cardSymbol">♙</span><small>Leads no CRM</small><strong>—</strong><p>Sem consultar dados nesta prévia</p></div></div><div class="studioGrid"><div class="futurePanel"><span class="pill">Social Studio</span><h2>Menos abas, mesmo trabalho</h2><p>Calendário, ideias e roteiros continuam existentes. Vamos conectá-los na próxima etapa, sem perder o que você já criou.</p><button class="demoCta" onclick="chooseStudio('content')">Ver organização do Conteúdo →</button></div><div class="futurePanel"><span class="pill">Tide CRM</span><h2>Atendimento separado de conteúdo</h2><p>O CRM Vital aprovado está aqui nesta prévia para avaliar a organização e o visual antes da integração.</p><button class="demoCta" onclick="chooseArea('crm')">Abrir CRM →</button></div></div>`;
+ if(tab==='content')return `<div class="studioGrid"><div class="futurePanel"><span class="pill">A organizar</span><h2>Planejamento editorial</h2><p>Uma aba para <strong>Ideias → Roteiros com IA → Calendário</strong>. Nesta fase a interface indica a organização; o calendário e os dados originais não foram modificados.</p><div class="previewLinks"><span class="pill">Ideias</span><span class="pill">Roteiros</span><span class="pill">Calendário</span></div></div><div class="futurePanel"><span class="pill">Próxima fase</span><h2>Um conteúdo, um histórico</h2><p>Ao escolher uma ideia, você poderá desenvolver um roteiro e adicionar ao calendário sem duplicar o conteúdo.</p></div></div>`;
+ return `<div class="futurePanel"><span class="pill">Funcionalidade preservada</span><h2>${demoSections[tab].title}</h2><p>Esta prévia representa apenas a nova navegação. Nenhuma configuração, automação, postagem ou métrica real foi modificada. O conteúdo existente do TidePlace será reutilizado quando a organização for aprovada.</p></div>`;
+}
+function chooseStudio(tab){studioTab=tab;chooseArea('studio',false);$('studioWelcome').textContent=demoSections[tab].title;$('studioDescription').textContent=demoSections[tab].desc;$('studioContent').innerHTML=studioMarkup(tab);document.querySelectorAll('[data-studio]').forEach(el=>el.classList.toggle('active',el.dataset.studio===tab));}
+function syncArea(){
+ $('switchStudio').classList.toggle('areaOn',activeArea==='studio');$('switchCRM').classList.toggle('areaOn',activeArea==='crm');
+ $('studioNav').hidden=activeArea!=='studio';$('crmNav').hidden=activeArea!=='crm';
+ $('studioPage').hidden=activeArea!=='studio';$('crmPage').hidden=activeArea!=='crm'||workspace!=='vital-decor';$('guiCrmPage').hidden=activeArea!=='crm'||workspace!=='gui-nonato';
+ $('studioEyebrow').textContent='TIDEPLACE · '+(workspace==='vital-decor'?'VITAL DECOR':'GUI NONATO');
+ $('workspaceHandle').textContent=workspace==='vital-decor'?'@vitaldecor_ · Instagram':'@gui_nonato · Instagram';$('accountAvatar').textContent=workspace==='vital-decor'?'V':'G';
+ $('workspacePicker').value=workspace;
+ if(workspace==='vital-decor'&&activeArea==='crm')go(currentPage==='inbox'?'inbox':'dashboard');
+}
+function chooseArea(next,update=true){activeArea=next;syncArea();}
+$('switchStudio').onclick=()=>chooseStudio('home');$('switchCRM').onclick=()=>chooseArea('crm');
+$('workspacePicker').onchange=e=>{workspace=e.target.value;syncArea();};
+$('openVitalFromGui').onclick=()=>{workspace='vital-decor';chooseArea('crm');};
+$('settingsShortcut').onclick=()=>{toggleExperience(true);};
+document.querySelectorAll('[data-studio]').forEach(el=>el.onclick=()=>chooseStudio(el.dataset.studio));
+document.querySelectorAll('[data-crm]').forEach(el=>el.onclick=()=>{toast('A área '+el.textContent.trim()+' será integrada na próxima fase; o CRM Vital continua disponível no Dashboard e Atendimentos.');});
+$('globalSearch').oninput=e=>{const q=e.target.value.trim().toLowerCase();document.querySelectorAll('.areaNav:not([hidden]) .nav').forEach(el=>{el.style.display=!q||el.textContent.toLowerCase().includes(q)?'flex':'none';});};
+$('tabDashboard').onclick=$('sideDashboard').onclick=()=>go('dashboard');$('tabInbox').onclick=$('sideInbox').onclick=()=>go('inbox');$('role').onchange=e=>{role=e.target.value;selected=null;queueFilter='all';statusFilter='all';search='';render()};$('reset').onclick=()=>{resetData();toast('Simulação reiniciada')};resetData();go('dashboard');chooseStudio('home');syncArea();
+</script><script>
+(()=>{
+ 'use strict';
+ const logo='data:image/webp;base64,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';
+ // The TidePlace logo preview contains only fictional CRM data. MIA is intentionally not connected to an AI backend.
+ const root=document.createElement('div');root.id='miaGlobalRoot';
+ root.innerHTML=`<button type="button" id="miaLauncher" class="miaLaunch" aria-label="Abrir assistente MIA" aria-expanded="false" aria-controls="miaGlobalPanel" title="MIA · Arraste para posicionar"><img src="${logo}" alt="MIA"><span class="miaLaunchHint">MIA · Assistente</span></button>
+ <section id="miaGlobalPanel" class="miaPanel" aria-label="MIA, assistente do TidePlace" hidden>
+  <header class="miaPanelHeader"><img src="${logo}" alt=""><div class="miaPanelTitle"><strong>MIA</strong><small>Assistente do TidePlace</small></div><button class="miaIconBtn" type="button" id="miaExpand" aria-label="Expandir painel" title="Expandir">⤢</button><button class="miaIconBtn" type="button" id="miaClose" aria-label="Fechar MIA" title="Fechar">×</button></header>
+  <div class="miaContext"><span class="miaStatusDot" aria-hidden="true"></span><span id="miaContextText">Vital Decor · CRM</span></div>
+  <div class="miaPanelMain" id="miaBody"><div class="miaIntro"><b>Oi! Eu sou a MIA.</b><p>Sou sua assistente do TidePlace. Esta é uma demonstração visual: posso mostrar sugestões e o fluxo da interface, sem acessar dados reais.</p></div><div id="miaPromptGrid" class="miaPromptGrid"></div><div id="miaMessages" class="miaConversation" aria-live="polite"></div></div>
+  <form class="miaFooter" id="miaForm"><div class="miaComposer"><input id="miaQuestion" type="text" placeholder="Pergunte à MIA..." aria-label="Pergunte à MIA" autocomplete="off" maxlength="500"><button type="submit" aria-label="Enviar mensagem de demonstração">↑</button></div><p class="miaHint">Demonstração · Ainda não conectada à inteligência artificial</p></form>
+ </section>`;
+ document.body.append(root);
+ const $=id=>document.getElementById(id),btn=$('miaLauncher'),panel=$('miaGlobalPanel');
+ const state={opened:false,expanded:false,x:window.innerWidth-100,y:window.innerHeight-102,drag:false,moved:false,startX:0,startY:0,originX:0,originY:0};
+ const clamp=(v,min,max)=>Math.max(min,Math.min(v,max));
+ const persisted=()=>{try{localStorage.setItem('tideplace-mia-position',JSON.stringify({x:state.x,y:state.y}))}catch{}};
+ try{const p=JSON.parse(localStorage.getItem('tideplace-mia-position')||'null');if(p&&Number.isFinite(p.x)&&Number.isFinite(p.y)){state.x=p.x;state.y=p.y}}catch{}
+ function setPosition(){state.x=clamp(state.x,6,Math.max(6,window.innerWidth-btn.offsetWidth-6));state.y=clamp(state.y,6,Math.max(6,window.innerHeight-btn.offsetHeight-6));btn.style.left=state.x+'px';btn.style.top=state.y+'px';btn.style.right='auto';btn.style.bottom='auto';placePanel()}
+ function placePanel(){if(state.expanded)return;const pw=Math.min(385,window.innerWidth-20),ph=Math.min(500,window.innerHeight-24);const left=state.x>pw+30?state.x-pw-13:state.x+btn.offsetWidth+13;panel.style.left=clamp(left,10,window.innerWidth-pw-10)+'px';panel.style.top=clamp(state.y-ph+btn.offsetHeight,10,window.innerHeight-ph-10)+'px';panel.style.right='auto'}
+ function context(){const currentArea=document.getElementById('switchCRM')?.classList.contains('areaOn')?'CRM':'Social Studio';const selector=$('workspacePicker');const brand=selector?.value==='gui-nonato'?'Gui Nonato':'Vital Decor';const detail=currentArea==='CRM'?(document.getElementById('inbox')?.classList.contains('hidden')?'Dashboard':'Atendimentos'):'Conteúdo e métricas';return {brand,area:currentArea,detail}}
+ const prompts={crm:['Resumir este atendimento','Sugerir uma resposta','Indicar próximo passo','Criar uma tarefa'],social:['Gerar uma ideia de conteúdo','Criar um roteiro com IA','Planejar a semana','Analisar métricas']};
+ function updateContext(){const c=context();$('miaContextText').textContent=c.brand+' · '+c.area+' · '+c.detail;const list=c.area==='CRM'?prompts.crm:prompts.social;$('miaPromptGrid').replaceChildren(...list.map(item=>{const b=document.createElement('button');b.type='button';b.textContent=item;b.addEventListener('click',()=>respond(item));return b}))}
+ function addMessage(text,fromUser){const el=document.createElement('div');el.className='miaMessage'+(fromUser?' fromUser':'');el.textContent=text;$('miaMessages').append(el);$('miaBody').scrollTop=$('miaBody').scrollHeight}
+ function respond(text){addMessage(text,true);const c=context();const type=/resum/i.test(text)?'resumo':/resposta/i.test(text)?'resposta':/tarefa/i.test(text)?'tarefa':/métrica|dados/i.test(text)?'metrica':'ideia';const messages={resumo:'Quando a MIA estiver conectada, poderei resumir a conversa selecionada e destacar pendências. Nesta prévia não leio mensagens reais.',resposta:'Posso preparar sugestões de resposta para você revisar antes de enviar. Por enquanto, este é apenas o exemplo da interface.',tarefa:'Aqui aparecerá uma sugestão de tarefa com responsável e prazo, sempre com sua confirmação antes de salvar.',metrica:'Quando a integração estiver pronta, poderei analisar métricas reais do '+c.brand+' e propor ações. Não tenho acesso a esses dados nesta prévia.',ideia:'Posso ajudar a criar ideias, roteiros e organizar o calendário dentro do Social Studio. Essa capacidade será conectada numa próxima etapa.'};addMessage(messages[type],false)}
+ function toggle(open){state.opened=open;panel.hidden=!open;btn.setAttribute('aria-expanded',String(open));if(open){updateContext();placePanel();$('miaQuestion').focus()}else btn.focus()}
+ btn.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;state.drag=true;state.moved=false;state.startX=e.clientX;state.startY=e.clientY;state.originX=state.x;state.originY=state.y;btn.setPointerCapture(e.pointerId)});
+ btn.addEventListener('pointermove',e=>{if(!state.drag)return;const dx=e.clientX-state.startX,dy=e.clientY-state.startY;if(Math.hypot(dx,dy)>5)state.moved=true;if(state.moved){state.x=state.originX+dx;state.y=state.originY+dy;setPosition()}});
+ btn.addEventListener('pointerup',()=>{if(!state.drag)return;state.drag=false;if(state.moved){persisted();btn.dataset.justDragged='1';requestAnimationFrame(()=>requestAnimationFrame(()=>{delete btn.dataset.justDragged}))}});
+ btn.addEventListener('pointercancel',()=>{state.drag=false;persisted()});
+ btn.addEventListener('click',e=>{if(state.moved){e.preventDefault();state.moved=false;return}toggle(!state.opened)});
+ $('miaClose').addEventListener('click',()=>toggle(false));
+ $('miaExpand').addEventListener('click',()=>{state.expanded=!state.expanded;panel.classList.toggle('isExpanded',state.expanded);$('miaExpand').textContent=state.expanded?'⤡':'⤢';$('miaExpand').setAttribute('aria-label',state.expanded?'Reduzir painel':'Expandir painel');if(!state.expanded)placePanel()});
+ $('miaForm').addEventListener('submit',e=>{e.preventDefault();const text=$('miaQuestion').value.trim();if(text){respond(text);$('miaQuestion').value=''}});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&state.opened&&document.getElementById('experiencePanel')?.hidden===false)return;if(e.key==='Escape'&&state.opened)toggle(false)});
+ window.addEventListener('resize',()=>setPosition());
+ document.addEventListener('click',e=>{if(e.target.closest('[data-studio],#switchCRM,#switchStudio,#workspaceSelect,#tabDashboard,#tabInbox,#sideDashboard,#sideInbox'))setTimeout(updateContext,0)},true);
+ const btns=document.querySelectorAll('[data-appearance]');btns.forEach(b=>b.addEventListener('click',()=>{},false));
+ setPosition();updateContext();
+})();
+</script></body></html>

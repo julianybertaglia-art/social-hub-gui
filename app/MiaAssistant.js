@@ -103,8 +103,8 @@ export default function MiaAssistant(){
     <MiaMark small/>
     <div className={css.heading}><strong>MIA</strong><span>Assistente do TidePlace</span></div>
     <button type="button" title={expanded?'Reduzir painel':'Expandir painel'} aria-label={expanded?'Reduzir painel':'Expandir painel'}
-      onClick={()=>setExpanded(v=>!v)}><Icon name={expanded?'minimize-2':'maximize-2'} size={17}/></button>
-    <button type="button" aria-label="Fechar MIA" onClick={()=>setOpen(false)}><Icon name="x" size={17}/></button>
+      onClick={()=>setExpanded(v=>!v)}><Icon name={expanded?'columns':'external'} size={17}/></button>
+    <button type="button" aria-label="Fechar MIA" onClick={()=>setOpen(false)}><Icon name="close" size={17}/></button>
    </header>
    <div className={css.context}><span className={css.statusDot}/> {brand} · {isCrm?'CRM':'Social Studio'}</div>
    <div className={css.body}>
@@ -113,7 +113,7 @@ export default function MiaAssistant(){
     <div className={css.actions}>
      {actions.map(([label,detail])=><button type="button" className={selected===label?css.selected:''} key={label}
       onClick={()=>setSelected(selected===label?'':label)}>
-      <Icon name={isCrm?'message-circle':'lightbulb'} size={17}/><span>{label}</span>
+      <Icon name={isCrm?'chat':'idea'} size={17}/><span>{label}</span>
      </button>)}
     </div>
     {selected&&<div className={css.description}><strong>{selected}</strong>
@@ -121,7 +121,7 @@ export default function MiaAssistant(){
    </div>
    <footer className={css.footer}><span>Em preparação · Nenhuma mensagem é enviada</span>
     <div className={css.compose}><input aria-label="Pergunte à MIA (em breve)" placeholder="Pergunte à MIA..." disabled />
-     <button disabled aria-label="Enviar pergunta"><Icon name="arrow-up" size={18}/></button></div>
+     <button disabled aria-label="Enviar pergunta"><Icon name="send" size={18}/></button></div>
    </footer>
   </section>}
  </>;

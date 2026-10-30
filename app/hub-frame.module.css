@@ -61,3 +61,20 @@
 .areaSwitch a.areaActive{background:var(--gold,#8F2945);color:#fff!important;box-shadow:0 3px 14px rgba(0,0,0,.16)}
 .settingsShortcut{display:flex;align-items:center;gap:10px;min-height:40px;margin:8px 7px 0;padding:9px 12px;border-radius:8px;color:var(--tp-side-text,#fff)!important;text-decoration:none!important;font-size:12px;font-weight:650}
 .settingsShortcut:hover{background:rgba(255,255,255,.06)}
+
+
+/* Stronger typography without changing the original TidePlace design. */
+.brandCopy strong{font-weight:780}
+.navLink{font-weight:650;letter-spacing:-.01em}
+.navLink.active{font-weight:780}
+.areaSwitch a{font-size:13px;font-weight:760}
+.groupLabel{font-weight:800}
+.context strong{font-weight:760}
+.profile strong{font-weight:750}
+.settingsShortcut{font-weight:700;font-size:13px}
+:global(html[data-appearance="dark"]) .workspaceEmpty,
+:global(html[data-appearance="dark"]) .workspaceSteps span{
+ background:var(--surface);
+ color:var(--text);
+ border-color:var(--border)
+}

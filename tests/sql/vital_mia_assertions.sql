@@ -63,7 +63,7 @@ begin
  select count(*) into n from public.crm_organization_sectors;
  if n<>6 then raise exception 'Tenant leak: Vital owner sees % sectors (expected 6)',n; end if;
  select count(*) into n from public.crm_organization_member_sectors;
- if n<>0 then raise exception 'Unexpected member sectors',n; end if;
+ if n<>0 then raise exception 'Unexpected member sectors: %',n; end if;
 end $$;
 reset role;
 reset request.jwt.claim.sub;

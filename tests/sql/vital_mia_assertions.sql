@@ -299,6 +299,11 @@ begin
  select count(*) into n from public.crm_vital_mia_messages
  where thread_id=owner_thread and organization_id=vital and user_id=owner;
  if n<>4 then raise exception 'Owner history should contain two full turns: %',n; end if;
+ if (select array_agg(role order by message_order)
+      from public.crm_vital_mia_messages
+      where thread_id=owner_thread and organization_id=vital and user_id=owner)
+    is distinct from ARRAY['user','assistant','user','assistant']::text[]
+ then raise exception 'MIA message order not deterministic (user -> assistant pair)'; end if;
  select count(*) into n from public.crm_vital_mia_messages
  where thread_id=supervisor_thread and organization_id=vital and user_id=supervisor;
  if n<>2 then raise exception 'Supervisor history should contain only its turn: %',n; end if;

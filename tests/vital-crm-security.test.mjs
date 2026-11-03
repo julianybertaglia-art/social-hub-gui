@@ -150,4 +150,7 @@ test('MIA threads have strict Gui/Vital workspace scoping on every read and crea
  assert.match(ui,/body:\{mode:'new',workspace:requestWorkspace\}/);
  assert.match(ui,/workspace:requestWorkspace,contact:contactAtSend/);
  assert.match(ui,/workspaceRef\.current!==requestWorkspace/);
+ assert.match(ui,/const isVitalCrm=isCrm&&workspace\?\.id==='vital-decor'/);
+ assert.match(ui,/const contactAtSend=isVitalCrm\?selectedContact:null/);
+ assert.match(ui,/\{isVitalCrm&&<div className=\{css\.quickActions\}/);
 });

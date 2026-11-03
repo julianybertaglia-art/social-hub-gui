@@ -145,7 +145,7 @@ async function summary(ctx,page){
     sampled:(recent.data||[]).length>=3000||(flows.data||[]).length>=5000||(states.data||[]).length>=5000,
     readOnly:process.env.VITAL_CRM_WRITES_ENABLED!=='true',
     canReply:['owner','agent'].includes(ctx.access.role)
-      &&(process.env.VITAL_CRM_REPLY_ENABLED==='true'||process.env.VITAL_CRM_WRITES_ENABLED==='true'),
+      &&process.env.VITAL_CRM_REPLY_ENABLED==='true',
     canChangeStatus:['owner','agent'].includes(ctx.access.role)
       &&process.env.VITAL_CRM_WRITES_ENABLED==='true',
     canTransfer:ctx.access.canTransfer&&process.env.VITAL_CRM_WRITES_ENABLED==='true',

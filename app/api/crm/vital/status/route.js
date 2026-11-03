@@ -57,6 +57,7 @@ export async function PATCH(request){
   });
   if(statusError||updated!==input.status){
     if(statusError?.code==='40001')throw fail('Esta conversa mudou de situação. Atualize antes de tentar novamente.',409);
+    if(statusError?.code==='55P03')throw fail('Há uma resposta em andamento. Aguarde antes de alterar o status.',409);
     if(statusError?.code==='42501')throw fail('Sua permissão para esta fila mudou. Atualize o CRM.',403);
     throw fail('A situação não foi atualizada. Tente novamente.',503);
   }

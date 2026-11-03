@@ -14,6 +14,13 @@ export const VITAL_QUEUE_OWNER_LABEL = Object.freeze({
   pos_shopee:'Andrey',pos_tiktok:'Andrey',
   atacado:'Vitor',vtx:'Vitor',bluetti:'Vitor',pos_ml:'Vitor',
 });
+const ALL_VITAL_QUEUES=Object.freeze([...VITAL_QUEUE_ORDER]);
+export const VITAL_TEAM_QUEUE_PLAN=Object.freeze({
+  Juliany:Object.freeze({role:'Administradora',access:'owner',queues:ALL_VITAL_QUEUES}),
+  Andrey:Object.freeze({role:'Atendente',access:'agent',queues:Object.freeze(['pos_shopee','pos_tiktok'])}),
+  Vitor:Object.freeze({role:'Atendente',access:'agent',queues:Object.freeze(['atacado','vtx','bluetti','pos_ml'])}),
+  Guilherme:Object.freeze({role:'Supervisor · somente leitura',access:'supervisor',queues:ALL_VITAL_QUEUES}),
+});
 export function normalizeViviSelection(value) {
   return String(value||'').trim().normalize('NFD')
     .replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')
@@ -58,6 +65,9 @@ export function canAccessVitalQueue(role,granted,queue) {
   if(!VITAL_QUEUE_SECTORS[queue])return false;
   return role==='owner' || (['agent','supervisor'].includes(role)
     && Array.isArray(granted) && granted.includes(queue));
+}
+export function canUseVitalMia(role) {
+  return ['owner','agent','supervisor'].includes(role);
 }
 export function queueStatus({closed=false,lastDirection}={}) {
   return closed ? 'closed' : lastDirection==='inbound' ? 'pending':'open';

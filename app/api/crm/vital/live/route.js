@@ -11,7 +11,6 @@ const PHONE=/^\d{8,15}$/;
 
 async function context(request){
   const auth=await getVitalCrmMember(request);
-  if(auth.access.role!=='owner')throw fail('Nesta fase o CRM real está liberado apenas para a administradora.',403);
   const {db,organization,access,userId}=auth;
   const owner=organization.ownerUserId;
   const {data:connection,error:connectionError}=await db.from('workspace_meta_connections')
@@ -72,6 +71,7 @@ async function readOne(ctx,phone){
         legacyClosed:info.assignment?.status==='closed',lastDirection:messages[0].direction,
         lastMessageAt:messages[0].sent_at||messages[0].created_at}),
       replyWindowOpen:canReplyWithinWindow(lastInboundAt),replyBlockedByExternal:externalAssignment,
+      currentAssignee:info.assignment?.status==='closed'?null:info.assignment?.assigned_to||null,
       lastInboundAt}, 
     messages:messages.reverse().map(formatMessage),truncated:messages.length===150};
 }
@@ -144,7 +144,14 @@ async function summary(ctx,page){
     conversations:enriched,page,hasMore:rows.length>(page+1)*30,
     sampled:(recent.data||[]).length>=3000||(flows.data||[]).length>=5000||(states.data||[]).length>=5000,
     readOnly:process.env.VITAL_CRM_WRITES_ENABLED!=='true',
-    canReply:process.env.VITAL_CRM_REPLY_ENABLED==='true'||process.env.VITAL_CRM_WRITES_ENABLED==='true',
+    canReply:['owner','agent'].includes(ctx.access.role)
+      &&(ctx.access.role==='owner'||process.env.VITAL_CRM_STAFF_REPLY_ENABLED==='true')
+      &&process.env.VITAL_CRM_REPLY_ENABLED==='true',
+    canChangeStatus:['owner','agent'].includes(ctx.access.role)
+      &&process.env.VITAL_CRM_WRITES_ENABLED==='true',
+    canTransfer:ctx.access.canTransfer&&process.env.VITAL_CRM_WRITES_ENABLED==='true',
+    canWriteNotes:['owner','agent'].includes(ctx.access.role)
+      &&process.env.VITAL_CRM_WRITES_ENABLED==='true',
   };
 }
 export async function GET(request){
@@ -166,6 +173,7 @@ export async function PATCH(request){
     const origin=request.headers.get('origin');
     if(!origin||origin!==new URL(request.url).origin)throw fail('Origem inválida.',403);
     const ctx=await context(request);
+    if(!ctx.access.canTransfer)throw fail('Seu perfil não tem permissão para transferir conversas.',403);
     const body=await request.json().catch(()=>({}));
     const phone=String(body.contact||''),toQueue=String(body.toQueue||'');
     if(!PHONE.test(phone)||!VITAL_QUEUE_ORDER.includes(toQueue))throw fail('Contato ou fila inválidos.',400);
@@ -189,6 +197,7 @@ export async function PATCH(request){
     });
     if(transferError||result!==toQueue){
       if(transferError?.code==='40001')throw fail('Esta conversa foi modificada. Atualize a página e tente novamente.',409);
+      if(transferError?.code==='55P03')throw fail('Há uma resposta em andamento. Aguarde antes de transferir.',409);
       if(transferError?.code==='42501')throw fail('Seu acesso a esta conversa foi alterado. Atualize a página.',403);
       throw fail('Não foi possível registrar a transferência. Nenhuma alteração foi concluída.',503);
     }

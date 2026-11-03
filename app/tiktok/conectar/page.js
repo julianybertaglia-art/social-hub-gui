@@ -116,7 +116,7 @@ export default function TikTokConnectionPage(){
           onClick={()=>connect(true,'sandbox')}>{busy?'Abrindo TikTok…':
             status?.connected&&status?.environment==='sandbox'?'Renovar permissões no Sandbox':'Conectar no Sandbox com permissões de vídeo'}</button>
         <button type="button" className={styles.secondary} disabled={!configured||loading||busy}
-          onClick={()=>connect(false,'production')}>Conectar em Production (após aprovação)</button>
+          onClick={()=>connect(true,'production')}>Conectar em Production com permissões de vídeo</button>
         {status?.connected&&<button type="button" className={styles.secondary} onClick={disconnect}
           disabled={busy}>Desconectar e revogar</button>}
       </div>
@@ -127,12 +127,19 @@ export default function TikTokConnectionPage(){
         <strong>Para testar o perfil @gui_nonato no Sandbox:</strong>
         <p>Adicione <code>TIKTOK_SANDBOX_CLIENT_KEY</code> e <code>TIKTOK_SANDBOX_CLIENT_SECRET</code> nas variáveis <b>Production</b> do projeto <b>social-hub-gui</b> na Vercel, usando os valores da seção <b>Sandbox → TidePlace Testes → Credentials</b> do TikTok. Não sobrescreva <code>TIKTOK_CLIENT_KEY</code> e <code>TIKTOK_CLIENT_SECRET</code>. Faça um redeploy de Production após salvar e atualize esta tela. Nunca compartilhe o segredo em conversa.</p>
       </div>}
-      <p>O TikTok está integrado em ambiente de teste. Clique em <b>Renovar permissões no Sandbox</b> para autorizar <code>user.info.basic</code>, <code>video.upload</code> e <code>video.publish</code>. A autorização anterior tinha apenas <code>user.info.basic</code>.</p>
-      <p>Com <code>video.upload</code> vamos enviar um vídeo à caixa de entrada do aplicativo TikTok, onde o criador poderá finalizar manualmente. Isso <b>não é uma publicação pública automática</b>. O Direct Post exige fluxo separado e aprovação da plataforma.</p>
+      <p>A próxima conexão de publicação solicita <code>user.info.basic</code>, <code>video.upload</code> e <code>video.publish</code>. O <code>video.upload</code> mantém o envio para rascunhos; <code>video.publish</code> habilita o Direct Post.</p>
+      <p>O Direct Post está integrado no publicador do TidePlace. Antes da auditoria, o TikTok restringe a publicação a contas privadas e à opção <b>Somente eu</b>; depois da auditoria, as opções de privacidade da conta podem ser liberadas. A auditoria precisa aprovar o aplicativo e o escopo <code>video.publish</code>.</p>
       <div className={styles.features}>
         <div><span>01</span><strong>Conectar conta</strong><p>Configure a chave e o segredo da API e autorize o Gui pelo TikTok.</p></div>
         <div><span>02</span><strong>Sandbox e demonstração</strong><p>Teste a integração com usuários de teste autorizados. A gravação de tela deve mostrar o fluxo real, não uma simulação.</p></div>
-        <div><span>03</span><strong>Rascunhos e revisão</strong><p>Com <code>video.upload</code> concedido, envie vídeos pelo publicador do TidePlace para revisar e finalizar no aplicativo TikTok. Publicação pública direta depende de aprovação.</p></div>
+        <div><span>03</span><strong>Publicação e rascunhos</strong><p>O criador escolhe Direct Post ou rascunho. O Direct Post pede privacidade, interações e confirmação de uso de música a cada publicação.</p></div>
+      </div>
+      <div className={styles.help}>
+        <strong>{status?.directPostAudited?'Direct Post aprovado':'Bloqueio de elegibilidade para auditoria'}</strong>
+        <p>{status?.directPostAudited
+          ?'O ambiente está configurado como auditado. O publicador continuará usando as opções atuais retornadas pelo TikTok para cada conta.'
+          :'Hoje o TidePlace está limitado ao workspace Gui Nonato. As diretrizes do TikTok não aceitam uma ferramenta destinada somente a contas administradas por uma equipe. Antes de pedir a auditoria, o produto precisa atender criadores independentes e demonstrar uso real por eles.'}</p>
+        <a href="https://developers.tiktok.com/docs/en/content-sharing-guidelines" target="_blank" rel="noopener noreferrer">Diretrizes oficiais de publicação ↗</a>
       </div>
       <div className={styles.actions}>
         <Link className={styles.secondary} href="/publicar">Abrir publicador multicanal ↗</Link>
@@ -147,3 +154,4 @@ export default function TikTokConnectionPage(){
     </section>
   </main>;
 }
+

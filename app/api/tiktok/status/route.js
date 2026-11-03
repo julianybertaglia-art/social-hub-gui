@@ -16,8 +16,9 @@ export async function GET(request){
       .select('open_id,display_name,avatar_url,oauth_scopes,connected_at,access_expires_at,refresh_expires_at,environment')
       .eq('owner_user_id',ownerId).eq('workspace_id',TIKTOK_WORKSPACE).maybeSingle();
     if(error)throw new Error('A conexão TikTok não pôde ser consultada.');
+    const audited=process.env.TIKTOK_DIRECT_POST_AUDITED==='true';
     return Response.json({...tiktokPublicStatus(row),configured:tiktokConfigured(),sandboxConfigured:tiktokConfigured('sandbox'),workspace:TIKTOK_WORKSPACE,
-      reviewRequired:true},{headers:cache});
+      directPostAudited:audited,reviewRequired:!audited},{headers:cache});
   }catch(error){return Response.json({error:error.status?error.message:'Falha ao consultar a conexão TikTok.'},
     {status:error.status||503,headers:cache});}
 }
@@ -45,3 +46,4 @@ export async function DELETE(request){
   }catch(error){return Response.json({error:error.status?error.message:'Não foi possível desconectar. Revogue o TidePlace também nas configurações do TikTok.'},
     {status:error.status||503,headers:cache});}
 }
+

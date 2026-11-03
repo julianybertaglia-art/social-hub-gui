@@ -176,3 +176,14 @@ test('isolated CRM preview bypasses login only for its fictitious route, never p
  assert.match(visual,/canReplyDemo\(profile,current\)/);
  assert.match(visual,/role="status" aria-live="polite"/);
 });
+
+
+test('general MIA chat does not require WhatsApp; failed CRM authorization does not burn hourly requests',()=>{
+ const route=source('app/api/crm/vital/mia/route.js');
+ const post=route.slice(route.indexOf('export async function POST'));
+ assert.match(post,/const needsOperationalContext=workspace==='vital-decor'&&\(Boolean\(contact\)\|\|asksForIndicators\)/);
+ assert.match(post,/const connection=needsOperationalContext\?await connectionFor\(auth\):null/);
+ assert.ok(post.indexOf("const authorized=await loadContactContext")<post.indexOf("crm_vital_mia_claim_request_atomic"));
+ assert.ok(post.indexOf("context={operationalIndicators:await loadIndicators")<post.indexOf("crm_vital_mia_claim_request_atomic"));
+ assert.ok(post.indexOf("crm_vital_mia_claim_request_atomic")<post.indexOf("const answer=await generateMiaText"));
+});

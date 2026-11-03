@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {canReplyWithinWindow,WHATSAPP_REPLY_WINDOW_MS} from '../app/api/vital-whatsapp/conversations/inbox.mjs';
+import {shouldSendOnEnter} from '../app/lib/vital-crm-keyboard.mjs';
 
 const source=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const live=source('app/api/crm/vital/live/route.js');
@@ -52,18 +53,34 @@ test('chat layout supports independently persisted width and height',()=>{
  assert.match(css,/\.threadBottom/);
  assert.match(css,/\.composeRow/);
  assert.match(css,/\.board \.contacts/);
- assert.match(ui,/Personalizar tamanho da central de atendimento/);
- assert.match(ui,/id="vital-list-width"/);
- assert.match(ui,/id="vital-board-height"/);
- assert.match(ui,/onChange=\{e=>changeSplitWidth\(Number\(e.target.value\)\)\}/);
- assert.match(ui,/onChange=\{e=>changeBoardHeight\(Number\(e.target.value\)\)\}/);
- assert.match(ui,/resetBoardHeight\(\)/);
- assert.match(css,/\.layoutToolbar/);
- assert.match(css,/\.layoutControl input\[type=range\]/);
+ assert.doesNotMatch(ui,/className=\{css\.layoutToolbar\}/);
+ assert.doesNotMatch(ui,/id="vital-list-width"/);
+ assert.doesNotMatch(ui,/id="vital-board-height"/);
+ assert.doesNotMatch(css,/\.layoutToolbar/);
+ assert.match(ui,/aria-label="Ajustar largura entre atendimentos e conversa"/);
+ assert.match(ui,/aria-label="Ajustar altura da central de atendimento"/);
+ assert.match(ui,/↔/);
+ assert.match(ui,/↕/);
 });
 test('WhatsApp reply window is conservative',()=>{
  const now=Date.now();
  assert.equal(canReplyWithinWindow(new Date(now-5*60*1000).toISOString(),now),true);
  assert.equal(canReplyWithinWindow(new Date(now-WHATSAPP_REPLY_WINDOW_MS).toISOString(),now),false);
  assert.equal(canReplyWithinWindow(null,now),false);
+});
+
+test('Enter sends directly, but Shift+Enter, IME and shortcuts do not',()=>{
+ const key={key:'Enter',shiftKey:false,ctrlKey:false,altKey:false,metaKey:false,repeat:false,nativeEvent:{isComposing:false}};
+ assert.equal(shouldSendOnEnter(key),true);
+ assert.equal(shouldSendOnEnter({...key,shiftKey:true}),false);
+ assert.equal(shouldSendOnEnter({...key,repeat:true}),false);
+ assert.equal(shouldSendOnEnter({...key,ctrlKey:true}),false);
+ assert.equal(shouldSendOnEnter({...key,metaKey:true}),false);
+ assert.equal(shouldSendOnEnter({...key,nativeEvent:{isComposing:true}}),false);
+ assert.equal(shouldSendOnEnter({...key,nativeEvent:{keyCode:229}}),false);
+ assert.equal(shouldSendOnEnter({...key,key:'a'}),false);
+ assert.match(ui,/onKeyDown=\{handleReplyKeyDown\}/);
+ assert.match(ui,/void reply\(event\)/);
+ assert.doesNotMatch(ui,/requestSubmit\(\)/);
+ assert.match(ui,/sendingRef\.current/);
 });

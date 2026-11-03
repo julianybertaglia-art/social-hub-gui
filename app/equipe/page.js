@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import {supabase,useAccessScope} from '../CloudGate';
 import VitalCRMReal from '../VitalCRMReal';
 import styles from './equipe.module.css';
@@ -22,6 +22,43 @@ const TEAM_ROLES={owner:'Administração',agent:'Atendimento',supervisor:'Superv
 export default function EquipePage(){
   const access=useAccessScope();
   const [leaving,setLeaving]=useState(false);
+  const [setupLoading,setSetupLoading]=useState(true);
+  const [needsPassword,setNeedsPassword]=useState(false);
+  const [newPassword,setNewPassword]=useState('');
+  const [repeatPassword,setRepeatPassword]=useState('');
+  const [passwordError,setPasswordError]=useState('');
+  const [passwordBusy,setPasswordBusy]=useState(false);
+
+  useEffect(()=>{
+    if(!supabase||access?.scope!=='staff'){setSetupLoading(false);setNeedsPassword(false);return;}
+    let active=true;
+    setSetupLoading(true);
+    supabase.auth.getUser().then(({data,error})=>{
+      if(!active)return;
+      if(error){setPasswordError('Não foi possível conferir o primeiro acesso.');setNeedsPassword(true);}
+      else setNeedsPassword(Boolean(data?.user?.user_metadata?.requires_password_setup));
+    }).catch(()=>{if(active){setPasswordError('Não foi possível conferir o primeiro acesso.');setNeedsPassword(true);}})
+      .finally(()=>{if(active)setSetupLoading(false);});
+    return ()=>{active=false;};
+  },[access?.scope]);
+
+  async function savePassword(event){
+    event.preventDefault();
+    if(passwordBusy||!supabase)return;
+    setPasswordError('');
+    if(newPassword.length<12||newPassword!==repeatPassword){
+      setPasswordError('Use pelo menos 12 caracteres e confirme a mesma senha.');return;
+    }
+    setPasswordBusy(true);
+    try{
+      const {error}=await supabase.auth.updateUser({
+        password:newPassword,data:{requires_password_setup:false},
+      });
+      if(error)throw error;
+      setNewPassword('');setRepeatPassword('');setNeedsPassword(false);
+    }catch{setPasswordError('Não foi possível salvar a senha. Tente novamente.');}
+    finally{setPasswordBusy(false);}
+  }
 
   // Never treat the client page as a security boundary: every CRM API checks
   // the Supabase identity, organization, role and authorized queues again.
@@ -37,6 +74,24 @@ export default function EquipePage(){
   const isAdmin=access.scope==='admin';
   const queueCodes=Array.isArray(access.queueCodes)?access.queueCodes:[];
   const readOnly=access.role==='supervisor';
+  if(!isAdmin&&setupLoading)return <main className={styles.denied}><p>Preparando acesso individual…</p></main>;
+  if(!isAdmin&&needsPassword)return <main className={styles.denied}>
+    <img src="/brand/tideplace-mark.svg" alt=""/>
+    <h1>Crie sua senha de acesso</h1>
+    <p>É seu primeiro acesso ao TidePlace. Escolha uma senha individual para entrar novamente depois.</p>
+    <form className={styles.setupForm} onSubmit={savePassword}>
+      <label>Nova senha
+        <input type="password" minLength={12} autoComplete="new-password" required
+          value={newPassword} onChange={event=>setNewPassword(event.target.value)}/>
+      </label>
+      <label>Confirmar senha
+        <input type="password" minLength={12} autoComplete="new-password" required
+          value={repeatPassword} onChange={event=>setRepeatPassword(event.target.value)}/>
+      </label>
+      {passwordError&&<p role="alert">{passwordError}</p>}
+      <button type="submit" disabled={passwordBusy}>{passwordBusy?'Salvando…':'Salvar senha e entrar'}</button>
+    </form>
+  </main>;
   async function signOut(){
     if(leaving||!supabase)return;
     setLeaving(true);

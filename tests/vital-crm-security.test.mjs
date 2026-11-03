@@ -210,3 +210,20 @@ test('MIA message ordering is deterministic and independent of equal created_at 
  assert.match(route,/\.order\('message_order',\{ascending:false\}\)\.limit\(60\)/);
  assert.match(route,/\.order\('message_order',\{ascending:false\}\)\.limit\(8\)/);
 });
+
+
+test('new staff logins cannot send Meta messages without their own explicitly enabled flag',()=>{
+ const reply=source('app/api/crm/vital/reply/route.js');
+ const live=source('app/api/crm/vital/live/route.js');
+ assert.match(reply,/if\(access\.role==='agent'&&process\.env\.VITAL_CRM_STAFF_REPLY_ENABLED!=='true'\)/);
+ assert.match(live,/ctx\.access\.role==='owner'\|\|process\.env\.VITAL_CRM_STAFF_REPLY_ENABLED==='true'/);
+ assert.match(reply,/process\.env\.VITAL_CRM_REPLY_ENABLED!=='true'/);
+});
+
+test('MIA Gemini calls are opt-in and CRM notes use existing timestamp column',()=>{
+ const route=source('app/api/crm/vital/mia/route.js');
+ assert.match(route,/process\.env\.VITAL_MIA_ENABLED!=='true'&&!localStub/);
+ assert.match(route,/const localStub=getLocalMiaTestTransport\(\)/);
+ assert.match(route,/\.eq\('contact_wa_id',phone\)\.order\('created_at',\{ascending:false\}\)\.limit\(8\)/);
+ assert.doesNotMatch(route,/\.eq\('contact_wa_id',phone\)\.order\('message_order'/);
+});

@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import styles from './cloudgate.module.css';
 import { hasAuthIdentityChanged, sameAuthenticatedUser } from './lib/session-gate.mjs';
 
@@ -619,6 +620,9 @@ export default function CloudGate({ children }) {
               </button>
             </form>
             <p className={styles.securityNote}>{isTeamLogin?'Acesso individual · permissões verificadas pelo servidor.':'Acesso seguro · seus dados permanecem sincronizados.'}</p>
+            <p className={styles.teamEntryLink}>
+              {isTeamLogin?<Link href="/">Voltar ao login principal</Link>:<Link href="/equipe">Sou membro da equipe Vital Decor</Link>}
+            </p>
           </div>
         </section>
       </main>

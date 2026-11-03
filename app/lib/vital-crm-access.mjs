@@ -2,7 +2,7 @@
 // endpoint before *any* CRM data query. Never trust a client-supplied sector.
 import { getSupabaseAdmin } from '../api/whatsapp/lib';
 import { bearerToken, fail } from '../api/vital-connections/helpers.mjs';
-import { crmMemberAccess } from './crm-authorization.mjs';
+import {resolveVitalCrmMemberAccess} from './vital-crm-member.mjs';
 
 export async function getVitalCrmMember(request) {
   const db=getSupabaseAdmin();
@@ -12,7 +12,7 @@ export async function getVitalCrmMember(request) {
   if (identityError || !userId || identity.user.is_anonymous) throw fail('Entre com um login autorizado.',401);
 
   const {data:memberships,error}=await db.from('crm_organization_members')
-    .select('organization_id,user_id,role,status')
+    .select('organization_id,user_id,role,status,can_transfer,display_name')
     .eq('user_id',userId).eq('status','active');
   if(error)throw fail('Não foi possível verificar seu acesso ao CRM.',503);
   if(!memberships?.length)throw fail('Sua conta não foi autorizada para o CRM da Vital.',403);
@@ -24,16 +24,14 @@ export async function getVitalCrmMember(request) {
   const found=organizations?.find(o=>memberships.some(m=>m.organization_id===o.id));
   if(!found)throw fail('Sua conta não tem acesso à Vital Decor.',403);
   const member=memberships.find(m=>m.organization_id===found.id);
-  if(member.role==='owner' && found.owner_user_id!==userId)throw fail('Permissão de proprietário inválida.',403);
-  // Fail closed until a verified release explicitly enables staff access.
-  // This applies to every staff API, not just the login page.
-  if(member.role!=='owner' && process.env.VITAL_CRM_STAFF_ENABLED!=='true')
-    throw fail('Acesso dos funcionários ainda não liberado para atendimento.',403);
-
-  const {data:grants,error:grantError}=await db.from('crm_organization_member_sectors')
-    .select('sector_code').eq('organization_id',found.id).eq('user_id',userId);
+  const staffEnabled=process.env.VITAL_CRM_STAFF_ENABLED==='true';
+  // Validate role and release state before looking up any queue or conversation.
+  if(member.role!=='owner'&&!staffEnabled)
+    resolveVitalCrmMemberAccess({userId,organization:found,member,staffEnabled});
+  const {data:grants,error:grantError}=await db.from('crm_vital_member_queues')
+    .select('queue_code').eq('organization_id',found.id).eq('user_id',userId);
   if(grantError)throw fail('Não foi possível verificar seus setores.',503);
-  const access=crmMemberAccess({role:member.role,status:member.status,sectors:(grants||[]).map(x=>x.sector_code)});
-  if(!access)throw fail('Acesso não autorizado.',403);
-  return {db,userId,organization:{id:found.id,workspaceCode:found.workspace_code,displayName:found.display_name,ownerUserId:found.owner_user_id},access};
+  const resolved=resolveVitalCrmMemberAccess({userId,organization:found,member,
+    queueGrants:grants||[],staffEnabled});
+  return {db,userId,member:resolved.member,organization:{id:found.id,workspaceCode:found.workspace_code,displayName:found.display_name,ownerUserId:found.owner_user_id},access:resolved.access};
 }

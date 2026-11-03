@@ -24,5 +24,5 @@ test('background Instagram refresh updates the UI without reloading the page', (
   assert.doesNotMatch(gate, /window\.location\.reload\s*\(/);
   assert.match(gate, /dispatchEvent\(new CustomEvent\('tideplace:instagram-metrics-updated'/);
   assert.match(home, /addEventListener\('tideplace:instagram-metrics-updated'/);
-  assert.match(gate, /\}, \[session\?\.user\?\.id\]\)/);
+  assert.match(gate, /\},\s*\[session\?\.user\?\.id\]\)/);
 });

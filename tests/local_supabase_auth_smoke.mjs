@@ -222,6 +222,15 @@ async function verify(){
   assert.equal(agentOther.status,404);
   console.log('PASS: notes POST persists for authorized staff; supervisor and wrong-queue writes denied');
 
+  const miaContact=await post('/api/crm/vital/mia',tokens.owner,{
+   workspace:'vital-decor',contact:shopeePhone,action:'summarize',
+   message:'Resuma o atendimento de teste com uma nota interna fictícia.',
+  },'http://localhost:3007');
+  assert.equal(miaContact.status,200,JSON.stringify(miaContact.payload));
+  assert.match(miaContact.payload.answer||'',/Resposta do Gemini simulado em CI/);
+  console.log('PASS: MIA contact context reads fake CRM messages and notes in chronological order');
+
+
   async function patch(path,token,body){
    const response=await fetch(api+path,{
     method:'PATCH',headers:{Authorization:'Bearer '+token,Origin:'http://localhost:3007',

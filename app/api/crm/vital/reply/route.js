@@ -9,7 +9,7 @@ export const dynamic='force-dynamic';
 const headers={'Cache-Control':'private, no-store',Vary:'Authorization'};
 export async function POST(request){
  let leaseId=null,leaseDb=null,leaseActor=null,leaseOrg=null,leaseConnection=null,leasePhone=null;
- try{  if(process.env.VITAL_CRM_REPLY_ENABLED!=='true'&&process.env.VITAL_CRM_WRITES_ENABLED!=='true')throw fail('Respostas do CRM não foram liberadas nesta instalação.',403);
+ try{  if(process.env.VITAL_CRM_REPLY_ENABLED!=='true')throw fail('Respostas do CRM não foram liberadas nesta instalação.',403);
 
   const origin=request.headers.get('origin'),url=new URL(request.url),host=request.headers.get('host');
   if(!origin||(origin!==url.origin&&origin!==url.protocol+'//'+host))throw fail('Origem inválida.',403);

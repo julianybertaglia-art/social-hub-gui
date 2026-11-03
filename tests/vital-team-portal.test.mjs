@@ -50,3 +50,38 @@ test('team layout remains responsive without exposing admin data or registration
  assert.match(page,/Somente leitura/);
  assert.match(page,/Área reservada à equipe Vital Decor/);
 });
+
+
+test('invites require administrator, existing approved drafts, separate release flags and production',()=>{
+ const route=source('app/api/crm/vital/team/invite/route.js');
+ const management=source('app/api/crm/vital/team/route.js');
+ const ui=source('app/VitalCRMTeam.js');
+ assert.match(route,/env\.VITAL_CRM_INVITES_ENABLED==='true'/);
+ assert.match(route,/env\.VITAL_CRM_STAFF_ENABLED==='true'/);
+ assert.match(route,/env\.VERCEL_ENV==='production'/);
+ assert.match(route,/origin!==target\.origin/);
+ assert.match(route,/access\.role!=='owner'\|\|userId!==organization\.ownerUserId/);
+ assert.match(route,/\.eq\('email',email\)\.eq\('status','draft'\)/);
+ assert.match(route,/if\(draft\.activated_at\)throw fail/);
+ assert.match(route,/db\.auth\.admin\.inviteUserByEmail\(email/);
+ assert.match(route,/db\.auth\.admin\.listUsers\(/);
+ assert.match(route,/String\(user\?\.email\|\|''\)\.toLowerCase\(\)!==email/);
+ assert.match(route,/crm_vital_activate_draft_member_atomic/);
+ assert.match(route,/INVITE_REDIRECT='https:\/\/social-hub-gui\.vercel\.app\/equipe'/);
+ assert.match(management,/VITAL_CRM_INVITES_ENABLED==='true'/);
+ assert.match(ui,/window\.confirm\('Liberar o acesso de '/);
+ assert.match(ui,/\/api\/crm\/vital\/team\/invite/);
+ assert.match(ui,/data\.invitationsEnabled\?/);
+});
+
+test('first invite shows individual password form without elevating role from metadata',()=>{
+ const page=source('app/equipe/page.js');
+ const route=source('app/api/crm/vital/team/invite/route.js');
+ assert.match(page,/supabase\.auth\.getUser\(\)/);
+ assert.match(page,/requires_password_setup/);
+ assert.match(page,/supabase\.auth\.updateUser\(\{/);
+ assert.match(page,/password:newPassword,data:\{requires_password_setup:false\}/);
+ assert.match(page,/newPassword\.length<12/);
+ assert.match(page,/<VitalCRMReal embedded\/>/);
+ assert.match(route,/data:\{display_name:draft\.display_name,requires_password_setup:true\}/);
+});

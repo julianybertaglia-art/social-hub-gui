@@ -221,19 +221,27 @@ export async function POST(request){
       .eq('organization_id',organization.id).eq('user_id',userId).eq('thread_id',thread.id)
       .order('created_at',{ascending:false}).limit(8);
     if(history.error)throw fail('Não foi possível consultar o histórico da MIA.',503);
-    const recent=(history.data||[]).reverse().map(item=>({role:item.role==='assistant'?'model':'user',parts:[{text:item.content.slice(0,1100)}]}));
+    // Previously saved model outputs can contain personal data; redact them
+    // again before forwarding any history to the external AI provider.
+    const recent=(history.data||[]).reverse().map(item=>({
+      role:item.role==='assistant'?'model':'user',
+      parts:[{text:redactMiaPii(item.content,{names:redactionNames}).slice(0,1100)}],
+    }));
     const safeMessage=redactMiaPii(message,{names:redactionNames}).slice(0,1400);
     const answer=await generateMiaText({key:process.env.GEMINI_API_KEY,
       model:process.env.CONTENT_AI_MODEL||'gemini-3.6-flash',message:safeMessage,action,
       workspace:workspace==='vital-decor'?'Vital Decor':'Gui Nonato',role:access.role,context,
       history:recent});
+    // Do not persist or return names/contact details that the model may
+    // have repeated from the operational context.
+    const safeAnswer=redactMiaPii(answer,{names:redactionNames});
     const save=await db.rpc('crm_vital_mia_save_exchange_atomic',{
       p_org:organization.id,p_thread:thread.id,p_user:userId,
-      p_user_content:safeMessage,p_assistant_content:answer,
+      p_user_content:safeMessage,p_assistant_content:safeAnswer,
       p_title:thread.title==='Nova conversa'?safeMessage.slice(0,80):thread.title,
     });
     if(save.error)throw fail('A MIA respondeu, mas não foi possível salvar o histórico privado.',503);
-    return Response.json({answer,threadId:thread.id,action,role:access.role,
+    return Response.json({answer:safeAnswer,threadId:thread.id,action,role:access.role,
       canInsertReply:action==='suggest_reply'&&Boolean(contact)},{headers});
   }catch(error){return Response.json({error:error.status?error.message:'Não foi possível responder agora.'},
     {status:error.status||503,headers});}

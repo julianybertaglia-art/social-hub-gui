@@ -4,6 +4,7 @@ import Icon from './ui/Icon';
 import {api} from './operations/useOperations';
 import css from './vital-crm-real.module.css';
 import ThemeCustomizer from './ThemeCustomizer';
+import {shouldSendOnEnter} from './lib/vital-crm-keyboard.mjs';
 
 const OWNER={
  varejo_nv:'Juliany',pos_nv:'Juliany',afiliados:'Juliany',
@@ -195,8 +196,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  }
  function handleReplyKeyDown(event){
   // Enter sends directly; Shift+Enter is a newline. Don't interrupt composition.
-  if(event.key!=='Enter'||event.shiftKey||event.nativeEvent?.isComposing||
-    event.nativeEvent?.keyCode===229||event.repeat||event.ctrlKey||event.altKey||event.metaKey)return;
+  if(!shouldSendOnEnter(event))return;
   event.preventDefault();
   if(!draft.trim()||busy||replyBlockReason||sendingRef.current)return;
   void reply(event);

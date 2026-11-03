@@ -299,3 +299,84 @@
 :global(html[data-appearance="dark"]) .priority,
 :global(html[data-appearance="dark"]) .chart h3,
 :global(html[data-appearance="dark"]) .queueTile strong{color:var(--text)}
+
+
+/* WhatsApp Web-inspired workspace: compact conversations, scrollable columns and resizable height. */
+.boardFrame{position:relative;min-width:0;padding-bottom:26px}
+.board{
+ height:var(--vital-board-height,clamp(500px,calc(100dvh - 245px),780px));
+ min-height:0;
+ grid-template-columns:minmax(0,var(--vital-split-width,36%)) minmax(0,1fr);
+ background:var(--surface);
+}
+.board .list,.board .thread{min-height:0;height:100%;overflow:hidden}
+.board .list{display:flex;flex-direction:column;border-right:1px solid var(--border)}
+.board .contacts{flex:1 1 0;min-height:0;max-height:none;overflow:auto;overscroll-behavior:contain}
+.board .pagination{flex:0 0 auto;padding:9px 12px}
+.board .listHeader{flex:0 0 auto;padding:12px 14px 6px}
+.board .listHeader h2{font-size:16px}
+.board .search{flex:0 0 auto;padding:0 13px 8px}
+.board .search span,.board .filters label>span{font-size:11px}
+.board .search input{min-height:37px;padding:7px 10px;font-size:13px}
+.board .filters{flex:0 0 auto;padding:0 13px 9px;gap:7px}
+.board .filters select{min-height:36px;padding:7px 8px;font-size:12px}
+.board .contact,.board .contactActive{min-height:68px;padding:10px 12px;gap:10px;align-items:center}
+.board .avatar{height:36px;width:36px;font-size:14px}
+.board .contactText{gap:2px}
+.board .contactText strong{font-size:13.5px;line-height:1.25}
+.board .contactText small{font-size:10.5px;line-height:1.35}
+.board .contactText>span{font-size:12px;line-height:1.3;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.board .contactActive{background:color-mix(in srgb,var(--gold) 11%,var(--surface))}
+.board .thread{display:flex;flex-direction:column;background:var(--surface-soft)}
+.board .threadHeader{flex:0 0 auto;padding:10px 16px;min-height:65px;background:var(--surface);border-bottom:1px solid var(--border)}
+.chatIdentity{display:flex;align-items:center;gap:11px;min-width:0}
+.chatIdentity>div{min-width:0}
+.threadAvatar{display:grid;place-items:center;flex:0 0 39px;height:39px;border-radius:50%;background:color-mix(in srgb,var(--gold) 16%,var(--surface));color:var(--gold);font-weight:760}
+.board .threadHeader h2{font-size:15px;line-height:1.35;margin:0 0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board .threadHeader p{font-size:11px;line-height:1.4;color:var(--muted)}
+.board .messages{
+ flex:1 1 0;min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:contain;
+ display:flex;flex-direction:column;gap:8px;padding:17px clamp(12px,3vw,28px);
+ background-color:var(--surface-soft);
+ background-image:radial-gradient(circle at 18px 18px,color-mix(in srgb,var(--gold) 3%,transparent) 1.1px,transparent 1.2px);
+ background-size:36px 36px;
+}
+.board .messages article{flex:0 0 auto;max-width:min(81%,470px);padding:9px 12px;box-shadow:0 1px 2px #0000000b;border-radius:10px}
+.board .messages article.sent{background:color-mix(in srgb,var(--gold) 11%,var(--surface));border-color:color-mix(in srgb,var(--gold) 18%,var(--border))}
+.board .messages article.received{background:var(--surface);border-color:var(--border)}
+.board .messages article p{font-size:13.5px;line-height:1.48;font-weight:450;margin:0 0 5px}
+.board .messages article time{display:block;text-align:right;font-size:10px;line-height:1.15;color:var(--muted)}
+.threadBottom{flex:0 0 auto;display:flex;flex-direction:column;background:var(--surface);border-top:1px solid var(--border)}
+.detailsPanel{border-bottom:1px solid var(--border);color:var(--text)}
+.detailsPanel summary{min-height:40px;display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:12px;font-weight:700;cursor:pointer;list-style:none;color:var(--text)}
+.detailsPanel summary::-webkit-details-marker{display:none}
+.detailsPanel summary::before{content:'▸';color:var(--muted);font-size:11px;transform-origin:center;transition:transform .12s}
+.detailsPanel[open] summary::before{transform:rotate(90deg)}
+.detailsPanel summary span{margin-left:auto;color:var(--muted);font-size:11px;font-weight:550}
+.detailsPanel .resolution{padding:10px 15px;border-top:1px solid var(--border);background:var(--surface-soft)}
+.detailsPanel .transfer{padding:12px 15px;background:var(--surface)}
+.restrictedInfo{padding:0 16px 10px;margin:0;font-size:11.5px;color:var(--muted)}
+.board .reply{padding:11px 14px 12px;gap:6px;background:var(--surface);border-top:0}
+.composeRow{display:flex;align-items:flex-end;gap:9px;width:100%}
+.board .composeRow textarea{flex:1;min-width:0;resize:vertical;min-height:45px;max-height:150px;padding:12px 13px;border-radius:12px;font-size:13.5px;line-height:1.4;background:var(--surface-soft);border-color:var(--border)}
+.board .composeRow textarea:disabled{opacity:.75;cursor:not-allowed}
+.board .composeRow button{flex:0 0 44px;display:grid;place-items:center;height:44px;border-radius:12px;padding:9px;background:var(--gold);color:#fff}
+.board .composeRow button:disabled{opacity:.45}
+.replyHint,.replyBlocked{display:block;margin:0 1px;font-size:10.5px;line-height:1.4;color:var(--muted)}
+.replyBlocked{color:var(--muted);font-weight:650}
+.visuallyHidden{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important}
+.heightSplitter{position:absolute;bottom:0;left:0;right:0;height:25px;display:flex;align-items:center;justify-content:center;z-index:2;cursor:row-resize;touch-action:none;user-select:none}
+.heightSplitterHandle{display:flex;align-items:center;justify-content:center;gap:6px;height:23px;min-width:130px;padding:2px 14px;border-radius:0 0 10px 10px;background:var(--surface);border:1px solid var(--border);border-top:0;color:var(--muted);font-size:10.5px;font-weight:700;box-shadow:0 2px 8px #0000000a}
+.heightSplitter:hover .heightSplitterHandle,.heightSplitter:focus-visible .heightSplitterHandle{color:var(--gold);background:var(--surface-soft)}
+.heightSplitter:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
+@media(max-width:700px){
+ .boardFrame{padding-bottom:0}
+ .board{height:auto!important;grid-template-columns:1fr;min-height:0}
+ .board .list{height:auto;max-height:340px;border-right:0;border-bottom:1px solid var(--border)}
+ .board .contacts{min-height:130px;max-height:225px}
+ .board .thread{height:510px;min-height:400px}
+ .board .messages{min-height:0;max-height:none}
+ .board .messages article{max-width:min(92%,440px)}
+ .heightSplitter{display:none}
+}
+@media(prefers-reduced-motion:reduce){.detailsPanel summary::before{transition:none}}

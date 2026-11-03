@@ -1,5 +1,6 @@
 import { getVitalCrmMember } from '../../../../lib/vital-crm-access.mjs';
 import { fail } from '../../../vital-connections/helpers.mjs';
+import {canReplyWithinWindow} from '../../../vital-whatsapp/conversations/inbox.mjs';
 import {readRows} from '../../../../lib/operations.mjs';
 import {resolveVitalQueue,canAccessVitalQueue,crmConversationStatus,VITAL_QUEUE_ORDER,vitalTransferDestinations} from '../../../../lib/vital-crm-queues.mjs';
 
@@ -63,10 +64,15 @@ async function readOne(ctx,phone){
     .eq('contact_wa_id',phone).order('sent_at',{ascending:false}).limit(150);
   if(error)throw fail('Falha ao carregar histórico.',503);
   if(!messages?.length)throw fail('Conversa não encontrada.',404);
+  const latestInbound=messages.find(m=>m.direction==='inbound');
+  const lastInboundAt=latestInbound?.sent_at||latestInbound?.created_at||null;
+  const externalAssignment=info.assignment?.status!=='closed'&&Boolean(info.assignment?.assigned_to)&&info.assignment.assigned_to!=='tide';
   return {contact:{id:phone,phone,name:messages.find(m=>m.profile_name)?.profile_name||phone,
       queue:info.queue,status:crmConversationStatus({state:info.state,
         legacyClosed:info.assignment?.status==='closed',lastDirection:messages[0].direction,
-        lastMessageAt:messages[0].sent_at||messages[0].created_at})},
+        lastMessageAt:messages[0].sent_at||messages[0].created_at}),
+      replyWindowOpen:canReplyWithinWindow(lastInboundAt),replyBlockedByExternal:externalAssignment,
+      lastInboundAt}, 
     messages:messages.reverse().map(formatMessage),truncated:messages.length===150};
 }
 
@@ -138,6 +144,7 @@ async function summary(ctx,page){
     conversations:enriched,page,hasMore:rows.length>(page+1)*30,
     sampled:(recent.data||[]).length>=3000||(flows.data||[]).length>=5000||(states.data||[]).length>=5000,
     readOnly:process.env.VITAL_CRM_WRITES_ENABLED!=='true',
+    canReply:process.env.VITAL_CRM_REPLY_ENABLED==='true'||process.env.VITAL_CRM_WRITES_ENABLED==='true',
   };
 }
 export async function GET(request){

@@ -8,12 +8,12 @@ export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const headers={'Cache-Control':'private, no-store',Vary:'Authorization'};
 export async function POST(request){
- try{  if(process.env.VITAL_CRM_WRITES_ENABLED!=='true')throw fail('Envio pelo CRM em validação; use a caixa atual do WhatsApp.',403);
+ try{  if(process.env.VITAL_CRM_REPLY_ENABLED!=='true'&&process.env.VITAL_CRM_WRITES_ENABLED!=='true')throw fail('Respostas do CRM não foram liberadas nesta instalação.',403);
 
   const origin=request.headers.get('origin'),url=new URL(request.url),host=request.headers.get('host');
   if(!origin||(origin!==url.origin&&origin!==url.protocol+'//'+host))throw fail('Origem inválida.',403);
   const {db,userId,access,organization}=await getVitalCrmMember(request);
-  if(!['owner','agent'].includes(access.role))throw fail('Este perfil pode acompanhar e transferir, mas não responder mensagens.',403);
+  if(access.role!=='owner')throw fail('Nesta etapa somente a administradora pode responder pelo CRM da Vital.',403);
   const textBody=await request.text();
   if(textBody.length>10000)throw fail('Mensagem longa demais.',400);
   const input=JSON.parse(textBody);
@@ -46,7 +46,7 @@ export async function POST(request){
   const queue=resolveVitalQueue({
     override:manual.data?.queue_code,selection:flow.data?.selection,sector:legacy.data?.sector,
   });
-  if(!queue || !canAccessVitalQueue(access.role,(grants.data||[]).map(x=>x.queue_code),queue))
+  if((!queue&&access.role!=='owner')||(queue&&!canAccessVitalQueue(access.role,(grants.data||[]).map(x=>x.queue_code),queue)))
     throw fail('Você não pode responder a uma conversa de outro setor.',403);
   if(legacy.data?.status!=='closed'&&legacy.data?.assigned_to&&legacy.data.assigned_to!=='tide')
     throw fail('Esta conversa ainda está atribuída ao Argo. Transfira o atendimento antes de responder pelo TidePlace.',409);
@@ -79,7 +79,7 @@ export async function POST(request){
   ]);
   if(handoff.error)console.error('[vital-crm] Vivi handoff error',handoff.error.code);
   return Response.json({ok:true,messageId,logged:!log.error,
-    warning:log.error?'Mensagem enviada pela Meta, mas ainda não apareceu no histórico.':null},{headers});
+    warning:log.error?'Mensagem enviada pela Meta, mas ainda não apareceu no histórico.':handoff.error?'Mensagem enviada, mas não foi possível pausar a Vivi. Confira a conversa antes de continuar.':null},{headers});
  }catch(e){
   return Response.json({error:e.status?e.message:'Não foi possível enviar sua mensagem.'},
     {status:e.status||503,headers});

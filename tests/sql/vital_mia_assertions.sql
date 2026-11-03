@@ -368,3 +368,56 @@ begin
  if not rejected then raise exception 'Unrecognized MIA workspace was allowed'; end if;
 end $$;
 reset role;
+
+
+-- Service-only atomic staff onboarding. No mail and no real employee identities.
+do $$
+begin
+ if has_function_privilege('anon','public.crm_vital_activate_draft_member_atomic(uuid,uuid,text)','EXECUTE')
+ or has_function_privilege('authenticated','public.crm_vital_activate_draft_member_atomic(uuid,uuid,text)','EXECUTE')
+ or not has_function_privilege('service_role','public.crm_vital_activate_draft_member_atomic(uuid,uuid,text)','EXECUTE')
+ then raise exception 'Onboarding RPC must only be callable by service_role'; end if;
+end $$;
+set role service_role;
+do $$
+declare vital uuid;
+ existing_user uuid:='00000000-0000-4000-8000-000000000002';
+ original_owner uuid:='00000000-0000-4000-8000-000000000001';
+ account_email text:='ci-team-member@example.invalid';
+begin
+ select id into vital from public.crm_organizations where workspace_code='vital-decor';
+ insert into public.crm_vital_invite_drafts(
+   organization_id,email,display_name,requested_role,status,can_transfer)
+ values(vital,account_email,'Agente fictício','agent','draft',false);
+ insert into public.crm_vital_invite_draft_queues(organization_id,email,queue_code)
+ values(vital,account_email,'pos_shopee');
+ if not public.crm_vital_activate_draft_member_atomic(vital,existing_user,account_email)
+ then raise exception 'Approved invite did not become staff membership'; end if;
+ if not exists(select 1 from public.crm_organization_members m
+    where m.organization_id=vital and m.user_id=existing_user
+     and m.role='agent' and m.status='active' and not m.can_transfer)
+ then raise exception 'Role or transfer permission mismatch on activated staff'; end if;
+ if (select count(*) from public.crm_vital_member_queues
+    where organization_id=vital and user_id=existing_user and queue_code='pos_shopee')<>1
+ then raise exception 'Activated member has wrong sector grants'; end if;
+ if not exists(select 1 from public.crm_vital_invite_drafts
+    where organization_id=vital and email=account_email and activated_at is not null)
+ then raise exception 'Activation timestamp missing'; end if;
+ if public.crm_vital_activate_draft_member_atomic(vital,existing_user,account_email)
+ then raise exception 'Repeated activation must return false'; end if;
+ insert into public.crm_vital_invite_drafts(
+   organization_id,email,display_name,requested_role,status,can_transfer)
+ values(vital,'ci-override-owner@example.invalid','Falso supervisor','supervisor','draft',false);
+ insert into public.crm_vital_invite_draft_queues(organization_id,email,queue_code)
+ values(vital,'ci-override-owner@example.invalid','atacado');
+ begin
+   perform public.crm_vital_activate_draft_member_atomic(
+     vital,original_owner,'ci-override-owner@example.invalid');
+   raise exception 'The owner role was illegally replaced by a team invitation';
+ exception when sqlstate '42501' then null;
+ end;
+ if not exists(select 1 from public.crm_organization_members
+   where organization_id=vital and user_id=original_owner and role='owner')
+ then raise exception 'Owner role was removed'; end if;
+end $$;
+reset role;

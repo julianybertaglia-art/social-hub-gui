@@ -7,12 +7,13 @@ Esta seção prevalece sobre os itens históricos abaixo, que registram o cenár
 - **Aprovado:** autenticação GoTrue real com cinco contas fictícias, chamadas HTTP reais do Next.js, RLS/privacidade em PostgREST, notas internas, status/auditoria, filas de atendentes e bloqueios de supervisor/outro setor.
 - **Aprovado:** PostgreSQL descartável com concorrência real: limite simultâneo de perguntas da MIA, leases de resposta WhatsApp e verificação de permissões.
 - **Aprovado:** sinalizador dedicado `VITAL_CRM_REPLY_ENABLED`; habilitar `VITAL_CRM_WRITES_ENABLED` não autoriza envio Meta, e o composer's `canReply` acompanha a mesma regra.
-- **Em homologação:** chamada HTTP de ponta a ponta da MIA com provedor Gemini **simulado somente em loopback/CI**, autenticação real local, resposta, gravação de turnos, leitura do histórico, separação Gui/Vital e falha sem salvar resposta incompleta. Nenhuma chave ou chamada Gemini real é usada.
+- **Aprovado:** teste HTTP de ponta a ponta da MIA com provedor Gemini **simulado somente em loopback/CI**: autenticação real local, resposta, gravação e leitura ordenada de turnos, separação Gui/Vital, mascaramento de dados fictícios e erro sem salvar resposta incompleta. Nenhuma chave ou chamada Gemini real é usada.
 - **Ambiente:** GitHub Actions executa Supabase, Next.js e fixture Gemini descartáveis em `127.0.0.1`; apaga todo o banco local após o teste. Não há servidor público com os dados de teste.
+- **Correção descoberta na homologação:** mensagens user/assistant gravadas na mesma transação possuíam `created_at` idêntico; adicionamos `message_order` identity e trava de gravação por thread para garantir ordem correta na MIA.
 - **Pendências bloqueadoras da produção:** chamada Gemini autenticada usando credenciais reais (autorização para custo/quotas), testes aprovados de Meta WhatsApp real sem causar envios a clientes, coexistência com Vivi/Argo, habilitação controlada da equipe e publicação final aprovada pela administradora.
 - **Restrições preservadas:** sem orçamento adicional, sem nova infraestrutura hospedada, sem migração remota, sem copiar `service_role` de produção para Preview, sem ativar acessos reais e sem merge/deploy oficial. A PR #74 permanece em rascunho.
 
-Evidências: [banco descartável e concorrência](https://github.com/julianybertaglia-art/social-hub-gui/actions/runs/41693138915), [aplicativo e compilação](https://github.com/julianybertaglia-art/social-hub-gui/actions/runs/41693139069), [Supabase Auth e MIA HTTP de ponta a ponta](https://github.com/julianybertaglia-art/social-hub-gui/actions/runs/41693138911). Conferir conclusão das três execuções antes de tratar como aprovadas.
+Evidências: [banco descartável e concorrência](https://github.com/julianybertaglia-art/social-hub-gui/actions/runs/41693138915), [aplicativo e compilação](https://github.com/julianybertaglia-art/social-hub-gui/actions/runs/41693139069), [Supabase Auth e MIA HTTP de ponta a ponta](https://github.com/julianybertaglia-art/social-hub-gui/actions/runs/41693138911). As três execuções concluíram com sucesso para o commit `732c0bb`.
 
 ---
 

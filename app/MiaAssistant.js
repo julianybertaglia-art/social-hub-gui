@@ -48,7 +48,7 @@ export default function MiaAssistant(){
  const [error,setError]=useState(''),[suggestion,setSuggestion]=useState(''),[suggestionContact,setSuggestionContact]=useState('');
  const [selectedContact,setSelectedContact]=useState('');
  const [identity,setIdentity]=useState('');
- const drag=useRef(null),suppressClick=useRef(false),floating=useRef(null),messagesEnd=useRef(null),selectedContactRef=useRef('');
+ const drag=useRef(null),suppressClick=useRef(false),floating=useRef(null),messagesEnd=useRef(null),selectedContactRef=useRef(''),identityRef=useRef('');
  const isCrm=pathname?.startsWith('/crm')||pathname?.startsWith('/whatsapp')||pathname?.startsWith('/instagram/direct');
  const brand=workspace?.name||'TidePlace';
  const showMia=authorized&&Boolean(supabase);
@@ -56,11 +56,12 @@ export default function MiaAssistant(){
  useEffect(()=>{
   let active=true;
   if(!supabase){setIdentity('');return undefined;}
-  supabase.auth.getSession().then(({data})=>{if(active)setIdentity(data?.session?.user?.id||'');});
+  supabase.auth.getSession().then(({data})=>{if(active){const next=data?.session?.user?.id||'';identityRef.current=next;setIdentity(next);}});
   const {data:listener}=supabase.auth.onAuthStateChange((_event,session)=>{
    if(!active)return;
-   setIdentity(session?.user?.id||'');
+   const next=session?.user?.id||'';identityRef.current=next;setIdentity(next);
    setThreads([]);setThreadId('');setMessages([]);setSuggestion('');setSuggestionContact('');setError('');
+   setSending(false);setLoadingHistory(false);
   });
   return()=>{active=false;listener.subscription.unsubscribe();};
  },[]);
@@ -120,29 +121,38 @@ export default function MiaAssistant(){
  }
  function toggle(){if(suppressClick.current){suppressClick.current=false;return;}setOpen(value=>!value);}
  async function loadThread(id){
+  if(sending||loadingHistory||!identityRef.current)return;
+  const requestIdentity=identityRef.current;
   setLoadingHistory(true);setError('');setSuggestion('');setSuggestionContact('');
   try{
    const result=await miaRequest('/api/crm/vital/mia?thread='+encodeURIComponent(id));
+   if(identityRef.current!==requestIdentity)return;
    setThreadId(result.thread?.id||'');setMessages(result.messages||[]);
-  }catch(reason){setError(reason.message);}
-  finally{setLoadingHistory(false);}
+  }catch(reason){if(identityRef.current===requestIdentity)setError(reason.message);}
+  finally{if(identityRef.current===requestIdentity)setLoadingHistory(false);}
  }
  async function newThread(){
-  setError('');setSuggestion('');setSuggestionContact('');
+  if(sending||loadingHistory||!identityRef.current)return;
+  const requestIdentity=identityRef.current;
+  setLoadingHistory(true);setError('');setSuggestion('');setSuggestionContact('');
   try{
    const result=await miaRequest('/api/crm/vital/mia',{method:'POST',body:{mode:'new'}});
+   if(identityRef.current!==requestIdentity)return;
    setThreadId(result.thread.id);setMessages([]);setThreads(previous=>[result.thread,...previous]);
-  }catch(reason){setError(reason.message);}
+  }catch(reason){if(identityRef.current===requestIdentity)setError(reason.message);}
+  finally{if(identityRef.current===requestIdentity)setLoadingHistory(false);}
  }
  async function send(value=input,action='chat'){
   const question=String(value||'').trim();
-  if(!question||sending)return;
+  if(!question||sending||loadingHistory||!identityRef.current)return;
+  const requestIdentity=identityRef.current;
   const contactAtSend=isCrm?selectedContact:null;
   setSending(true);setError('');
   try{
    const result=await miaRequest('/api/crm/vital/mia',{method:'POST',body:{
     message:question,action,workspace:workspace?.id||'vital-decor',contact:contactAtSend||null,threadId:threadId||null,
    }});
+   if(identityRef.current!==requestIdentity)return;
    setThreadId(result.threadId);setInput('');
    const replySuggestion=result.action==='suggest_reply'&&contactAtSend&&selectedContactRef.current===contactAtSend
     ?result.answer:'';
@@ -156,8 +166,8 @@ export default function MiaAssistant(){
     return found?[{...found,updated_at:new Date().toISOString()},...previous.filter(thread=>thread.id!==result.threadId)]:
      [{id:result.threadId,title:question.slice(0,80),created_at:new Date().toISOString(),updated_at:new Date().toISOString()},...previous];
    });
-  }catch(reason){setError(reason.message);}
-  finally{setSending(false);}
+  }catch(reason){if(identityRef.current===requestIdentity)setError(reason.message);}
+  finally{if(identityRef.current===requestIdentity)setSending(false);}
  }
  function handleComposeKey(event){
   if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent?.isComposing){event.preventDefault();void send();}
@@ -187,7 +197,7 @@ export default function MiaAssistant(){
    <header className={css.header}>
     <MiaMark small/>
     <div className={css.heading}><strong>MIA</strong><span>Assistente do TidePlace</span></div>
-    <button type="button" aria-label="Nova conversa" title="Nova conversa" onClick={newThread}><Icon name="plus" size={17}/></button>
+    <button type="button" aria-label="Nova conversa" title="Nova conversa" disabled={sending||loadingHistory} onClick={newThread}><Icon name="plus" size={17}/></button>
     <button type="button" title={expanded?'Reduzir painel':'Expandir painel'} aria-label={expanded?'Reduzir painel':'Expandir painel'}
       onClick={()=>setExpanded(value=>!value)}><Icon name={expanded?'columns':'external'} size={17}/></button>
     <button type="button" aria-label="Fechar MIA" onClick={()=>setOpen(false)}><Icon name="close" size={17}/></button>
@@ -195,7 +205,7 @@ export default function MiaAssistant(){
    <div className={css.context}><span className={css.statusDot}/> {brand} · {isCrm?'CRM':'TidePlace'}</div>
    {threads.length>1&&<div className={css.historySelect}>
     <label htmlFor="mia-thread">Histórico</label>
-    <select id="mia-thread" value={threadId} onChange={event=>loadThread(event.target.value)}>
+    <select id="mia-thread" value={threadId} disabled={sending||loadingHistory} onChange={event=>loadThread(event.target.value)}>
      {threads.map(thread=><option key={thread.id} value={thread.id}>{thread.title||'Conversa'}</option>)}
     </select>
    </div>}
@@ -213,7 +223,7 @@ export default function MiaAssistant(){
    </div>
    {isCrm&&<div className={css.quickActions} aria-label="Ações da MIA">
     {QUICK_ACTIONS.map(([label,action])=><button type="button" key={action}
-     disabled={sending||(['summarize','suggest_reply','next_action'].includes(action)&&!selectedContact)}
+     disabled={sending||loadingHistory||(['summarize','suggest_reply','next_action'].includes(action)&&!selectedContact)}
      onClick={()=>send(label+' para a conversa selecionada.',action)}>{label}</button>)}
    </div>}
    {suggestion&&<div className={css.answerActions}>
@@ -224,8 +234,8 @@ export default function MiaAssistant(){
     <span className={error?css.error:undefined} role={error?'alert':undefined}>{error||'Quando você pedir análise do CRM, somente contexto autorizado e minimizado segue ao Google Gemini. A MIA não envia mensagens.'}</span>
     <div className={css.compose}>
      <textarea aria-label="Pergunte à MIA" placeholder="Pergunte à MIA…" value={input} maxLength={1400}
-      onChange={event=>setInput(event.target.value)} onKeyDown={handleComposeKey} disabled={sending}/>
-     <button type="button" disabled={!input.trim()||sending} aria-label="Enviar pergunta" onClick={()=>send()}>
+      onChange={event=>setInput(event.target.value)} onKeyDown={handleComposeKey} disabled={sending||loadingHistory}/>
+     <button type="button" disabled={!input.trim()||sending||loadingHistory} aria-label="Enviar pergunta" onClick={()=>send()}>
       {sending?'…':<Icon name="send" size={18}/>}
      </button>
     </div>

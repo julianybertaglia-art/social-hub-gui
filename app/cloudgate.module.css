@@ -259,6 +259,9 @@
   font-size: 12px;
 }
 
+.teamEntryLink{margin:12px 0 0;text-align:center;font-size:12px}
+.teamEntryLink a{color:#74243e;font-weight:750;text-decoration:underline;text-underline-offset:3px}
+.teamEntryLink a:hover{color:#4c1127}
 .securityNote {
   margin: 18px 0 0;
   color: #aaa2a5;

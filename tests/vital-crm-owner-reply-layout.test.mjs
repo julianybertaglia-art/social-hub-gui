@@ -13,8 +13,10 @@ const css=source('app/vital-crm-real.module.css');
 test('CRM replies are an independent feature, leaving transfers and status editing locked',()=>{
  assert.match(live,/readOnly:process\.env\.VITAL_CRM_WRITES_ENABLED!=='true'/);
  assert.match(live,/canReply:\['owner','agent'\]\.includes\(ctx\.access\.role\)/);
- assert.match(live,/process\.env\.VITAL_CRM_REPLY_ENABLED==='true'\|\|process\.env\.VITAL_CRM_WRITES_ENABLED==='true'/);
- assert.match(reply,/process\.env\.VITAL_CRM_REPLY_ENABLED!=='true'&&process\.env\.VITAL_CRM_WRITES_ENABLED!=='true'/);
+ assert.match(live,/&&process\.env\.VITAL_CRM_REPLY_ENABLED==='true'/);
+ assert.doesNotMatch(live,/VITAL_CRM_REPLY_ENABLED==='true'\|\|/);
+ assert.match(reply,/process\.env\.VITAL_CRM_REPLY_ENABLED!=='true'/);
+ assert.doesNotMatch(reply,/VITAL_CRM_WRITES_ENABLED/);
  for(const p of ['app/api/crm/vital/status/route.js']) {
   assert.match(source(p),/VITAL_CRM_WRITES_ENABLED/);
   assert.doesNotMatch(source(p),/VITAL_CRM_REPLY_ENABLED/);

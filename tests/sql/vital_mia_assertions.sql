@@ -266,3 +266,57 @@ begin
  if not rejected then raise exception 'MIA accepted a cross-user message on another thread'; end if;
 end $$;
 reset role;
+
+
+-- Simulated end-to-end persistence: two successive Gemini responses and separate user histories.
+-- All "assistant" content below is a local fixture, not an external Gemini API call.
+set role service_role;
+do $$
+declare vital uuid;
+  owner uuid:='00000000-0000-4000-8000-000000000001';
+  supervisor uuid:='00000000-0000-4000-8000-000000000003';
+  owner_thread uuid;
+  supervisor_thread uuid;
+  n integer;
+  rejected boolean;
+begin
+ select id into vital from public.crm_organizations where workspace_code='vital-decor';
+ insert into public.crm_vital_mia_threads(organization_id,user_id,title)
+ values(vital,owner,'Atendimento fictício') returning id into owner_thread;
+ insert into public.crm_vital_mia_threads(organization_id,user_id,title)
+ values(vital,supervisor,'Histórico individual do supervisor') returning id into supervisor_thread;
+
+ if not public.crm_vital_mia_save_exchange_atomic(
+   vital,owner_thread,owner,'Pergunta fictícia 1','Resposta simulada 1','Atendimento fictício'
+ ) then raise exception 'First simulated exchange failed'; end if;
+ if not public.crm_vital_mia_save_exchange_atomic(
+   vital,owner_thread,owner,'Pergunta fictícia 2','Resposta simulada 2','Atendimento fictício'
+ ) then raise exception 'Second simulated exchange failed'; end if;
+ if not public.crm_vital_mia_save_exchange_atomic(
+   vital,supervisor_thread,supervisor,'Pergunta particular','Resposta particular','Histórico individual'
+ ) then raise exception 'Supervisor simulated exchange failed'; end if;
+
+ select count(*) into n from public.crm_vital_mia_messages
+ where thread_id=owner_thread and organization_id=vital and user_id=owner;
+ if n<>4 then raise exception 'Owner history should contain two full turns: %',n; end if;
+ select count(*) into n from public.crm_vital_mia_messages
+ where thread_id=supervisor_thread and organization_id=vital and user_id=supervisor;
+ if n<>2 then raise exception 'Supervisor history should contain only its turn: %',n; end if;
+
+ select count(*) into n from public.crm_vital_mia_messages
+ where thread_id=owner_thread and organization_id=vital and user_id=supervisor;
+ if n<>0 then raise exception 'Supervisor can read owner history by scoped query'; end if;
+ select count(*) into n from public.crm_vital_mia_messages
+ where thread_id=supervisor_thread and organization_id=vital and user_id=owner;
+ if n<>0 then raise exception 'Owner can read another user history by scoped query'; end if;
+
+ rejected:=false;
+ begin
+  perform public.crm_vital_mia_save_exchange_atomic(
+    vital,supervisor_thread,owner,'Tentativa cruzada','Não autorizado','Tentativa'
+  );
+ exception when sqlstate '42501' then rejected:=true;
+ end;
+ if not rejected then raise exception 'Owner could write supervisor private history'; end if;
+end $$;
+reset role;

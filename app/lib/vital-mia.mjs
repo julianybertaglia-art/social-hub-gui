@@ -43,6 +43,20 @@ export function extractGeminiText(payload){
     .filter(part=>!part.thought).map(part=>part.text||'').join('\n').trim();
 }
 
+// CI-only loopback transport, never reachable by a production Next.js runtime.
+// This permits full route + Auth + persistence testing without a Gemini key or
+// external HTTP request. Do not enable this outside ephemeral local CI.
+export function getLocalMiaTestTransport(env=process.env){
+  if(env.NODE_ENV!=='development'||env.CI!=='true')return null;
+  const endpoint=String(env.MIA_CI_MOCK_URL||'');
+  const match=/^http:\/\/127\.0\.0\.1:([1-9][0-9]{1,4})\/generate$/.exec(endpoint);
+  if(!match||Number(match[1])>65535)return null;
+  return {
+    key:'ci-only-mock-key-not-valid-for-gemini',
+    fetchImpl:(_url,options)=>fetch(endpoint,options),
+  };
+}
+
 export async function generateMiaText({key,model,message,action,workspace,role,context,history=[],fetchImpl=fetch}){
   if(!key)throw fail('A integração Gemini não está configurada neste ambiente.',503);
   const safeModel=String(model||'gemini-3.6-flash').trim();

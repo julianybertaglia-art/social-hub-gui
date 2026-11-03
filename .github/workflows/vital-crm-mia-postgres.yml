@@ -13,12 +13,12 @@ permissions:
 
 jobs:
   test-postgres:
-    name: Postgres 16 descartável - migrations, RLS e RPC
+    name: Postgres 17 descartável - migrations, RLS e RPC
     runs-on: ubuntu-latest
     timeout-minutes: 12
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17
         env:
           POSTGRES_PASSWORD: ci-not-production
           POSTGRES_DB: tide_crm_smoke

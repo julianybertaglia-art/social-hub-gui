@@ -110,6 +110,8 @@ jobs:
           # These flags are ONLY in the ephemeral 127.0.0.1 CI process.
           # Internal writes are tested; Meta outbound stays independently disabled.
           export VITAL_CRM_STAFF_ENABLED='true'
+          # Invitations are allowed only in this local dev+CI test with pre-created fake Auth users.
+          export VITAL_CRM_INVITES_ENABLED='true'
           export VITAL_CRM_REPLY_ENABLED='false'
           export VITAL_CRM_WRITES_ENABLED='true'
           export GEMINI_API_KEY=''

@@ -56,6 +56,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const [boardHeight,setBoardHeight]=useState(null);
  const splitBoard=useRef(null),splitDragging=useRef(false);
  const boardFrame=useRef(null),heightDragging=useRef(false),messagesRef=useRef(null);
+ const sendingRef=useRef(false);
  useEffect(()=>{
    try {
      const saved=Number(window.localStorage.getItem(SPLIT_WIDTH_KEY));
@@ -182,13 +183,23 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   finally{setBusy(false);}
  }
  async function reply(event){
-  event.preventDefault();
-  if(!detail||!draft.trim()||busy||replyBlockReason)return;
+  event?.preventDefault?.();
+  if(sendingRef.current||!detail||!draft.trim()||busy||replyBlockReason)return;
+  sendingRef.current=true;
   setBusy(true);setError('');setNotice('');
   try{
    const result=await api('/api/crm/vital/reply',{method:'POST',body:JSON.stringify({to:detail.contact.id,text:draft.trim()})});
    setDraft('');setNotice(result.warning||'Mensagem enviada pelo WhatsApp da Vital.');reload();
-  }catch(e){setError(e.message)}finally{setBusy(false)}
+  }catch(e){setError(e.message)}
+  finally{sendingRef.current=false;setBusy(false)}
+ }
+ function handleReplyKeyDown(event){
+  // Enter sends directly; Shift+Enter is a newline. Don't interrupt composition.
+  if(event.key!=='Enter'||event.shiftKey||event.nativeEvent?.isComposing||
+    event.nativeEvent?.keyCode===229||event.repeat||event.ctrlKey||event.altKey||event.metaKey)return;
+  event.preventDefault();
+  if(!draft.trim()||busy||replyBlockReason||sendingRef.current)return;
+  void reply(event);
  }
  async function setResolution(status){
   if(!detail||busy)return;
@@ -281,34 +292,6 @@ export default function VitalCRMReal({embedded=false,onLogout}){
     <button className={view==='all'?css.active:''} onClick={()=>{setView('all');setQueueFilter('all');}}>Todas as filas</button>
     <button className={view==='mine'?css.active:''} onClick={()=>{setView('mine');setQueueFilter('all');}}>Minha operação</button>
    </div>}
-   <div className={css.layoutToolbar} aria-label="Personalizar tamanho da central de atendimento">
-    <div className={css.layoutTitle}>
-     <Icon name="settings" size={17}/>
-     <strong>Ajustar tamanho da conversa</strong>
-     <span>As medidas ficam salvas para seu navegador</span>
-    </div>
-    <div className={css.layoutControls}>
-     <label className={css.layoutControl} htmlFor="vital-list-width">
-      <span><Icon name="users" size={15}/> Largura da lista</span>
-      <input id="vital-list-width" type="range" min="25" max="70" step="1"
-       value={splitWidth} onChange={e=>changeSplitWidth(Number(e.target.value))}
-       aria-valuetext={splitWidth+'% da largura'} />
-      <output htmlFor="vital-list-width">{splitWidth}%</output>
-     </label>
-     <label className={css.layoutControl} htmlFor="vital-board-height">
-      <span><Icon name="chat" size={15}/> Altura do chat</span>
-      <input id="vital-board-height" type="range" min="440" max="900" step="20"
-       value={boardHeight??540} onChange={e=>changeBoardHeight(Number(e.target.value))}
-       aria-valuetext={boardHeight===null?'Automática':boardHeight+' pixels'} />
-      <output htmlFor="vital-board-height">{boardHeight===null?'Auto':boardHeight+'px'}</output>
-     </label>
-     <button type="button" className={css.layoutReset} title="Voltar à distribuição inicial"
-      onClick={()=>{changeSplitWidth(DEFAULT_SPLIT_WIDTH);resetBoardHeight();}}>
-      <Icon name="refresh" size={15}/> Restaurar
-     </button>
-    </div>
-    <p>Você também pode arrastar a divisória <strong>↔</strong> entre as colunas e o controle <strong>↕</strong> abaixo do chat.</p>
-   </div>
    <div ref={boardFrame} className={css.boardFrame} style={boardHeight?{'--vital-board-height':boardHeight+'px'}:undefined}>
    <div data-crm-board ref={splitBoard} className={css.board} style={{'--vital-split-width':splitWidth+'%'}}>
     <section className={css.list}>
@@ -397,7 +380,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
          <textarea id="vital-reply-text" value={draft} maxLength={4096} rows={2}
           placeholder={replyBlockReason?'Resposta indisponível nesta conversa':'Digite uma mensagem…'}
           onChange={e=>setDraft(e.target.value)} disabled={busy||Boolean(replyBlockReason)}
-          onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent?.isComposing){e.preventDefault();e.currentTarget.form?.requestSubmit();}}}/>
+          onKeyDown={handleReplyKeyDown}/>
          <button type="submit" aria-label="Enviar mensagem" title="Enviar mensagem" disabled={!draft.trim()||busy||Boolean(replyBlockReason)}>
           {busy?'…':<Icon name="send" size={20}/>}
          </button>
@@ -416,7 +399,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
     onPointerDown={startHeight} onPointerMove={moveHeight} onPointerUp={stopHeight}
     onPointerCancel={stopHeight} onLostPointerCapture={stopHeight}
     onKeyDown={heightKeyDown} onDoubleClick={resetBoardHeight}>
-    <span className={css.heightSplitterHandle} aria-hidden="true"><Icon name="chevronDown" size={15}/> Ajustar altura</span>
+    <span className={css.heightSplitterHandle} aria-hidden="true">↕</span>
    </div>
    </div>
   </>}

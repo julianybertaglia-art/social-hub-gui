@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {MIA_ACTIONS,buildMiaSystemInstruction,extractGeminiText,
-  generateMiaText,redactMiaPii} from '../app/lib/vital-mia.mjs';
+  generateMiaText,redactMiaPii,getLocalMiaTestTransport} from '../app/lib/vital-mia.mjs';
 import {canUseVitalMia} from '../app/lib/vital-crm-queues.mjs';
 import {readFileSync} from 'node:fs';
 
@@ -122,4 +122,23 @@ test('Gemini request discards tool operations and thought traces from older hist
   },
  });
  assert.deepEqual(contents,[{role:'model',parts:[{text:'Resposta pública'}]},{role:'user',parts:[{text:'Olá'}]}]);
+});
+
+
+test('Gemini HTTP mock is permitted only for a loopback CI development process, never production',()=>{
+ const base={CI:'true',NODE_ENV:'development',MIA_CI_MOCK_URL:'http://127.0.0.1:39751/generate'};
+ const valid=getLocalMiaTestTransport(base);
+ assert.equal(valid?.key,'ci-only-mock-key-not-valid-for-gemini');
+ assert.equal(typeof valid.fetchImpl,'function');
+ for(const overrides of [
+  {NODE_ENV:'production'},
+  {NODE_ENV:'test'},
+  {CI:'false'},
+  {MIA_CI_MOCK_URL:'https://generativelanguage.googleapis.com/generate'},
+  {MIA_CI_MOCK_URL:'http://localhost:39751/generate'},
+  {MIA_CI_MOCK_URL:'http://127.0.0.1:99999/generate'},
+  {MIA_CI_MOCK_URL:'http://127.0.0.1:39751/other'},
+ ]){
+  assert.equal(getLocalMiaTestTransport({...base,...overrides}),null,JSON.stringify(overrides));
+ }
 });

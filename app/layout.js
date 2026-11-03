@@ -14,7 +14,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
       <body>
-        <SiteShell>{children}</SiteShell>
+        <SiteShell isPreview={process.env.VERCEL_ENV==='preview'}>{children}</SiteShell>
       </body>
     </html>
   );

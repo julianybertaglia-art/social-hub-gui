@@ -11,6 +11,8 @@ import VisualCRM from './preview/crm/VisualCRM';
 export default function SiteShell({children,isPreview=false}) {
   const pathname=usePathname();
   if(pathname==='/preview/crm') return children;
+  // Dedicated staff entry; same server-authorized Supabase login, no social/admin HubFrame.
+  if(pathname==='/equipe') return <CloudGate>{children}</CloudGate>;
   if(isPreview&&pathname==='/') return <VisualCRM/>;
   return <CloudGate><HubFrame>{children}</HubFrame><MiaAssistant/></CloudGate>;
 }

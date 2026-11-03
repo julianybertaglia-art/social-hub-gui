@@ -26,7 +26,7 @@ test('owner-only reply preserves identity, permission, assigned Argo guard, and 
  assert.match(reply,/getVitalCrmMember\(request\)/);
  assert.match(reply,/\.eq\('workspace_id','vital-decor'\)/);
  assert.match(reply,/canReplyWithinWindow\(lastInbound\.data\?\.sent_at\)/);
- assert.match(reply,/legacy\.data\?\.assigned_to!=='tide'/);
+ assert.match(reply,/legacy\.data\.assigned_to!=='tide'/);
  assert.match(reply,/stage:'await_human',human_handoff:true,manual_override:true/);
  assert.match(reply,/handOff|handoff\.error/);
 });

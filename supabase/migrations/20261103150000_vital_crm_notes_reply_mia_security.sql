@@ -374,3 +374,55 @@ revoke all on function public.crm_vital_mia_save_exchange_atomic(uuid,uuid,uuid,
  from public,anon,authenticated;
 grant execute on function public.crm_vital_mia_save_exchange_atomic(uuid,uuid,uuid,text,text,text)
  to service_role;
+
+
+-- Only service_role may convert an existing, owner-reviewed invitation draft
+-- into a real membership. This does NOT send email or generate a password.
+-- The API separately calls Supabase Auth Admin and controls the release flag.
+create or replace function public.crm_vital_activate_draft_member_atomic(
+  p_org uuid,p_user uuid,p_email text
+)
+returns boolean language plpgsql security invoker set search_path=public,auth as $$
+declare v_draft public.crm_vital_invite_drafts%rowtype;
+ v_auth_email text;v_existing_role text;v_queue_count integer;
+begin
+ if p_user is null or lower(coalesce(p_email,''))<>p_email
+ then raise exception 'Invalid invitation account' using errcode='22023'; end if;
+ if not exists(select 1 from public.crm_organizations o
+   where o.id=p_org and o.workspace_code='vital-decor')
+ then raise exception 'Unknown Vital organization' using errcode='42501'; end if;
+ select * into v_draft from public.crm_vital_invite_drafts d
+ where d.organization_id=p_org and d.email=p_email and d.status='draft' for update;
+ if not found then raise exception 'Invitation draft not found' using errcode='42501'; end if;
+ select lower(u.email) into v_auth_email from auth.users u where u.id=p_user;
+ if v_auth_email is distinct from p_email
+ then raise exception 'Auth email does not match invitation' using errcode='42501'; end if;
+ select m.role into v_existing_role from public.crm_organization_members m
+ where m.organization_id=p_org and m.user_id=p_user for update;
+ if v_existing_role='owner'
+ then raise exception 'Owner cannot be reassigned via an invitation' using errcode='42501'; end if;
+ select count(*) into v_queue_count from public.crm_vital_invite_draft_queues q
+ where q.organization_id=p_org and q.email=p_email;
+ if v_queue_count=0 then raise exception 'Invite must grant a sector' using errcode='22023'; end if;
+ insert into public.crm_organization_members(
+   organization_id,user_id,display_name,role,status,can_transfer
+ ) values(
+   p_org,p_user,v_draft.display_name,v_draft.requested_role,'active',
+   v_draft.requested_role='agent' and coalesce(v_draft.can_transfer,false)
+ )
+ on conflict(organization_id,user_id) do update set
+  display_name=excluded.display_name,role=excluded.role,status='active',
+  can_transfer=excluded.can_transfer,updated_at=now();
+ delete from public.crm_vital_member_queues
+ where organization_id=p_org and user_id=p_user;
+ insert into public.crm_vital_member_queues(organization_id,user_id,queue_code)
+ select q.organization_id,p_user,q.queue_code
+ from public.crm_vital_invite_draft_queues q
+ where q.organization_id=p_org and q.email=p_email;
+ return true;
+end;
+$$;
+revoke all on function public.crm_vital_activate_draft_member_atomic(uuid,uuid,text)
+  from public,anon,authenticated;
+grant execute on function public.crm_vital_activate_draft_member_atomic(uuid,uuid,text)
+  to service_role;

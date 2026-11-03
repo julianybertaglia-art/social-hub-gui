@@ -116,9 +116,9 @@ async function loadIndicators(auth,connection){
   return {counts,sampled:(recent.data||[]).length>=3000||[flows,assignments,manuals,states].some(result=>result.data?.length>=5000)};
 }
 
-async function ownedThread(db,organizationId,userId,threadId){
+async function ownedThread(db,organizationId,userId,workspaceCode,threadId){
   let query=db.from('crm_vital_mia_threads').select('id,title,created_at,updated_at')
-    .eq('organization_id',organizationId).eq('user_id',userId);
+    .eq('organization_id',organizationId).eq('user_id',userId).eq('workspace_code',workspaceCode);
   if(threadId)query=query.eq('id',threadId);
   return query.maybeSingle();
 }
@@ -127,14 +127,17 @@ export async function GET(request){
   try{
     const auth=await authorizedMember(request),{db,organization,userId}=auth;
     const url=new URL(request.url),requested=url.searchParams.get('thread');
+    const workspace=String(url.searchParams.get('workspace')||'vital-decor');
+    if(!['vital-decor','gui-nonato'].includes(workspace))throw fail('Ambiente da MIA inválido.',400);
+    if(auth.access.role!=='owner'&&workspace!=='vital-decor')throw fail('Ambiente não autorizado.',403);
     if(requested&&!UUID.test(requested))throw fail('Conversa da MIA inválida.',400);
     const listQuery=db.from('crm_vital_mia_threads').select('id,title,created_at,updated_at')
-        .eq('organization_id',organization.id).eq('user_id',userId)
+        .eq('organization_id',organization.id).eq('user_id',userId).eq('workspace_code',workspace)
         .order('updated_at',{ascending:false}).limit(30);
     const list=await listQuery;
     if(list.error)throw fail('Não foi possível carregar o histórico privado da MIA.',503);
     const active=requested
-      ?await ownedThread(db,organization.id,userId,requested)
+      ?await ownedThread(db,organization.id,userId,workspace,requested)
       :{data:list.data?.[0]||null,error:null};
     if(active.error)throw fail('Não foi possível carregar o histórico privado da MIA.',503);
     const thread=active.data;
@@ -160,25 +163,25 @@ export async function POST(request){
     const raw=await request.text();
     if(raw.length>8000)throw fail('A mensagem excede o tamanho permitido.',413);
     const input=JSON.parse(raw);
+    const workspace=String(input.workspace||'vital-decor');
+    if(!['vital-decor','gui-nonato'].includes(workspace))throw fail('Ambiente da MIA inválido.',400);
+    if(access.role!=='owner'&&workspace!=='vital-decor')throw fail('Seu perfil só pode usar a MIA na Vital Decor.',403);
     if(input.mode==='new'){
       const existing=await db.from('crm_vital_mia_threads').select('id',{count:'exact',head:true})
-        .eq('organization_id',organization.id).eq('user_id',userId);
+        .eq('organization_id',organization.id).eq('user_id',userId).eq('workspace_code',workspace);
       if(existing.error)throw fail('Não foi possível validar seu histórico privado.',503);
       if((existing.count||0)>=100)throw fail('O histórico atingiu o limite de 100 conversas. Peça à administradora para revisar a retenção.',409);
       const {data:thread,error}=await db.from('crm_vital_mia_threads').insert({
-        organization_id:organization.id,user_id:userId,title:'Nova conversa',
+        organization_id:organization.id,user_id:userId,workspace_code:workspace,title:'Nova conversa',
       }).select('id,title,created_at,updated_at').single();
       if(error)throw fail('Não foi possível abrir uma nova conversa da MIA.',503);
       return Response.json({thread,messages:[]},{status:201,headers});
     }
     const message=String(input.message||'').trim();
     const action=String(input.action||'chat');
-    const workspace=String(input.workspace||'vital-decor');
     const contact=String(input.contact||'').trim();
     if(!message||message.length>1400||!Object.hasOwn(MIA_ACTIONS,action)||!['vital-decor','gui-nonato'].includes(workspace))
       throw fail('Informe uma pergunta válida para a MIA.',400);
-    if(access.role!=='owner'&&(workspace!=='vital-decor'||!canUseVitalMia(access.role)))
-      throw fail('Seu perfil só pode usar a MIA na Vital Decor.',403);
     if(contact&&!PHONE.test(contact))throw fail('Contato inválido.',400);
     if(['summarize','suggest_reply','next_action'].includes(action)&&!contact)
       throw fail('Selecione uma conversa autorizada para esta ação.',400);
@@ -186,17 +189,17 @@ export async function POST(request){
     if(threadId&&!UUID.test(threadId))throw fail('Conversa da MIA inválida.',400);
     let thread=null;
     if(threadId){
-      const result=await ownedThread(db,organization.id,userId,threadId);
+      const result=await ownedThread(db,organization.id,userId,workspace,threadId);
       if(result.error)throw fail('Não foi possível verificar o histórico da MIA.',503);
       if(!result.data)throw fail('Conversa da MIA não encontrada.',404);
       thread=result.data;
     }else{
       const existing=await db.from('crm_vital_mia_threads').select('id',{count:'exact',head:true})
-        .eq('organization_id',organization.id).eq('user_id',userId);
+        .eq('organization_id',organization.id).eq('user_id',userId).eq('workspace_code',workspace);
       if(existing.error)throw fail('Não foi possível validar seu histórico privado.',503);
       if((existing.count||0)>=100)throw fail('O histórico atingiu o limite de 100 conversas. Peça à administradora para revisar a retenção.',409);
       const result=await db.from('crm_vital_mia_threads').insert({
-        organization_id:organization.id,user_id:userId,title:'Nova conversa',
+        organization_id:organization.id,user_id:userId,workspace_code:workspace,title:'Nova conversa',
       }).select('id,title,created_at,updated_at').single();
       if(result.error)throw fail('Não foi possível abrir uma conversa da MIA.',503);
       thread=result.data;

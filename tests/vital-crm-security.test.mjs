@@ -132,3 +132,22 @@ test('MIA chat uses a flexible vertical flow so user and assistant messages alig
  assert.match(css,/\.messageAssistant\{align-self:flex-start/);
  assert.match(css,/@media\(max-width:640px\)/);
 });
+
+
+test('MIA threads have strict Gui/Vital workspace scoping on every read and creation',()=>{
+ const migration=source('supabase/migrations/20261103150000_vital_crm_notes_reply_mia_security.sql');
+ const route=source('app/api/crm/vital/mia/route.js');
+ const ui=source('app/MiaAssistant.js');
+ assert.match(migration,/workspace_code text not null default 'vital-decor' check\(workspace_code in \('vital-decor','gui-nonato'\)\)/);
+ assert.match(migration,/crm_vital_mia_threads\(organization_id,user_id,workspace_code,updated_at desc\)/);
+ assert.match(route,/async function ownedThread\(db,organizationId,userId,workspaceCode,threadId\)/);
+ assert.match(route,/\.eq\('workspace_code',workspaceCode\)/);
+ assert.match(route,/\.eq\('workspace_code',workspace\)/);
+ assert.match(route,/user_id:userId,workspace_code:workspace,title:'Nova conversa'/);
+ assert.match(route,/if\(auth\.access\.role!=='owner'&&workspace!=='vital-decor'\)/);
+ assert.match(route,/if\(access\.role!=='owner'&&workspace!=='vital-decor'\)/);
+ assert.match(ui,/mia\?workspace='\+encodeURIComponent\(workspace\?\.id\|\|'vital-decor'\)/);
+ assert.match(ui,/body:\{mode:'new',workspace:requestWorkspace\}/);
+ assert.match(ui,/workspace:requestWorkspace,contact:contactAtSend/);
+ assert.match(ui,/workspaceRef\.current!==requestWorkspace/);
+});

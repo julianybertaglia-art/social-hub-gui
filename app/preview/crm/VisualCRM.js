@@ -3,6 +3,7 @@
 import {useEffect,useRef,useState} from 'react';
 import Icon from '../../ui/Icon';
 import styles from './visual.module.css';
+import {canViewDemoConversation,canReplyDemo,canChangeDemoStatus,canTransferDemo,changeDemoStatus,transferDemoConversation,countDemoConversations,DEMO_STATUS} from './demo-operations.mjs';
 
 const USERS=[
  {name:'Juliany',role:'Administradora',description:'Acesso a todas as filas',queues:null},
@@ -55,6 +56,8 @@ export default function VisualCRM(){
  const [height,setHeight]=useState(590);
  const [draft,setDraft]=useState('');
  const [sampleMessages,setSampleMessages]=useState({});
+ const [demoConversations,setDemoConversations]=useState(DEMOS);
+ const [actionNotice,setActionNotice]=useState('');
  const [miaOpen,setMiaOpen]=useState(false);
  const [miaDraft,setMiaDraft]=useState('');
  const [miaMessages,setMiaMessages]=useState([]);
@@ -64,11 +67,28 @@ export default function VisualCRM(){
  const frameRef=useRef(null);
  const msgRef=useRef(null);
  const profile=USERS.find(x=>x.name===person)||USERS[0];
- const allowed=DEMOS.filter(c=>!profile.queues||profile.queues.includes(c.queue));
+ const allowed=demoConversations.filter(c=>canViewDemoConversation(profile,c));
+ const counts=countDemoConversations(profile,demoConversations);
  const conversations=allowed.filter(c=>(filter==='Todas as filas'||c.queue===filter) && (c.name+' '+c.last+' '+qName(c.queue)).toLowerCase().includes(search.toLowerCase()));
  const current=conversations.find(x=>x.id===selected)||conversations[0]||null;
  const visibleMsgs=current?[...current.messages,...(sampleMessages[current.id]||[])]:[];
  const isSupervisor=profile.role==='Supervisor';
+ function updateStatus(nextStatus){
+  if(!current)return;
+  try{
+   const updated=changeDemoStatus(profile,current,nextStatus);
+   setDemoConversations(previous=>previous.map(item=>item.id===updated.id?updated:item));
+   setActionNotice('Status atualizado somente na demonstração.');
+  }catch(error){setActionNotice(error.message);}
+ }
+ function transferTo(nextQueue){
+  if(!current)return;
+  try{
+   const updated=transferDemoConversation(profile,current,nextQueue,QUEUES.map(queue=>queue.code));
+   setDemoConversations(previous=>previous.map(item=>item.id===updated.id?updated:item));
+   setActionNotice('Atendimento encaminhado somente na demonstração.');
+  }catch(error){setActionNotice(error.message);}
+ }
 
  useEffect(()=>{if(msgRef.current)msgRef.current.scrollTop=msgRef.current.scrollHeight},[current?.id,visibleMsgs.length]);
  useEffect(()=>{
@@ -92,9 +112,11 @@ export default function VisualCRM(){
    changeHeight(e.clientY-b.top-26);
  }
  function sendDemo(e){
-  e?.preventDefault?.();if(!draft.trim()||!current||isSupervisor)return;
+  e?.preventDefault?.();if(!draft.trim()||!current||!canReplyDemo(profile,current))return;
   setSampleMessages(m=>({...m,[current.id]:[...(m[current.id]||[]),['out',draft.trim(),'Agora']]}));
   setDraft('');
+  setActionNotice('Resposta adicionada somente ao histórico fictício.');
+  if(current.status==='Aguardando')updateStatus('Em andamento');
  }
  function onEnter(e){if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent?.isComposing){e.preventDefault();sendDemo(e)}}
  function miaReply(action){
@@ -105,7 +127,7 @@ export default function VisualCRM(){
  }
  function insertSuggestion(){
   const last=[...miaMessages].reverse().find(x=>x.from==='mia');
-  if(last&&current){setView('Atendimentos');setDraft(last.text);setMiaOpen(false)}
+  if(last&&current&&canReplyDemo(profile,current)){setView('Atendimentos');setDraft(last.text);setMiaOpen(false)}
  }
  return <div className={styles.root} data-theme={dark?'dark':'light'}>
   <aside className={styles.sidebar}>
@@ -128,7 +150,7 @@ export default function VisualCRM(){
      <div className={styles.bread}>TidePlace <Icon name="chevronRight" size={15}/> CRM <Icon name="chevronRight" size={15}/><strong>{view}</strong></div>
      <div className={styles.topActions}>
       <button className={styles.themeButton} onClick={()=>setDark(x=>!x)} title="Alternar tema"><Icon name="palette" size={17}/>{dark?'Tema escuro':'Tema claro'}</button>
-      <label className={styles.profileSelector}><span>Visualizar como</span><select value={person} onChange={e=>{setPerson(e.target.value);setFilter('Todas as filas');setSelected('')}}>{USERS.map(x=><option key={x.name}>{x.name}</option>)}</select></label>
+      <label className={styles.profileSelector}><span>Visualizar como</span><select value={person} onChange={e=>{setPerson(e.target.value);setFilter('Todas as filas');setSelected('');setMiaMessages([]);setMiaDraft('');setDraft('');setActionNotice('')}}>{USERS.map(x=><option key={x.name}>{x.name}</option>)}</select></label>
      </div>
    </header>
    <div className={styles.content}>
@@ -139,10 +161,10 @@ export default function VisualCRM(){
     </div>
     {view==='Atendimentos'&&<>
      <div className={styles.kpis}>
-       <div><span>Conversas na tela</span><strong>{allowed.length}</strong></div>
-       <div><span>Aguardando resposta</span><strong>{allowed.filter(x=>x.status==='Aguardando').length}</strong></div>
-       <div><span>Em andamento</span><strong>{allowed.filter(x=>x.status==='Em andamento').length}</strong></div>
-       <div><span>Concluídas</span><strong>{allowed.filter(x=>x.status==='Concluído').length}</strong></div>
+       <div><span>Conversas na tela</span><strong>{counts.total}</strong></div>
+       <div><span>Aguardando resposta</span><strong>{counts.pending}</strong></div>
+       <div><span>Em andamento</span><strong>{counts.active}</strong></div>
+       <div><span>Concluídas</span><strong>{counts.resolved}</strong></div>
      </div>
      <div className={styles.boardFrame} ref={frameRef}>
       <div ref={boardRef} className={styles.board} style={{'--split':percent+'%','--board-height':height+'px'}}>
@@ -163,12 +185,21 @@ export default function VisualCRM(){
          onDoubleClick={()=>changeWidth(35)}><span>↔</span></div>
        <section className={styles.chatPanel}>
         {current?<><div className={styles.chatHeader}><div className={styles.avatar}>{current.name.slice(-1)}</div><div><strong>{current.name}</strong><span>{qName(current.queue)} · {current.status}</span></div><button title="Abrir MIA" onClick={()=>setMiaOpen(true)}><Icon name="sparkle" size={18}/></button></div>
+          <div className={styles.demoControls}>
+           <label>Status <select aria-label="Status fictício do atendimento" value={current.status} disabled={!canChangeDemoStatus(profile,current)} onChange={event=>updateStatus(event.target.value)}>
+             {DEMO_STATUS.map(status=><option key={status}>{status}</option>)}
+           </select></label>
+           {canTransferDemo(profile,current)&&<label>Encaminhar para <select aria-label="Setor de destino fictício" value={current.queue} onChange={event=>transferTo(event.target.value)}>
+             {QUEUES.map(queue=><option key={queue.code} value={queue.code}>{queue.name}</option>)}
+           </select></label>}
+           <span role="status" aria-live="polite">{actionNotice||'Mudanças apenas nesta demonstração'}</span>
+          </div>
           <div className={styles.chatMessages} ref={msgRef}>{visibleMsgs.map((m,i)=><div key={i} className={m[0]==='out'?styles.sent:styles.received}><p>{m[1]}</p><time>{m[2]}</time></div>)}</div>
           <details className={styles.contactDetails}><summary><Icon name="info" size={15}/> Informações do atendimento · Observações internas <span>⌄</span></summary>
            <div className={styles.detailInner}><p><strong>Fila:</strong> {qName(current.queue)} · <strong>Responsável:</strong> {QUEUES.find(x=>x.code===current.queue)?.owner}</p><p><strong>Status:</strong> {current.status}</p>
             <div className={styles.noteList}>{notes.filter(x=>x.id===current.id).map((x,i)=><p key={i}>{x.text}</p>)}</div>
-            <form onSubmit={e=>{e.preventDefault();if(noteText.trim()){setNotes(n=>[...n,{id:current.id,text:noteText}]);setNoteText('')}}}>
-              <input placeholder="Adicionar nota interna de exemplo" value={noteText} onChange={e=>setNoteText(e.target.value)}/><button type="submit">Salvar</button></form>
+            {!isSupervisor&&<form onSubmit={e=>{e.preventDefault();if(noteText.trim()){setNotes(n=>[...n,{id:current.id,text:noteText}]);setNoteText('')}}}>
+              <input placeholder="Adicionar nota interna de exemplo" maxLength={500} value={noteText} onChange={e=>setNoteText(e.target.value)}/><button type="submit">Salvar</button></form>}
            </div>
           </details>
           {isSupervisor?<div className={styles.supervisor}>Perfil supervisor: consulta sem envio de mensagens.</div>:<form className={styles.compose} onSubmit={sendDemo}><textarea rows={2} placeholder="Digite uma mensagem..." value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={onEnter}/><button disabled={!draft.trim()} title="Enviar mensagem de exemplo"><Icon name="send" size={20}/></button><small>Enter envia · Shift + Enter quebra linha · demonstração sem envio real</small></form>}
@@ -183,7 +214,7 @@ export default function VisualCRM(){
      </div>
     </>}
     {view==='Dashboard'&&<div className={styles.dashboard}>
-       <div className={styles.kpis}><div><span>Conversas da amostra</span><strong>{allowed.length}</strong></div><div><span>Filas permitidas</span><strong>{profile.queues?.length||9}</strong></div><div><span>Aguardando</span><strong>{allowed.filter(x=>x.status==='Aguardando').length}</strong></div><div><span>Resolvidas</span><strong>{allowed.filter(x=>x.status==='Concluído').length}</strong></div></div>
+       <div className={styles.kpis}><div><span>Conversas da amostra</span><strong>{counts.total}</strong></div><div><span>Filas permitidas</span><strong>{profile.queues?.length||9}</strong></div><div><span>Aguardando</span><strong>{counts.pending}</strong></div><div><span>Resolvidas</span><strong>{counts.resolved}</strong></div></div>
        <div className={styles.dashCards}><div><h2>Atendimentos por setor</h2><p>Indicadores apenas ilustrativos</p>{QUEUES.filter(q=>!profile.queues||profile.queues.includes(q.code)).map((q,i)=><div className={styles.barRow} key={q.code}><span>{q.name}</span><div><i style={{width:(24+(i*17)%69)+'%'}}/></div></div>)}</div><div><h2>Prioridades de hoje</h2><div className={styles.todo}>Responder novas dúvidas de produtos</div><div className={styles.todo}>Acompanhar pedidos pendentes</div><div className={styles.todo}>Revisar atendimentos em andamento</div><button className={styles.askMia} onClick={()=>setMiaOpen(true)}><Icon name="sparkle" size={16}/> Perguntar à MIA</button></div></div>
       </div>}
     {view==='Equipe e permissões'&&<div className={styles.team}>
@@ -198,7 +229,7 @@ export default function VisualCRM(){
    <div className={styles.miaHeader}><img src="/brand/mia-logo.webp" width="42" height="42" alt=""/><div><strong>MIA</strong><small>Sua assistente TidePlace · demonstração</small></div><button title="Fechar MIA" onClick={()=>setMiaOpen(false)}><Icon name="close" size={18}/></button></div>
    <div className={styles.miaContext}>Contexto: {person} · {profile.role} · Vital Decor</div>
    <div className={styles.miaBody}>{!miaMessages.length&&<><h3>Como posso te ajudar?</h3><p>Veja como serão os resumos de atendimento, sugestões de respostas e próximos passos.</p><div className={styles.quick}>{Object.keys(MIA_INTROS).map(a=><button key={a} onClick={()=>miaReply(a)}><Icon name="sparkle" size={15}/>{a}</button>)}</div></>}{miaMessages.map((m,i)=><div key={i} className={m.from==='user'?styles.miaUser:styles.miaAnswer}>{m.text}</div>)}</div>
-   <div className={styles.miaFooter}><form onSubmit={e=>{e.preventDefault();miaReply()}}><input value={miaDraft} onChange={e=>setMiaDraft(e.target.value)} placeholder="Pergunte algo à MIA (simulação)"/><button title="Simular resposta"><Icon name="send" size={17}/></button></form>{miaMessages.some(x=>x.from==='mia')&&<button className={styles.useSuggestion} onClick={insertSuggestion}>Inserir última sugestão na conversa</button>}<small>Nesta prévia, respostas são ilustrativas — Gemini ainda não está conectado.</small></div>
+   <div className={styles.miaFooter}><form onSubmit={e=>{e.preventDefault();miaReply()}}><input value={miaDraft} onChange={e=>setMiaDraft(e.target.value)} placeholder="Pergunte algo à MIA (simulação)"/><button title="Simular resposta"><Icon name="send" size={17}/></button></form>{miaMessages.some(x=>x.from==='mia')&&current&&canReplyDemo(profile,current)&&<button className={styles.useSuggestion} onClick={insertSuggestion}>Inserir última sugestão na conversa</button>}<small>Nesta prévia, respostas são ilustrativas — Gemini ainda não está conectado.</small></div>
   </div>}
  </div>;
 }

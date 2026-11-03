@@ -25,16 +25,17 @@ test('staff CRM access is server-gated and each list/detail path applies persist
  assert.equal(canCrmAccess({role:'installer',status:'active',sectors:['pos_venda']},'read_conversation','pos_venda'),false);
 });
 test('reply, transfer and status writes remain behind explicit release flags',()=>{
- for(const [p,method] of [
-  ['app/api/crm/vital/live/route.js','PATCH'],
-  ['app/api/crm/vital/reply/route.js','POST'],
-  ['app/api/crm/vital/status/route.js','PATCH']
+ for(const [p,method,flag] of [
+  ['app/api/crm/vital/live/route.js','PATCH','VITAL_CRM_WRITES_ENABLED'],
+  ['app/api/crm/vital/reply/route.js','POST','VITAL_CRM_REPLY_ENABLED'],
+  ['app/api/crm/vital/status/route.js','PATCH','VITAL_CRM_WRITES_ENABLED']
  ]) {
   const s=source(p);
   const methodStart=s.indexOf('export async function '+method+'(request)');
   assert.ok(methodStart>=0,p+' must have '+method);
-  assert.ok(s.indexOf("process.env.VITAL_CRM_WRITES_ENABLED!=='true'",methodStart)>=0,p+' must deny writes without explicit QA release');
+  assert.ok(s.indexOf("process.env."+flag+"!=='true'",methodStart)>=0,p+' must deny writes without the dedicated release flag');
  }
+ assert.doesNotMatch(source('app/api/crm/vital/reply/route.js'),/VITAL_CRM_WRITES_ENABLED/);
  assert.match(source('app/VitalCRMReal.js'),/data\?\.readOnly/);
  const team=source('app/api/crm/vital/team/route.js');
  assert.match(team,/invitationSent:false,accessGranted:false/);

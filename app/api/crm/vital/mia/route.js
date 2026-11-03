@@ -150,7 +150,7 @@ export async function GET(request){
       messages=(result.data||[]).reverse();
     }
     return Response.json({threads:list.data||[],thread,messages,role:auth.access.role,
-      workspace:organization.workspaceCode},{headers});
+      workspace},{headers});
   }catch(error){return Response.json({error:error.status?error.message:'Não foi possível carregar a MIA.'},
     {status:error.status||503,headers});}
 }

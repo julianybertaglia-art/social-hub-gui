@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   canViewDemoConversation,canReplyDemo,canChangeDemoStatus,canTransferDemo,
-  changeDemoStatus,transferDemoConversation,countDemoConversations,
+  changeDemoStatus,transferDemoConversation,countDemoConversations,demoMiaReply,
 } from '../app/preview/crm/demo-operations.mjs';
 
 const owner={role:'Administradora',queues:null};
@@ -53,4 +53,22 @@ test('demo role restrictions remain denied for null identity and unrecognized qu
  assert.equal(canReplyDemo(null,shopee),false);
  assert.equal(canReplyDemo(agent,{...shopee,queue:'unknown'}),false);
  assert.equal(canTransferDemo(agent,shopee),false);
+});
+
+
+test('contextual MIA mock uses only fictional messages and restricted aggregates',()=>{
+ const counts=countDemoConversations(agent,[shopee,atacado]);
+ const summary=demoMiaReply({action:'Resumir atendimento',conversation:{...shopee,name:'Cliente fictício'},
+   messages:[['in','Posso acompanhar um pedido de exemplo?','09:00']],counts});
+ assert.match(summary,/Cliente fictício/);
+ assert.match(summary,/Posso acompanhar um pedido de exemplo/);
+ assert.doesNotMatch(summary,/Gemini respondeu|WhatsApp enviado/);
+ const indicators=demoMiaReply({action:'Consultar indicadores',counts});
+ assert.match(indicators,/1 conversas/);
+ assert.match(indicators,/1 aguardando/);
+ assert.match(indicators,/Não são dados reais/);
+ const next=demoMiaReply({action:'Próxima ação',conversation:{...shopee,status:'Concluído'}});
+ assert.match(next,/concluída/);
+ assert.match(demoMiaReply({action:'Sugerir resposta',conversation:shopee}),/Vou confirmar/);
+ assert.match(demoMiaReply({action:'Pergunta livre',conversation:shopee}),/sem Gemini/);
 });

@@ -52,6 +52,14 @@ test('chat layout supports independently persisted width and height',()=>{
  assert.match(css,/\.threadBottom/);
  assert.match(css,/\.composeRow/);
  assert.match(css,/\.board \.contacts/);
+ assert.match(ui,/Personalizar tamanho da central de atendimento/);
+ assert.match(ui,/id="vital-list-width"/);
+ assert.match(ui,/id="vital-board-height"/);
+ assert.match(ui,/onChange=\{e=>changeSplitWidth\(Number\(e.target.value\)\)\}/);
+ assert.match(ui,/onChange=\{e=>changeBoardHeight\(Number\(e.target.value\)\)\}/);
+ assert.match(ui,/resetBoardHeight\(\)/);
+ assert.match(css,/\.layoutToolbar/);
+ assert.match(css,/\.layoutControl input\[type=range\]/);
 });
 test('WhatsApp reply window is conservative',()=>{
  const now=Date.now();

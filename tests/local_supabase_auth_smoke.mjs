@@ -280,6 +280,62 @@ async function verify(){
   assert.ifError(outboundError);
   assert.equal(outbound.length,0);
   console.log('PASS: CRM writes enabled cannot accidentally unlock WhatsApp sends');
+
+  // Owner-only onboarding of a PRE-EXISTING local Auth user. No invitation email
+  // is sent in CI, no external provider and no production identity is touched.
+  const testInviteEmail='tide-ci-onboarding@example.invalid';
+  const {data:invitedUser,error:authCreateError}=await admin.auth.admin.createUser({
+   email:testInviteEmail,password,email_confirm:true,
+  });
+  assert.ifError(authCreateError);
+  const {error:inviteDraftError}=await admin.from('crm_vital_invite_drafts').insert({
+   organization_id:localOrg.id,email:testInviteEmail,display_name:'Agente Fictício',
+   requested_role:'agent',status:'draft',can_transfer:false,
+  });
+  assert.ifError(inviteDraftError);
+  const {error:inviteQueueError}=await admin.from('crm_vital_invite_draft_queues').insert({
+   organization_id:localOrg.id,email:testInviteEmail,queue_code:'pos_shopee',
+  });
+  assert.ifError(inviteQueueError);
+  const deniedInvite=await post('/api/crm/vital/team/invite',tokens.agent,{email:testInviteEmail},
+   'http://localhost:3007');
+  assert.equal(deniedInvite.status,403,'Non-owner can never activate staff');
+  const unknownInvite=await post('/api/crm/vital/team/invite',tokens.owner,
+   {email:'unapproved@example.invalid'},'http://localhost:3007');
+  assert.equal(unknownInvite.status,404,'Only drafted addresses may be invited');
+  const activated=await post('/api/crm/vital/team/invite',tokens.owner,
+   {email:testInviteEmail},'http://localhost:3007');
+  assert.equal(activated.status,200,JSON.stringify(activated.payload));
+  assert.equal(activated.payload.existingAccount,true);
+  assert.equal(activated.payload.invitationSent,false);
+  assert.deepEqual(activated.payload.assignedQueues,['pos_shopee']);
+  const {data:member,error:newMemberError}=await admin.from('crm_organization_members')
+   .select('role,status,can_transfer,display_name')
+   .eq('organization_id',localOrg.id).eq('user_id',invitedUser.user.id).single();
+  assert.ifError(newMemberError);
+  assert.equal(member.role,'agent');
+  assert.equal(member.status,'active');
+  assert.equal(member.can_transfer,false);
+  const {data:newQueues,error:grantError}=await admin.from('crm_vital_member_queues')
+   .select('queue_code').eq('organization_id',localOrg.id).eq('user_id',invitedUser.user.id);
+  assert.ifError(grantError);
+  assert.deepEqual(newQueues.map(item=>item.queue_code),['pos_shopee']);
+  const duplicated=await post('/api/crm/vital/team/invite',tokens.owner,
+   {email:testInviteEmail},'http://localhost:3007');
+  assert.equal(duplicated.status,409,'Repeated click must not re-invite or regrant');
+  const agentClient=createClient(base,anonKey,{auth:{persistSession:false,autoRefreshToken:false}});
+  const {data:agentSession,error:agentLoginError}=await agentClient.auth.signInWithPassword({
+   email:testInviteEmail,password,
+  });
+  assert.ifError(agentLoginError);
+  const newAccess=await check('/api/auth/access-scope',agentSession.session.access_token,200,'staff');
+  assert.deepEqual(newAccess.queueCodes,['pos_shopee']);
+  const {data:activatedDraft,error:activatedDraftError}=await admin.from('crm_vital_invite_drafts')
+   .select('activated_at').eq('organization_id',localOrg.id).eq('email',testInviteEmail).single();
+  assert.ifError(activatedDraftError);
+  assert.ok(activatedDraft.activated_at);
+  console.log('PASS: owner-only invited-user activation, queue grants, duplicate denial, real login');
+
  }
 
 }

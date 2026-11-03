@@ -3,9 +3,7 @@ import './home-cleanup.css';
 import './styles/tokens.css';
 import './styles/ui.css';
 import '@fontsource-variable/hanken-grotesk';
-import CloudGate from './CloudGate';
-import HubFrame from './HubFrame';
-import MiaAssistant from './MiaAssistant';
+import SiteShell from './SiteShell';
 
 export const metadata = {
   title: 'TidePlace',
@@ -16,10 +14,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
       <body>
-        <CloudGate>
-          <HubFrame>{children}</HubFrame>
-          <MiaAssistant />
-        </CloudGate>
+        <SiteShell>{children}</SiteShell>
       </body>
     </html>
   );

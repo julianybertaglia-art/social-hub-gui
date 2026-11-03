@@ -222,7 +222,7 @@ export async function POST(request){
     }
     const history=await db.from('crm_vital_mia_messages').select('role,content')
       .eq('organization_id',organization.id).eq('user_id',userId).eq('thread_id',thread.id)
-      .order('created_at',{ascending:false}).limit(8);
+      .order('message_order',{ascending:false}).limit(8);
     if(history.error)throw fail('Não foi possível consultar o histórico da MIA.',503);
     // Failed contact authorization or missing CRM context does not consume MIA quota.
     const claim=await db.rpc('crm_vital_mia_claim_request_atomic',{

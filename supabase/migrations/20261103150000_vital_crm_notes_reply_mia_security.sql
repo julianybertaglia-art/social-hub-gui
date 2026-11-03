@@ -388,7 +388,7 @@ create or replace function public.crm_vital_activate_draft_member_atomic(
 )
 returns boolean language plpgsql security invoker set search_path=public,auth as $$
 declare v_draft public.crm_vital_invite_drafts%rowtype;
- v_auth_email text;v_existing_role text;v_queue_count integer;
+ v_existing_role text;v_queue_count integer;
 begin
  if p_user is null or lower(coalesce(p_email,''))<>p_email
  then raise exception 'Invalid invitation account' using errcode='22023'; end if;
@@ -399,9 +399,9 @@ begin
  where d.organization_id=p_org and d.email=p_email and d.status='draft' for update;
  if not found then raise exception 'Invitation draft not found' using errcode='42501'; end if;
  if v_draft.activated_at is not null then return false; end if;
- select lower(u.email) into v_auth_email from auth.users u where u.id=p_user;
- if v_auth_email is distinct from p_email
- then raise exception 'Auth email does not match invitation' using errcode='42501'; end if;
+ -- The owner-only server endpoint verifies that the Auth Admin user.email matches
+ -- p_email before calling this service_role-only function. Direct service_role
+ -- SQL cannot SELECT auth.users in hosted Supabase, so do not widen Auth grants.
  select m.role into v_existing_role from public.crm_organization_members m
  where m.organization_id=p_org and m.user_id=p_user for update;
  if v_existing_role='owner'

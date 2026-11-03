@@ -281,7 +281,8 @@ export default function VitalCRMReal({embedded=false,onLogout}){
     <button className={view==='all'?css.active:''} onClick={()=>{setView('all');setQueueFilter('all');}}>Todas as filas</button>
     <button className={view==='mine'?css.active:''} onClick={()=>{setView('mine');setQueueFilter('all');}}>Minha operação</button>
    </div>}
-   <div ref={splitBoard} className={css.board} style={{'--vital-split-width':splitWidth+'%'}}>
+   <div ref={boardFrame} className={css.boardFrame} style={boardHeight?{'--vital-board-height':boardHeight+'px'}:undefined}>
+   <div data-crm-board ref={splitBoard} className={css.board} style={{'--vital-split-width':splitWidth+'%'}}>
     <section className={css.list}>
      <div className={css.listHeader}><h2>Atendimentos</h2><span>{effective.length} nesta página</span></div>
      <label className={css.search}><span>Buscar conversa</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Nome, número ou assunto…"/></label>
@@ -322,45 +323,73 @@ export default function VitalCRMReal({embedded=false,onLogout}){
       <span className={css.splitterHandle} aria-hidden="true">↔</span>
     </div>
     <section className={css.thread}>
-     {!selected?<div className={css.placeholder}><Icon name="chat" size={30}/><h2>Selecione uma conversa</h2><p>Consulte o histórico e encaminhe para a próxima fila quando necessário.</p></div>:<>
-      <div className={css.threadHeader}><div><h2>{detail?.contact?.name||'Conversa'}</h2>
-       <p>{detail?.contact?.phone||''} · {queueName(detail?.contact?.queue)}</p></div>
-       <button aria-label="Fechar conversa" onClick={()=>setSelected(null)}><Icon name="close" size={18}/></button>
+     {!selected?<div className={css.placeholder}><Icon name="chat" size={31}/><h2>Selecione uma conversa</h2><p>Seu WhatsApp da Vital, organizado por fila. Escolha um contato para visualizar o histórico.</p></div>:<>
+      <div className={css.threadHeader}>
+       <div className={css.chatIdentity}>
+        <span className={css.threadAvatar}>{(detail?.contact?.name||'?')[0]?.toUpperCase()}</span>
+        <div><h2>{detail?.contact?.name||'Conversa'}</h2>
+         <p>{detail?.contact?.phone||''} · {queueName(detail?.contact?.queue)}</p></div>
+       </div>
+       <button aria-label="Fechar conversa" title="Fechar conversa" onClick={()=>setSelected(null)}><Icon name="close" size={18}/></button>
       </div>
-      {opening&&<p className={css.loading}>Verificando sua permissão de acesso…</p>}
-      {detail&&<div className={css.messages}>
+      {opening&&<p className={css.loading}>Carregando mensagens…</p>}
+      {detail&&<div ref={messagesRef} className={css.messages} aria-label="Histórico de mensagens">
        {detail.messages.map(m=><article key={m.id} className={m.direction==='outbound'?css.sent:css.received}>
         <p>{m.body||'['+m.type+']'}</p><time>{date(m.at)}</time>
        </article>)}
        {!detail.messages.length&&<p className={css.noContacts}>Sem mensagens registradas.</p>}
       </div>}
-      {detail&&role!=='supervisor'&&detail.contact.queue&&<div className={css.resolution}>
-       <div><strong>Situação do atendimento</strong><small>{statusName(detail.contact.status)}</small></div>
-       {!data?.readOnly&&<button type="button" disabled={busy} onClick={()=>setResolution(detail.contact.status==='closed'?'open':'resolved')}>
-        <Icon name={detail.contact.status==='closed'?'refresh':'check'} size={15}/>
-        {detail.contact.status==='closed'?'Reabrir atendimento':'Marcar como resolvido'}
-       </button>}
-      </div>}
-      {detail&&!data?.readOnly&&role!=='supervisor'&&<form className={css.reply} onSubmit={reply}>
-        <label htmlFor="vital-reply-text">Responder pelo WhatsApp da Vital</label>
-        <textarea id="vital-reply-text" value={draft} maxLength={4096} rows={3}
-          placeholder="Digite sua resposta…" onChange={e=>setDraft(e.target.value)} disabled={busy}/>
-        <div><small>O envio respeita a janela de 24h da Meta e pausa a Vivi neste atendimento.</small>
-        <button type="submit" disabled={!draft.trim()||busy}>{busy?'Enviando…':'Enviar mensagem'}</button></div>
+      {detail&&<div className={css.threadBottom}>
+       <details className={css.detailsPanel}>
+        <summary><Icon name="info" size={15}/> Informações do atendimento <span>{statusName(detail.contact.status)}</span></summary>
+        <div className={css.resolution}>
+         <div><strong>Situação do atendimento</strong><small>{statusName(detail.contact.status)}</small></div>
+         {!data?.readOnly&&role!=='supervisor'&&detail.contact.queue&&
+          <button type="button" disabled={busy} onClick={()=>setResolution(detail.contact.status==='closed'?'open':'resolved')}>
+           <Icon name={detail.contact.status==='closed'?'refresh':'check'} size={15}/>
+           {detail.contact.status==='closed'?'Reabrir atendimento':'Marcar como resolvido'}
+          </button>}
+        </div>
+        {!data?.readOnly&&<div className={css.transfer}>
+         <div><strong><Icon name="flow" size={15} inline/> Encaminhar conversa</strong><p>Escolha a fila que dará continuidade ao atendimento.</p></div>
+         <div className={css.transferControls}>
+          <select aria-label="Fila de destino" value={destination} onChange={e=>setDestination(e.target.value)} disabled={!canMove||busy}>
+           <option value="">Escolha a fila de destino…</option>
+           {(data.transferDestinations||[]).filter(q=>q.queue_code!==detail.contact.queue).map(q=><option key={q.queue_code} value={q.queue_code}>{q.display_name} · {OWNER[q.queue_code]||'Equipe'}</option>)}
+          </select>
+          <button type="button" disabled={!destination||busy||!canMove} onClick={transfer}>{busy?'Transferindo…':'Transferir'}</button>
+         </div>
+         <span>A transferência do Tide CRM não altera a atribuição do Argo.</span>
+        </div>}
+        {data?.readOnly&&<p className={css.restrictedInfo}>Transferências e encerramentos ainda estão desativados nesta etapa do CRM.</p>}
+       </details>
+       {role!=='supervisor'&&<form className={css.reply} onSubmit={reply}>
+        <label className={css.visuallyHidden} htmlFor="vital-reply-text">Responder pelo WhatsApp da Vital</label>
+        <div className={css.composeRow}>
+         <textarea id="vital-reply-text" value={draft} maxLength={4096} rows={2}
+          placeholder={replyBlockReason?'Resposta indisponível nesta conversa':'Digite uma mensagem…'}
+          onChange={e=>setDraft(e.target.value)} disabled={busy||Boolean(replyBlockReason)}
+          onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent?.isComposing){e.preventDefault();e.currentTarget.form?.requestSubmit();}}}/>
+         <button type="submit" aria-label="Enviar mensagem" title="Enviar mensagem" disabled={!draft.trim()||busy||Boolean(replyBlockReason)}>
+          {busy?'…':<Icon name="send" size={20}/>}
+         </button>
+        </div>
+        <small className={replyBlockReason?css.replyBlocked:css.replyHint}>
+         {replyBlockReason||'Enter envia · Shift + Enter quebra linha · a Vivi é pausada após o envio confirmado.'}
+        </small>
        </form>}
-      {detail&&!data?.readOnly&&<div className={css.transfer}>
-       <div><strong><Icon name="flow" size={15} inline/> Encaminhar conversa</strong><p>Escolha a fila que dará continuidade ao atendimento.</p></div>
-       <div className={css.transferControls}>
-        <select aria-label="Fila de destino" value={destination} onChange={e=>setDestination(e.target.value)} disabled={!canMove||busy}>
-         <option value="">Escolha a fila de destino…</option>
-         {(data.transferDestinations||[]).filter(q=>q.queue_code!==detail.contact.queue).map(q=><option key={q.queue_code} value={q.queue_code}>{q.display_name} · {OWNER[q.queue_code]||'Equipe'}</option>)}
-        </select>
-        <button type="button" disabled={!destination||busy||!canMove} onClick={transfer}>{busy?'Transferindo…':'Transferir'}</button>
-       </div>
-       <span>As respostas ficam disponíveis apenas dentro da janela de 24h e para conversas das suas filas. A transferência altera a fila do CRM, não configura o Argo.</span>
       </div>}
      </>}
     </section>
+   </div>
+   <div className={css.heightSplitter} role="separator" tabIndex={0} aria-orientation="horizontal"
+    aria-label="Ajustar altura da central de atendimento" aria-valuemin={440} aria-valuemax={1000}
+    aria-valuenow={boardHeight||620} title="Arraste para ajustar a altura · setas para ajustar · duplo clique para restaurar"
+    onPointerDown={startHeight} onPointerMove={moveHeight} onPointerUp={stopHeight}
+    onPointerCancel={stopHeight} onLostPointerCapture={stopHeight}
+    onKeyDown={heightKeyDown} onDoubleClick={resetBoardHeight}>
+    <span className={css.heightSplitterHandle} aria-hidden="true"><Icon name="chevronDown" size={15}/> Ajustar altura</span>
+   </div>
    </div>
   </>}
  </>;

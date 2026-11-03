@@ -16,6 +16,8 @@ export async function POST(request){
   const {db,userId,access,organization}=await getVitalCrmMember(request);
   leaseDb=db;leaseActor=userId;leaseOrg=organization.id;
   if(!['owner','agent'].includes(access.role))throw fail('Seu perfil tem acesso somente de leitura.',403);
+  if(access.role==='agent'&&process.env.VITAL_CRM_STAFF_REPLY_ENABLED!=='true')
+    throw fail('Respostas da equipe aguardando liberação final.',403);
   const textBody=await request.text();
   if(textBody.length>10000)throw fail('Mensagem longa demais.',400);
   const input=JSON.parse(textBody);

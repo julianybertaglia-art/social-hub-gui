@@ -113,3 +113,22 @@ test('supervisor privilege updates are limited to Vital Decor',()=>{
  assert.match(migration,/where role='supervisor' and organization_id in/);
  assert.ok((migration.match(/where workspace_code='vital-decor'/g)||[]).length>=2);
 });
+
+
+test('MIA UI prevents thread switching during a pending answer and rejects responses from previous logins',()=>{
+ const ui=source('app/MiaAssistant.js');
+ assert.match(ui,/if\(sending\|\|loadingHistory\|\|!identityRef\.current\)return;/);
+ assert.match(ui,/if\(identityRef\.current!==requestIdentity\)return;/);
+ assert.match(ui,/setSending\(false\);setLoadingHistory\(false\);/);
+ assert.match(ui,/disabled=\{sending\|\|loadingHistory\} onClick=\{newThread\}/);
+ assert.match(ui,/disabled=\{sending\|\|loadingHistory\} onChange=\{event=>loadThread/);
+ assert.match(ui,/disabled=\{!input\.trim\(\)\|\|sending\|\|loadingHistory\}/);
+});
+
+test('MIA chat uses a flexible vertical flow so user and assistant messages align correctly',()=>{
+ const css=source('app/mia-assistant.module.css');
+ assert.match(css,/\.body\{display:flex;flex:1;flex-direction:column;/);
+ assert.match(css,/\.messageUser\{align-self:flex-end;/);
+ assert.match(css,/\.messageAssistant\{align-self:flex-start/);
+ assert.match(css,/@media\(max-width:640px\)/);
+});

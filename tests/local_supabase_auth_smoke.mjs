@@ -113,8 +113,9 @@ async function verify(){
   mia=await post('/api/crm/vital/mia',tokens.owner,{message:'Pergunta fictícia sem Gemini',workspace:'vital-decor'},origin);
   if(mia.status!==403||!String(mia.payload.error).includes('Origem inválida'))break;
  }
- // No Gemini key in this isolated run: fail closed without external API call.
- assert.equal(mia.status,503,JSON.stringify(mia.payload));
+ // In CI, requests are served by a loopback Gemini-shaped stub, not Google's API.
+ assert.equal(mia.status,200,JSON.stringify(mia.payload));
+ assert.match(mia.payload.answer||'',/Resposta do Gemini simulado em CI/);
 
  // Actual local API creates a new private thread in each workspace without Gemini.
  const newVital=await post('/api/crm/vital/mia',tokens.owner,{mode:'new',workspace:'vital-decor'},'http://localhost:3007');
@@ -136,10 +137,34 @@ async function verify(){
  const deniedCreate=await post('/api/crm/vital/mia',tokens.otherOwner,{mode:'new',workspace:'vital-decor'},'http://localhost:3007');
  assert.equal(deniedCreate.status,403);
  console.log('PASS: real HTTP MIA thread creation, workspace isolation and outsider denial');
- const threadCount=await admin.from('crm_vital_mia_messages').select('*',{count:'exact',head:true});
- assert.ifError(threadCount.error);
- assert.equal(threadCount.count,0,'Failed Gemini call must not save fictional answers');
- console.log('PASS: sending disabled and Gemini refuses missing key without false saved answers');
+ const before=await admin.from('crm_vital_mia_messages').select('*',{count:'exact',head:true});
+ assert.ifError(before.error);
+ assert.equal(before.count,2,'One successful stubbed reply must persist a complete user/assistant pair');
+ const conversation=await post('/api/crm/vital/mia',tokens.owner,{
+  message:'Meu email é ci.client@example.invalid e telefone 5511999998888',
+  workspace:'vital-decor',threadId:vitalId},'http://localhost:3007');
+ assert.equal(conversation.status,200,JSON.stringify(conversation.payload));
+ assert.match(conversation.payload.answer||'',/Resposta do Gemini simulado em CI/);
+ assert.doesNotMatch(conversation.payload.answer||'',/ci\.client@example\.invalid|5511999998888/);
+ const savedVital=await check('/api/crm/vital/mia?workspace=vital-decor&thread='+vitalId,tokens.owner,200);
+ assert.equal(savedVital.messages.length,2);
+ assert.deepEqual(savedVital.messages.map(m=>m.role),['user','assistant']);
+ assert.doesNotMatch(JSON.stringify(savedVital.messages),/ci\.client@example\.invalid|5511999998888/);
+ const personal=await check('/api/crm/vital/mia?workspace=gui-nonato&thread='+vitalId,tokens.owner,200);
+ assert.equal(personal.messages.length,0);
+ const other=await check('/api/crm/vital/mia?workspace=vital-decor&thread='+vitalId,tokens.otherOwner,403);
+ assert.ok(other.error);
+ const countBeforeError=await admin.from('crm_vital_mia_messages').select('*',{count:'exact',head:true});
+ assert.ifError(countBeforeError.error);
+ const failed=await post('/api/crm/vital/mia',tokens.owner,{
+  message:'CI_MOCK_FORCE_FAILURE',workspace:'vital-decor',threadId:vitalId},'http://localhost:3007');
+ assert.equal(failed.status,502,JSON.stringify(failed.payload));
+ assert.doesNotMatch(failed.payload.error||'',/Fake Gemini outage/);
+ const countAfterError=await admin.from('crm_vital_mia_messages').select('*',{count:'exact',head:true});
+ assert.ifError(countAfterError.error);
+ assert.equal(countAfterError.count,countBeforeError.count,'Failed stub request must not persist a partial history turn');
+ console.log('PASS: local Gemini-shaped HTTP reply persists isolated, redacted 2-message history and fails safely');
+
 
  const client=createClient(base,anonKey,{auth:{persistSession:false,autoRefreshToken:false}});
  const {error}=await client.from('crm_vital_mia_messages').select('id').limit(1);

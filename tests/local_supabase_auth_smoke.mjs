@@ -246,6 +246,32 @@ async function verify(){
   assert.equal(audits.length,1,'Idempotent status operation must not duplicate audit');
   console.log('PASS: real authenticated status PATCH persists and audits once; supervisor/other queue blocked');
 
+  // Real HTTP transfer changes the persisted queue and instantly revokes
+  // old-sector visibility, without any outgoing Meta request.
+  const deniedSupervisorTransfer=await patch('/api/crm/vital/live',tokens.supervisor,{
+   contact:shopeePhone,toQueue:'atacado'});
+  assert.equal(deniedSupervisorTransfer.status,403,JSON.stringify(deniedSupervisorTransfer.payload));
+  const deniedAgentTransfer=await patch('/api/crm/vital/live',tokens.agent,{
+   contact:shopeePhone,toQueue:'atacado'});
+  assert.equal(deniedAgentTransfer.status,403,JSON.stringify(deniedAgentTransfer.payload));
+  const moved=await patch('/api/crm/vital/live',tokens.owner,{
+   contact:shopeePhone,toQueue:'atacado'});
+  assert.equal(moved.status,200,JSON.stringify(moved.payload));
+  assert.equal(moved.payload.toQueue,'atacado');
+  assert.equal(moved.payload.fromQueue,'pos_shopee');
+  const detailAfter=await check('/api/crm/vital/live?contact='+shopeePhone,tokens.owner,200);
+  assert.equal(detailAfter.contact.queue,'atacado');
+  const oldSector=await fetch(api+'/api/crm/vital/live?contact='+shopeePhone,{
+   headers:{Authorization:'Bearer '+tokens.agent}});
+  assert.equal(oldSector.status,404);
+  const {data:transfers,error:transferAuditError}=await admin.from('crm_vital_transfer_audit')
+   .select('from_queue,to_queue,changed_by')
+   .eq('organization_id',localOrg.id).eq('contact_wa_id',shopeePhone);
+  assert.ifError(transferAuditError);
+  assert.equal(transfers.length,1);
+  assert.equal(transfers[0].changed_by,ids.owner);
+  console.log('PASS: live HTTP transfer is audited, supervisor denied, old-sector access revoked');
+
   const deniedSend=await post('/api/crm/vital/reply',tokens.owner,{
    to:shopeePhone,text:'Este texto NUNCA deve sair para a Meta.'},'http://localhost:3007');
   assert.equal(deniedSend.status,403,JSON.stringify(deniedSend.payload));

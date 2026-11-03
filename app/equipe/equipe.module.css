@@ -29,3 +29,10 @@
 .denied a{padding:11px 15px;border-radius:10px;background:#74213d;color:#fff;text-decoration:none;font-size:12px;font-weight:800}
 @media(max-width:800px){.welcome{flex-direction:column}.permissions{align-items:flex-start;max-width:100%}.queueList{justify-content:flex-start}.profile{display:none}}
 @media(max-width:520px){.topbar{padding:14px}.identity{gap:6px}.avatar{display:none}.brand img{width:32px;height:32px}.brand strong{font-size:15px}.brand small{font-size:8px}.backLink,.signOut{font-size:10px;padding:8px}.welcome{margin:13px;padding:20px}.crm{margin:0 8px}}
+.setupForm{width:min(400px,100%);display:flex;flex-direction:column;gap:14px;margin-top:12px;text-align:left}
+.setupForm label{display:grid;gap:6px;color:#54444d;font-size:12px;font-weight:750}
+.setupForm input{min-height:44px;border:1px solid #d9cbd1;border-radius:10px;padding:10px 12px;font-size:14px;background:#fff;color:#231b1e}
+.setupForm input:focus{outline:2px solid #8c3b5e;outline-offset:2px}
+.setupForm button{width:100%;border:0;background:#7a1f3d;color:#fff;min-height:46px;border-radius:11px;font-weight:800;cursor:pointer}
+.setupForm button:disabled{opacity:.55}
+.setupForm p{margin:0;color:#9d3248}

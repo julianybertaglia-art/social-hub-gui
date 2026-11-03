@@ -2,13 +2,16 @@
 
 ## Evidência automatizada — banco isolado (03/11/2026)
 
-- **Aprovado:** [GitHub Actions: Postgres 16 descartável](https://github.com/julianybertaglia-art/social-hub-gui/actions/runs/41656613708). Não usou Supabase de produção, dados reais, chaves ou Vercel.
+- **Aprovado:** [GitHub Actions: Postgres 17 descartável (mesma versão major do Supabase oficial)](https://github.com/julianybertaglia-art/social-hub-gui/actions/runs/41666344939). Não usou Supabase de produção, dados reais, chaves ou Vercel.
 - Aplica migrations legadas de Meta, Vivi/Argo e CRM, a migration nova, e valida 9 filas, privilégios RLS, isolamento de organização, supervisor, limite da MIA, privacidade por usuário, leases simultâneos, transferências e auditoria.
 - **Limitação do teste:** o schema de CI é um subconjunto representativo do Supabase real, com `auth.users` e `auth.uid()` simulados. Não substitui a validação integral num ambiente separado antes de aplicar na produção.
-- **Aprovado:** os testes Node e a compilação do Next.js na mesma versão da PR (workflow `Verificar aplicativo`).
+- **Aprovado:** os testes Node e a compilação do Next.js na mesma versão da PR (workflow [Verificar aplicativo](https://github.com/julianybertaglia-art/social-hub-gui/actions/runs/41666344750)).
 - **Pendente:** teste autenticado de ponta a ponta com a chave Gemini real e persistência num Supabase de homologação. Não ativar no banco produtivo apenas porque os testes acima passaram.
 
 ## Estado verificado (03/11/2026)
+- Após sincronização da PR: `codex/vital-crm-mia-phase1` está 0 commits atrás da `main`.
+- Testes Postgres 17 e `Verificar aplicativo` concluídos com sucesso na execução da branch. Não equivalem a teste em Supabase Auth real.
+- Supabase de homologação hospedado ainda não criado: plataforma solicita aceite de US$ 0,01344 por hora (sujeito à aprovação do usuário).
 - PR de rascunho #74. **Não publicar nem mesclar** até validação real.
 - O banco de produção `yjcrjoehpexddzqzafmc` tem as nove filas e as estruturas prévias do CRM; **não tem** `crm_vital_mia_threads`, `crm_vital_mia_messages`, `crm_vital_mia_request_log`, `crm_vital_conversation_notes`, `crm_vital_reply_locks` ou as RPCs de MIA.
 - Os dados reais da Vital/WhatsApp continuam em uso. A chave `GEMINI_API_KEY` consta no projeto Vercel, mas o acesso real ao Gemini ainda não foi testado com conta autenticada.

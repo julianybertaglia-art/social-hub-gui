@@ -81,6 +81,7 @@ create index if not exists crm_vital_mia_threads_user_idx
   on public.crm_vital_mia_threads(organization_id,user_id,workspace_code,updated_at desc);
 create table if not exists public.crm_vital_mia_messages (
   id uuid primary key default gen_random_uuid(),
+  message_order bigint generated always as identity,
   thread_id uuid not null,
   organization_id uuid not null,
   user_id uuid not null,
@@ -91,7 +92,7 @@ create table if not exists public.crm_vital_mia_messages (
     references public.crm_vital_mia_threads(id,organization_id,user_id) on delete cascade
 );
 create index if not exists crm_vital_mia_messages_thread_idx
-  on public.crm_vital_mia_messages(organization_id,user_id,thread_id,created_at desc);
+  on public.crm_vital_mia_messages(organization_id,user_id,thread_id,message_order desc);
 alter table public.crm_vital_mia_threads enable row level security;
 alter table public.crm_vital_mia_messages enable row level security;
 revoke all on public.crm_vital_mia_threads,public.crm_vital_mia_messages from anon,authenticated;
@@ -358,6 +359,9 @@ begin
  if not exists(select 1 from public.crm_vital_mia_threads t where t.id=p_thread
    and t.organization_id=p_org and t.user_id=p_user)
  then raise exception 'Thread not found' using errcode='42501'; end if;
+ -- Serialize writes to the same private thread and give every message a stable
+ -- identity-based position. created_at alone ties inside one PostgreSQL statement.
+ perform pg_advisory_xact_lock(hashtext(p_org::text||':'||p_user::text),hashtext(p_thread::text));
  insert into public.crm_vital_mia_messages(thread_id,organization_id,user_id,role,content)
  values(p_thread,p_org,p_user,'user',p_user_content),(p_thread,p_org,p_user,'assistant',p_assistant_content);
  update public.crm_vital_mia_threads set title=case when title='Nova conversa'

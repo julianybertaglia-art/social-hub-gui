@@ -7,7 +7,7 @@ const headers={'Cache-Control':'private, no-store',Vary:'Authorization'};
 const MAIL=/^[a-z0-9.!#$%&'*+/=?^`{|}~-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
 const INVITE_REDIRECT='https://social-hub-gui.vercel.app/equipe';
 
-export function canSendTeamInvitations(env=process.env){
+function canSendTeamInvitations(env=process.env){
  return env.VITAL_CRM_INVITES_ENABLED==='true'
   &&env.VITAL_CRM_STAFF_ENABLED==='true'
   &&(env.VERCEL_ENV==='production'||

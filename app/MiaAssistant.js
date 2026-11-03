@@ -48,9 +48,10 @@ export default function MiaAssistant(){
  const [error,setError]=useState(''),[suggestion,setSuggestion]=useState(''),[suggestionContact,setSuggestionContact]=useState('');
  const [selectedContact,setSelectedContact]=useState('');
  const [identity,setIdentity]=useState('');
- const drag=useRef(null),suppressClick=useRef(false),floating=useRef(null),messagesEnd=useRef(null),selectedContactRef=useRef(''),identityRef=useRef('');
+ const drag=useRef(null),suppressClick=useRef(false),floating=useRef(null),messagesEnd=useRef(null),selectedContactRef=useRef(''),identityRef=useRef(''),workspaceRef=useRef('vital-decor');
  const isCrm=pathname?.startsWith('/crm')||pathname?.startsWith('/whatsapp')||pathname?.startsWith('/instagram/direct');
  const brand=workspace?.name||'TidePlace';
+ workspaceRef.current=workspace?.id||'vital-decor';
  const showMia=authorized&&Boolean(supabase);
 
  useEffect(()=>{
@@ -89,15 +90,20 @@ export default function MiaAssistant(){
   if(!isCrm){selectedContactRef.current='';setSelectedContact('');}
  },[pathname,workspace?.id,isCrm]);
  useEffect(()=>{
+  setThreads([]);setThreadId('');setMessages([]);setInput('');setError('');
+  setSending(false);setLoadingHistory(false);
+ },[workspace?.id]);
+ useEffect(()=>{
   if(!open||!showMia||!identity)return;
   let active=true;setLoadingHistory(true);setError('');
-  miaRequest('/api/crm/vital/mia').then(result=>{
+  setThreads([]);setThreadId('');setMessages([]);
+  miaRequest('/api/crm/vital/mia?workspace='+encodeURIComponent(workspace?.id||'vital-decor')).then(result=>{
    if(!active)return;
    setThreads(result.threads||[]);setThreadId(result.thread?.id||'');setMessages(result.messages||[]);
   }).catch(reason=>{if(active)setError(reason.message);})
    .finally(()=>{if(active)setLoadingHistory(false);});
   return()=>{active=false;};
- },[open,showMia,identity]);
+ },[open,showMia,identity,workspace?.id]);
  useEffect(()=>{messagesEnd.current?.scrollIntoView({block:'end',behavior:'smooth'});},[messages,sending]);
  function pointerDown(event){
   if(event.pointerType==='mouse'&&event.button!==0)return;
@@ -122,37 +128,37 @@ export default function MiaAssistant(){
  function toggle(){if(suppressClick.current){suppressClick.current=false;return;}setOpen(value=>!value);}
  async function loadThread(id){
   if(sending||loadingHistory||!identityRef.current)return;
-  const requestIdentity=identityRef.current;
+  const requestIdentity=identityRef.current,requestWorkspace=workspaceRef.current;
   setLoadingHistory(true);setError('');setSuggestion('');setSuggestionContact('');
   try{
-   const result=await miaRequest('/api/crm/vital/mia?thread='+encodeURIComponent(id));
-   if(identityRef.current!==requestIdentity)return;
+   const result=await miaRequest('/api/crm/vital/mia?workspace='+encodeURIComponent(requestWorkspace)+'&thread='+encodeURIComponent(id));
+   if(identityRef.current!==requestIdentity||workspaceRef.current!==requestWorkspace)return;
    setThreadId(result.thread?.id||'');setMessages(result.messages||[]);
-  }catch(reason){if(identityRef.current===requestIdentity)setError(reason.message);}
-  finally{if(identityRef.current===requestIdentity)setLoadingHistory(false);}
+  }catch(reason){if(identityRef.current===requestIdentity&&workspaceRef.current===requestWorkspace)setError(reason.message);}
+  finally{if(identityRef.current===requestIdentity&&workspaceRef.current===requestWorkspace)setLoadingHistory(false);}
  }
  async function newThread(){
   if(sending||loadingHistory||!identityRef.current)return;
-  const requestIdentity=identityRef.current;
+  const requestIdentity=identityRef.current,requestWorkspace=workspaceRef.current;
   setLoadingHistory(true);setError('');setSuggestion('');setSuggestionContact('');
   try{
-   const result=await miaRequest('/api/crm/vital/mia',{method:'POST',body:{mode:'new'}});
-   if(identityRef.current!==requestIdentity)return;
+   const result=await miaRequest('/api/crm/vital/mia',{method:'POST',body:{mode:'new',workspace:requestWorkspace}});
+   if(identityRef.current!==requestIdentity||workspaceRef.current!==requestWorkspace)return;
    setThreadId(result.thread.id);setMessages([]);setThreads(previous=>[result.thread,...previous]);
-  }catch(reason){if(identityRef.current===requestIdentity)setError(reason.message);}
-  finally{if(identityRef.current===requestIdentity)setLoadingHistory(false);}
+  }catch(reason){if(identityRef.current===requestIdentity&&workspaceRef.current===requestWorkspace)setError(reason.message);}
+  finally{if(identityRef.current===requestIdentity&&workspaceRef.current===requestWorkspace)setLoadingHistory(false);}
  }
  async function send(value=input,action='chat'){
   const question=String(value||'').trim();
   if(!question||sending||loadingHistory||!identityRef.current)return;
-  const requestIdentity=identityRef.current;
+  const requestIdentity=identityRef.current,requestWorkspace=workspaceRef.current;
   const contactAtSend=isCrm?selectedContact:null;
   setSending(true);setError('');
   try{
    const result=await miaRequest('/api/crm/vital/mia',{method:'POST',body:{
-    message:question,action,workspace:workspace?.id||'vital-decor',contact:contactAtSend||null,threadId:threadId||null,
+    message:question,action,workspace:requestWorkspace,contact:contactAtSend||null,threadId:threadId||null,
    }});
-   if(identityRef.current!==requestIdentity)return;
+   if(identityRef.current!==requestIdentity||workspaceRef.current!==requestWorkspace)return;
    setThreadId(result.threadId);setInput('');
    const replySuggestion=result.action==='suggest_reply'&&contactAtSend&&selectedContactRef.current===contactAtSend
     ?result.answer:'';
@@ -166,8 +172,8 @@ export default function MiaAssistant(){
     return found?[{...found,updated_at:new Date().toISOString()},...previous.filter(thread=>thread.id!==result.threadId)]:
      [{id:result.threadId,title:question.slice(0,80),created_at:new Date().toISOString(),updated_at:new Date().toISOString()},...previous];
    });
-  }catch(reason){if(identityRef.current===requestIdentity)setError(reason.message);}
-  finally{if(identityRef.current===requestIdentity)setSending(false);}
+  }catch(reason){if(identityRef.current===requestIdentity&&workspaceRef.current===requestWorkspace)setError(reason.message);}
+  finally{if(identityRef.current===requestIdentity&&workspaceRef.current===requestWorkspace)setSending(false);}
  }
  function handleComposeKey(event){
   if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent?.isComposing){event.preventDefault();void send();}

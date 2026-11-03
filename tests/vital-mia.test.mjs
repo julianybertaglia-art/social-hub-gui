@@ -78,3 +78,48 @@ test('MIA masks prior chat history and generated answers before leaving or enter
  assert.match(route,/p_assistant_content:safeAnswer/);
  assert.match(route,/answer:safeAnswer/);
 });
+
+
+test('Gemini boundary redacts private fields in context and prior chat even if callers forgot',async()=>{
+ let body;
+ const output=await generateMiaText({
+  key:'ci-only-no-real-key',model:'gemini-3.6-flash',
+  message:'Qual é a próxima ação?',
+  action:'next_action',workspace:'Vital Decor',role:'agent',
+  context:{contact:{messages:[{text:'Telefone +55 11 98765-4321, e-mail cliente@exemplo.com.br, Bearer abcdefghijklmnopqrstuvwxyz123456'}]}},
+  history:[
+   {role:'user',parts:[{text:'Meu telefone é +55 11 99876-5432'}]},
+   {role:'model',parts:[{text:'Contate usuario@exemplo.com.br'},{thought:true,text:'internal token sk-ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'}]},
+   {role:'tool',parts:[{text:'Essa ferramenta não deve ser encaminhada'}]},
+  ],
+  fetchImpl:async(url,options)=>{
+   body=JSON.parse(options.body);
+   return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:'Resposta simulada, sem clientes reais'}]}}]})};
+  },
+ });
+ assert.equal(output,'Resposta simulada, sem clientes reais');
+ assert.equal(body.contents.length,3);
+ assert.deepEqual(body.contents.map(item=>item.role),['user','model','user']);
+ assert.doesNotMatch(JSON.stringify(body),/98765-4321|99876-5432|cliente@exemplo\.com\.br|usuario@exemplo\.com\.br|abcdefghijklmnopqrstuvwxyz123456|internal token|Essa ferramenta não deve/);
+ assert.match(JSON.stringify(body),/\[e-mail\]/);
+ assert.match(JSON.stringify(body),/\[telefone\]/);
+ assert.match(JSON.stringify(body),/\[credencial\]/);
+ assert.equal(body.generationConfig.maxOutputTokens,800);
+ assert.equal(Object.hasOwn(body.generationConfig,'temperature'),false);
+});
+
+test('Gemini request discards tool operations and thought traces from older history',async()=>{
+ let contents;
+ await generateMiaText({
+  key:'ci-only-no-real-key',model:'gemini-3.6-flash',message:'Olá',
+  history:[{role:'model',parts:[{thought:true,text:'Não enviar'}, {text:'Resposta pública'}],
+    functionCall:{name:'sendWhatsapp'}},
+    {role:'tool',parts:[{text:'Não permitido'}]},
+    {role:'user',parts:[{functionCall:{name:'deleteConversation'}}]}],
+  fetchImpl:async(url,options)=>{
+   contents=JSON.parse(options.body).contents;
+   return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:'Certo'}]}}]})};
+  },
+ });
+ assert.deepEqual(contents,[{role:'model',parts:[{text:'Resposta pública'}]},{role:'user',parts:[{text:'Olá'}]}]);
+});

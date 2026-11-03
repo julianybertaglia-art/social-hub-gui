@@ -1,0 +1,137 @@
+name: Homologar Auth e rotas CRM em Supabase local (sem produção)
+
+on:
+  pull_request:
+    paths:
+      - 'tests/local_supabase_auth_smoke.mjs'
+      - '.github/workflows/vital-crm-supabase-local.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-supabase:
+    name: GoTrue + PostgREST + Next.js locais com perfis fictícios
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      QA_DIR: /tmp/tide-supabase-qa
+    steps:
+      - name: Buscar implementação isolada
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Instalar dependências do aplicativo
+        run: npm ci
+      - name: Instalar CLI Supabase (sem link ou credenciais remotas)
+        uses: supabase/setup-cli@v3
+        with:
+          version: v2.stable
+      - name: Iniciar Supabase local mínimo com GoTrue e PostgREST
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$QA_DIR"
+          cd "$QA_DIR"
+          supabase --version
+          supabase init --yes
+          supabase start -x realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor,mailpit
+          supabase status -o env > "$QA_DIR/supabase.env"
+          chmod 600 "$QA_DIR/supabase.env"
+          echo 'Supabase local iniciado; projeto remoto não conectado.'
+      - name: Criar logins fictícios e aplicar migrações no banco descartável
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source "$QA_DIR/supabase.env"
+          set +a
+          test -n "$API_URL"
+          test -n "$SERVICE_ROLE_KEY"
+          test -n "$ANON_KEY"
+          test -n "$DB_URL"
+          [[ "$API_URL" == http://127.0.0.1:* ]] || { echo 'Refusing nonlocal Auth URL' >&2; exit 1; }
+          [[ "$DB_URL" == *127.0.0.1* || "$DB_URL" == *localhost* ]] || { echo 'Refusing nonlocal database URL' >&2; exit 1; }
+          node tests/local_supabase_auth_smoke.mjs seed "$QA_DIR/users.json"
+          python3 - "$QA_DIR/users.json" "$QA_DIR" <<'PY'
+          import json, pathlib, sys
+          users=json.loads(pathlib.Path(sys.argv[1]).read_text())
+          names=['owner','otherOwner','supervisor','otherSupervisor','agent']
+          replace={f'00000000-0000-4000-8000-{i:012d}':users[name] for i,name in enumerate(names,1)}
+          for path in ('tests/sql/vital_mia_seed_connection.sql','tests/sql/vital_mia_seed_before_migration.sql'):
+              txt=pathlib.Path(path).read_text()
+              for old,new in replace.items():
+                  txt=txt.replace(old,new)
+              pathlib.Path(sys.argv[2],pathlib.Path(path).name).write_text(txt)
+          PY
+          run_sql() {
+            echo "Isolated migration: $1"
+            psql "$DB_URL" -X -v ON_ERROR_STOP=1 -q -f "$1" >/dev/null
+          }
+          psql "$DB_URL" -X -v ON_ERROR_STOP=1 -q <<'SQL'
+          create table if not exists public.content_items (
+            id uuid primary key default gen_random_uuid(),
+            user_id uuid not null references auth.users(id),
+            title text not null
+          );
+          SQL
+          run_sql supabase/migrations/20261008151532_vital_decor_connections.sql
+          run_sql "$QA_DIR/vital_mia_seed_connection.sql"
+          run_sql supabase/migrations/20261009122500_vivi_vital_whatsapp_flow.sql
+          run_sql supabase/migrations/20261009150000_argo_bridge_vital.sql
+          run_sql supabase/migrations/20261028_vital_crm_team_permissions_foundation.sql
+          run_sql supabase/migrations/20261028_vital_crm_operational_queues.sql
+          run_sql supabase/migrations/20261028_vital_crm_invite_drafts.sql
+          run_sql supabase/migrations/20261028_vital_crm_conversation_status.sql
+          run_sql supabase/migrations/20261028_vital_crm_atomic_transfer.sql
+          run_sql supabase/migrations/20261028_vital_crm_atomic_status.sql
+          run_sql "$QA_DIR/vital_mia_seed_before_migration.sql"
+          run_sql supabase/migrations/20261103150000_vital_crm_notes_reply_mia_security.sql
+          psql "$DB_URL" -X -q -c "NOTIFY pgrst, 'reload schema';" >/dev/null
+          echo 'Migrações aplicadas em Supabase local com cinco usuários fictícios.'
+      - name: Testar HTTP real do TidePlace com Auth e banco locais
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source "$QA_DIR/supabase.env"
+          set +a
+          export NEXT_PUBLIC_SUPABASE_URL="$API_URL"
+          export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$ANON_KEY"
+          export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          export VITAL_CRM_STAFF_ENABLED='false'
+          export VITAL_CRM_REPLY_ENABLED='false'
+          export VITAL_CRM_WRITES_ENABLED='false'
+          export GEMINI_API_KEY=''
+          npm run dev -- --hostname 127.0.0.1 --port 3007 > "$QA_DIR/next.log" 2>&1 &
+          next_pid=$!
+          trap 'kill "$next_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 90); do
+            if curl -sS -o /dev/null http://127.0.0.1:3007/api/auth/access-scope; then ready=1; break; fi
+            sleep 1
+          done
+          if [[ "$ready" != "1" ]]; then
+            echo 'Local Next.js did not start' >&2
+            tail -n 70 "$QA_DIR/next.log"
+            exit 1
+          fi
+          node tests/local_supabase_auth_smoke.mjs verify "$QA_DIR/users.json"
+          echo 'PASS: local GoTrue + PostgREST + Next.js authenticated HTTP smoke.'
+      - name: Encerrar banco local e destruir dados fictícios
+        if: always()
+        shell: bash
+        run: |
+          if [ -d "$QA_DIR/supabase" ]; then
+            cd "$QA_DIR"
+            supabase stop --no-backup || true
+          fi
+          rm -rf "$QA_DIR"

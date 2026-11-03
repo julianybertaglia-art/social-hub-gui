@@ -170,6 +170,9 @@ export default function CloudGate({ children }) {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [recoveringPassword,setRecoveringPassword]=useState(false);
+  const [newRecoveryPassword,setNewRecoveryPassword]=useState('');
+  const [confirmRecoveryPassword,setConfirmRecoveryPassword]=useState('');
   const [syncStatus, setSyncStatus] = useState('Conectando...');
 
   const rowIdRef = useRef(null);
@@ -206,6 +209,8 @@ export default function CloudGate({ children }) {
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if(_event==='PASSWORD_RECOVERY')setRecoveringPassword(true);
+      if(_event==='SIGNED_OUT')setRecoveringPassword(false);
       // TOKEN_REFRESHED and tab-focus revalidation must not reset the screen.
       // Reset cloud data only when the authenticated identity truly changes.
       if (hasAuthIdentityChanged(authUserIdRef.current, nextSession)) {
@@ -523,6 +528,44 @@ export default function CloudGate({ children }) {
     setSubmitting(false);
   }
 
+  async function requestPasswordReset(){
+    if(!supabase)return;
+    const to=email.trim().toLowerCase();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)){
+      setMessage('Informe seu e-mail para receber o link de recuperação.');return;
+    }
+    setSubmitting(true);setMessage('');
+    try{
+      const {error}=await supabase.auth.resetPasswordForEmail(to,{
+        redirectTo:window.location.origin+'/equipe',
+      });
+      if(error)throw error;
+      // Same confirmation regardless of whether an account exists.
+      setMessage('Se houver uma conta para este e-mail, enviaremos as instruções de recuperação.');
+    }catch{
+      setMessage('Não foi possível solicitar a recuperação agora. Tente novamente.');}
+    finally{setSubmitting(false);}
+  }
+
+  async function finishPasswordRecovery(event){
+    event.preventDefault();
+    if(!supabase||submitting)return;
+    if(newRecoveryPassword.length<12||newRecoveryPassword!==confirmRecoveryPassword){
+      setMessage('A nova senha deve ter pelo menos 12 caracteres e as duas senhas devem ser iguais.');
+      return;
+    }
+    setSubmitting(true);setMessage('');
+    const {error}=await supabase.auth.updateUser({
+      password:newRecoveryPassword,data:{requires_password_setup:false},
+    });
+    if(error){setMessage('Não foi possível salvar a senha. Solicite outro link.');}
+    else{
+      setRecoveringPassword(false);setNewRecoveryPassword('');setConfirmRecoveryPassword('');
+      setMessage('');
+    }
+    setSubmitting(false);
+  }
+
   async function handleLogout() {
     if (!supabase) return;
     await supabase.auth.signOut();
@@ -543,6 +586,23 @@ export default function CloudGate({ children }) {
         </section>
       </main>
     );
+  }
+
+  if(session&&recoveringPassword){
+    return <main className={styles.screen}><section className={styles.statusCard}>
+      <img className={styles.statusLogo} src="/brand/tideplace-mark.svg" alt=""/>
+      <p className={styles.eyebrow}>VITAL DECOR · RECUPERAÇÃO</p>
+      <h1>Escolha sua nova senha</h1>
+      <p>Essa senha é individual e não deve ser compartilhada com a equipe.</p>
+      <form className={styles.recoveryForm} onSubmit={finishPasswordRecovery}>
+        <label>Nova senha<input type="password" autoComplete="new-password" minLength={12} required
+          value={newRecoveryPassword} onChange={event=>setNewRecoveryPassword(event.target.value)}/></label>
+        <label>Confirmar senha<input type="password" autoComplete="new-password" minLength={12} required
+          value={confirmRecoveryPassword} onChange={event=>setConfirmRecoveryPassword(event.target.value)}/></label>
+        {message&&<p role="status">{message}</p>}
+        <button type="submit" disabled={submitting}>{submitting?'Salvando…':'Salvar nova senha'}</button>
+      </form>
+    </section></main>;
   }
 
   if (initializing || (session && (!accessScope || !ready))) {
@@ -614,7 +674,9 @@ export default function CloudGate({ children }) {
                   required
                 />
               </label>
-              {message && <p className={styles.error}>{message}</p>}
+              {message && <p role="status" className={styles.error}>{message}</p>}
+              {isTeamLogin&&<button type="button" className={styles.forgotButton} disabled={submitting}
+                onClick={requestPasswordReset}>Esqueci minha senha</button>}
               <button type="submit" disabled={submitting}>
                 {submitting ? 'Entrando...' : isTeamLogin?'Entrar na central da equipe':'Entrar na TidePlace'}
               </button>

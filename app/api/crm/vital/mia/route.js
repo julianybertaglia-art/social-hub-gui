@@ -36,7 +36,7 @@ async function loadContactContext(auth,connection,phone){
       .eq('contact_wa_id',phone).order('sent_at',{ascending:false}).limit(12),
     db.from('crm_vital_conversation_notes').select('body,created_at')
       .eq('organization_id',organization.id).eq('connection_id',connection.id)
-      .eq('contact_wa_id',phone).order('created_at',{ascending:false}).limit(8),
+      .eq('contact_wa_id',phone).order('message_order',{ascending:false}).limit(8),
     routing.queue?db.from('crm_vital_queues').select('display_name')
       .eq('organization_id',organization.id).eq('queue_code',routing.queue).maybeSingle():Promise.resolve({data:null,error:null}),
   ]);
@@ -145,7 +145,7 @@ export async function GET(request){
     if(thread){
       const result=await db.from('crm_vital_mia_messages').select('id,role,content,created_at')
         .eq('organization_id',organization.id).eq('user_id',userId).eq('thread_id',thread.id)
-        .order('created_at',{ascending:false}).limit(60);
+        .order('message_order',{ascending:false}).limit(60);
       if(result.error)throw fail('Não foi possível carregar a conversa da MIA.',503);
       messages=(result.data||[]).reverse();
     }

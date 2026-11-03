@@ -187,3 +187,15 @@ test('general MIA chat does not require WhatsApp; failed CRM authorization does 
  assert.ok(post.indexOf("context={operationalIndicators:await loadIndicators")<post.indexOf("crm_vital_mia_claim_request_atomic"));
  assert.ok(post.indexOf("crm_vital_mia_claim_request_atomic")<post.indexOf("const answer=await generateMiaText"));
 });
+
+
+test('enabling CRM notes/status alone cannot enable WhatsApp outbound replies',()=>{
+ const reply=source('app/api/crm/vital/reply/route.js');
+ const notes=source('app/api/crm/vital/notes/route.js');
+ const status=source('app/api/crm/vital/status/route.js');
+ assert.match(reply,/if\(process\.env\.VITAL_CRM_REPLY_ENABLED!=='true'\)throw fail\('Respostas do CRM não foram liberadas nesta instalação\.',403\)/);
+ assert.doesNotMatch(reply,/VITAL_CRM_WRITES_ENABLED/);
+ assert.match(notes,/if\(process\.env\.VITAL_CRM_WRITES_ENABLED!=='true'\)/);
+ assert.match(status,/if\(process\.env\.VITAL_CRM_WRITES_ENABLED!=='true'\)/);
+ assert.ok(reply.indexOf("VITAL_CRM_REPLY_ENABLED")<reply.indexOf("graph.facebook.com"));
+});

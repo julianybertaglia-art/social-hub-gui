@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
 const source=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
-const migration=source('supabase/migrations/20261103120000_vital_crm_notes_reply_mia_security.sql');
+const migration=source('supabase/migrations/20261103150000_vital_crm_notes_reply_mia_security.sql');
 
 test('staff APIs authenticate from the bearer token and derive grants on the server',()=>{
  const access=source('app/lib/vital-crm-access.mjs');
@@ -98,4 +98,18 @@ test('MIA only inserts a suggestion into the selected composer and never sends i
  assert.match(ui,/Revise a resposta antes de usá-la/);
  assert.doesNotMatch(ui,/api\/crm\/vital\/reply|graph\.facebook\.com/);
  assert.match(source('app/tideplace/privacidade/route.js'),/Google Gemini/);
+});
+
+test('new MIA storage has RLS and denies direct anonymous/user access',()=>{
+ for(const table of ['crm_vital_mia_threads','crm_vital_mia_messages','crm_vital_mia_request_log']) {
+  assert.match(migration,new RegExp('create table if not exists public\\.'+table));
+  assert.match(migration,new RegExp('alter table public\\.'+table+' enable row level security'));
+ }
+ assert.match(migration,/revoke all on public\.crm_vital_mia_threads,public\.crm_vital_mia_messages from anon,authenticated/);
+ assert.match(migration,/revoke all on public\.crm_vital_mia_request_log from anon,authenticated/);
+});
+test('supervisor privilege updates are limited to Vital Decor',()=>{
+ assert.match(migration,/where requested_role='supervisor' and organization_id in/);
+ assert.match(migration,/where role='supervisor' and organization_id in/);
+ assert.ok((migration.match(/where workspace_code='vital-decor'/g)||[]).length>=2);
 });

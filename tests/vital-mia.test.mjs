@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {MIA_ACTIONS,buildMiaSystemInstruction,extractGeminiText,
   generateMiaText,redactMiaPii} from '../app/lib/vital-mia.mjs';
 import {canUseVitalMia} from '../app/lib/vital-crm-queues.mjs';
+import {readFileSync} from 'node:fs';
 
 test('MIA is available only to authenticated CRM profile types',()=>{
  assert.equal(canUseVitalMia('owner'),true);
@@ -68,4 +69,12 @@ test('Gemini text extraction ignores non-text/thought fields',()=>{
   {text:'Primeira'},{thought:true,text:'interno'},{text:'Segunda'},
  ]}}]}),'Primeira\nSegunda');
  assert.equal(extractGeminiText({candidates:[{content:{parts:[]}}]}),'');
+});
+
+test('MIA masks prior chat history and generated answers before leaving or entering storage',()=>{
+ const route=readFileSync(new URL('../app/api/crm/vital/mia/route.js',import.meta.url),'utf8');
+ assert.match(route,/text:redactMiaPii\(item\.content,\{names:redactionNames\}\)/);
+ assert.match(route,/const safeAnswer=redactMiaPii\(answer,\{names:redactionNames\}\)/);
+ assert.match(route,/p_assistant_content:safeAnswer/);
+ assert.match(route,/answer:safeAnswer/);
 });

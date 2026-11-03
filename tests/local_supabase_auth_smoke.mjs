@@ -75,18 +75,28 @@ async function verify(){
  await check('/api/crm/vital/mia?workspace=invalid',tokens.owner,400);
  console.log('PASS: MIA HTTP read scopes deny unauthorized users and workspaces');
 
- async function post(url,token,body){
+ async function post(url,token,body,origin=api){
   const response=await fetch(api+url,{
    method:'POST',headers:{
     'Content-Type':'application/json',Authorization:'Bearer '+token,
-    Origin:api,
+    Origin:origin,
    },body:JSON.stringify(body),signal:AbortSignal.timeout(15000),
   });
   return {status:response.status,payload:await response.json().catch(()=>({}))};
  }
  const reply=await post('/api/crm/vital/reply',tokens.owner,{to:'5511000000111',text:'NO-REAL-SEND'});
  assert.equal(reply.status,403);
- const mia=await post('/api/crm/vital/mia',tokens.owner,{message:'Pergunta fictícia sem Gemini',workspace:'vital-decor'});
+ // Reject an actual cross-origin write, even with a valid locally signed JWT.
+ const csrf=await post('/api/crm/vital/mia',tokens.owner,{message:'Tentativa inválida'},'https://cross-origin.invalid');
+ assert.equal(csrf.status,403);
+ assert.match(csrf.payload.error||'',/Origem inválida/);
+ // Next.js local may normalize request.url to localhost even if bound to 127.0.0.1.
+ // Probe only those two loopback origins; no external service or credential is used.
+ let mia=null;
+ for(const origin of ['http://localhost:3007',api]){
+  mia=await post('/api/crm/vital/mia',tokens.owner,{message:'Pergunta fictícia sem Gemini',workspace:'vital-decor'},origin);
+  if(mia.status!==403||!String(mia.payload.error).includes('Origem inválida'))break;
+ }
  // No Gemini key in this isolated run: fail closed without external API call.
  assert.equal(mia.status,503,JSON.stringify(mia.payload));
  const threadCount=await admin.from('crm_vital_mia_messages').select('*',{count:'exact',head:true});

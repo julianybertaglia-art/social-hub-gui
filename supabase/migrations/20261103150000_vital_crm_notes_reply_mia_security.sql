@@ -376,6 +376,10 @@ grant execute on function public.crm_vital_mia_save_exchange_atomic(uuid,uuid,uu
  to service_role;
 
 
+-- Keep pending invitation drafts separate from members who are already active.
+alter table public.crm_vital_invite_drafts
+  add column if not exists activated_at timestamptz;
+
 -- Only service_role may convert an existing, owner-reviewed invitation draft
 -- into a real membership. This does NOT send email or generate a password.
 -- The API separately calls Supabase Auth Admin and controls the release flag.
@@ -394,6 +398,7 @@ begin
  select * into v_draft from public.crm_vital_invite_drafts d
  where d.organization_id=p_org and d.email=p_email and d.status='draft' for update;
  if not found then raise exception 'Invitation draft not found' using errcode='42501'; end if;
+ if v_draft.activated_at is not null then return false; end if;
  select lower(u.email) into v_auth_email from auth.users u where u.id=p_user;
  if v_auth_email is distinct from p_email
  then raise exception 'Auth email does not match invitation' using errcode='42501'; end if;
@@ -419,6 +424,8 @@ begin
  select q.organization_id,p_user,q.queue_code
  from public.crm_vital_invite_draft_queues q
  where q.organization_id=p_org and q.email=p_email;
+ update public.crm_vital_invite_drafts set activated_at=now(),updated_at=now()
+ where organization_id=p_org and email=p_email;
  return true;
 end;
 $$;

@@ -118,7 +118,7 @@ test('supervisor privilege updates are limited to Vital Decor',()=>{
 test('MIA UI prevents thread switching during a pending answer and rejects responses from previous logins',()=>{
  const ui=source('app/MiaAssistant.js');
  assert.match(ui,/if\(sending\|\|loadingHistory\|\|!identityRef\.current\)return;/);
- assert.match(ui,/if\(identityRef\.current!==requestIdentity\)return;/);
+ assert.match(ui,/if\(identityRef\.current!==requestIdentity\|\|workspaceRef\.current!==requestWorkspace\)return;/);
  assert.match(ui,/setSending\(false\);setLoadingHistory\(false\);/);
  assert.match(ui,/disabled=\{sending\|\|loadingHistory\} onClick=\{newThread\}/);
  assert.match(ui,/disabled=\{sending\|\|loadingHistory\} onChange=\{event=>loadThread/);

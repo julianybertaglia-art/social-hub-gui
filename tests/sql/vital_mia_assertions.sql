@@ -320,3 +320,46 @@ begin
  if not rejected then raise exception 'Owner could write supervisor private history'; end if;
 end $$;
 reset role;
+
+
+-- Private history must be separable not only by user, but also by workspace.
+-- This remains within the same disposable DB and never uses live brands' data.
+set role service_role;
+do $$
+declare vital uuid; owner uuid:='00000000-0000-4000-8000-000000000001';
+ vital_thread uuid; gui_thread uuid; rejected boolean; n integer;
+begin
+ select id into vital from public.crm_organizations where workspace_code='vital-decor';
+ insert into public.crm_vital_mia_threads(organization_id,user_id,workspace_code,title)
+ values(vital,owner,'vital-decor','Atendimento fictício Vital')
+ returning id into vital_thread;
+ insert into public.crm_vital_mia_threads(organization_id,user_id,workspace_code,title)
+ values(vital,owner,'gui-nonato','Planejamento fictício Gui')
+ returning id into gui_thread;
+ if not public.crm_vital_mia_save_exchange_atomic(
+   vital,vital_thread,owner,'Pergunta Vital','Resposta simulada Vital','Atendimento fictício Vital'
+ ) then raise exception 'Vital workspace history save failed'; end if;
+ if not public.crm_vital_mia_save_exchange_atomic(
+   vital,gui_thread,owner,'Pergunta Gui','Resposta simulada Gui','Planejamento fictício Gui'
+ ) then raise exception 'Gui workspace history save failed'; end if;
+ select count(*) into n from public.crm_vital_mia_threads
+  where organization_id=vital and user_id=owner and workspace_code='vital-decor'
+    and id in (vital_thread,gui_thread);
+ if n<>1 then raise exception 'Vital thread list includes Gui workspace'; end if;
+ select count(*) into n from public.crm_vital_mia_threads
+  where organization_id=vital and user_id=owner and workspace_code='gui-nonato'
+    and id in (vital_thread,gui_thread);
+ if n<>1 then raise exception 'Gui thread list includes Vital workspace'; end if;
+ if (select count(*) from public.crm_vital_mia_messages where thread_id=vital_thread)<>2
+ or (select count(*) from public.crm_vital_mia_messages where thread_id=gui_thread)<>2
+ then raise exception 'Workspace histories have lost or mixed messages'; end if;
+
+ rejected:=false;
+ begin
+  insert into public.crm_vital_mia_threads(organization_id,user_id,workspace_code)
+  values(vital,owner,'wrong-brand');
+ exception when check_violation then rejected:=true;
+ end;
+ if not rejected then raise exception 'Unrecognized MIA workspace was allowed'; end if;
+end $$;
+reset role;

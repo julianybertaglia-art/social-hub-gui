@@ -154,3 +154,19 @@ test('MIA threads have strict Gui/Vital workspace scoping on every read and crea
  assert.match(ui,/const contactAtSend=isVitalCrm\?selectedContact:null/);
  assert.match(ui,/\{isVitalCrm&&<div className=\{css\.quickActions\}/);
 });
+
+
+test('isolated CRM preview bypasses login only for its fictitious route, never production',()=>{
+ const shell=source('app/SiteShell.js');
+ const route=source('app/preview/crm/page.js');
+ const visual=source('app/preview/crm/VisualCRM.js');
+ const layout=source('app/layout.js');
+ assert.match(shell,/if\(pathname==='\/preview\/crm'\) return children;/);
+ assert.match(shell,/return <CloudGate><HubFrame>\{children\}<\/HubFrame><MiaAssistant\/><\/CloudGate>/);
+ assert.match(route,/if\(process\.env\.VERCEL_ENV==='production'\) notFound\(\)/);
+ assert.match(layout,/<SiteShell>\{children\}<\/SiteShell>/);
+ assert.doesNotMatch(visual,/\bfetch\s*\(|\baxios\b|createClient\s*\(|from ['"].*supabase/i);
+ assert.match(visual,/Nenhum WhatsApp, Supabase ou Gemini é acessado nesta página/);
+ assert.match(visual,/Cliente exemplo A/);
+ assert.match(visual,/MIA_INTROS/);
+});

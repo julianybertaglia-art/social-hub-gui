@@ -199,3 +199,14 @@ test('enabling CRM notes/status alone cannot enable WhatsApp outbound replies',(
  assert.match(status,/if\(process\.env\.VITAL_CRM_WRITES_ENABLED!=='true'\)/);
  assert.ok(reply.indexOf("VITAL_CRM_REPLY_ENABLED")<reply.indexOf("graph.facebook.com"));
 });
+
+
+test('MIA message ordering is deterministic and independent of equal created_at timestamps',()=>{
+ const migration=source('supabase/migrations/20261103150000_vital_crm_notes_reply_mia_security.sql');
+ const route=source('app/api/crm/vital/mia/route.js');
+ assert.match(migration,/message_order bigint generated always as identity/);
+ assert.match(migration,/crm_vital_mia_messages\(organization_id,user_id,thread_id,message_order desc\)/);
+ assert.match(migration,/pg_advisory_xact_lock\(hashtext\(p_org::text\|\|':'\|\|p_user::text\),hashtext\(p_thread::text\)\)/);
+ assert.match(route,/\.order\('message_order',\{ascending:false\}\)\.limit\(60\)/);
+ assert.match(route,/\.order\('message_order',\{ascending:false\}\)\.limit\(8\)/);
+});

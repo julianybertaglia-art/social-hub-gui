@@ -1,5 +1,13 @@
 # Pré-liberação segura — Tide CRM Vital + MIA Gemini
 
+## Evidência automatizada — banco isolado (03/11/2026)
+
+- **Aprovado:** [GitHub Actions: Postgres 16 descartável](https://github.com/julianybertaglia-art/social-hub-gui/actions/runs/41656613708). Não usou Supabase de produção, dados reais, chaves ou Vercel.
+- Aplica migrations legadas de Meta, Vivi/Argo e CRM, a migration nova, e valida 9 filas, privilégios RLS, isolamento de organização, supervisor, limite da MIA, privacidade por usuário, leases simultâneos, transferências e auditoria.
+- **Limitação do teste:** o schema de CI é um subconjunto representativo do Supabase real, com `auth.users` e `auth.uid()` simulados. Não substitui a validação integral num ambiente separado antes de aplicar na produção.
+- **Aprovado:** os testes Node e a compilação do Next.js na mesma versão da PR (workflow `Verificar aplicativo`).
+- **Pendente:** teste autenticado de ponta a ponta com a chave Gemini real e persistência num Supabase de homologação. Não ativar no banco produtivo apenas porque os testes acima passaram.
+
 ## Estado verificado (03/11/2026)
 - PR de rascunho #74. **Não publicar nem mesclar** até validação real.
 - O banco de produção `yjcrjoehpexddzqzafmc` tem as nove filas e as estruturas prévias do CRM; **não tem** `crm_vital_mia_threads`, `crm_vital_mia_messages`, `crm_vital_mia_request_log`, `crm_vital_conversation_notes`, `crm_vital_reply_locks` ou as RPCs de MIA.
@@ -21,7 +29,7 @@
 
 ## Pontos ainda pendentes
 - **Sem teste real do Gemini**: a existência de `GEMINI_API_KEY` na Vercel não prova modelo autorizado, quota ou cobrança configurada.
-- **Sem teste de migration em banco separado**: GitHub Actions valida código, mas não executa a migration no Supabase.
+- **Smoke test da migration aprovado num Postgres descartável (GitHub Actions)**; ainda falta homologar no Supabase completo, pois o schema de CI é representativo e não uma cópia integral.
 - **Sem teste de perfis autenticados reais**: Andrey, Vitor e Guilherme permanecem sem acesso ativo.
 - **Privacidade**: nomes, telefones e e-mails são mascarados por melhores esforços, não um processo infalível; só compartilhar dados de clientes com Gemini após avaliação da base legal, minimização e regras internas.
 - **Prévia**: automática está desativada para economizar Vercel. Um único deploy manual deverá usar a branch revisada depois que o ambiente de teste estiver seguro.

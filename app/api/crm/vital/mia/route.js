@@ -204,15 +204,11 @@ export async function POST(request){
       if(result.error)throw fail('Não foi possível abrir uma conversa da MIA.',503);
       thread=result.data;
     }
-    const claim=await db.rpc('crm_vital_mia_claim_request_atomic',{
-      p_org:organization.id,p_user:userId,p_limit:20,
-    });
-    if(claim.error)throw fail('Não foi possível validar o limite de uso da MIA.',503);
-    if(claim.data!==true)throw fail('Você atingiu o limite de 20 perguntas por hora. Tente novamente mais tarde.',429);
-
-    const connection=workspace==='vital-decor'?await connectionFor(auth):null;
     let context=null,redactionNames=[];
     const asksForIndicators=action==='insights'||/\b(indicadores?|pendências?|atendimentos?|quantas? conversas|situação das filas|resolvidas?)\b/i.test(message);
+    // General MIA chat never needs a WhatsApp connection or CRM message access.
+    const needsOperationalContext=workspace==='vital-decor'&&(Boolean(contact)||asksForIndicators);
+    const connection=needsOperationalContext?await connectionFor(auth):null;
     if(contact){
       if(workspace!=='vital-decor')throw fail('O CRM selecionado não está autorizado para esta conversa.',403);
       const authorized=await loadContactContext(auth,connection,contact);
@@ -224,6 +220,13 @@ export async function POST(request){
       .eq('organization_id',organization.id).eq('user_id',userId).eq('thread_id',thread.id)
       .order('created_at',{ascending:false}).limit(8);
     if(history.error)throw fail('Não foi possível consultar o histórico da MIA.',503);
+    // Failed contact authorization or missing CRM context does not consume MIA quota.
+    const claim=await db.rpc('crm_vital_mia_claim_request_atomic',{
+      p_org:organization.id,p_user:userId,p_limit:20,
+    });
+    if(claim.error)throw fail('Não foi possível validar o limite de uso da MIA.',503);
+    if(claim.data!==true)throw fail('Você atingiu o limite de 20 perguntas por hora. Tente novamente mais tarde.',429);
+
     // Previously saved model outputs can contain personal data; redact them
     // again before forwarding any history to the external AI provider.
     const recent=(history.data||[]).reverse().map(item=>({

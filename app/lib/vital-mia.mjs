@@ -24,7 +24,7 @@ export function redactMiaPii(value='',{names=[]}={}){
 
 export function buildMiaSystemInstruction({action='chat',workspace='TidePlace',role='agent',context=null}={}){
   const task=MIA_ACTIONS[action]||MIA_ACTIONS.chat;
-  const safeContext=context?JSON.stringify(context):'Nenhum dado operacional foi autorizado para esta pergunta.';
+  const safeContext=context?redactMiaPii(JSON.stringify(context)):'Nenhum dado operacional foi autorizado para esta pergunta.';
   return [
     'Você é a MIA, assistente do TidePlace. Responda sempre em português brasileiro.',
     `Marca selecionada: ${workspace}. Perfil autorizado: ${role}.`,
@@ -47,15 +47,26 @@ export async function generateMiaText({key,model,message,action,workspace,role,c
   if(!key)throw fail('A integração Gemini não está configurada neste ambiente.',503);
   const safeModel=String(model||'gemini-3.6-flash').trim();
   if(!/^[A-Za-z0-9._-]{1,80}$/.test(safeModel))throw fail('O modelo Gemini configurado é inválido.',503);
+  // Defense in depth: never trust callers to sanitize context or saved history.
+  // Only text-only user/model turns may leave the server for Gemini.
+  const safeHistory=(Array.isArray(history)?history.slice(-8):[])
+    .filter(item=>item&&['user','model'].includes(item.role))
+    .map(item=>({role:item.role,parts:[{text:redactMiaPii(
+      (Array.isArray(item.parts)?item.parts:[])
+        .filter(part=>part&&typeof part.text==='string'&&!part.thought)
+        .map(part=>part.text).join('\n')
+    ).slice(0,1100)}]}))
+    .filter(item=>item.parts[0].text);
   let response;
   try{
     response=await fetchImpl('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(safeModel)+':generateContent',{
       method:'POST',headers:{'x-goog-api-key':key,'Content-Type':'application/json'},
       body:JSON.stringify({
         system_instruction:{parts:[{text:buildMiaSystemInstruction({action,workspace,role,context})}]},
-        contents:[...(Array.isArray(history)?history.slice(-8):[]),
+        contents:[...safeHistory,
           {role:'user',parts:[{text:redactMiaPii(message).slice(0,1400)}]}],
-        generationConfig:{maxOutputTokens:800,temperature:0.3},
+        // Gemini 3.6+ ignores custom temperature/top-p/top-k.
+        generationConfig:{maxOutputTokens:800},
       }),cache:'no-store',signal:AbortSignal.timeout(30000),
     });
   }catch{

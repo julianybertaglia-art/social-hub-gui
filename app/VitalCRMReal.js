@@ -41,7 +41,9 @@ function Donut({title,subtitle,segments,total,compact=false}){
 const emptyCounts={total:0,pending:0,open:0,closed:0,unassigned:0,queues:{}};
 const SPLIT_WIDTH_KEY='tideplace:crm-vital:split-width';
 const DEFAULT_SPLIT_WIDTH=36;
+const BOARD_HEIGHT_KEY='tideplace:crm-vital:board-height';
 const clampSplitWidth=value=>Math.max(25,Math.min(70,Math.round(value)));
+const clampBoardHeight=value=>Math.max(440,Math.min(1000,Math.round(value)));
 export default function VitalCRMReal({embedded=false,onLogout}){
  const [page,setPage]=useState('dashboard'),[view,setView]=useState('all');
  const [data,setData]=useState(null),[selected,setSelected]=useState(null),[detail,setDetail]=useState(null);
@@ -51,11 +53,15 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const [queueFilter,setQueueFilter]=useState('all'),[statusFilter,setStatusFilter]=useState('all'),[search,setSearch]=useState('');
  const [destination,setDestination]=useState(''),[draft,setDraft]=useState('');
  const [splitWidth,setSplitWidth]=useState(DEFAULT_SPLIT_WIDTH);
+ const [boardHeight,setBoardHeight]=useState(null);
  const splitBoard=useRef(null),splitDragging=useRef(false);
+ const boardFrame=useRef(null),heightDragging=useRef(false),messagesRef=useRef(null);
  useEffect(()=>{
    try {
      const saved=Number(window.localStorage.getItem(SPLIT_WIDTH_KEY));
      if(Number.isFinite(saved)&&saved>=25&&saved<=70)setSplitWidth(clampSplitWidth(saved));
+     const savedHeight=Number(window.localStorage.getItem(BOARD_HEIGHT_KEY));
+     if(Number.isFinite(savedHeight)&&savedHeight>=440&&savedHeight<=1000)setBoardHeight(clampBoardHeight(savedHeight));
    }catch{}
  },[]);
  const changeSplitWidth=useCallback(value=>{
@@ -82,6 +88,37 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    }else if(event.key==='Home'){event.preventDefault();changeSplitWidth(25);}
    else if(event.key==='End'){event.preventDefault();changeSplitWidth(70);}
  };
+ const changeBoardHeight=useCallback(value=>{
+   const next=clampBoardHeight(value);
+   setBoardHeight(next);
+   try{window.localStorage.setItem(BOARD_HEIGHT_KEY,String(next));}catch{}
+ },[]);
+ const startHeight=event=>{
+   if(event.pointerType==='mouse'&&event.button!==0)return;
+   heightDragging.current=true;
+   event.currentTarget.setPointerCapture(event.pointerId);
+   event.preventDefault();
+ };
+ const moveHeight=event=>{
+   if(!heightDragging.current||!boardFrame.current)return;
+   const bounds=boardFrame.current.getBoundingClientRect();
+   changeBoardHeight(event.clientY-bounds.top-24);
+ };
+ const stopHeight=()=>{heightDragging.current=false;};
+ const heightKeyDown=event=>{
+   if(event.key==='ArrowUp'||event.key==='ArrowDown'){
+     event.preventDefault();
+     changeBoardHeight((boardHeight||boardFrame.current?.querySelector('[data-crm-board]')?.offsetHeight||620)+(event.key==='ArrowUp'?-32:32));
+   }else if(event.key==='Home'){event.preventDefault();changeBoardHeight(440);}
+   else if(event.key==='End'){event.preventDefault();changeBoardHeight(1000);}
+ };
+ const resetBoardHeight=()=>{
+   setBoardHeight(null);
+   try{window.localStorage.removeItem(BOARD_HEIGHT_KEY);}catch{}
+ };
+ useEffect(()=>{
+   if(detail&&messagesRef.current)messagesRef.current.scrollTop=messagesRef.current.scrollHeight;
+ },[detail?.contact?.id,detail?.messages?.length]);
  const reload=useCallback(()=>setRevision(v=>v+1),[]);
  useEffect(()=>{
   let active=true;setLoading(true);setError('');
@@ -129,6 +166,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const areaSegments=areaMap.map(a=>({...a,count:a.codes.reduce((n,q)=>n+(counts.queues?.[q]||0),0)}));
  const statusSegments=STATUS.map(s=>({name:s.label,count:counts[s.code]||0,color:s.color}));
  const canMove=Boolean(detail?.contact?.queue)||role==='owner';
+ const replyBlockReason=!data?.canReply?'As respostas ainda não foram liberadas nesta instalação.':detail?.contact?.replyBlockedByExternal?'Conversa atribuída ao Argo. Resolva a atribuição antes de responder pelo Tide.':!detail?.contact?.replyWindowOpen?'A janela de 24 horas da Meta terminou. Aguarde uma nova mensagem ou use um modelo aprovado.':'';
 
  async function transfer(){
   if(!detail||!destination||busy)return;
@@ -145,7 +183,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  }
  async function reply(event){
   event.preventDefault();
-  if(!detail||!draft.trim()||busy)return;
+  if(!detail||!draft.trim()||busy||replyBlockReason)return;
   setBusy(true);setError('');setNotice('');
   try{
    const result=await api('/api/crm/vital/reply',{method:'POST',body:JSON.stringify({to:detail.contact.id,text:draft.trim()})});
@@ -182,7 +220,8 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   </nav>
   {error&&<div className={css.alert} role="alert">{error}</div>}
   {notice&&<div className={css.notice} role="status">{notice}</div>}
-  {data?.readOnly&&<p className={css.smallNotice} role="status"><strong>CRM conectado, somente leitura:</strong> os dados e as mensagens são reais. Para responder, continue usando a caixa atual do WhatsApp enquanto validamos a integração com Argo e os acessos da equipe.</p>}
+  {data?.readOnly&&!data?.canReply&&<p className={css.smallNotice} role="status"><strong>CRM conectado, somente leitura:</strong> os dados e as mensagens são reais. As respostas serão habilitadas após os testes de segurança com a Meta e o Argo.</p>}
+  {data?.readOnly&&data?.canReply&&<p className={css.smallNotice} role="status"><strong>Respostas disponíveis para a administradora:</strong> apenas na janela de 24 horas e em conversas não atribuídas ao Argo. Transferências e encerramentos continuam desativados.</p>}
   {data?.sampled&&<p className={css.smallNotice}>Os indicadores consideram as conversas sincronizadas dentro do limite atual de consulta.</p>}
   {loading&&!data?<div className={css.loading}>Consultando conversas e permissões da Vital…</div>:null}
   {data && page==='dashboard' && <div className={css.dashboardLayout}>

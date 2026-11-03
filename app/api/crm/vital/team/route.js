@@ -16,7 +16,7 @@ export async function GET(request){
   const {db,organization}=await ownerContext(request);
   const id=organization.id;
   const [drafts,draftQueues,queues,grants,members]=await Promise.all([
-   db.from('crm_vital_invite_drafts').select('email,display_name,requested_role,status,can_transfer,updated_at')
+   db.from('crm_vital_invite_drafts').select('email,display_name,requested_role,status,can_transfer,updated_at,activated_at')
     .eq('organization_id',id).order('display_name'),
    db.from('crm_vital_invite_draft_queues').select('email,queue_code').eq('organization_id',id),
    db.from('crm_vital_queues').select('queue_code,display_name,color,sort_order')
@@ -36,7 +36,9 @@ export async function GET(request){
     assignedQueues:(grants.data||[]).filter(g=>g.user_id===m.user_id).map(g=>g.queue_code),
     // Do not reveal raw auth identifiers in the browser.
    })),
-   invitationsEnabled:false,
+   invitationsEnabled:process.env.VITAL_CRM_INVITES_ENABLED==='true'
+    &&process.env.VITAL_CRM_STAFF_ENABLED==='true'
+    &&process.env.VERCEL_ENV==='production',
   },{headers});
  }catch(e){return Response.json({error:e.status?e.message:'Não foi possível consultar a equipe.'},
     {status:e.status||503,headers});}
@@ -51,10 +53,10 @@ export async function PATCH(request){
   const input=JSON.parse(raw);
   const email=String(input.email||'').trim().toLowerCase();
   if(typeof input.canTransfer==='boolean'){
-   const draft=await db.from('crm_vital_invite_drafts').select('requested_role,status')
+   const draft=await db.from('crm_vital_invite_drafts').select('requested_role,status,activated_at')
     .eq('organization_id',organization.id).eq('email',email).maybeSingle();
    if(draft.error)throw fail('Falha ao verificar o rascunho.',503);
-   if(!draft.data||draft.data.status!=='draft')throw fail('Rascunho de convite não encontrado.',404);
+   if(!draft.data||draft.data.status!=='draft'||draft.data.activated_at)throw fail('Rascunho de convite não encontrado.',404);
    if(input.canTransfer&&draft.data.requested_role!=='agent')
     throw fail('A permissão de transferência está disponível somente para atendentes.',400);
    const result=await db.from('crm_vital_invite_drafts').update({can_transfer:input.canTransfer,updated_at:new Date().toISOString()})
@@ -68,13 +70,13 @@ export async function PATCH(request){
     throw fail('Dados de permissão inválidos.',400);
   const id=organization.id;
   const [draft,destination]=await Promise.all([
-   db.from('crm_vital_invite_drafts').select('email,status')
+   db.from('crm_vital_invite_drafts').select('email,status,activated_at')
     .eq('organization_id',id).eq('email',email).maybeSingle(),
    db.from('crm_vital_queues').select('queue_code')
     .eq('organization_id',id).eq('queue_code',queue).maybeSingle(),
   ]);
   if(draft.error||destination.error)throw fail('Falha ao verificar a permissão.',503);
-  if(!draft.data||draft.data.status!=='draft'||!destination.data)
+  if(!draft.data||draft.data.status!=='draft'||draft.data.activated_at||!destination.data)
    throw fail('Convite ou fila não encontrado.',404);
   const table=db.from('crm_vital_invite_draft_queues');
   const write=input.enabled

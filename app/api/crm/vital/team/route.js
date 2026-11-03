@@ -16,23 +16,23 @@ export async function GET(request){
   const {db,organization}=await ownerContext(request);
   const id=organization.id;
   const [drafts,draftQueues,queues,grants,members]=await Promise.all([
-   db.from('crm_vital_invite_drafts').select('email,display_name,requested_role,status,updated_at')
+   db.from('crm_vital_invite_drafts').select('email,display_name,requested_role,status,can_transfer,updated_at')
     .eq('organization_id',id).order('display_name'),
    db.from('crm_vital_invite_draft_queues').select('email,queue_code').eq('organization_id',id),
    db.from('crm_vital_queues').select('queue_code,display_name,color,sort_order')
     .eq('organization_id',id).order('sort_order'),
    db.from('crm_vital_member_queues').select('user_id,queue_code').eq('organization_id',id),
-   db.from('crm_organization_members').select('user_id,role,status')
+   db.from('crm_organization_members').select('user_id,display_name,role,status,can_transfer')
     .eq('organization_id',id),
   ]);
   if([drafts,draftQueues,queues,grants,members].some(r=>r.error))
    throw fail('Não foi possível consultar a equipe.',503);
   return Response.json({
    workspace:'vital-decor',queues:queues.data||[],
-   drafts:(drafts.data||[]).map(d=>({...d,
+   drafts:(drafts.data||[]).map(d=>({...d,canTransfer:d.requested_role==='agent'&&Boolean(d.can_transfer),
     plannedQueues:(draftQueues.data||[]).filter(x=>x.email===d.email).map(x=>x.queue_code)})),
    activeTeam:(members.data||[]).filter(x=>x.role!=='owner').map(m=>({
-    role:m.role,status:m.status,
+    displayName:m.display_name||'Colaborador',role:m.role,status:m.status,canTransfer:m.role==='agent'&&Boolean(m.can_transfer),
     assignedQueues:(grants.data||[]).filter(g=>g.user_id===m.user_id).map(g=>g.queue_code),
     // Do not reveal raw auth identifiers in the browser.
    })),
@@ -43,7 +43,6 @@ export async function GET(request){
 }
 export async function PATCH(request){
  try{
-  if(process.env.VITAL_CRM_WRITES_ENABLED!=='true')throw fail('Edição da equipe desativada durante a implantação do CRM.',403);
   const url=new URL(request.url),origin=request.headers.get('origin');
   if(!origin||origin!==url.origin)throw fail('Origem inválida.',403);
   const {db,organization}=await ownerContext(request);
@@ -51,6 +50,19 @@ export async function PATCH(request){
   if(raw.length>3000)throw fail('Solicitação muito longa.',400);
   const input=JSON.parse(raw);
   const email=String(input.email||'').trim().toLowerCase();
+  if(typeof input.canTransfer==='boolean'){
+   const draft=await db.from('crm_vital_invite_drafts').select('requested_role,status')
+    .eq('organization_id',organization.id).eq('email',email).maybeSingle();
+   if(draft.error)throw fail('Falha ao verificar o rascunho.',503);
+   if(!draft.data||draft.data.status!=='draft')throw fail('Rascunho de convite não encontrado.',404);
+   if(input.canTransfer&&draft.data.requested_role!=='agent')
+    throw fail('A permissão de transferência está disponível somente para atendentes.',400);
+   const result=await db.from('crm_vital_invite_drafts').update({can_transfer:input.canTransfer,updated_at:new Date().toISOString()})
+    .eq('organization_id',organization.id).eq('email',email).eq('status','draft').select('email').maybeSingle();
+   if(result.error)throw fail('Falha ao salvar a permissão planejada.',503);
+   if(!result.data)throw fail('Rascunho de convite não encontrado.',404);
+   return Response.json({ok:true,email,canTransfer:input.canTransfer,invitationSent:false,accessGranted:false},{headers});
+  }
   const queue=String(input.queue||'');
   if(!EMAIL.test(email)||queue.length>60||typeof input.enabled!=='boolean')
     throw fail('Dados de permissão inválidos.',400);
@@ -71,7 +83,7 @@ export async function PATCH(request){
    : await table.delete().eq('organization_id',id).eq('email',email).eq('queue_code',queue);
   if(write.error)throw fail('Falha ao salvar a fila planejada.',503);
   // A draft never becomes an active permission.
-  return Response.json({ok:true,email,queue,enabled:input.enabled,invitationSent:false},{headers});
+  return Response.json({ok:true,email,queue,enabled:input.enabled,invitationSent:false,accessGranted:false},{headers});
  }catch(e){return Response.json({error:e.status?e.message:'Não foi possível atualizar o rascunho.'},
     {status:e.status||503,headers});}
 }

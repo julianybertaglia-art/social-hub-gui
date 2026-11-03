@@ -12,9 +12,10 @@ const css=source('app/vital-crm-real.module.css');
 
 test('CRM replies are an independent feature, leaving transfers and status editing locked',()=>{
  assert.match(live,/readOnly:process\.env\.VITAL_CRM_WRITES_ENABLED!=='true'/);
- assert.match(live,/canReply:process\.env\.VITAL_CRM_REPLY_ENABLED==='true'\|\|process\.env\.VITAL_CRM_WRITES_ENABLED==='true'/);
+ assert.match(live,/canReply:\['owner','agent'\]\.includes\(ctx\.access\.role\)/);
+ assert.match(live,/process\.env\.VITAL_CRM_REPLY_ENABLED==='true'\|\|process\.env\.VITAL_CRM_WRITES_ENABLED==='true'/);
  assert.match(reply,/process\.env\.VITAL_CRM_REPLY_ENABLED!=='true'&&process\.env\.VITAL_CRM_WRITES_ENABLED!=='true'/);
- for(const p of ['app/api/crm/vital/status/route.js','app/api/crm/vital/team/route.js']) {
+ for(const p of ['app/api/crm/vital/status/route.js']) {
   assert.match(source(p),/VITAL_CRM_WRITES_ENABLED/);
   assert.doesNotMatch(source(p),/VITAL_CRM_REPLY_ENABLED/);
  }
@@ -22,14 +23,17 @@ test('CRM replies are an independent feature, leaving transfers and status editi
  assert.match(transferSection,/VITAL_CRM_WRITES_ENABLED/);
  assert.doesNotMatch(transferSection,/VITAL_CRM_REPLY_ENABLED/);
 });
-test('owner-only reply preserves identity, permission, assigned Argo guard, and 24h Meta window',()=>{
- assert.match(reply,/access\.role!=='owner'/);
+test('authorized human reply preserves identity, queue grants, Argo guard, and 24h Meta window',()=>{
+ assert.match(reply,/!\['owner','agent'\]\.includes\(access\.role\)/);
  assert.match(reply,/getVitalCrmMember\(request\)/);
  assert.match(reply,/\.eq\('workspace_id','vital-decor'\)/);
  assert.match(reply,/canReplyWithinWindow\(lastInbound\.data\?\.sent_at\)/);
  assert.match(reply,/legacy\.data\.assigned_to!=='tide'/);
  assert.match(reply,/stage:'await_human',human_handoff:true,manual_override:true/);
  assert.match(reply,/handOff|handoff\.error/);
+ assert.match(reply,/crm_vital_claim_reply_atomic/);
+ assert.match(reply,/crm_vital_release_reply_atomic/);
+ assert.match(reply,/Outro atendente está respondendo a esta conversa/);
 });
 test('only eligible contacts receive a chat composer; others see a clear explanation',()=>{
  assert.match(live,/replyWindowOpen:canReplyWithinWindow\(lastInboundAt\)/);

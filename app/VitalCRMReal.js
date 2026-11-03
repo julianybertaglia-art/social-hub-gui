@@ -53,6 +53,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const [revision,setRevision]=useState(0),[pageNumber,setPageNumber]=useState(0);
  const [queueFilter,setQueueFilter]=useState('all'),[statusFilter,setStatusFilter]=useState('all'),[search,setSearch]=useState('');
  const [destination,setDestination]=useState(''),[draft,setDraft]=useState('');
+ const [notes,setNotes]=useState([]),[noteDraft,setNoteDraft]=useState(''),[notesBusy,setNotesBusy]=useState(false);
  const [splitWidth,setSplitWidth]=useState(DEFAULT_SPLIT_WIDTH);
  const [boardHeight,setBoardHeight]=useState(null);
  const splitBoard=useRef(null),splitDragging=useRef(false);
@@ -138,6 +139,24 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    .finally(()=>{if(active)setOpening(false)});
   return()=>{active=false};
  },[selected,revision]);
+ useEffect(()=>{
+  window.dispatchEvent(new CustomEvent('tideplace:mia-crm-contact',{detail:{contactId:selected||null}}));
+  if(!selected){setNotes([]);setNoteDraft('');return;}
+  let active=true;
+  api('/api/crm/vital/notes?contact='+encodeURIComponent(selected)).then(result=>{
+   if(active)setNotes(result.notes||[]);
+  }).catch(()=>{if(active)setNotes([]);});
+  return()=>{active=false;};
+ },[selected,revision]);
+ useEffect(()=>{
+  function insertSuggestion(event){
+   const text=String(event?.detail?.text||'');
+   if(!text||!detail?.contact?.id||event.detail.contactId!==detail.contact.id)return;
+   setDraft(text);setNotice('Sugestão da MIA inserida no campo. Revise antes de enviar.');
+  }
+  window.addEventListener('tideplace:mia-insert-reply',insertSuggestion);
+  return()=>window.removeEventListener('tideplace:mia-insert-reply',insertSuggestion);
+ },[detail?.contact?.id]);
  const role=data?.role||'agent',manager=['owner','supervisor'].includes(role);
  const queues=data?.queues||[],counts=data?.counters||emptyCounts;
  const queueName=code=>(data?.transferDestinations||queues).find(q=>q.queue_code===code)?.display_name||(code===null?'Sem classificação':code);
@@ -210,6 +229,18 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    setNotice(status==='resolved'?'Atendimento concluído.':'Atendimento reaberto.');
    reload();
   }catch(e){setError(e.message)}finally{setBusy(false)}
+ }
+ async function addNote(event){
+  event?.preventDefault?.();
+  const body=noteDraft.trim();
+  if(!detail||!body||notesBusy||!data?.canWriteNotes)return;
+  setNotesBusy(true);setError('');
+  try{
+   const result=await api('/api/crm/vital/notes',{method:'POST',
+    body:JSON.stringify({contact:detail.contact.id,body})});
+   setNotes(previous=>[...previous,result.note]);setNoteDraft('');
+  }catch(e){setError(e.message);}
+  finally{setNotesBusy(false);}
  }
  const statusName=c=>STATUS.find(s=>s.code===c)?.label||'—';
  const main=<>
@@ -355,13 +386,27 @@ export default function VitalCRMReal({embedded=false,onLogout}){
         <summary><Icon name="info" size={15}/> Informações do atendimento <span>{statusName(detail.contact.status)}</span></summary>
         <div className={css.resolution}>
          <div><strong>Situação do atendimento</strong><small>{statusName(detail.contact.status)}</small></div>
-         {!data?.readOnly&&role!=='supervisor'&&detail.contact.queue&&
+         {data?.canChangeStatus&&detail.contact.queue&&
           <button type="button" disabled={busy} onClick={()=>setResolution(detail.contact.status==='closed'?'open':'resolved')}>
            <Icon name={detail.contact.status==='closed'?'refresh':'check'} size={15}/>
            {detail.contact.status==='closed'?'Reabrir atendimento':'Marcar como resolvido'}
           </button>}
         </div>
-        {!data?.readOnly&&<div className={css.transfer}>
+        {detail.contact.currentAssignee&&<p className={css.assignee}>Responsável no Argo: {detail.contact.currentAssignee}</p>}
+        <section className={css.notes} aria-label="Observações internas">
+         <div className={css.notesHeading}><strong>Observações internas</strong><span>Visíveis apenas à equipe · não enviadas ao WhatsApp</span></div>
+         <div className={css.notesList}>
+          {notes.map(note=><article key={note.id}><p>{note.body}</p><small>{note.author} · {date(note.createdAt)}</small></article>)}
+          {!notes.length&&<p className={css.notesEmpty}>Nenhuma observação registrada.</p>}
+         </div>
+         {data?.canWriteNotes&&<form className={css.noteForm} onSubmit={addNote}>
+          <label className={css.visuallyHidden} htmlFor="vital-internal-note">Adicionar observação interna</label>
+          <textarea id="vital-internal-note" rows={2} maxLength={2000} value={noteDraft}
+           onChange={event=>setNoteDraft(event.target.value)} placeholder="Escreva uma observação interna…"/>
+          <button type="submit" disabled={!noteDraft.trim()||notesBusy}>{notesBusy?'Salvando…':'Salvar nota'}</button>
+         </form>}
+        </section>
+        {data?.canTransfer&&<div className={css.transfer}>
          <div><strong><Icon name="flow" size={15} inline/> Encaminhar conversa</strong><p>Escolha a fila que dará continuidade ao atendimento.</p></div>
          <div className={css.transferControls}>
           <select aria-label="Fila de destino" value={destination} onChange={e=>setDestination(e.target.value)} disabled={!canMove||busy}>
@@ -372,7 +417,9 @@ export default function VitalCRMReal({embedded=false,onLogout}){
          </div>
          <span>A transferência do Tide CRM não altera a atribuição do Argo.</span>
         </div>}
-        {data?.readOnly&&<p className={css.restrictedInfo}>Transferências e encerramentos ainda estão desativados nesta etapa do CRM.</p>}
+        {!data?.canTransfer&&<p className={css.restrictedInfo}>{role==='supervisor'
+          ?'Perfil de supervisão: visualização das filas autorizadas, sem resposta ou transferência.'
+          :'Seu perfil pode consultar e responder às conversas autorizadas. Transferências exigem permissão explícita.'}</p>}
        </details>
        {role!=='supervisor'&&<form className={css.reply} onSubmit={reply}>
         <label className={css.visuallyHidden} htmlFor="vital-reply-text">Responder pelo WhatsApp da Vital</label>

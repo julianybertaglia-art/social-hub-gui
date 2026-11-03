@@ -13,21 +13,22 @@ test('Vital CRM is only linked to Vital Decor, preserving the existing WhatsApp 
  assert.ok(!gui.some(x=>x.href==='/crm/vital'));
  assert.ok(gui.some(x=>x.href==='/whatsapp'));
 });
-test('Phase 1 denies staff from accessing real CRM messages regardless of delegated sectors',()=>{
+test('staff CRM access is server-gated and each list/detail path applies persisted queue grants',()=>{
  const live=source('app/api/crm/vital/live/route.js');
- assert.match(live,/auth\.access\.role!=='owner'/);
+ assert.match(live,/getVitalCrmMember\(request\)/);
+ assert.match(live,/canAccessVitalQueue\(ctx\.access\.role,ctx\.allowed,queue\)/);
+ assert.match(live,/Conversa não encontrada nas filas autorizadas/);
  assert.match(live,/readOnly:process\.env\.VITAL_CRM_WRITES_ENABLED!=='true'/);
  const access=source('app/lib/vital-crm-access.mjs');
- assert.match(access,/process\.env\.VITAL_CRM_STAFF_ENABLED!=='true'/);
+ assert.match(access,/process\.env\.VITAL_CRM_STAFF_ENABLED==='true'/);
  assert.equal(crmMemberAccess({role:'agent',status:'disabled',sectors:['pos_venda']}),null);
  assert.equal(canCrmAccess({role:'installer',status:'active',sectors:['pos_venda']},'read_conversation','pos_venda'),false);
 });
-test('Phase 1 blocks sending, transferring, resolution and team edits by default',()=>{
+test('reply, transfer and status writes remain behind explicit release flags',()=>{
  for(const [p,method] of [
   ['app/api/crm/vital/live/route.js','PATCH'],
   ['app/api/crm/vital/reply/route.js','POST'],
-  ['app/api/crm/vital/status/route.js','PATCH'],
-  ['app/api/crm/vital/team/route.js','PATCH']
+  ['app/api/crm/vital/status/route.js','PATCH']
  ]) {
   const s=source(p);
   const methodStart=s.indexOf('export async function '+method+'(request)');
@@ -35,5 +36,8 @@ test('Phase 1 blocks sending, transferring, resolution and team edits by default
   assert.ok(s.indexOf("process.env.VITAL_CRM_WRITES_ENABLED!=='true'",methodStart)>=0,p+' must deny writes without explicit QA release');
  }
  assert.match(source('app/VitalCRMReal.js'),/data\?\.readOnly/);
- assert.match(source('app/VitalCRMTeam.js'),/disabled=\{true\}/);
+ const team=source('app/api/crm/vital/team/route.js');
+ assert.match(team,/invitationSent:false,accessGranted:false/);
+ assert.match(team,/status!=='draft'/);
+ assert.match(source('app/VitalCRMTeam.js'),/Nenhum funcionário recebeu acesso ainda/);
 });

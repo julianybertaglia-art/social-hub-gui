@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import styles from './cloudgate.module.css';
 import { hasAuthIdentityChanged, sameAuthenticatedUser } from './lib/session-gate.mjs';
@@ -30,6 +30,9 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 export const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null;
+const AccessScopeContext=createContext(null);
+export const useAccessScope=()=>useContext(AccessScopeContext);
+const FULL_HUB_SCOPES=new Set(['admin','legacy_admin']);
 
 function readLocalState() {
   const data = {};
@@ -156,6 +159,7 @@ async function refreshInstagramContentPerformance() {
 
 export default function CloudGate({ children }) {
   const [session, setSession] = useState(null);
+  const [accessScope,setAccessScope]=useState(null);
   const [initializing, setInitializing] = useState(true);
   const [ready, setReady] = useState(false);
   const [email, setEmail] = useState('');
@@ -186,6 +190,7 @@ export default function CloudGate({ children }) {
       const nextSession = data?.session ?? null;
       if (hasAuthIdentityChanged(authUserIdRef.current, nextSession)) {
         authUserIdRef.current = nextSession?.user?.id ?? null;
+        setAccessScope(null);
         setReady(false);
       }
       setSession((current) => sameAuthenticatedUser(current, nextSession) ? current : nextSession);
@@ -201,6 +206,7 @@ export default function CloudGate({ children }) {
       // Reset cloud data only when the authenticated identity truly changes.
       if (hasAuthIdentityChanged(authUserIdRef.current, nextSession)) {
         authUserIdRef.current = nextSession?.user?.id ?? null;
+        setAccessScope(null);
         rowIdRef.current = null;
         lastSnapshotRef.current = '';
         setReady(false);
@@ -214,9 +220,45 @@ export default function CloudGate({ children }) {
     };
   }, []);
 
+  useEffect(()=>{
+    if(!supabase||!session){setAccessScope(null);return undefined;}
+    let active=true;
+    const controller=new AbortController();
+    setAccessScope(null);
+    setReady(false);
+    async function loadAccessScope(){
+      try{
+        const {data}=await supabase.auth.getSession();
+        const token=data?.session?.access_token;
+        if(!token)throw new Error('Sua sessão expirou. Entre novamente.');
+        const response=await fetch('/api/auth/access-scope',{headers:{Authorization:'Bearer '+token},
+          cache:'no-store',signal:controller.signal});
+        const payload=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(payload.error||'Acesso não autorizado.');
+        if(!active)return;
+        setAccessScope(payload);
+        if(!FULL_HUB_SCOPES.has(payload.scope))setReady(true);
+      }catch(error){
+        if(!active||error.name==='AbortError')return;
+        setAccessScope({scope:'unauthorized',message:error.message});
+        setReady(true);
+      }
+    }
+    void loadAccessScope();
+    return()=>{active=false;controller.abort();};
+  },[session?.user?.id]);
+
   useEffect(() => {
     if (!supabase || !session) {
       setReady(false);
+      return undefined;
+    }
+
+    // Staff use only the server-authorized CRM area and must never enter the
+    // legacy content-state synchronization path.
+    if (!accessScope) return undefined;
+    if (!FULL_HUB_SCOPES.has(accessScope.scope)) {
+      setReady(true);
       return undefined;
     }
 
@@ -294,10 +336,10 @@ export default function CloudGate({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [session?.user?.id]);
+  }, [session?.user?.id,accessScope?.scope]);
 
   useEffect(() => {
-    if (!supabase || !session || !ready) return undefined;
+    if (!supabase || !session || !ready || !FULL_HUB_SCOPES.has(accessScope?.scope)) return undefined;
 
     let cancelled = false;
 
@@ -350,10 +392,10 @@ export default function CloudGate({ children }) {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [ready, session]);
+  }, [ready, session,accessScope?.scope]);
 
   useEffect(() => {
-    if (!supabase || !session || !ready) return undefined;
+    if (!supabase || !session || !ready || !FULL_HUB_SCOPES.has(accessScope?.scope)) return undefined;
 
     let cancelled = false;
 
@@ -395,10 +437,10 @@ export default function CloudGate({ children }) {
       window.clearInterval(intervalId);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [ready, session]);
+  }, [ready, session,accessScope?.scope]);
 
   useEffect(() => {
-    if (!supabase || !session || !ready) return undefined;
+    if (!supabase || !session || !ready || !FULL_HUB_SCOPES.has(accessScope?.scope)) return undefined;
 
     async function saveCloudState() {
       if (saveInProgressRef.current) return;
@@ -459,7 +501,7 @@ export default function CloudGate({ children }) {
       window.clearTimeout(firstSaveId);
       window.clearInterval(intervalId);
     };
-  }, [ready, session]);
+  }, [ready, session,accessScope?.scope]);
 
   async function handleLogin(event) {
     event.preventDefault();
@@ -482,6 +524,7 @@ export default function CloudGate({ children }) {
     await supabase.auth.signOut();
     rowIdRef.current = null;
     lastSnapshotRef.current = '';
+    setAccessScope(null);
     setSession(null);
   }
 
@@ -498,7 +541,7 @@ export default function CloudGate({ children }) {
     );
   }
 
-  if (initializing || (session && !ready)) {
+  if (initializing || (session && (!accessScope || !ready))) {
     return (
       <main className={styles.loadingScreen} aria-live="polite">
         <div className={styles.loadingBrand}>
@@ -582,13 +625,25 @@ export default function CloudGate({ children }) {
     );
   }
 
+  if(accessScope?.scope==='staff_pending'||accessScope?.scope==='unauthorized'){
+    return <main className={styles.screen}><section className={styles.statusCard}>
+      <img className={styles.statusLogo} src="/brand/tideplace-mark.svg" alt=""/>
+      <p className={styles.eyebrow}>TIDEPLACE · VITAL DECOR</p>
+      <h1>{accessScope.scope==='staff_pending'?'Acesso ainda não liberado':'Conta sem permissão ativa'}</h1>
+      <p>{accessScope.scope==='staff_pending'
+        ?'Seu login ainda não foi ativado para o CRM. Aguarde a liberação da administradora.'
+        :accessScope.message||'Entre em contato com a administração da Vital Decor.'}</p>
+      <button type="button" onClick={handleLogout}>Sair da conta</button>
+    </section></main>;
+  }
+
   return (
     <>
-      {children}
-      <div className={`${styles.syncBar} ${ready ? styles.syncReady : styles.syncBusy}`}>
+      <AccessScopeContext.Provider value={accessScope}>{children}</AccessScopeContext.Provider>
+      {FULL_HUB_SCOPES.has(accessScope?.scope)&&<div className={`${styles.syncBar} ${ready ? styles.syncReady : styles.syncBusy}`}>
         <span>{ready ? syncStatus : 'Sincronizando em segundo plano...'}</span>
         <button type="button" onClick={handleLogout}>Sair</button>
-      </div>
+      </div>}
     </>
   );
 }

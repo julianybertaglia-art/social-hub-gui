@@ -85,3 +85,15 @@ test('first invite shows individual password form without elevating role from me
  assert.match(page,/<VitalCRMReal embedded\/>/);
  assert.match(route,/data:\{display_name:draft\.display_name,requires_password_setup:true\}/);
 });
+
+
+test('existing team members recover password via Supabase, without exposing whether email exists',()=>{
+ const gate=source('app/CloudGate.js');
+ assert.match(gate,/supabase\.auth\.resetPasswordForEmail\(to,\{/);
+ assert.match(gate,/redirectTo:window\.location\.origin\+'\/equipe'/);
+ assert.match(gate,/_event==='PASSWORD_RECOVERY'/);
+ assert.match(gate,/supabase\.auth\.updateUser\(\{/);
+ assert.match(gate,/if\(newRecoveryPassword\.length<12\|\|newRecoveryPassword!==confirmRecoveryPassword\)/);
+ assert.match(gate,/Se houver uma conta para este e-mail/);
+ assert.match(gate,/Esqueci minha senha/);
+});

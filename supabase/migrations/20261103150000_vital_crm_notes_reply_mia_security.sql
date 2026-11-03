@@ -71,13 +71,14 @@ create table if not exists public.crm_vital_mia_threads (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.crm_organizations(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
+  workspace_code text not null default 'vital-decor' check(workspace_code in ('vital-decor','gui-nonato')),
   title text not null default 'Nova conversa' check(char_length(title) between 1 and 100),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique(id,organization_id,user_id)
 );
 create index if not exists crm_vital_mia_threads_user_idx
-  on public.crm_vital_mia_threads(organization_id,user_id,updated_at desc);
+  on public.crm_vital_mia_threads(organization_id,user_id,workspace_code,updated_at desc);
 create table if not exists public.crm_vital_mia_messages (
   id uuid primary key default gen_random_uuid(),
   thread_id uuid not null,

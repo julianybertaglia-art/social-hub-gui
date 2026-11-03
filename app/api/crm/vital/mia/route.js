@@ -1,7 +1,7 @@
 import {getVitalCrmMember} from '../../../../lib/vital-crm-access.mjs';
 import {resolveAuthorizedVitalContact} from '../../../../lib/vital-crm-context.mjs';
 import {canAccessVitalQueue,canUseVitalMia,resolveVitalQueue,VITAL_QUEUE_ORDER,crmConversationStatus} from '../../../../lib/vital-crm-queues.mjs';
-import {generateMiaText,MIA_ACTIONS,redactMiaPii} from '../../../../lib/vital-mia.mjs';
+import {generateMiaText,MIA_ACTIONS,redactMiaPii,getLocalMiaTestTransport} from '../../../../lib/vital-mia.mjs';
 import {readRows} from '../../../../lib/operations.mjs';
 import {fail} from '../../../vital-connections/helpers.mjs';
 
@@ -234,10 +234,11 @@ export async function POST(request){
       parts:[{text:redactMiaPii(item.content,{names:redactionNames}).slice(0,1100)}],
     }));
     const safeMessage=redactMiaPii(message,{names:redactionNames}).slice(0,1400);
-    const answer=await generateMiaText({key:process.env.GEMINI_API_KEY,
+    const localStub=getLocalMiaTestTransport();
+    const answer=await generateMiaText({key:localStub?.key||process.env.GEMINI_API_KEY,
       model:process.env.CONTENT_AI_MODEL||'gemini-3.6-flash',message:safeMessage,action,
       workspace:workspace==='vital-decor'?'Vital Decor':'Gui Nonato',role:access.role,context,
-      history:recent});
+      history:recent,...(localStub?{fetchImpl:localStub.fetchImpl}:{})});
     // Do not persist or return names/contact details that the model may
     // have repeated from the operational context.
     const safeAnswer=redactMiaPii(answer,{names:redactionNames});

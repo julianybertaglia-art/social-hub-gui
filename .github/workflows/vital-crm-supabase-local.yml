@@ -113,9 +113,13 @@ jobs:
           export VITAL_CRM_REPLY_ENABLED='false'
           export VITAL_CRM_WRITES_ENABLED='true'
           export GEMINI_API_KEY=''
+          # Local only: no external Gemini requests, no billable API calls.
+          export MIA_CI_MOCK_URL='http://127.0.0.1:39751/generate'
+          node tests/local_mia_gateway_stub.mjs > "$QA_DIR/mia-gateway.log" 2>&1 &
+          mock_pid=$!
           npm run dev -- --hostname 127.0.0.1 --port 3007 > "$QA_DIR/next.log" 2>&1 &
           next_pid=$!
-          trap 'kill "$next_pid" 2>/dev/null || true' EXIT
+          trap 'kill "$next_pid" "$mock_pid" 2>/dev/null || true' EXIT
           ready=0
           for i in $(seq 1 90); do
             if curl -sS -o /dev/null http://127.0.0.1:3007/api/auth/access-scope; then ready=1; break; fi

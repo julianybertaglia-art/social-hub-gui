@@ -36,7 +36,7 @@ async function loadContactContext(auth,connection,phone){
       .eq('contact_wa_id',phone).order('sent_at',{ascending:false}).limit(12),
     db.from('crm_vital_conversation_notes').select('body,created_at')
       .eq('organization_id',organization.id).eq('connection_id',connection.id)
-      .eq('contact_wa_id',phone).order('message_order',{ascending:false}).limit(8),
+      .eq('contact_wa_id',phone).order('created_at',{ascending:false}).limit(8),
     routing.queue?db.from('crm_vital_queues').select('display_name')
       .eq('organization_id',organization.id).eq('queue_code',routing.queue).maybeSingle():Promise.resolve({data:null,error:null}),
   ]);
@@ -177,6 +177,10 @@ export async function POST(request){
       if(error)throw fail('Não foi possível abrir uma nova conversa da MIA.',503);
       return Response.json({thread,messages:[]},{status:201,headers});
     }
+    // Never call Gemini until its specific no-cost production approval is on.
+    const localStub=getLocalMiaTestTransport();
+    if(process.env.VITAL_MIA_ENABLED!=='true'&&!localStub)
+      throw fail('A MIA ainda não foi liberada para respostas reais.',403);
     const message=String(input.message||'').trim();
     const action=String(input.action||'chat');
     const contact=String(input.contact||'').trim();
@@ -234,7 +238,6 @@ export async function POST(request){
       parts:[{text:redactMiaPii(item.content,{names:redactionNames}).slice(0,1100)}],
     }));
     const safeMessage=redactMiaPii(message,{names:redactionNames}).slice(0,1400);
-    const localStub=getLocalMiaTestTransport();
     const answer=await generateMiaText({key:localStub?.key||process.env.GEMINI_API_KEY,
       model:process.env.CONTENT_AI_MODEL||'gemini-3.6-flash',message:safeMessage,action,
       workspace:workspace==='vital-decor'?'Vital Decor':'Gui Nonato',role:access.role,context,

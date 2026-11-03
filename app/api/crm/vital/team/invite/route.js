@@ -66,6 +66,7 @@ export async function POST(request){
    user=data.user;
    invitationSent=true;
   }
+  if(String(user?.email||'').toLowerCase()!==email)throw fail('A conta autenticada não corresponde ao convite.',403);
   const {data:provisioned,error:provisionError}=await db.rpc(
    'crm_vital_activate_draft_member_atomic',{
     p_org:organization.id,p_user:user.id,p_email:email,

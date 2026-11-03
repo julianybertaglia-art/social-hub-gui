@@ -56,4 +56,12 @@ jobs:
           apply tests/sql/vital_mia_seed_before_migration.sql
           apply supabase/migrations/20261103150000_vital_crm_notes_reply_mia_security.sql
           apply tests/sql/vital_mia_assertions.sql
-          echo "Migrations, privacidade, setor, limites e concorrência: aprovados."
+          echo "Migrations, políticas RLS e RPCs: aprovados."
+
+      - name: Testar concorrência real de duas sessões PostgreSQL
+        env:
+          DB_CONTAINER: ${{ job.services.postgres.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tests/sql/vital_mia_concurrency.sh

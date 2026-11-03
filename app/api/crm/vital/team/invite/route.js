@@ -42,10 +42,11 @@ export async function POST(request){
   if(email.length>254||!MAIL.test(email))throw fail('E-mail inválido.',400);
 
   const {data:draft,error:draftError}=await db.from('crm_vital_invite_drafts')
-    .select('email,display_name,requested_role,status').eq('organization_id',organization.id)
+    .select('email,display_name,requested_role,status,activated_at').eq('organization_id',organization.id)
     .eq('email',email).eq('status','draft').maybeSingle();
   if(draftError)throw fail('Não foi possível conferir o convite.',503);
   if(!draft)throw fail('E-mail não autorizado nos rascunhos da Vital.',404);
+  if(draft.activated_at)throw fail('Este acesso já foi liberado. Não reenvie o convite.',409);
   const {data:queues,error:queueError}=await db.from('crm_vital_invite_draft_queues')
     .select('queue_code').eq('organization_id',organization.id).eq('email',email);
   if(queueError)throw fail('Não foi possível conferir os setores.',503);
@@ -58,7 +59,7 @@ export async function POST(request){
   if(!user){
    const {data,error}=await db.auth.admin.inviteUserByEmail(email,{
     redirectTo:INVITE_REDIRECT,
-    data:{display_name:draft.display_name},
+    data:{display_name:draft.display_name,requires_password_setup:true},
    });
    if(error||!data?.user?.id)
     throw fail('Não foi possível entregar convite pelo Supabase Auth. Confira o SMTP e URLs autorizadas.',503);

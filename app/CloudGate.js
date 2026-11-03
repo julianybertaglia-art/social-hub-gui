@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { usePathname } from 'next/navigation';
 import styles from './cloudgate.module.css';
 import { hasAuthIdentityChanged, sameAuthenticatedUser } from './lib/session-gate.mjs';
 
@@ -158,6 +159,8 @@ async function refreshInstagramContentPerformance() {
 }
 
 export default function CloudGate({ children }) {
+  const pathname=usePathname();
+  const isTeamLogin=pathname==='/equipe';
   const [session, setSession] = useState(null);
   const [accessScope,setAccessScope]=useState(null);
   const [initializing, setInitializing] = useState(true);
@@ -568,16 +571,13 @@ export default function CloudGate({ children }) {
             </div>
 
             <div className={styles.brandMessage}>
-              <span className={styles.brandKicker}>YOUR SOCIAL PLACE</span>
-              <h1>Tudo o que move sua audiência, em um só lugar.</h1>
-              <p>Conteúdo, conversas, leads e automações organizados para você acompanhar o fluxo sem perder o que importa.</p>
+              <span className={styles.brandKicker}>{isTeamLogin?'SUA CENTRAL DE ATENDIMENTO':'YOUR SOCIAL PLACE'}</span>
+              <h1>{isTeamLogin?'Sua equipe e seus atendimentos, em um só lugar.':'Tudo o que move sua audiência, em um só lugar.'}</h1>
+              <p>{isTeamLogin?'Acompanhe apenas as conversas dos seus setores, com acesso individual e permissões definidas pela administração.':'Conteúdo, conversas, leads e automações organizados para você acompanhar o fluxo sem perder o que importa.'}</p>
             </div>
 
             <div className={styles.brandFeatures}>
-              <span>Conteúdo</span>
-              <span>Audiência</span>
-              <span>Automação</span>
-              <span>Relacionamento</span>
+              {(isTeamLogin?['Atendimentos','Meus setores','Histórico','Privacidade']:['Conteúdo','Audiência','Automação','Relacionamento']).map(item=><span key={item}>{item}</span>)}
             </div>
           </div>
 
@@ -586,9 +586,9 @@ export default function CloudGate({ children }) {
               <img src="/brand/tideplace-mark.svg" alt="" />
               <strong><b>TIDE</b>PLACE</strong>
             </div>
-            <p className={styles.eyebrow}>ACESSO À PLATAFORMA</p>
-            <h2>Bem-vinda de volta.</h2>
-            <p className={styles.authIntro}>Entre para acessar sua central TidePlace.</p>
+            <p className={styles.eyebrow}>{isTeamLogin?'VITAL DECOR · ACESSO DA EQUIPE':'ACESSO À PLATAFORMA'}</p>
+            <h2>{isTeamLogin?'Bem-vindo à equipe.':'Bem-vinda de volta.'}</h2>
+            <p className={styles.authIntro}>{isTeamLogin?'Entre com seu e-mail e senha individuais. Seu acesso é limitado aos setores autorizados.':'Entre para acessar sua central TidePlace.'}</p>
 
             <form className={styles.form} onSubmit={handleLogin}>
               <label>
@@ -615,10 +615,10 @@ export default function CloudGate({ children }) {
               </label>
               {message && <p className={styles.error}>{message}</p>}
               <button type="submit" disabled={submitting}>
-                {submitting ? 'Entrando...' : 'Entrar na TidePlace'}
+                {submitting ? 'Entrando...' : isTeamLogin?'Entrar na central da equipe':'Entrar na TidePlace'}
               </button>
             </form>
-            <p className={styles.securityNote}>Acesso seguro · seus dados permanecem sincronizados.</p>
+            <p className={styles.securityNote}>{isTeamLogin?'Acesso individual · permissões verificadas pelo servidor.':'Acesso seguro · seus dados permanecem sincronizados.'}</p>
           </div>
         </section>
       </main>

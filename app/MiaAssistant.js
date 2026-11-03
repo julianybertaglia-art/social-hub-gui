@@ -50,6 +50,7 @@ export default function MiaAssistant(){
  const [identity,setIdentity]=useState('');
  const drag=useRef(null),suppressClick=useRef(false),floating=useRef(null),messagesEnd=useRef(null),selectedContactRef=useRef(''),identityRef=useRef(''),workspaceRef=useRef('vital-decor');
  const isCrm=pathname?.startsWith('/crm')||pathname?.startsWith('/whatsapp')||pathname?.startsWith('/instagram/direct');
+ const isVitalCrm=isCrm&&workspace?.id==='vital-decor';
  const brand=workspace?.name||'TidePlace';
  workspaceRef.current=workspace?.id||'vital-decor';
  const showMia=authorized&&Boolean(supabase);
@@ -152,7 +153,7 @@ export default function MiaAssistant(){
   const question=String(value||'').trim();
   if(!question||sending||loadingHistory||!identityRef.current)return;
   const requestIdentity=identityRef.current,requestWorkspace=workspaceRef.current;
-  const contactAtSend=isCrm?selectedContact:null;
+  const contactAtSend=isVitalCrm?selectedContact:null;
   setSending(true);setError('');
   try{
    const result=await miaRequest('/api/crm/vital/mia',{method:'POST',body:{
@@ -227,7 +228,7 @@ export default function MiaAssistant(){
     {sending&&<p className={css.stateMessage} role="status">A MIA está pensando…</p>}
     <div ref={messagesEnd}/>
    </div>
-   {isCrm&&<div className={css.quickActions} aria-label="Ações da MIA">
+   {isVitalCrm&&<div className={css.quickActions} aria-label="Ações da MIA">
     {QUICK_ACTIONS.map(([label,action])=><button type="button" key={action}
      disabled={sending||loadingHistory||(['summarize','suggest_reply','next_action'].includes(action)&&!selectedContact)}
      onClick={()=>send(label+' para a conversa selecionada.',action)}>{label}</button>)}

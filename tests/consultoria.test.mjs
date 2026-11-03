@@ -24,13 +24,22 @@ test('normalizes contacts, preserves candidacy context and keeps marketing optio
   assert.equal(validateConsultoria({ ...values(), experience: 'zero', revenue: 'none' }).segment, 'beginner');
   assert.equal(validateConsultoria({ ...values(), marketing: 'yes' }).marketing_opt_in, true);
 });
-test('rejects invalid contacts, invented answers, missing consent and unsafe shop links', () => {
+test('rejects invalid contacts, invalid choices and unsafe shop links', () => {
   for (const change of [{ phone: '00000000000' }, { instagram: '<script>' }, { experience: 'admin' },
-    { revenue: 'million' }, { consent: 'no' }, { recording: 'maybe' },
+    { revenue: 'million' }, { recording: 'maybe' },
     { experience: 'zero', revenue: '500k_plus' }, { storeUrl: 'javascript:alert(1)' },
     { storeUrl: 'https://mercadolivre.com.br.evil.example' }]) {
-    assert.throws(() => validateConsultoria({ ...values(), ...change }));
+    assert.throws(() => validateConsultoria({ ...values(), ...change }), 'Must reject '+JSON.stringify(change));
   }
+  const noConsent=validateConsultoria({...values(),consent:'no'});
+  assert.equal(noConsent.consent_text,null);
+  assert.equal(noConsent.consent_at,null);
+  assert.equal(noConsent.marketing_opt_in,false);
+  const blank=validateConsultoria({});
+  assert.equal(blank.name,null);
+  assert.equal(blank.phone,null);
+  assert.equal(blank.segment,null);
+  assert.equal(blank.consent_at,null);
 });
 test('required text responses have no arbitrary minimum character count', () => {
   const short = validateConsultoria({ ...values(), name: 'A', product: 'X', challenge: 'Ok' });
@@ -90,8 +99,8 @@ test('public form rejects cross-origin, oversized, and non-form writes', async (
     assert.match(await page.text(), /name="ticket"/);
     assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { origin: 'https://evil.example' }, body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 403);
     assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }))).status, 415);
-    assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 403);
-    assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { origin: new URL(url).origin }, body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 400);
+    assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ ticket: 'invalid', phone: 'invalid' }) }))).status, 400);
+    assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { origin: new URL(url).origin }, body: new URLSearchParams({ ticket: 'invalid', phone: 'invalid' }) }))).status, 400);
     assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ name: 'x'.repeat(18000) }) }))).status, 413);
     assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ company_site: 'spam' }) }))).status, 200);
   } finally { if (key === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = key; }

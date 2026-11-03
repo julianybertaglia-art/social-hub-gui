@@ -38,13 +38,12 @@ export async function POST(request) {
     values = await readForm(request);
     const origin = request.headers.get('origin');
     const allowedOrigins = new Set([new URL(request.url).origin, new URL(CONSULTORIA_URL).origin]);
-    if ((origin && !allowedOrigins.has(origin)) || request.headers.get('sec-fetch-site') === 'cross-site') {
-      throw applicationError('Não foi possível confirmar o envio. Confira as respostas e tente reenviar.', 403);
-    }
     if (values.company_site) return html({ success: true });
     const formTicketResult = resolveFormTicket(values.ticket);
-    if (!formTicketResult.verified && (!origin || !allowedOrigins.has(origin))) {
-      throw applicationError('Não foi possível confirmar o envio. Confira as respostas e tente reenviar.', 403);
+    // Some in-app browsers report cross-site metadata or omit stale form tickets.
+    // Accept missing/expired tickets for this same-origin form; reject a foreign Origin.
+    if (origin && !allowedOrigins.has(origin) && !formTicketResult.verified) {
+      throw applicationError('Não foi possível confirmar o envio. Atualize a página e tente novamente.', 403);
     }
     const id = formTicketResult.id;
     const application = validateConsultoria(values);

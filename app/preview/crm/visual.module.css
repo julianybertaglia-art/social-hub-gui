@@ -85,6 +85,12 @@
 .chatHeader strong{display:block;font-size:13.5px;font-weight:800}
 .chatHeader span{display:block;color:var(--muted);font-size:10px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chatHeader button{width:35px;height:35px;border:1px solid var(--border);border-radius:9px;background:var(--panel-soft);color:var(--accent);display:grid;place-items:center}
+.demoControls{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:8px 13px;background:var(--panel-soft);border-bottom:1px solid var(--border)}
+.demoControls label{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11px;font-weight:750}
+.demoControls select{max-width:175px;min-width:100px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--panel);color:var(--ink);font-size:11px}
+.demoControls select:disabled{opacity:.65;cursor:not-allowed}
+.demoControls span{margin-left:auto;color:var(--muted);font-size:10px;line-height:1.4}
+@media(max-width:600px){.demoControls span{margin-left:0;width:100%}.demoControls label{flex-wrap:wrap}.demoControls select{max-width:160px}}
 .chatMessages{display:flex;flex-direction:column;min-height:0;overflow:auto;flex:1;gap:10px;padding:20px clamp(12px,3.3vw,32px);background-image:radial-gradient(circle at 18px 18px,color-mix(in srgb,var(--accent) 4%,transparent) 1.15px,transparent 1.4px);background-size:38px 38px}
 .sent,.received{max-width:min(79%,480px);min-width:90px;flex:0 0 auto;padding:10px 12px;border:1px solid var(--border);border-radius:11px;box-shadow:0 1px 2px #00000008}
 .received{background:var(--panel);align-self:flex-start}

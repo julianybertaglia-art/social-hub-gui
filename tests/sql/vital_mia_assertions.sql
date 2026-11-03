@@ -114,3 +114,153 @@ begin
  then raise exception 'CRM action audit records were not created'; end if;
 end $$;
 reset role;
+
+
+-- Additional negative tests. All identifiers, phones and content below are synthetic.
+-- These tests run only inside GitHub Actions' disposable PostgreSQL 17 service.
+do $$
+declare vital uuid; conn uuid;
+begin
+ select id into vital from public.crm_organizations where workspace_code='vital-decor';
+ select id into conn from public.workspace_meta_connections
+   where owner_user_id='00000000-0000-4000-8000-000000000001'
+     and platform='whatsapp' and workspace_id='vital-decor';
+ insert into public.crm_vital_queue_assignments
+   (organization_id,connection_id,owner_user_id,contact_wa_id,queue_code,source,changed_by)
+ values
+   (vital,conn,'00000000-0000-4000-8000-000000000001','5511000000111','pos_shopee','manual','00000000-0000-4000-8000-000000000001'),
+   (vital,conn,'00000000-0000-4000-8000-000000000001','5511000000222','atacado','manual','00000000-0000-4000-8000-000000000001');
+end $$;
+
+-- Vital owner should not discover unrelated organizations.
+set role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',false);
+do $$
+declare n integer;
+begin
+ select count(*) into n from public.crm_organizations;
+ if n<>1 then raise exception 'Vital owner can enumerate other organizations: %',n; end if;
+ select count(*) into n from public.crm_vital_queues;
+ if n<>9 then raise exception 'Vital owner should see nine queue definitions: %',n; end if;
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+
+-- An unrelated owner may not see Vital membership, sectors, or assignments.
+set role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000002',false);
+do $$
+declare n integer;
+begin
+ select count(*) into n from public.crm_organizations;
+ if n<>1 then raise exception 'Unrelated owner has organization visibility leak: %',n; end if;
+ select count(*) into n from public.crm_organization_sectors;
+ if n<>1 then raise exception 'Unrelated owner has sector visibility leak: %',n; end if;
+ select count(*) into n from public.crm_vital_queues;
+ if n<>0 then raise exception 'Unrelated owner sees Vital queues: %',n; end if;
+ select count(*) into n from public.crm_vital_queue_assignments;
+ if n<>0 then raise exception 'Unrelated owner sees Vital assignments: %',n; end if;
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+
+-- Agent Andrey-analogue can only see assignments in its granted Shopee queue.
+set role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000005',false);
+do $$
+declare n integer; found_phone text;
+begin
+ select count(*) into n from public.crm_vital_member_queues;
+ if n<>1 then raise exception 'Agent sees other members grants: %',n; end if;
+ select count(*),max(contact_wa_id) into n,found_phone from public.crm_vital_queue_assignments;
+ if n<>1 or found_phone<>'5511000000111' then
+   raise exception 'Agent saw non-granted conversation queue: count %, phone %',n,found_phone;
+ end if;
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+
+-- Client roles cannot bypass service-only MIA history, even with a valid JWT.
+set role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',false);
+do $$
+declare rejected boolean:=false; n integer;
+begin
+ begin
+  execute 'select count(*) from public.crm_vital_mia_threads' into n;
+ exception when insufficient_privilege then rejected:=true;
+ end;
+ if not rejected then raise exception 'Authenticated client can read MIA history directly'; end if;
+ rejected:=false;
+ begin
+  execute 'insert into public.crm_vital_mia_threads (organization_id,user_id)
+           select id,owner_user_id from public.crm_organizations where workspace_code=''vital-decor''';
+ exception when insufficient_privilege then rejected:=true;
+ end;
+ if not rejected then raise exception 'Authenticated client can insert MIA history directly'; end if;
+end $$;
+reset role;
+reset request.jwt.claim.sub;
+
+-- Server-only RPCs must also deny unauthorized operations when invoked by service_role.
+set role service_role;
+do $$
+declare vital uuid; conn uuid;
+  owner uuid:='00000000-0000-4000-8000-000000000001';
+  supervisor uuid:='00000000-0000-4000-8000-000000000003';
+  agent uuid:='00000000-0000-4000-8000-000000000005';
+  thread uuid; rejected boolean;
+begin
+ select id into vital from public.crm_organizations where workspace_code='vital-decor';
+ select id into conn from public.workspace_meta_connections
+  where owner_user_id=owner and workspace_id='vital-decor' and platform='whatsapp';
+
+ rejected:=false;
+ begin
+  perform public.crm_vital_claim_reply_atomic(vital,conn,owner,'5511000000222','atacado',agent);
+ exception when sqlstate '42501' then rejected:=true;
+ end;
+ if not rejected then raise exception 'Agent may reply to another sector'; end if;
+
+ rejected:=false;
+ begin
+  perform public.crm_vital_claim_reply_atomic(vital,conn,owner,'5511000000111','pos_shopee',supervisor);
+ exception when sqlstate '42501' then rejected:=true;
+ end;
+ if not rejected then raise exception 'Supervisor can send WhatsApp reply'; end if;
+
+ rejected:=false;
+ begin
+  perform public.crm_vital_transfer_atomic(vital,conn,owner,'5511000000111',
+    'atacado','pos_shopee',null,agent);
+ exception when sqlstate '42501' then rejected:=true;
+ end;
+ if not rejected then raise exception 'Agent without transfer grant moved a conversation'; end if;
+
+ rejected:=false;
+ begin
+  perform public.crm_vital_set_status_atomic(vital,conn,owner,'5511000000111',
+    'pos_shopee','resolved',supervisor,null);
+ exception when sqlstate '42501' then rejected:=true;
+ end;
+ if not rejected then raise exception 'Supervisor changed conversation status'; end if;
+
+ rejected:=false;
+ begin
+  perform public.crm_vital_mia_claim_request_atomic(vital,'00000000-0000-4000-8000-000000000002',2);
+ exception when sqlstate '42501' then rejected:=true;
+ end;
+ if not rejected then raise exception 'User from another organization can claim Vital MIA quota'; end if;
+
+ insert into public.crm_vital_mia_threads(organization_id,user_id,title)
+ values(vital,supervisor,'Conversa privada fictícia') returning id into thread;
+ rejected:=false;
+ begin
+  insert into public.crm_vital_mia_messages
+    (thread_id,organization_id,user_id,role,content)
+  values(thread,vital,owner,'user','tentativa de histórico cruzado');
+ exception when foreign_key_violation then rejected:=true;
+ end;
+ if not rejected then raise exception 'MIA accepted a cross-user message on another thread'; end if;
+end $$;
+reset role;

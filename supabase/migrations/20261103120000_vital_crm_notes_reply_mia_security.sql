@@ -6,8 +6,14 @@ alter table public.crm_organization_members
   add column if not exists display_name text;
 alter table public.crm_vital_invite_drafts
   add column if not exists can_transfer boolean not null default false;
-update public.crm_vital_invite_drafts set can_transfer=false where requested_role='supervisor';
-update public.crm_organization_members set can_transfer=false where role='supervisor';
+update public.crm_vital_invite_drafts set can_transfer=false
+  where requested_role='supervisor' and organization_id in (
+    select id from public.crm_organizations where workspace_code='vital-decor'
+  );
+update public.crm_organization_members set can_transfer=false
+  where role='supervisor' and organization_id in (
+    select id from public.crm_organizations where workspace_code='vital-decor'
+  );
 
 update public.crm_organization_members m set display_name='Juliany'
 from public.crm_organizations o

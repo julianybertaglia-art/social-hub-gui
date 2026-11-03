@@ -168,14 +168,16 @@ reset request.jwt.claim.sub;
 set role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000005',false);
 do $$
-declare n integer; found_phone text;
+declare n integer;
 begin
  select count(*) into n from public.crm_vital_member_queues;
  if n<>1 then raise exception 'Agent sees other members grants: %',n; end if;
- select count(*),max(contact_wa_id) into n,found_phone from public.crm_vital_queue_assignments;
- if n<>1 or found_phone<>'5511000000111' then
-   raise exception 'Agent saw non-granted conversation queue: count %, phone %',n,found_phone;
- end if;
+ select count(*) into n from public.crm_vital_queue_assignments
+   where queue_code<>'pos_shopee' or contact_wa_id='5511000000222';
+ if n<>0 then raise exception 'Agent saw non-granted conversations: %',n; end if;
+ select count(*) into n from public.crm_vital_queue_assignments
+   where queue_code='pos_shopee';
+ if n<>2 then raise exception 'Agent cannot see all granted Shopee conversations: %',n; end if;
 end $$;
 reset role;
 reset request.jwt.claim.sub;

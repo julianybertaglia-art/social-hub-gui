@@ -3,7 +3,7 @@
 import {useEffect,useRef,useState} from 'react';
 import Icon from '../../ui/Icon';
 import styles from './visual.module.css';
-import {canViewDemoConversation,canReplyDemo,canChangeDemoStatus,canTransferDemo,changeDemoStatus,transferDemoConversation,countDemoConversations,DEMO_STATUS} from './demo-operations.mjs';
+import {canViewDemoConversation,canReplyDemo,canChangeDemoStatus,canTransferDemo,changeDemoStatus,transferDemoConversation,countDemoConversations,DEMO_STATUS,demoMiaReply} from './demo-operations.mjs';
 
 const USERS=[
  {name:'Juliany',role:'Administradora',description:'Acesso a todas as filas',queues:null},
@@ -121,7 +121,7 @@ export default function VisualCRM(){
  function onEnter(e){if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent?.isComposing){e.preventDefault();sendDemo(e)}}
  function miaReply(action){
   const prompt=action||miaDraft.trim();if(!prompt)return;
-  const answer=MIA_INTROS[prompt]||'Esta é uma prévia visual da MIA. A conversa real com Gemini será liberada depois da homologação das permissões e do banco de dados.';
+  const answer=demoMiaReply({action:Object.hasOwn(MIA_INTROS,prompt)?prompt:'chat',conversation:current,messages:visibleMsgs,counts});
   setMiaMessages(m=>[...m,{from:'user',text:prompt},{from:'mia',text:answer}]);
   setMiaDraft('');
  }

@@ -11,9 +11,10 @@
 .header{display:flex;align-items:center;gap:10px;padding:14px 13px;border-bottom:1px solid var(--border,#EADFE2)}
 .heading{flex:1;min-width:0}.heading strong{display:block;color:var(--text);font-size:17px;font-weight:800}.heading span{font-size:11.5px;color:var(--muted)}
 .header button{border:0;background:transparent;color:var(--muted);padding:6px;border-radius:8px;cursor:pointer}.header button:hover{background:var(--surface-soft);color:var(--text)}
+.header button:disabled{opacity:.45;cursor:not-allowed}
 .context{display:flex;align-items:center;gap:7px;padding:10px 16px;background:var(--surface-soft);border-bottom:1px solid var(--border);font-size:11.5px;color:var(--muted);font-weight:650}
 .statusDot{width:7px;height:7px;background:#34A979;border-radius:50%}
-.body{min-height:130px;overflow-y:auto;padding:18px 17px}
+.body{display:flex;flex:1;flex-direction:column;min-height:130px;overflow-y:auto;padding:18px 17px}
 .body h2{font-size:20px;font-weight:800;margin:0 0 9px;color:var(--text)}
 .body p{font-size:13.5px;line-height:1.55;color:var(--muted);margin:0 0 16px}
 .actions{display:flex;flex-direction:column;gap:7px}

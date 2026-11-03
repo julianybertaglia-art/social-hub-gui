@@ -31,7 +31,23 @@ async function seed(){
 
 async function verify(){
  const ids=JSON.parse(readFileSync(idsPath,'utf8'));
+ const writesEnabled=process.env.VITAL_CRM_WRITES_ENABLED==='true';
+ const staffEnabled=process.env.VITAL_CRM_STAFF_ENABLED==='true';
  const tokens={};
+
+ // Only a local database receives fictional grants; production membership is untouched.
+ const {data:localOrg,error:orgError}=await admin.from('crm_organizations').select('id,owner_user_id')
+  .eq('workspace_code','vital-decor').eq('owner_user_id',ids.owner).single();
+ assert.ifError(orgError);
+ const {data:queueRows,error:queuesError}=await admin.from('crm_vital_queues').select('queue_code')
+  .eq('organization_id',localOrg.id);
+ assert.ifError(queuesError);
+ if(staffEnabled){
+  const {error:grantError}=await admin.from('crm_vital_member_queues').upsert(
+   queueRows.map(row=>({organization_id:localOrg.id,user_id:ids.supervisor,queue_code:row.queue_code})),
+   {onConflict:'organization_id,user_id,queue_code'});
+  assert.ifError(grantError);
+ }
  for(const name of names){
   const anon=createClient(base,anonKey,{auth:{persistSession:false,autoRefreshToken:false}});
   const {data,error}=await anon.auth.signInWithPassword({email:emailFor(name),password});
@@ -57,8 +73,8 @@ async function verify(){
   return payload;
  }
  await check('/api/auth/access-scope',tokens.owner,200,'admin');
- await check('/api/auth/access-scope',tokens.supervisor,200,'staff_pending');
- await check('/api/auth/access-scope',tokens.agent,200,'staff_pending');
+ await check('/api/auth/access-scope',tokens.supervisor,200,staffEnabled?'staff':'staff_pending');
+ await check('/api/auth/access-scope',tokens.agent,200,staffEnabled?'staff':'staff_pending');
  await check('/api/auth/access-scope',tokens.otherOwner,403);
  await check('/api/auth/access-scope',null,401);
  await check('/api/auth/access-scope','invalid-ci-token',401);
@@ -70,7 +86,7 @@ async function verify(){
  assert.equal(ownerMia.role,'owner');
  await check('/api/crm/vital/mia?workspace=gui-nonato',tokens.owner,200);
  await check('/api/crm/vital/mia?workspace=gui-nonato',tokens.agent,403);
- await check('/api/crm/vital/mia?workspace=vital-decor',tokens.agent,403);
+ await check('/api/crm/vital/mia?workspace=vital-decor',tokens.agent,staffEnabled?200:403);
  await check('/api/crm/vital/mia?workspace=vital-decor',tokens.otherOwner,403);
  await check('/api/crm/vital/mia?workspace=invalid',tokens.owner,400);
  console.log('PASS: MIA HTTP read scopes deny unauthorized users and workspaces');
@@ -99,6 +115,27 @@ async function verify(){
  }
  // No Gemini key in this isolated run: fail closed without external API call.
  assert.equal(mia.status,503,JSON.stringify(mia.payload));
+
+ // Actual local API creates a new private thread in each workspace without Gemini.
+ const newVital=await post('/api/crm/vital/mia',tokens.owner,{mode:'new',workspace:'vital-decor'},'http://localhost:3007');
+ assert.equal(newVital.status,201,JSON.stringify(newVital.payload));
+ const vitalId=newVital.payload.thread?.id;
+ assert.match(vitalId||'',/^[a-f\d-]{36}$/i);
+ const vitalList=await check('/api/crm/vital/mia?workspace=vital-decor',tokens.owner,200);
+ assert.ok(vitalList.threads.some(row=>row.id===vitalId));
+ assert.equal(vitalList.messages.length,0);
+ const newGui=await post('/api/crm/vital/mia',tokens.owner,{mode:'new',workspace:'gui-nonato'},'http://localhost:3007');
+ assert.equal(newGui.status,201,JSON.stringify(newGui.payload));
+ const guiId=newGui.payload.thread?.id;
+ assert.notEqual(guiId,vitalId);
+ const guiList=await check('/api/crm/vital/mia?workspace=gui-nonato',tokens.owner,200);
+ assert.ok(guiList.threads.some(row=>row.id===guiId));
+ assert.ok(!guiList.threads.some(row=>row.id===vitalId));
+ const mismatched=await check('/api/crm/vital/mia?workspace=gui-nonato&thread='+vitalId,tokens.owner,200);
+ assert.equal(mismatched.thread,null);
+ const deniedCreate=await post('/api/crm/vital/mia',tokens.otherOwner,{mode:'new',workspace:'vital-decor'},'http://localhost:3007');
+ assert.equal(deniedCreate.status,403);
+ console.log('PASS: real HTTP MIA thread creation, workspace isolation and outsider denial');
  const threadCount=await admin.from('crm_vital_mia_messages').select('*',{count:'exact',head:true});
  assert.ifError(threadCount.error);
  assert.equal(threadCount.count,0,'Failed Gemini call must not save fictional answers');
@@ -108,6 +145,92 @@ async function verify(){
  const {error}=await client.from('crm_vital_mia_messages').select('id').limit(1);
  assert.ok(error,'Browser role unexpectedly reads MIA private history');
  console.log('PASS: real local PostgREST denies direct browser reads of MIA history');
+
+
+ if(writesEnabled&&staffEnabled){
+  assert.equal(process.env.VITAL_CRM_REPLY_ENABLED,'false','WhatsApp delivery must be explicitly disabled');
+  // Seed two fake conversations, in disjoint queues, inside disposable PostgREST only.
+  const {data:connections,error:connectionError}=await admin.from('workspace_meta_connections').select('id')
+   .eq('owner_user_id',ids.owner).eq('workspace_id','vital-decor').eq('platform','whatsapp').single();
+  assert.ifError(connectionError);
+  const connectionId=connections.id;
+  const shopeePhone='5511000000111',atacadoPhone='5511000000222';
+  const fixtures=[
+   {phone:shopeePhone,queue:'pos_shopee',message:'Pedido fictício Shopee'},
+   {phone:atacadoPhone,queue:'atacado',message:'Pedido fictício Atacado'},
+  ];
+  const {error:assignmentError}=await admin.from('crm_vital_queue_assignments').upsert(
+   fixtures.map(item=>({
+    organization_id:localOrg.id,connection_id:connectionId,owner_user_id:ids.owner,
+    contact_wa_id:item.phone,queue_code:item.queue,source:'manual',changed_by:ids.owner,
+   })),{onConflict:'organization_id,connection_id,contact_wa_id'});
+  assert.ifError(assignmentError);
+  const {error:messageError}=await admin.from('workspace_meta_messages').upsert(
+   fixtures.map(item=>({
+    connection_id:connectionId,owner_user_id:ids.owner,
+    contact_wa_id:item.phone,meta_message_id:'ci-inbound-'+item.phone,
+    direction:'inbound',message_type:'text',body:item.message,status:'received',
+    profile_name:'Cliente exemplo',sent_at:new Date().toISOString(),
+   })),{onConflict:'connection_id,meta_message_id'});
+  assert.ifError(messageError);
+
+  const getNotes=async(phone,token)=>check('/api/crm/vital/notes?contact='+phone,token,200);
+  const agentNotes=await getNotes(shopeePhone,tokens.agent);
+  assert.equal(agentNotes.queue,'pos_shopee');
+  const deniedNotes=await fetch(api+'/api/crm/vital/notes?contact='+atacadoPhone,{
+   headers:{Authorization:'Bearer '+tokens.agent}});
+  assert.equal(deniedNotes.status,404);
+  const supervisorNotes=await getNotes(atacadoPhone,tokens.supervisor);
+  assert.equal(supervisorNotes.queue,'atacado');
+  console.log('PASS: agent sees own-sector notes only; supervisor can read another queue');
+
+  const note=await post('/api/crm/vital/notes',tokens.agent,{
+   contact:shopeePhone,body:'Nota interna criada apenas para teste offline.'},'http://localhost:3007');
+  assert.equal(note.status,201,JSON.stringify(note.payload));
+  const refreshed=await getNotes(shopeePhone,tokens.agent);
+  assert.ok(refreshed.notes.some(n=>n.body==='Nota interna criada apenas para teste offline.'));
+  const supervisorPost=await post('/api/crm/vital/notes',tokens.supervisor,{
+   contact:atacadoPhone,body:'Tentativa proibida'},'http://localhost:3007');
+  assert.equal(supervisorPost.status,403);
+  const agentOther=await post('/api/crm/vital/notes',tokens.agent,{
+   contact:atacadoPhone,body:'Tentativa proibida'},'http://localhost:3007');
+  assert.equal(agentOther.status,404);
+  console.log('PASS: notes POST persists for authorized staff; supervisor and wrong-queue writes denied');
+
+  async function patch(path,token,body){
+   const response=await fetch(api+path,{
+    method:'PATCH',headers:{Authorization:'Bearer '+token,Origin:'http://localhost:3007',
+     'Content-Type':'application/json'},
+    body:JSON.stringify(body),signal:AbortSignal.timeout(15000),
+   });
+   return {status:response.status,payload:await response.json().catch(()=>({}))};
+  }
+  const status=await patch('/api/crm/vital/status',tokens.agent,{contact:shopeePhone,status:'resolved'});
+  assert.equal(status.status,200,JSON.stringify(status.payload));
+  assert.equal(status.payload.status,'resolved');
+  const same=await patch('/api/crm/vital/status',tokens.agent,{contact:shopeePhone,status:'resolved'});
+  assert.equal(same.status,200,JSON.stringify(same.payload));
+  assert.equal(same.payload.unchanged,true);
+  const noRole=await patch('/api/crm/vital/status',tokens.supervisor,{contact:atacadoPhone,status:'resolved'});
+  assert.equal(noRole.status,403);
+  const noQueue=await patch('/api/crm/vital/status',tokens.agent,{contact:atacadoPhone,status:'resolved'});
+  assert.equal(noQueue.status,403);
+  const {data:audits,error:auditError}=await admin.from('crm_vital_status_audit').select('id')
+   .eq('organization_id',localOrg.id).eq('contact_wa_id',shopeePhone);
+  assert.ifError(auditError);
+  assert.equal(audits.length,1,'Idempotent status operation must not duplicate audit');
+  console.log('PASS: real authenticated status PATCH persists and audits once; supervisor/other queue blocked');
+
+  const deniedSend=await post('/api/crm/vital/reply',tokens.owner,{
+   to:shopeePhone,text:'Este texto NUNCA deve sair para a Meta.'},'http://localhost:3007');
+  assert.equal(deniedSend.status,403,JSON.stringify(deniedSend.payload));
+  const {data:outbound,error:outboundError}=await admin.from('workspace_meta_messages')
+   .select('id').eq('owner_user_id',ids.owner).eq('direction','outbound');
+  assert.ifError(outboundError);
+  assert.equal(outbound.length,0);
+  console.log('PASS: CRM writes enabled cannot accidentally unlock WhatsApp sends');
+ }
+
 }
 
 if(!['seed','verify'].includes(mode)||!idsPath)throw Error('Usage: node local_supabase_auth_smoke.mjs seed|verify /tmp/users.json');

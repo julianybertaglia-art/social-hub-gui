@@ -107,9 +107,11 @@ jobs:
           export NEXT_PUBLIC_SUPABASE_URL="$API_URL"
           export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$ANON_KEY"
           export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
-          export VITAL_CRM_STAFF_ENABLED='false'
+          # These flags are ONLY in the ephemeral 127.0.0.1 CI process.
+          # Internal writes are tested; Meta outbound stays independently disabled.
+          export VITAL_CRM_STAFF_ENABLED='true'
           export VITAL_CRM_REPLY_ENABLED='false'
-          export VITAL_CRM_WRITES_ENABLED='false'
+          export VITAL_CRM_WRITES_ENABLED='true'
           export GEMINI_API_KEY=''
           npm run dev -- --hostname 127.0.0.1 --port 3007 > "$QA_DIR/next.log" 2>&1 &
           next_pid=$!

@@ -19,6 +19,7 @@ import { visibleNavGroups, matchesNavigation } from './ui/navigation';
 function pageLabel(pathname) {
   if (pathname.startsWith('/crm/consultorias')) return 'CRM · Consultorias';
   if (pathname.startsWith('/radar')) return 'Criação · Radar de conteúdo';
+  if (pathname.startsWith('/crm/vital')) return 'CRM · Vital Decor';
   if (pathname.startsWith('/crm')) return 'CRM · Funil';
   if (pathname.startsWith('/conteudo')) return 'Conteúdo · IA';
   if (pathname.startsWith('/criar-post')) return 'Criar post';
@@ -57,7 +58,7 @@ export default function HubFrame({ children }) {
     }
   }, [pathname]);
   function areaHref(next) {
-    if (next === 'crm') return workspace.id === 'vital-decor' ? '/whatsapp' : '/crm';
+    if (next === 'crm') return workspace.id === 'vital-decor' ? '/crm/vital' : '/crm';
     if (next === 'settings') return workspace.id === 'vital-decor' ? '/conexoes/vital-decor' : '/admin/conexoes';
     return '/';
   }
@@ -85,7 +86,7 @@ export default function HubFrame({ children }) {
   if (!framed) return children;
 
   return (
-    <div className={styles.frame}>
+    <div className={`${styles.frame} ${workspace.id==='vital-decor'&&area==='crm'?styles.crmMode:''}`}>
       <aside className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <Link href="/" className={styles.brand} onClick={() => setMenuOpen(false)}>
           <div className={styles.brandMark}><img src="/brand/tideplace-mark.svg" alt="" /></div>

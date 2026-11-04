@@ -162,7 +162,7 @@ export default function VitalConnections() {
     setAwaitingMeta(true);
     setMessage('Conclua a autorização do Instagram na janela da Meta.');
     cancelLogin.current = launchMetaLogin(window.FB, {
-      scope: 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,pages_manage_metadata,instagram_manage_messages',
+      scope: 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,instagram_manage_comments,pages_manage_metadata,instagram_manage_messages',
       auth_type: 'rerequest',
     }, async (response) => {
       setAwaitingMeta(false);
@@ -273,7 +273,14 @@ export default function VitalConnections() {
               <button className={styles.button} onClick={channel.connect} disabled={!sdkReady || Boolean(busy)}>
                 {busy === channel.id ? 'Aguardando autorização...' : channel.id === 'instagram' && connected && !connection?.automaticReplies ? 'Ativar Direct no Instagram' : connected ? 'Renovar autorização' : 'Conectar ' + channel.label}
               </button>
-              {channel.id === 'whatsapp' && connected && <p className={styles.note}>Respostas automáticas pausadas.</p>}
+              {channel.id === 'instagram' && (
+                <p className={styles.note}>
+                  <Link href="/conexoes/vital-decor/instagram-automacoes">
+                    Gerenciar automações do Instagram →
+                  </Link>
+                </p>
+              )}
+              {channel.id === 'whatsapp' && connected && <p className={styles.note}>Respostas automáticas pausadas.</p>
             </section>
           );
         })}

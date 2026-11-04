@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import {readFileSync} from 'node:fs';
 import { WORKSPACE, GUI_INSTAGRAM_ID, publicCandidate, publicConnection, selectCandidate,
   validAppToken, safePhoneId, validWebhookSignature, webhookDestination, bearerToken, connectionOwner } from '../app/api/vital-connections/helpers.mjs';
 import { saveWorkspaceMessages, dispatchWorkspaceWebhook } from '../app/api/vital-connections/webhook.mjs';
@@ -150,4 +151,15 @@ test('edits, revocations and delivery receipts cannot update another account', a
     assert.equal(call.table, 'workspace_meta_messages');
     assert.deepEqual(call.filters, [['connection_id', connection.id], ['meta_message_id', 'same-id']]);
   }
+});
+
+test('Vital WhatsApp reauthorization protects the previous connection if Meta does not confirm',()=>{
+  const service = readFileSync(new URL('../app/api/vital-connections/service.js', import.meta.url),'utf8');
+  const subscribe = service.indexOf("candidate.wabaId + '/subscribed_apps'");
+  const save = service.indexOf('.upsert(row, { onConflict:');
+  assert.ok(subscribe >= 0 && save > subscribe, 'verify subscription before replacing saved token');
+  assert.match(service,/subscription\?\.success !== true/);
+  assert.match(service,/state: 'connected'/);
+  assert.doesNotMatch(service,/pending_subscription/);
+  assert.match(service,/code_verification_status/);
 });

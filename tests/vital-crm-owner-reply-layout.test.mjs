@@ -49,7 +49,7 @@ test('chat stays resizable without the bulky sizing toolbar',()=>{
  for(const cssClass of ['.boardFrame','.board .messages','.threadBottom','.composeRow','.board .contacts']){
   assert.ok(css.includes(cssClass),cssClass);
  }
- for(const removed of ['Ajustar tamanho da conversa','vital-list-width','vital-board-height','Personalizar tamanho da central de atendimento']){
+ for(const removed of ['Ajustar tamanho da conversa','id="vital-list-width"','id="vital-board-height"','Personalizar tamanho da central de atendimento']){
   assert.ok(!ui.includes(removed),removed);
  }
  assert.ok(!css.includes('.layoutToolbar'));

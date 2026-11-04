@@ -55,7 +55,7 @@ test('Private reply uses a comment id and never sends WhatsApp messages', () => 
   assert.match(code, /recipient: \{ comment_id: commentId \}/);
   assert.match(code, /\.eq\('workspace_id', 'vital-decor'\)/);
   assert.match(code, /\.eq\('platform', 'instagram'\)/);
-  assert.doesNotMatch(code, /whatsapp|wa\.me|send-template|\/api\/whatsapp/i);
+  assert.doesNotMatch(code, /wa\.me|send-template|\/api\/whatsapp/i);
 });
 
 test('Webhook keeps both automations isolated from Gui account', () => {

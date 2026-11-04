@@ -43,7 +43,7 @@ test('only eligible contacts receive a chat composer; others see a clear explana
 test('chat stays resizable without the bulky sizing toolbar',()=>{
  for(const key of ['tideplace:crm-vital:split-width','tideplace:crm-vital:board-height',
   'className={css.splitter}','className={css.heightSplitter}',
-  'onPointerMove={moveHeight}','onPointerMove={moveSplit}','resetBoardHeight()']){
+  'onPointerMove={moveHeight}','onPointerMove={moveSplit}','onDoubleClick={resetBoardHeight}']){
   assert.ok(ui.includes(key),key);
  }
  for(const cssClass of ['.boardFrame','.board .messages','.threadBottom','.composeRow','.board .contacts']){

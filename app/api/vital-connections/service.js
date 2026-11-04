@@ -148,6 +148,14 @@ export async function commitConnection(db, ownerId, body) {
         throw fail('A Meta não autorizou as mensagens do Instagram. Ao renovar, conceda pages_manage_metadata e instagram_manage_messages para ativar o Direct.', 422);
       }
     }
+    // Reauthorization must never overwrite a working token before Meta confirms
+    // that the target WABA accepts this app's webhook subscription.
+    if (platform === 'whatsapp') {
+      let subscription;
+      try { subscription = await graph(candidate.wabaId + '/subscribed_apps', candidate.accessToken, { method: 'POST' }); }
+      catch { throw fail('A Meta não confirmou a renovação do WhatsApp. A conexão anterior foi preservada.', 422); }
+      if (subscription?.success !== true) throw fail('A Meta não confirmou a assinatura do WhatsApp. A conexão anterior foi preservada.', 422);
+    }
     const now = new Date().toISOString();
     const row = {
       owner_user_id: ownerId, workspace_id: WORKSPACE, platform,
@@ -157,20 +165,13 @@ export async function commitConnection(db, ownerId, body) {
       display_name: profile.name || profile.verified_name || candidate.name,
       picture_url: profile.profile_picture_url || null,
       display_phone_number: profile.display_phone_number || null,
-      state: platform === 'whatsapp' ? 'pending_subscription' : 'connected',
+      state: 'connected',
       connected_at: now, updated_at: now, automatic_replies_enabled: platform === 'instagram',
     };
     const { data: saved, error: saveError } = await db.from(CONNECTIONS)
       .upsert(row, { onConflict: 'owner_user_id,workspace_id,platform' })
       .select('id,platform,display_name,username,picture_url,display_phone_number,state,connected_at').single();
     if (saveError) throw fail('Não foi possível salvar esta conta no TidePlace.', 503);
-    if (platform === 'whatsapp') {
-      await graph(candidate.wabaId + '/subscribed_apps', candidate.accessToken, { method: 'POST' });
-      const { error: markError } = await db.from(CONNECTIONS).update({ state: 'connected' })
-        .eq('id', saved.id).eq('owner_user_id', ownerId);
-      if (markError) throw fail('A Meta autorizou a conta, mas o TidePlace não confirmou a conexão.', 503);
-      saved.state = 'connected';
-    }
     const { error: clearError } = await db.from(SESSIONS)
       .update({ status: 'consumed', candidates: [] }).eq('id', session.id).eq('owner_user_id', ownerId);
     if (clearError) throw fail('A conexão foi salva. Atualize a página para confirmar.', 503);
@@ -190,9 +191,12 @@ export async function readStatus(db, ownerId) {
   for (const row of data || []) {
     let publicRow = publicConnection(row);
     try {
-      await graph(row.external_account_id, row.access_token, {
-        query: { fields: row.platform === 'instagram' ? PAGE_FIELDS : 'id,display_phone_number,verified_name' },
+      const verified = await graph(row.external_account_id, row.access_token, {
+        query: { fields: row.platform === 'instagram' ? PAGE_FIELDS : 'id,display_phone_number,verified_name,code_verification_status' },
       });
+      if (row.platform === 'whatsapp') {
+        publicRow = { ...publicRow, codeVerificationStatus: verified.code_verification_status || 'UNKNOWN' };
+      }
     } catch {
       publicRow = { ...publicRow, connected: false, state: 'reauthorization_required' };
     }

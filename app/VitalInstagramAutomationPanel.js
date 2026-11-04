@@ -6,7 +6,7 @@ import { launchMetaLogin } from './conexoes/vital-decor/meta-login.mjs';
 import { VITAL_WHATSAPP_DISPLAY, VITAL_WHATSAPP_LINK, VITAL_STORE_LINK, VITAL_WELCOME_TEXT } from './lib/vital-direct-copy.mjs';
 import styles from './vital-instagram-automation.module.css';
 
-const SCOPE = 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,pages_manage_metadata,instagram_manage_messages';
+const SCOPE = 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,instagram_manage_comments,pages_manage_metadata,instagram_manage_messages';
 
 export default function VitalInstagramAutomationPanel() {
   const [status, setStatus] = useState(null);
@@ -73,6 +73,7 @@ export default function VitalInstagramAutomationPanel() {
   const instagram = status?.connections?.find((item) => item.platform === 'instagram');
   const enabled = Boolean(instagram?.connected && instagram?.automaticReplies);
   const connected = Boolean(instagram?.connected);
+  const commentsEnabled = Boolean(instagram?.connected && instagram?.commentsSubscribed);
 
   function authorizeDirect() {
     if (!sdkReady || !window.FB) {
@@ -142,6 +143,20 @@ export default function VitalInstagramAutomationPanel() {
       await api('/api/vital-connections/instagram/direct-control', { action: 'activate_existing' });
       await refresh();
       setNotice('Direct ativado com a conexão existente! Envie uma mensagem de outra conta do Instagram para testar.');
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function activateComments() {
+    setBusy('comments');
+    setNotice('Conferindo a autorização de comentários da Vital Decor na Meta...');
+    try {
+      await api('/api/vital-connections/instagram/comment-control', { action: 'activate_comments' });
+      await refresh();
+      setNotice('Comentários MARMORE ativados. Teste comentando em um post da Vital com outra conta.');
     } catch (error) {
       setNotice(error.message);
     } finally {
@@ -232,6 +247,68 @@ export default function VitalInstagramAutomationPanel() {
               <button type="button" className={connected ? styles.secondaryButton : styles.primaryButton}
                 onClick={authorizeDirect} disabled={!sdkReady || Boolean(busy) || loading}>
                 {busy === 'meta' ? 'Aguardando Meta...' : !sdkReady ? 'Carregando Meta...' : connected ? 'Autorizar novamente pela Meta' : 'Autorizar e ativar Direct'}
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className={styles.card}>
+        <div className={styles.cardHeader}>
+          <div className={styles.appIcon}>#</div>
+          <div className={styles.cardTitle}>
+            <h2>Comentário MARMORE → link no Direct</h2>
+            <p>@vitaldecor_ · Comentário contendo MARMORE ou MÁRMORE</p>
+          </div>
+          <span className={commentsEnabled ? styles.activeBadge : styles.pendingBadge}>
+            {commentsEnabled ? 'Ativa' : 'Aguardando ativação'}
+          </span>
+        </div>
+        <div className={styles.steps}>
+          <div><b>1</b><span>Cliente comenta MARMORE</span></div>
+          <span className={styles.arrow}>→</span>
+          <div><b>2</b><span>Recebe um Direct automático</span></div>
+          <span className={styles.arrow}>→</span>
+          <div><b>3</b><span>Acessa os modelos de mármore</span></div>
+        </div>
+        <div className={styles.previewGrid}>
+          <div className={styles.preview}>
+            <span className={styles.previewLabel}>PRÉVIA DO DIRECT</span>
+            <div className={styles.message}>
+              Oi! 💜 Aqui estão os adesivos de mármore da Vital Decor que você pediu!
+              {'\n\n'}🤍 Carrara branco 60x60
+              {'\n'}🖤 Mármore preto 60x60
+              {'\n'}✨ Calacata Gold 60x60
+              {'\n\n'}Cada modelo acompanha seu link direto para comprar. 😊
+            </div>
+          </div>
+          <div className={styles.details}>
+            <span className={styles.previewLabel}>COMO FUNCIONA</span>
+            <div className={styles.detail}><strong>Canal</strong><span>Somente @vitaldecor_</span></div>
+            <div className={styles.detail}><strong>Palavra-chave</strong><span>MARMORE (aceita acento)</span></div>
+            <div className={styles.detail}><strong>Produtos</strong><span>Carrara, Preto e Calacata Gold (links oficiais)</span></div>
+            <div className={styles.detail}><strong>Limite da Meta</strong><span>Uma resposta privada por comentário</span></div>
+            <div className={styles.detail}><strong>WhatsApp e Gui</strong><span>Não são alterados por esta regra</span></div>
+          </div>
+        </div>
+        <div className={styles.actions}>
+          <div className={styles.actionCopy}>
+            <strong>{commentsEnabled ? 'Respostas a comentários autorizadas pela Meta' : 'Falta confirmar a permissão de comentários na Meta'}</strong>
+            <p>{commentsEnabled
+              ? 'O TidePlace pode enviar o link dos adesivos de mármore para comentários novos.'
+              : 'Ative os comentários com a conexão atual. Se a Meta exigir nova permissão, use o botão de reautorização.'}</p>
+          </div>
+          {!commentsEnabled && (
+            <div className={styles.activationButtons}>
+              {connected && (
+                <button type="button" className={styles.primaryButton} disabled={Boolean(busy)}
+                  onClick={activateComments}>
+                  {busy === 'comments' ? 'Conferindo Meta...' : 'Ativar comentários MARMORE'}
+                </button>
+              )}
+              <button type="button" className={styles.secondaryButton}
+                disabled={!sdkReady || Boolean(busy)} onClick={authorizeDirect}>
+                Autorizar novamente pela Meta
               </button>
             </div>
           )}

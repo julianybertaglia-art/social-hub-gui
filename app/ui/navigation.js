@@ -15,8 +15,8 @@ export const NAV_GROUPS = [
   {href:'/crm/consultorias',label:'Consultorias',icon:'users',only:['gui-nonato'],description:'Leads da consultoria do Gui'},
   {href:'/crm/vital',label:'CRM Vital Decor',icon:'inbox',only:['vital-decor'],description:'Dashboard real e histórico protegido de conversas da Vital'},
   {href:'/crm/vital/equipe',label:'Equipe planejada',icon:'users',only:['vital-decor'],description:'Rascunhos de equipe; nenhum acesso liberado'},
-  {href:'/whatsapp',label:'Atendimentos WhatsApp',icon:'chat',description:'Caixa de entrada atual da marca'},
-  {href:'/whatsapp/setores',label:'Meus setores',icon:'users',only:['vital-decor'],description:'Setores de atendimento da Vital'},
+  {href:'/whatsapp',label:'Atendimentos WhatsApp',icon:'chat',only:['gui-nonato'],description:'Caixa de entrada atual do Gui'},
+  // Vital sector filters remain in the CRM; preserve the legacy /whatsapp/setores URL.
   {href:'/instagram/direct',label:'Instagram Direct',icon:'instagram',only:['gui-nonato'],description:'Direct do Gui'},
   {href:'/whatsapp/automacoes',label:'Automações WhatsApp',icon:'flow',description:'Fluxos atuais do WhatsApp'},
   {href:'/whatsapp/campanha',label:'Campanhas',icon:'send',only:['gui-nonato'],description:'Campanhas do Gui'},
@@ -31,7 +31,8 @@ export const NAV_GROUPS = [
 ];
 export function visibleNavGroups(workspaceId='gui-nonato',area=null){
  return NAV_GROUPS.filter(g=>area===null||g.area===area)
-  .map(g=>({...g,items:g.items.filter(i=>!i.only||i.only.includes(workspaceId))}))
+  .map(g=>({...g,label:workspaceId==='vital-decor'&&g.area==='crm'?'CENTRAL CRM':g.label,
+     items:g.items.filter(i=>!i.only||i.only.includes(workspaceId))}))
   .filter(g=>g.items.length);
 }
 export function matchesNavigation(item,pathname,section='dashboard'){

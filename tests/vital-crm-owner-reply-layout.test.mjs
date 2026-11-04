@@ -41,20 +41,19 @@ test('only eligible contacts receive a chat composer; others see a clear explana
  assert.match(ui,/onSubmit=\{reply\}/);
 });
 test('chat stays resizable without the bulky sizing toolbar',()=>{
- assert.match(ui,/tideplace:crm-vital:split-width/);
- assert.match(ui,/tideplace:crm-vital:board-height/);
- assert.match(ui,/className=\\{css\\.splitter\\}/);
- assert.match(ui,/className=\\{css\\.heightSplitter\\}/);
- assert.match(ui,/onPointerMove=\\{moveHeight\\}/);
- assert.match(ui,/onPointerMove=\\{moveSplit\\}/);
- assert.match(css,/\\.boardFrame/);
- assert.match(css,/\\.board \\.messages/);
- assert.match(css,/\\.threadBottom/);
- assert.match(css,/\\.composeRow/);
- assert.match(css,/\\.board \\.contacts/);
- assert.doesNotMatch(ui,/Ajustar tamanho da conversa|vital-list-width|vital-board-height|Personalizar tamanho da central de atendimento/);
- assert.doesNotMatch(css,/\\.layoutToolbar|\\.layoutControl input\\[type=range\\]/);
- assert.match(ui,/resetBoardHeight\\(\\)/);
+ for(const key of ['tideplace:crm-vital:split-width','tideplace:crm-vital:board-height',
+  'className={css.splitter}','className={css.heightSplitter}',
+  'onPointerMove={moveHeight}','onPointerMove={moveSplit}','resetBoardHeight()']){
+  assert.ok(ui.includes(key),key);
+ }
+ for(const cssClass of ['.boardFrame','.board .messages','.threadBottom','.composeRow','.board .contacts']){
+  assert.ok(css.includes(cssClass),cssClass);
+ }
+ for(const removed of ['Ajustar tamanho da conversa','vital-list-width','vital-board-height','Personalizar tamanho da central de atendimento']){
+  assert.ok(!ui.includes(removed),removed);
+ }
+ assert.ok(!css.includes('.layoutToolbar'));
+ assert.ok(!css.includes('.layoutControl input[type=range]'));
 });
 test('WhatsApp reply window is conservative',()=>{
  const now=Date.now();

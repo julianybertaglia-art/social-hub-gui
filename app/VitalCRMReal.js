@@ -281,34 +281,6 @@ export default function VitalCRMReal({embedded=false,onLogout}){
     <button className={view==='all'?css.active:''} onClick={()=>{setView('all');setQueueFilter('all');}}>Todas as filas</button>
     <button className={view==='mine'?css.active:''} onClick={()=>{setView('mine');setQueueFilter('all');}}>Minha operação</button>
    </div>}
-   <div className={css.layoutToolbar} aria-label="Personalizar tamanho da central de atendimento">
-    <div className={css.layoutTitle}>
-     <Icon name="settings" size={17}/>
-     <strong>Ajustar tamanho da conversa</strong>
-     <span>As medidas ficam salvas para seu navegador</span>
-    </div>
-    <div className={css.layoutControls}>
-     <label className={css.layoutControl} htmlFor="vital-list-width">
-      <span><Icon name="users" size={15}/> Largura da lista</span>
-      <input id="vital-list-width" type="range" min="25" max="70" step="1"
-       value={splitWidth} onChange={e=>changeSplitWidth(Number(e.target.value))}
-       aria-valuetext={splitWidth+'% da largura'} />
-      <output htmlFor="vital-list-width">{splitWidth}%</output>
-     </label>
-     <label className={css.layoutControl} htmlFor="vital-board-height">
-      <span><Icon name="chat" size={15}/> Altura do chat</span>
-      <input id="vital-board-height" type="range" min="440" max="900" step="20"
-       value={boardHeight??540} onChange={e=>changeBoardHeight(Number(e.target.value))}
-       aria-valuetext={boardHeight===null?'Automática':boardHeight+' pixels'} />
-      <output htmlFor="vital-board-height">{boardHeight===null?'Auto':boardHeight+'px'}</output>
-     </label>
-     <button type="button" className={css.layoutReset} title="Voltar à distribuição inicial"
-      onClick={()=>{changeSplitWidth(DEFAULT_SPLIT_WIDTH);resetBoardHeight();}}>
-      <Icon name="refresh" size={15}/> Restaurar
-     </button>
-    </div>
-    <p>Você também pode arrastar a divisória <strong>↔</strong> entre as colunas e o controle <strong>↕</strong> abaixo do chat.</p>
-   </div>
    <div ref={boardFrame} className={css.boardFrame} style={boardHeight?{'--vital-board-height':boardHeight+'px'}:undefined}>
    <div data-crm-board ref={splitBoard} className={css.board} style={{'--vital-split-width':splitWidth+'%'}}>
     <section className={css.list}>

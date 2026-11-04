@@ -38,6 +38,7 @@ export function visibleNavGroups(workspaceId='gui-nonato',area=null){
 export function matchesNavigation(item,pathname,section='dashboard'){
  if(!item)return false;
  if(item.section)return pathname==='/'&&section===item.section;
+ if(item.href==='/crm/vital')return pathname==='/crm/vital';
  if(item.href==='/whatsapp')return pathname==='/whatsapp';
  if(item.href==='/crm')return pathname==='/crm';
  if(item.href==='/automacoes')return pathname==='/automacoes';

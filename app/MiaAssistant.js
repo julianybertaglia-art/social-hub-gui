@@ -96,7 +96,7 @@ export default function MiaAssistant(){
   catch{setCopyFeedback('Não foi possível copiar automaticamente neste navegador.');}
  }
  const panelStyle=position&&typeof window!=='undefined'&&window.innerWidth>640?
-  {left:clamp(position.x>window.innerWidth/2?position.x-(expanded?520:385):position.x+DEFAULT_SIZE+12,8,window.innerWidth-(expanded?505:365)),top:clamp(position.y-230,8,Math.max(8,window.innerHeight-480))}:undefined;
+  {left:clamp(position.x>window.innerWidth/2?position.x-(expanded?520:405):position.x+DEFAULT_SIZE+12,8,window.innerWidth-(expanded?505:385)),top:clamp(position.y-230,8,Math.max(8,window.innerHeight-480))}:undefined;
  return <>
   <div className={css.floating} ref={floating}
     style={position?{left:position.x,top:position.y,right:'auto',bottom:'auto'}:undefined}>

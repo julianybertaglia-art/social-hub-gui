@@ -200,6 +200,21 @@ export async function readStatus(db, ownerId) {
     } catch {
       publicRow = { ...publicRow, connected: false, state: 'reauthorization_required' };
     }
+    if (row.platform === 'instagram') {
+      // Comments are a distinct Meta subscription from Direct messages. A missing
+      // permission must not make an otherwise valid Direct look disconnected.
+      let commentsSubscribed = false;
+      if (publicRow.connected && row.page_id) {
+        try {
+          const subscribed = await graph(row.page_id + '/subscribed_apps', row.access_token, {
+            query: { fields: 'id,subscribed_fields' },
+          });
+          commentsSubscribed = (subscribed.data || []).some((app) =>
+            (app.subscribed_fields || []).includes('comments'));
+        } catch { /* Keep the account and Direct connection untouched. */ }
+      }
+      publicRow = { ...publicRow, commentsSubscribed };
+    }
     connections.push(publicRow);
   }
   return {

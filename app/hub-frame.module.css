@@ -67,3 +67,30 @@
 .navLink.active{font-weight:780}
 .groupLabel{font-weight:800}
 .profile strong{font-weight:750}
+
+/* Compact Vital CRM navigation: operational hierarchy, preserved TidePlace branding. */
+.crmMode{--frame-sidebar:260px}
+.crmMode .sidebar{background:linear-gradient(175deg,#18232e 0%,#1b2630 65%,#20232e 100%);border-right-color:#ffffff12;padding:20px 13px 18px}
+.crmMode .brand{margin-bottom:20px;padding-bottom:19px}
+.crmMode .brandMark{background:#ffffff0c;border-color:#ffffff20}
+.crmMode .brandCopy span{color:#aebfcb}
+.crmMode .areaSwitch{background:#ffffff0a;border-color:#ffffff20}
+.crmMode .areaSwitch a{font-size:13px;min-height:42px;border-radius:10px}
+.crmMode .areaSwitch a.areaActive{background:#2a7485;box-shadow:0 4px 14px #07172255}
+.crmMode .nav{gap:15px;padding:3px 3px 13px}
+.crmMode .groupLabel{padding:3px 12px 10px;color:#93b9c4;font-size:11px;font-weight:780;letter-spacing:.12em}
+.crmMode .navLink{font-size:14px;min-height:48px;border-radius:11px;gap:12px;padding:11px 13px;color:#dce6ec!important;font-weight:600}
+.crmMode .navLink:hover{background:#ffffff12;border-color:#ffffff10;color:#fff!important}
+.crmMode .navLink.active{background:#254b59;border-color:#3a7586;color:#fff!important;font-weight:760;box-shadow:inset 3px 0 #70c2c6}
+.crmMode .icon{color:#9bb5c0}
+.crmMode .navLink.active .icon{color:#8bd8dc}
+.crmMode .settingsShortcut{border-top:1px solid #ffffff15;border-radius:0;margin:0 8px;padding:17px 12px 12px;color:#d9e7e9!important}
+.crmMode .settingsShortcut:hover{color:#fff!important}
+.crmMode .profile{border-top-color:#ffffff15}
+.crmMode .profileDot{background:#823d55}
+.crmMode .profile span{color:#b9c2cc}
+.crmMode .topbar{border-bottom-color:var(--tp-line);background:var(--topbar-bg,rgba(255,255,255,.96))}
+.crmMode .context strong{color:#267383}
+@media(min-width:811px) and (max-width:1100px){.crmMode{--frame-sidebar:252px}}
+@media(max-width:810px){.crmMode{--frame-sidebar:260px}}
+@media(prefers-reduced-motion:reduce){.crmMode .navLink{transition:none}}

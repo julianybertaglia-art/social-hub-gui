@@ -20,10 +20,18 @@ const socialActions=[
  ['Métricas e metas','Identificar oportunidades nas métricas']
 ];
 const crmActions=[
- ['Resumir atendimento','Sintetizar o histórico da conversa selecionada'],
- ['Sugerir resposta','Preparar uma resposta para aprovação'],
- ['Próxima ação','Sugerir tarefa ou encaminhamento']
+ ['Resumir atendimento','Organize a situação do contato, histórico relevante, pendências e próximos passos.'],
+ ['Sugerir resposta','Prepare uma mensagem cordial, objetiva e pronta para revisão antes do envio.'],
+ ['Próxima ação','Defina o encaminhamento adequado, responsável e prazo de acompanhamento.']
 ];
+const GUIDES={
+ 'Resumir atendimento':'Organize este atendimento em: contexto, solicitação, histórico resumido, pendências, responsável e próxima ação. Não invente fatos. Remova nomes, números e outros dados pessoais antes de compartilhar o conteúdo.',
+ 'Sugerir resposta':'Crie uma resposta de WhatsApp profissional, acolhedora e breve. Use apenas informações confirmadas, sem prometer prazos ou soluções não validados. A mensagem deve ser revisada antes do envio.',
+ 'Próxima ação':'Com base no estágio do atendimento, recomende uma próxima ação concreta, o setor responsável e quando acompanhar. Aponte qualquer informação faltante sem presumir decisões.',
+ 'Ideias de conteúdo':'Sugira ideias de conteúdo úteis para a audiência da marca, com tema, gancho, formato e CTA. Evite promessas exageradas e informações não verificadas.',
+ 'Calendário':'Organize um calendário editorial com publicações por data, canal, objetivo, responsável e status. Não invente datas de campanhas confirmadas.',
+ 'Métricas e metas':'Analise os indicadores que eu informar, identifique tendências e proponha hipóteses e próximos testes. Diferencie dados observados de estimativas.'
+};
 export default function MiaAssistant(){
  const pathname=usePathname();
  const [workspace]=useWorkspace();
@@ -31,6 +39,7 @@ export default function MiaAssistant(){
  const [expanded,setExpanded]=useState(false);
  const [position,setPosition]=useState(null);
  const [selected,setSelected]=useState('');
+ const [copyFeedback,setCopyFeedback]=useState('');
  const drag=useRef(null);
  const suppressClick=useRef(false);
  const floating=useRef(null);
@@ -52,7 +61,7 @@ export default function MiaAssistant(){
   window.addEventListener('resize',onResize);
   return ()=>window.removeEventListener('resize',onResize);
  },[]);
- useEffect(()=>{setSelected('');},[pathname,workspace?.id]);
+ useEffect(()=>{setSelected('');setCopyFeedback('');},[pathname,workspace?.id]);
  function pointerDown(e){
   if(e.pointerType==='mouse'&&e.button!==0)return;
   const rect=e.currentTarget.getBoundingClientRect();
@@ -81,8 +90,13 @@ export default function MiaAssistant(){
   if(suppressClick.current){suppressClick.current=false;return;}
   setOpen(v=>!v);
  }
+ async function copyGuide(){
+  if(!selected||!GUIDES[selected])return;
+  try{await navigator.clipboard.writeText(GUIDES[selected]);setCopyFeedback('Orientação copiada.');}
+  catch{setCopyFeedback('Não foi possível copiar automaticamente neste navegador.');}
+ }
  const panelStyle=position&&typeof window!=='undefined'&&window.innerWidth>640?
-  {left:clamp(position.x>window.innerWidth/2?position.x-(expanded?520:385):position.x+DEFAULT_SIZE+12,8,window.innerWidth-(expanded?505:365)),top:clamp(position.y-230,8,Math.max(8,window.innerHeight-480))}:undefined;
+  {left:clamp(position.x>window.innerWidth/2?position.x-(expanded?520:405):position.x+DEFAULT_SIZE+12,8,window.innerWidth-(expanded?505:385)),top:clamp(position.y-230,8,Math.max(8,window.innerHeight-480))}:undefined;
  return <>
   <div className={css.floating} ref={floating}
     style={position?{left:position.x,top:position.y,right:'auto',bottom:'auto'}:undefined}>
@@ -102,22 +116,33 @@ export default function MiaAssistant(){
       onClick={()=>setExpanded(v=>!v)}><Icon name={expanded?'columns':'external'} size={17}/></button>
     <button type="button" aria-label="Fechar MIA" onClick={()=>setOpen(false)}><Icon name="close" size={17}/></button>
    </header>
-   <div className={css.context}><span className={css.statusDot}/> {brand} · {isCrm?'CRM':'Social Studio'}</div>
+   <div className={css.context}><span className={css.statusDot}/> {brand} · {isCrm?'CRM':'Social Studio'} <span className={css.previewLabel}>Modo guia</span></div>
    <div className={css.body}>
-    <h2>Oi! Eu sou a MIA.</h2>
-    <p>Estou sendo preparada para ajudar você diretamente no TidePlace. Por enquanto, conheça o que vou conseguir fazer nesta área.</p>
-    <div className={css.actions}>
-     {actions.map(([label,detail])=><button type="button" className={selected===label?css.selected:''} key={label}
-      onClick={()=>setSelected(selected===label?'':label)}>
-      <Icon name={isCrm?'chat':'idea'} size={17}/><span>{label}</span>
-     </button>)}
+    <div className={css.welcome}>
+     <span className={css.eyebrow}>SUA ASSISTENTE NO TIDEPLACE</span>
+     <h2>{isCrm?'Mais clareza em cada atendimento.':'Ideias mais organizadas, sem complicação.'}</h2>
+     <p>{isCrm?'Use os guias da MIA para organizar atendimentos, respostas e próximas ações.':'Explore orientações para planejar conteúdo e acompanhar resultados.'}</p>
     </div>
-    {selected&&<div className={css.description}><strong>{selected}</strong>
-      <span>{actions.find(x=>x[0]===selected)?.[1]}. Disponível após conectarmos a MIA com as permissões adequadas.</span></div>}
+    <div className={css.sectionHeading}><strong>Por onde começamos?</strong><span>Escolha uma ação</span></div>
+    <div className={css.actions}>
+     {actions.map(([label,detail],index)=><button type="button" className={selected===label?css.selected:''} key={label}
+       aria-pressed={selected===label} onClick={()=>{setSelected(selected===label?'':label);setCopyFeedback('');}}>
+       <span className={css.actionIcon}><Icon name={index===0?'sparkle':index===1?'chat':'check'} size={17}/></span>
+       <span className={css.actionText}><strong>{label}</strong><small>{detail}</small></span>
+       <Icon name="chevronRight" size={16}/>
+      </button>)}
+    </div>
+    {selected&&<div className={css.description}>
+      <strong>{selected}</strong>
+      <p>{GUIDES[selected]}</p>
+      <button type="button" className={css.copyGuide} onClick={copyGuide}><Icon name="copy" size={15}/> Copiar orientação</button>
+      {copyFeedback&&<span className={css.copyFeedback} role="status">{copyFeedback}</span>}
+     </div>}
    </div>
-   <footer className={css.footer}><span>Em preparação · Nenhuma mensagem é enviada</span>
-    <div className={css.compose}><input aria-label="Pergunte à MIA (em breve)" placeholder="Pergunte à MIA..." disabled />
-     <button disabled aria-label="Enviar pergunta"><Icon name="send" size={18}/></button></div>
+   <footer className={css.footer}>
+    <div className={css.footerStatus}><Icon name="shield" size={17}/>
+     <span><strong>Modo guia, sem acesso aos seus dados</strong> A conexão com a IA e o histórico real ainda não estão ativados.</span>
+    </div>
    </footer>
   </section>}
  </>;

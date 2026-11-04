@@ -7,12 +7,13 @@ const flatten=workspace=>visibleNavGroups(workspace).flatMap(g=>g.items);
 test('Social and CRM separate the existing functional navigation without duplicate routes',()=>{
  for(const workspace of ['gui-nonato','vital-decor']){
   const groups=visibleNavGroups(workspace);
-  assert.deepEqual(groups.map(g=>g.label),['SOCIAL STUDIO','TIDE CRM','CONFIGURAÇÕES']);
+  assert.deepEqual(groups.map(g=>g.label),['SOCIAL STUDIO',workspace==='vital-decor'?'CENTRAL CRM':'TIDE CRM','CONFIGURAÇÕES']);
   assert.equal(visibleNavGroups(workspace,'studio').length,1);
   assert.equal(visibleNavGroups(workspace,'crm').length,1);
   const urls=flatten(workspace).map(i=>i.href);
   assert.equal(urls.length,new Set(urls).size);
-  assert.ok(urls.includes('/whatsapp'));
+  assert.equal(urls.includes('/whatsapp'),workspace==='gui-nonato');
+  if(workspace==='vital-decor')assert.ok(urls.includes('/crm/vital'));
   assert.ok(urls.includes('/?section=calendar'));
   assert.ok(urls.includes('/?section=ideas'));
   assert.ok(urls.includes('/?section=goals'));
@@ -25,7 +26,10 @@ test('workspace permissions remain isolated and sensitive routes remain unchange
  assert.ok(!vital.includes('/whatsapp/campanha'));
  assert.ok(gui.includes('/crm'));
  assert.ok(!vital.includes('/crm'));
- assert.ok(vital.includes('/whatsapp/setores'));
+ assert.ok(!vital.includes('/whatsapp/setores'));
+ assert.ok(!vital.includes('/whatsapp'));
+ assert.ok(vital.includes('/crm/vital'));
+ assert.ok(vital.includes('/crm/vital/equipe'));
  assert.ok(!gui.includes('/whatsapp/setores'));
  assert.ok(vital.includes('/whatsapp/integracao-argo'));
  assert.ok(!gui.includes('/whatsapp/integracao-argo'));
@@ -52,4 +56,8 @@ test('active navigation only matches the intended section or route',()=>{
  const inbox=studio.find(i=>i.href==='/whatsapp');
  assert.equal(matchesNavigation(inbox,'/whatsapp'),true);
  assert.equal(matchesNavigation(inbox,'/whatsapp/gato'),false);
+ const vital=flatten('vital-decor');
+ const central=vital.find(i=>i.href==='/crm/vital');
+ assert.equal(matchesNavigation(central,'/crm/vital'),true);
+ assert.equal(matchesNavigation(central,'/crm/vital/equipe'),false);
 });

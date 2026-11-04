@@ -40,26 +40,20 @@ test('only eligible contacts receive a chat composer; others see a clear explana
  assert.match(ui,/disabled=\{busy\|\|Boolean\(replyBlockReason\)\}/);
  assert.match(ui,/onSubmit=\{reply\}/);
 });
-test('chat layout supports independently persisted width and height',()=>{
- assert.match(ui,/tideplace:crm-vital:split-width/);
- assert.match(ui,/tideplace:crm-vital:board-height/);
- assert.match(ui,/className=\{css\.splitter\}/);
- assert.match(ui,/className=\{css\.heightSplitter\}/);
- assert.match(ui,/onPointerMove=\{moveHeight\}/);
- assert.match(ui,/onPointerMove=\{moveSplit\}/);
- assert.match(css,/\.boardFrame/);
- assert.match(css,/\.board \.messages/);
- assert.match(css,/\.threadBottom/);
- assert.match(css,/\.composeRow/);
- assert.match(css,/\.board \.contacts/);
- assert.match(ui,/Personalizar tamanho da central de atendimento/);
- assert.match(ui,/id="vital-list-width"/);
- assert.match(ui,/id="vital-board-height"/);
- assert.match(ui,/onChange=\{e=>changeSplitWidth\(Number\(e.target.value\)\)\}/);
- assert.match(ui,/onChange=\{e=>changeBoardHeight\(Number\(e.target.value\)\)\}/);
- assert.match(ui,/resetBoardHeight\(\)/);
- assert.match(css,/\.layoutToolbar/);
- assert.match(css,/\.layoutControl input\[type=range\]/);
+test('chat stays resizable without the bulky sizing toolbar',()=>{
+ for(const key of ['tideplace:crm-vital:split-width','tideplace:crm-vital:board-height',
+  'className={css.splitter}','className={css.heightSplitter}',
+  'onPointerMove={moveHeight}','onPointerMove={moveSplit}','onDoubleClick={resetBoardHeight}']){
+  assert.ok(ui.includes(key),key);
+ }
+ for(const cssClass of ['.boardFrame','.board .messages','.threadBottom','.composeRow','.board .contacts']){
+  assert.ok(css.includes(cssClass),cssClass);
+ }
+ for(const removed of ['Ajustar tamanho da conversa','id="vital-list-width"','id="vital-board-height"','Personalizar tamanho da central de atendimento']){
+  assert.ok(!ui.includes(removed),removed);
+ }
+ assert.ok(!css.includes('.layoutToolbar'));
+ assert.ok(!css.includes('.layoutControl input[type=range]'));
 });
 test('WhatsApp reply window is conservative',()=>{
  const now=Date.now();

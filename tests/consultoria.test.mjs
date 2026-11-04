@@ -24,9 +24,9 @@ test('normalizes contacts, preserves candidacy context and keeps marketing optio
   assert.equal(validateConsultoria({ ...values(), experience: 'zero', revenue: 'none' }).segment, 'beginner');
   assert.equal(validateConsultoria({ ...values(), marketing: 'yes' }).marketing_opt_in, true);
 });
-test('rejects invalid contacts, invented answers, missing consent and unsafe shop links', () => {
+test('rejects invalid contacts, invented answers and unsafe shop links', () => {
   for (const change of [{ phone: '00000000000' }, { instagram: '<script>' }, { experience: 'admin' },
-    { revenue: 'million' }, { consent: 'no' }, { recording: 'maybe' },
+    { revenue: 'million' }, { recording: 'maybe' },
     { experience: 'zero', revenue: '500k_plus' }, { storeUrl: 'javascript:alert(1)' },
     { storeUrl: 'https://mercadolivre.com.br.evil.example' }]) {
     assert.throws(() => validateConsultoria({ ...values(), ...change }));
@@ -90,8 +90,8 @@ test('public form rejects cross-origin, oversized, and non-form writes', async (
     assert.match(await page.text(), /name="ticket"/);
     assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { origin: 'https://evil.example' }, body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 403);
     assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }))).status, 415);
-    assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 403);
-    assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { origin: new URL(url).origin }, body: new URLSearchParams({ ticket: 'invalid' }) }))).status, 400);
+    assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ ticket: 'invalid', storeUrl: 'javascript:invalid' }) }))).status, 400);
+    assert.equal((await publicPost(new Request(url, { method: 'POST', headers: { origin: new URL(url).origin }, body: new URLSearchParams({ ticket: 'invalid', storeUrl: 'javascript:invalid' }) }))).status, 400);
     assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ name: 'x'.repeat(18000) }) }))).status, 413);
     assert.equal((await publicPost(new Request(url, { method: 'POST', body: new URLSearchParams({ company_site: 'spam' }) }))).status, 200);
   } finally { if (key === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = key; }

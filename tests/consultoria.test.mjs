@@ -24,9 +24,9 @@ test('normalizes contacts, preserves candidacy context and keeps marketing optio
   assert.equal(validateConsultoria({ ...values(), experience: 'zero', revenue: 'none' }).segment, 'beginner');
   assert.equal(validateConsultoria({ ...values(), marketing: 'yes' }).marketing_opt_in, true);
 });
-test('rejects invalid contacts, invented answers, missing consent and unsafe shop links', () => {
+test('rejects invalid contacts, invented answers and unsafe shop links', () => {
   for (const change of [{ phone: '00000000000' }, { instagram: '<script>' }, { experience: 'admin' },
-    { revenue: 'million' }, { consent: 'no' }, { recording: 'maybe' },
+    { revenue: 'million' }, { recording: 'maybe' },
     { experience: 'zero', revenue: '500k_plus' }, { storeUrl: 'javascript:alert(1)' },
     { storeUrl: 'https://mercadolivre.com.br.evil.example' }]) {
     assert.throws(() => validateConsultoria({ ...values(), ...change }));

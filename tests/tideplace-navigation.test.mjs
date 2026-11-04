@@ -56,4 +56,8 @@ test('active navigation only matches the intended section or route',()=>{
  const inbox=studio.find(i=>i.href==='/whatsapp');
  assert.equal(matchesNavigation(inbox,'/whatsapp'),true);
  assert.equal(matchesNavigation(inbox,'/whatsapp/gato'),false);
+ const vital=flatten('vital-decor');
+ const central=vital.find(i=>i.href==='/crm/vital');
+ assert.equal(matchesNavigation(central,'/crm/vital'),true);
+ assert.equal(matchesNavigation(central,'/crm/vital/equipe'),false);
 });

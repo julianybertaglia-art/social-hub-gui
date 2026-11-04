@@ -40,26 +40,21 @@ test('only eligible contacts receive a chat composer; others see a clear explana
  assert.match(ui,/disabled=\{busy\|\|Boolean\(replyBlockReason\)\}/);
  assert.match(ui,/onSubmit=\{reply\}/);
 });
-test('chat layout supports independently persisted width and height',()=>{
+test('chat stays resizable without the bulky sizing toolbar',()=>{
  assert.match(ui,/tideplace:crm-vital:split-width/);
  assert.match(ui,/tideplace:crm-vital:board-height/);
- assert.match(ui,/className=\{css\.splitter\}/);
- assert.match(ui,/className=\{css\.heightSplitter\}/);
- assert.match(ui,/onPointerMove=\{moveHeight\}/);
- assert.match(ui,/onPointerMove=\{moveSplit\}/);
- assert.match(css,/\.boardFrame/);
- assert.match(css,/\.board \.messages/);
- assert.match(css,/\.threadBottom/);
- assert.match(css,/\.composeRow/);
- assert.match(css,/\.board \.contacts/);
- assert.match(ui,/Personalizar tamanho da central de atendimento/);
- assert.match(ui,/id="vital-list-width"/);
- assert.match(ui,/id="vital-board-height"/);
- assert.match(ui,/onChange=\{e=>changeSplitWidth\(Number\(e.target.value\)\)\}/);
- assert.match(ui,/onChange=\{e=>changeBoardHeight\(Number\(e.target.value\)\)\}/);
- assert.match(ui,/resetBoardHeight\(\)/);
- assert.match(css,/\.layoutToolbar/);
- assert.match(css,/\.layoutControl input\[type=range\]/);
+ assert.match(ui,/className=\\{css\\.splitter\\}/);
+ assert.match(ui,/className=\\{css\\.heightSplitter\\}/);
+ assert.match(ui,/onPointerMove=\\{moveHeight\\}/);
+ assert.match(ui,/onPointerMove=\\{moveSplit\\}/);
+ assert.match(css,/\\.boardFrame/);
+ assert.match(css,/\\.board \\.messages/);
+ assert.match(css,/\\.threadBottom/);
+ assert.match(css,/\\.composeRow/);
+ assert.match(css,/\\.board \\.contacts/);
+ assert.doesNotMatch(ui,/Ajustar tamanho da conversa|vital-list-width|vital-board-height|Personalizar tamanho da central de atendimento/);
+ assert.doesNotMatch(css,/\\.layoutToolbar|\\.layoutControl input\\[type=range\\]/);
+ assert.match(ui,/resetBoardHeight\\(\\)/);
 });
 test('WhatsApp reply window is conservative',()=>{
  const now=Date.now();

@@ -275,7 +275,7 @@ export async function readStatus(db, ownerId) {
   };
   return {
     workspace: WORKSPACE, connections, appId: APP_ID, instagramLogin,
-    instagramDirectLoginAvailable: /^\\d{5,40}$/.test(String(process.env.META_VITAL_IG_APP_ID || '')) && Boolean(process.env.META_VITAL_IG_APP_SECRET),
+    instagramDirectLoginAvailable: /^[0-9]{5,40}$/.test(String(process.env.META_VITAL_IG_APP_ID || '')) && Boolean(process.env.META_VITAL_IG_APP_SECRET),
     whatsappConfigId: process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID || '',
     automaticReplies: connections.some((connection) => connection.platform === 'instagram' && connection.automaticReplies),
   };

@@ -55,7 +55,11 @@ async function instagramGraph(path, token, { method = 'GET', query = {} } = {}) 
 async function authorizeDirectAndComments(token) {
   const profile = await instagramGraph('me', token, { query: { fields: 'user_id,username' } });
   const igId = verifiedVitalInstagramId(profile);
-  if (!igId) throw authFailure('wrong_account');
+  if (!igId) {
+    const instagramUsername = String(profile?.username || '').replace(/^@/, '').toLowerCase();
+    throw authFailure(instagramUsername && instagramUsername !== VITAL_IG_USERNAME
+      ? 'wrong_username' : 'wrong_account');
+  }
   let response;
   try {
     response = await instagramGraph('me/subscribed_apps', token, {

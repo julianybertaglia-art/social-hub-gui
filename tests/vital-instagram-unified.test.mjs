@@ -73,7 +73,12 @@ test('Callback validates state, business, Instagram ID and both webhook fields b
   assert.match(code, /me\/assigned_instagram_accounts/);
   assert.match(code, /subscribed_fields: 'messages,comments'/);
   assert.match(code, /META_APP_SECRET/);
-  assert.doesNotMatch(code, /META_WHATSAPP_APP_SECRET|META_WHATSAPP_ACCESS_TOKEN|NEXT_PUBLIC_META/);
+  // The secondary env key may be inspected, but only after an independent
+  // client_credentials check against this exact Instagram App ID.
+  assert.match(code, /META_WHATSAPP_APP_SECRET/);
+  assert.match(code, /grant_type', 'client_credentials'/);
+  assert.match(code, /url.searchParams.set\('client_id', UNIFIED_APP_ID\)/);
+  assert.doesNotMatch(code, /META_WHATSAPP_ACCESS_TOKEN|META_WHATSAPP_PHONE_NUMBER_ID|NEXT_PUBLIC_META/);
   assert.match(code, /status: 'consumed'/);
   assert.match(code, /response\.cookies\.set\(CALLBACK_COOKIE, ''/);
 });

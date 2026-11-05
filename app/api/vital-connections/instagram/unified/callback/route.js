@@ -26,12 +26,22 @@ function authFailure(reason, metaError = null) {
 // also be provided on exchange. Probe credentials independently first, so
 // failures can be diagnosed without recording codes, tokens or error text.
 async function resolveAppSecret() {
-  // Instagram credentials stay entirely isolated from WhatsApp/Vivi.
-  // A different application's secret must never be used as a fallback.
-  const candidates = [
+  // Only an app secret independently validated by Meta for the fixed
+  // Instagram application's ID can be used. A legacy env name can contain
+  // a newer copy of this SAME app's secret; it is never assumed equivalent.
+  // No WhatsApp token, connection, subscription or message is accessed.
+  const configured = [
     { value: process.env.META_APP_SECRET, source: 'meta' },
-  ].filter((candidate) =>
-    typeof candidate.value === 'string' && candidate.value.length > 8);
+    { value: process.env.META_WHATSAPP_APP_SECRET, source: 'compatibility' },
+  ];
+  const candidates = configured
+    .map((candidate) => ({
+      ...candidate,
+      value: typeof candidate.value === 'string' ? candidate.value.trim() : '',
+    }))
+    .filter((candidate, index, all) =>
+      candidate.value.length > 8 &&
+      all.findIndex((entry) => entry.value === candidate.value) === index);
   if (!candidates.length) throw authFailure('secret_missing');
   let lastMetaError = null;
   for (const candidate of candidates) {

@@ -10,8 +10,15 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-function authFailure(reason) {
-  return Object.assign(new Error(reason), { reason });
+function authFailure(reason, metaError = null) {
+  // Store only allowlisted error codes, not Graph response text or credentials.
+  const rawCode = Number(metaError?.code);
+  const rawSubcode = Number(metaError?.error_subcode);
+  return Object.assign(new Error(reason), {
+    reason,
+    metaCode: Number.isInteger(rawCode) && rawCode > 0 && rawCode < 1000000 ? rawCode : null,
+    metaSubcode: Number.isInteger(rawSubcode) && rawSubcode > 0 && rawSubcode < 1000000000 ? rawSubcode : null,
+  });
 }
 
 async function exchangeCode(code) {
@@ -21,14 +28,16 @@ async function exchangeCode(code) {
   const url = new URL('https://graph.facebook.com/' + META_API_VERSION + '/oauth/access_token');
   url.searchParams.set('client_id', UNIFIED_APP_ID);
   url.searchParams.set('client_secret', secret);
-  url.searchParams.set('redirect_uri', CALLBACK_URL);
+  // Meta's Unified Login with a configuration ID exchanges the one-time
+  // business-login code using app ID, app secret and code. The redirect URL is
+  // verified by Meta during the browser step and must not be sent again here.
   url.searchParams.set('code', code);
   let response;
   try {
     response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(18000) });
   } catch { throw authFailure('exchange'); }
   const result = await response.json().catch(() => ({}));
-  if (!response.ok || !result?.access_token) throw authFailure('exchange');
+  if (!response.ok || !result?.access_token) throw authFailure('exchange', result?.error);
   return result.access_token;
 }
 
@@ -171,11 +180,13 @@ export async function GET(request) {
     // Persist only the allowlisted error code, never tokens, Meta response bodies,
     // authorization codes or private account details.
     const reason = safeAuthError(error?.reason);
+    const metaCode = error?.metaCode || null;
+    const metaSubcode = error?.metaSubcode || null;
     if (session?.owner_user_id) {
       const { error: diagnosticError } = await db.from('workspace_meta_connection_sessions')
         .update({
           status: 'expired',
-          candidates: [{ type: 'unified_oauth_failure', reason }],
+          candidates: [{ type: 'unified_oauth_failure', reason, metaCode, metaSubcode }],
         })
         .eq('id', state).eq('owner_user_id', session.owner_user_id)
         .eq('status', 'consuming');

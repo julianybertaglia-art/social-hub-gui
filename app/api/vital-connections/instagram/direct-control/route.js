@@ -49,7 +49,7 @@ export async function POST(request) {
         }
 
         // Meta must explicitly confirm the message webhook subscription.
-        const subscription = await api((existing.page_id || existing.external_account_id) + '/subscribed_apps', existing.access_token, {
+        const subscription = await api(viaInstagram ? 'me/subscribed_apps' : (existing.page_id || existing.external_account_id) + '/subscribed_apps', existing.access_token, {
           method: 'POST',
           query: { subscribed_fields: !viaInstagram && existing.page_id ? 'messages,messaging_postbacks' : 'messages,comments' },
         });

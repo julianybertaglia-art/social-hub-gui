@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../../CloudGate';
 import VitalInstagramMetrics from '../../VitalInstagramMetrics';
 import { launchMetaLogin } from './meta-login.mjs';
+import { startVitalInstagramUnifiedLogin } from '../../lib/vital-instagram-unified-client.mjs';
 import styles from './connections.module.css';
 
 function facebookOrigin(origin) {
@@ -155,29 +156,17 @@ export default function VitalConnections() {
     return () => { window.removeEventListener('message', listener); whatsapp.current = null; };
   }, [finishWhatsApp]);
 
-  function connectInstagram() {
-    cancelLogin.current?.();
+  async function connectInstagram() {
     setPending(null);
     setBusy('instagram');
-    setAwaitingMeta(true);
-    setMessage('Conclua a autorização do Instagram na janela da Meta.');
-    cancelLogin.current = launchMetaLogin(window.FB, {
-      scope: 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,instagram_manage_comments,pages_manage_metadata,instagram_manage_messages',
-      auth_type: 'rerequest',
-    }, async (response) => {
-      setAwaitingMeta(false);
-      const userToken = response.authResponse?.accessToken;
-      if (!userToken) {
-        setMessage('A autorização do Instagram não foi concluída. Você pode tentar novamente.');
-        setBusy('');
-        return;
-      }
-      try {
-        showCandidates(await api({ action: 'prepare_instagram', userToken }));
-      } catch (error) {
-        setMessage(error.message);
-      } finally { setBusy(''); }
-    }, loginFailure);
+    setMessage('Abrindo o Login Unificado da Meta para @vitaldecor_...');
+    try {
+      const loginUrl = await startVitalInstagramUnifiedLogin(supabase);
+      window.location.assign(loginUrl);
+    } catch (error) {
+      setBusy('');
+      setMessage(error.message);
+    }
   }
 
   async function activateSavedInstagramDirect() {
@@ -303,7 +292,7 @@ export default function VitalConnections() {
                   {busy === 'instagram-existing' ? 'Conferindo com a Meta...' : 'Ativar com a autorização já salva'}
                 </button>
               )}
-              <button className={styles.button} onClick={channel.connect} disabled={!sdkReady || Boolean(busy)}>
+              <button className={styles.button} onClick={channel.connect} disabled={Boolean(busy) || (channel.id === 'whatsapp' && !sdkReady)}>
                 {busy === channel.id ? 'Aguardando autorização...' : channel.id === 'instagram' && connected && !connection?.automaticReplies ? 'Reautorizar pela Meta' : connected ? 'Renovar autorização' : 'Conectar ' + channel.label}
               </button>
               {channel.id === 'instagram' && (

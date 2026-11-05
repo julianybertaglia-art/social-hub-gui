@@ -31,9 +31,9 @@ test('Meta token exchange omits the browser-only redirect URI and only retains n
   const exchange = callback.split('async function exchangeCode(code) {')[1].split('async function verifyUnifiedToken(')[0];
   assert.doesNotMatch(exchange, /url\.searchParams\.set\('redirect_uri'/);
   assert.match(exchange, /url\.searchParams\.set\('client_id', UNIFIED_APP_ID\)/);
-  assert.match(exchange, /url\.searchParams\.set\('client_secret', secret\)/);
+  assert.match(exchange, /url\.searchParams\.set\('client_secret', credential\.value\)/);
   assert.match(exchange, /url\.searchParams\.set\('code', code\)/);
-  assert.match(exchange, /authFailure\('exchange', result\?\.error\)/);
+  assert.match(exchange, /authFailure\('exchange', lastMetaError\)/);
   assert.match(callback, /metaCode: Number\.isInteger/);
   assert.doesNotMatch(callback, /candidates: \[\{[^\n]*access_token/);
 });

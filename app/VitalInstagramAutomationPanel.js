@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './CloudGate';
-import { launchMetaLogin } from './conexoes/vital-decor/meta-login.mjs';
+import { startVitalInstagramUnifiedLogin } from './lib/vital-instagram-unified-client.mjs';
 import { VITAL_WHATSAPP_DISPLAY, VITAL_WHATSAPP_LINK, VITAL_STORE_LINK, VITAL_WELCOME_TEXT } from './lib/vital-direct-copy.mjs';
 import styles from './vital-instagram-automation.module.css';
 
-const SCOPE = 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,instagram_manage_comments,pages_manage_metadata,instagram_manage_messages';
 
 export default function VitalInstagramAutomationPanel() {
   const [status, setStatus] = useState(null);
@@ -70,47 +69,46 @@ export default function VitalInstagramAutomationPanel() {
     return () => { mounted = false; };
   }, [status?.appId]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const kind = params.get('ig_auth');
+    const reason = params.get('reason');
+    if (kind === 'connected') {
+      setNotice('Instagram @vitaldecor_ autorizado. Faça um teste de Direct e comentário MARMORE usando outra conta.');
+    } else if (kind === 'failed') {
+      const explanations = {
+        cancelled: 'Você cancelou a autorização na Meta.',
+        expired: 'A autorização expirou ou já foi utilizada. Inicie uma nova.',
+        state: 'A confirmação de segurança expirou. Inicie a autorização novamente nesta mesma janela.',
+        missing_code: 'A Meta não enviou o código da autorização.',
+        secret_missing: 'A configuração segura do aplicativo Meta está incompleta no servidor.',
+        exchange: 'A Meta não aceitou a troca do código de autorização por uma credencial.',
+        wrong_business: 'Selecione o portfólio empresarial Vital Decor na Meta.',
+        account_not_shared: 'Selecione e compartilhe @vitaldecor_ com o TidePlace na Meta.',
+        token_invalid: 'A Meta não confirmou a credencial do aplicativo correto.',
+        permissions: 'A autorização não incluiu mensagens e comentários do Instagram.',
+        subscribe: 'A Meta não confirmou a assinatura dos webhooks de mensagens e comentários.',
+        save: 'A autorização funcionou, mas não foi possível salvar a conexão.',
+      };
+      setNotice(explanations[reason] || 'A autorização não foi concluída. A conexão anterior foi preservada.');
+    }
+  }, []);
+
   const instagram = status?.connections?.find((item) => item.platform === 'instagram');
   const enabled = Boolean(instagram?.connected && instagram?.automaticReplies);
   const connected = Boolean(instagram?.connected);
   const commentsEnabled = Boolean(instagram?.connected && instagram?.commentsSubscribed);
 
-  function authorizeDirect() {
-    if (!sdkReady || !window.FB) {
-      setNotice('Aguarde o carregamento da Meta e tente novamente.');
-      return;
-    }
-    cancelLogin.current?.();
-    setPending(null);
-    setSelectedId('');
-    setNotice('Autorize o acesso às mensagens do Instagram na janela da Meta.');
+  async function authorizeDirect() {
     setBusy('meta');
-    cancelLogin.current = launchMetaLogin(window.FB, { scope: SCOPE, auth_type: 'rerequest' },
-      async (response) => {
-        const token = response.authResponse?.accessToken;
-        if (!token) {
-          setBusy('');
-          setNotice('A autorização não foi concluída. Tente novamente.');
-          return;
-        }
-        try {
-          const result = await api('/api/vital-connections', { action: 'prepare_instagram', userToken: token });
-          if (!result.candidates?.length) throw new Error('A Meta não encontrou o Instagram da Vital Decor.');
-          setPending(result);
-          setSelectedId(result.candidates.length === 1 ? result.candidates[0].id : '');
-          setNotice('Confirme abaixo que a conta selecionada é @vitaldecor_.');
-        } catch (error) {
-          setNotice(error.message);
-        } finally {
-          setBusy('');
-        }
-      },
-      (error) => {
-        setBusy('');
-        setNotice(error?.message === 'meta_login_timeout'
-          ? 'A Meta não respondeu. Verifique se a janela de autorização abriu.'
-          : 'Não foi possível abrir a autorização da Meta. Tente novamente.');
-      });
+    setNotice('Abrindo o Login Unificado da Meta para @vitaldecor_...');
+    try {
+      const loginUrl = await startVitalInstagramUnifiedLogin(supabase);
+      window.location.assign(loginUrl);
+    } catch (error) {
+      setBusy('');
+      setNotice(error.message);
+    }
   }
 
   async function confirmDirect() {
@@ -245,8 +243,8 @@ export default function VitalInstagramAutomationPanel() {
                 </button>
               )}
               <button type="button" className={connected ? styles.secondaryButton : styles.primaryButton}
-                onClick={authorizeDirect} disabled={!sdkReady || Boolean(busy) || loading}>
-                {busy === 'meta' ? 'Aguardando Meta...' : !sdkReady ? 'Carregando Meta...' : connected ? 'Autorizar novamente pela Meta' : 'Autorizar e ativar Direct'}
+                onClick={authorizeDirect} disabled={Boolean(busy) || loading}>
+                {busy === 'meta' ? 'Aguardando Meta...' : connected ? 'Autorizar novamente pela Meta' : 'Autorizar e ativar Direct'}
               </button>
             </div>
           )}
@@ -307,7 +305,7 @@ export default function VitalInstagramAutomationPanel() {
                 </button>
               )}
               <button type="button" className={styles.secondaryButton}
-                disabled={!sdkReady || Boolean(busy)} onClick={authorizeDirect}>
+                disabled={Boolean(busy)} onClick={authorizeDirect}>
                 Autorizar novamente pela Meta
               </button>
             </div>

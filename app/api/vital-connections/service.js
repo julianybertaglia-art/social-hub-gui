@@ -236,10 +236,17 @@ export async function readStatus(db, ownerId) {
   const rawReason = latest?.status === 'expired' && Array.isArray(latest.candidates)
     ? latest.candidates.find((candidate) => candidate?.type === 'unified_oauth_failure')?.reason
     : null;
+  const rawDiagnostic = latest?.status === 'expired' && Array.isArray(latest.candidates)
+    ? latest.candidates.find((candidate) => candidate?.type === 'unified_oauth_failure')
+    : null;
+  const safeNumericCode = (value, maximum) =>
+    Number.isInteger(value) && value > 0 && value < maximum ? value : null;
   const instagramLogin = {
     status: latest?.status === 'consumed' ? 'confirmed'
       : latest?.status === 'expired' ? 'failed' : 'pending',
     reason: validFailureReasons.has(rawReason) ? rawReason : null,
+    metaCode: safeNumericCode(rawDiagnostic?.metaCode, 1000000),
+    metaSubcode: safeNumericCode(rawDiagnostic?.metaSubcode, 1000000000),
     checkedAt: latest?.created_at || null,
   };
   return {

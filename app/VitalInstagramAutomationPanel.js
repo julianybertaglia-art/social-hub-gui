@@ -330,6 +330,8 @@ export default function VitalInstagramAutomationPanel() {
           Última tentativa de login: {lastLogin.reason
             ? failureExplanations[lastLogin.reason] || 'Falha na conclusão da autorização.'
             : 'A Meta não concluiu a conexão no TidePlace. O diagnóstico detalhado não estava disponível nessa tentativa.'}
+          {lastLogin.metaCode ? ' Código Meta: ' + lastLogin.metaCode : ''}
+          {lastLogin.metaSubcode ? ' / ' + lastLogin.metaSubcode : ''}
           {' '}A conexão anterior foi preservada.
         </p>
       )}

@@ -40,6 +40,6 @@ export function exactlyVitalInstagram(profile) {
 
 export function allowedInstagramAuthFailure(reason) {
   const allowed = new Set(['cancelled','expired','state','missing_code','not_configured',
-    'exchange','wrong_account','subscribe','save','token_invalid']);
+    'exchange','wrong_account','wrong_username','subscribe','save','token_invalid']);
   return allowed.has(reason) ? reason : 'exchange';
 }

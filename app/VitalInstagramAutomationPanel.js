@@ -75,6 +75,21 @@ export default function VitalInstagramAutomationPanel() {
   const enabled = Boolean(instagram?.connected && instagram?.automaticReplies);
   const connected = Boolean(instagram?.connected);
   const commentsEnabled = Boolean(instagram?.connected && instagram?.commentsSubscribed);
+  const lastLogin = status?.instagramLogin;
+  const failureExplanations = {
+    cancelled: 'Autorização cancelada na Meta.',
+    expired: 'A tentativa expirou.',
+    state: 'A confirmação de segurança falhou.',
+    missing_code: 'A Meta não devolveu o código de autorização.',
+    secret_missing: 'A credencial do aplicativo Meta no servidor está incompleta.',
+    exchange: 'A Meta não confirmou a troca do código pelo token.',
+    wrong_business: 'O portfólio empresarial autorizado não corresponde à Vital Decor.',
+    account_not_shared: 'A Meta não devolveu o Instagram da Vital entre os ativos compartilhados.',
+    token_invalid: 'A Meta não validou a credencial do aplicativo.',
+    permissions: 'A Meta não concedeu todas as permissões de mensagens e comentários.',
+    subscribe: 'A Meta não confirmou a assinatura dos eventos de mensagens e comentários.',
+    save: 'A autorização foi validada, mas houve falha ao registrar a conexão.',
+  };
 
   async function authorizeDirect() {
     setBusy('meta');
@@ -308,6 +323,15 @@ export default function VitalInstagramAutomationPanel() {
             {busy === 'saving' ? 'Confirmando...' : 'Confirmar e ativar'}
           </button>
         </section>
+      )}
+
+      {!enabled && lastLogin?.status === 'failed' && (
+        <p className={styles.notice} role="status">
+          Última tentativa de login: {lastLogin.reason
+            ? failureExplanations[lastLogin.reason] || 'Falha na conclusão da autorização.'
+            : 'A Meta não concluiu a conexão no TidePlace. O diagnóstico detalhado não estava disponível nessa tentativa.'}
+          {' '}A conexão anterior foi preservada.
+        </p>
       )}
 
       {notice && <p className={styles.notice} role="status">{notice}</p>}

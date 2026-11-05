@@ -217,8 +217,33 @@ export async function readStatus(db, ownerId) {
     }
     connections.push(publicRow);
   }
+  // Read-only diagnostic from the latest OAuth attempt by this authenticated
+  // owner. Only a known failure code is exposed; never return candidates,
+  // tokens, raw Graph responses or user identifiers.
+  const { data: attempts, error: attemptsError } = await db.from(SESSIONS)
+    .select('status,created_at,candidates')
+    .eq('owner_user_id', ownerId)
+    .eq('workspace_id', WORKSPACE)
+    .eq('platform', 'instagram')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  const latest = attemptsError ? null : attempts?.[0];
+  const validFailureReasons = new Set([
+    'cancelled', 'expired', 'state', 'missing_code', 'secret_missing',
+    'exchange', 'wrong_business', 'account_not_shared', 'token_invalid',
+    'permissions', 'subscribe', 'save',
+  ]);
+  const rawReason = latest?.status === 'expired' && Array.isArray(latest.candidates)
+    ? latest.candidates.find((candidate) => candidate?.type === 'unified_oauth_failure')?.reason
+    : null;
+  const instagramLogin = {
+    status: latest?.status === 'consumed' ? 'confirmed'
+      : latest?.status === 'expired' ? 'failed' : 'pending',
+    reason: validFailureReasons.has(rawReason) ? rawReason : null,
+    checkedAt: latest?.created_at || null,
+  };
   return {
-    workspace: WORKSPACE, connections, appId: APP_ID,
+    workspace: WORKSPACE, connections, appId: APP_ID, instagramLogin,
     whatsappConfigId: process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID || '',
     automaticReplies: connections.some((connection) => connection.platform === 'instagram' && connection.automaticReplies),
   };

@@ -1,0 +1,126 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { handleViviMessage } from '../app/api/vital-connections/vivi-flow.mjs';
+
+const connection = {
+  id: 'test-vital', owner_user_id: 'test-owner',
+  external_account_id: '123456789', access_token: 'local-test-placeholder',
+};
+
+function fakeDatabase() {
+  const writes = [];
+  return {
+    writes,
+    from(table) {
+      return {
+        select() { return this; },
+        eq() { return this; },
+        maybeSingle() {
+          if (table === 'vital_whatsapp_flow_configs') {
+            return Promise.resolve({ data: { enabled: true }, error: null });
+          }
+          if (table === 'vital_whatsapp_flow_sessions') {
+            return Promise.resolve({ data: { stage: 'order_channel', human_handoff: false, manual_override: false }, error: null });
+          }
+          if (table === 'vital_whatsapp_sector_settings') {
+            return Promise.resolve({ data: null, error: null });
+          }
+          throw new Error('Unexpected lookup: ' + table);
+        },
+        insert(data) {
+          writes.push({ table, action: 'insert', data });
+          return Promise.resolve({ error: null });
+        },
+        upsert(data) {
+          writes.push({ table, action: 'upsert', data });
+          return Promise.resolve({ error: null });
+        },
+        update(data) {
+          writes.push({ table, action: 'update', data });
+          return this;
+        },
+        then(resolve, reject) {
+          return Promise.resolve({ error: null }).then(resolve, reject);
+        },
+      };
+    },
+  };
+}
+
+async function simulateChoice(choice, rejectSend = false) {
+  const db = fakeDatabase();
+  const sent = [];
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    sent.push({ url, payload: JSON.parse(options.body) });
+    const response = rejectSend
+      ? { error: { code: 10 } }
+      : { messages: [{ id: 'wamid.local-test' }] };
+    return new Response(JSON.stringify(response), { status: rejectSend ? 400 : 200 });
+  };
+  let error = null;
+  try {
+    await handleViviMessage(db, connection, {
+      id: 'inbound-test-' + choice, from: '11111111111',
+      interactive: { list_reply: { id: choice } },
+    }, 'https://example.invalid');
+  } catch (caught) {
+    error = caught;
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+  return { db, sent, error };
+}
+
+test('Vivi directs the three marketplace order options to the corresponding platform', async () => {
+  for (const [choice, platform] of [
+    ['vivi_order_shopee', 'Shopee'],
+    ['vivi_order_mercadolivre', 'Mercado Livre'],
+    ['vivi_order_tiktok', 'TikTok Shop'],
+  ]) {
+    const { db, sent, error } = await simulateChoice(choice);
+    assert.equal(error, null);
+    assert.equal(sent.length, 1);
+    assert.ok(sent[0].url.endsWith('/123456789/messages'));
+    const message = sent[0].payload;
+    assert.equal(message.type, 'text');
+    assert.equal(message.to, '11111111111');
+    assert.ok(message.text.body.includes('*' + platform + '*'));
+    assert.match(message.text.body, /chat/);
+    assert.match(message.text.body, /chamado/);
+    assert.match(message.text.body, /pós-venda.*exclusivamente/s);
+    assert.match(message.text.body, /MENU/);
+    assert.doesNotMatch(message.text.body, /número do pedido/);
+    assert.doesNotMatch(message.text.body, /continuar o atendimento por aqui/);
+
+    const session = db.writes.find(write => write.table === 'vital_whatsapp_flow_sessions' && write.action === 'upsert');
+    assert.equal(session.data.human_handoff, true);
+    assert.equal(session.data.selection, 'Pós-venda · ' + platform);
+    const assignment = db.writes.find(write => write.table === 'vital_whatsapp_assignments' && write.action === 'upsert');
+    assert.equal(assignment.data.sector, 'pos_venda');
+    assert.ok(db.writes.some(write => write.table === 'vital_whatsapp_flow_events' && write.data.status === 'completed'));
+  }
+});
+
+test('site and Amazon orders retain their existing WhatsApp support flow', async () => {
+  for (const choice of ['vivi_order_site', 'vivi_order_amazon']) {
+    const { db, sent, error } = await simulateChoice(choice);
+    assert.equal(error, null);
+    assert.equal(sent.length, 1);
+    assert.match(sent[0].payload.text.body, /nome completo/);
+    assert.match(sent[0].payload.text.body, /número do pedido/);
+    assert.match(sent[0].payload.text.body, /continuar o atendimento por aqui/);
+    assert.doesNotMatch(sent[0].payload.text.body, /exclusivamente dentro da plataforma/);
+    assert.ok(db.writes.some(write => write.table === 'vital_whatsapp_assignments' && write.action === 'upsert'));
+  }
+});
+
+test('when Meta refuses a marketplace message, Vivi records failure without changing its session', async () => {
+  const { db, sent, error } = await simulateChoice('vivi_order_shopee', true);
+  assert.equal(sent.length, 1);
+  assert.match(error.message, /Meta recusou envio da Vivi/);
+  assert.ok(db.writes.some(write => write.table === 'vital_whatsapp_flow_events' && write.data.status === 'failed'));
+  assert.equal(db.writes.some(write => write.table === 'vital_whatsapp_flow_sessions' && write.action === 'upsert'), false);
+  assert.equal(db.writes.some(write => write.table === 'vital_whatsapp_assignments' && write.action === 'upsert'), false);
+});
+

@@ -230,7 +230,7 @@ export async function readStatus(db, ownerId) {
   const latest = attemptsError ? null : attempts?.[0];
   const validFailureReasons = new Set([
     'cancelled', 'expired', 'state', 'missing_code', 'secret_missing',
-    'exchange', 'wrong_business', 'account_not_shared', 'token_invalid',
+    'exchange', 'app_credentials', 'wrong_business', 'account_not_shared', 'token_invalid',
     'permissions', 'subscribe', 'save',
   ]);
   const rawReason = latest?.status === 'expired' && Array.isArray(latest.candidates)

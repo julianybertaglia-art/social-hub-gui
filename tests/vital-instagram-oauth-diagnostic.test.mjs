@@ -26,14 +26,14 @@ test('Vital Instagram UI keeps failure visible after the Meta return tab closes'
   assert.match(code, /failureExplanations\[lastLogin\.reason\]/);
 });
 
-test('Meta token exchange omits the browser-only redirect URI and only retains numeric error identifiers', () => {
+test('Meta token exchange uses code first, then exact redirect only as controlled fallback', () => {
   const callback = read('../app/api/vital-connections/instagram/unified/callback/route.js');
   const exchange = callback.split('async function exchangeCode(code) {')[1].split('async function verifyUnifiedToken(')[0];
-  assert.doesNotMatch(exchange, /url\.searchParams\.set\('redirect_uri'/);
+  assert.match(exchange, /if \(withRedirect\) url\.searchParams\.set\('redirect_uri', CALLBACK_URL\)/);
   assert.match(exchange, /url\.searchParams\.set\('client_id', UNIFIED_APP_ID\)/);
-  assert.match(exchange, /url\.searchParams\.set\('client_secret', secret\)/);
+  assert.match(exchange, /url\.searchParams\.set\('client_secret', credential\.value\)/);
   assert.match(exchange, /url\.searchParams\.set\('code', code\)/);
-  assert.match(exchange, /authFailure\('exchange', result\?\.error\)/);
+  assert.match(exchange, /authFailure\('exchange', lastMetaError\)/);
   assert.match(callback, /metaCode: Number\.isInteger/);
   assert.doesNotMatch(callback, /candidates: \[\{[^\n]*access_token/);
 });

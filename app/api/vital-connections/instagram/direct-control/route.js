@@ -1,4 +1,4 @@
-import { authorize, graph } from '../../service';
+import { authorize, graph, graphInstagram } from '../../service';
 import { fail, GUI_INSTAGRAM_ID } from '../../helpers.mjs';
 
 export const runtime = 'nodejs';
@@ -31,25 +31,27 @@ export async function POST(request) {
     if (payload.action === 'activate_existing') {
       // Try to use the owner's already stored Page token; never send it to the browser.
       const { data: existing, error: lookupError } = await db.from(table)
-        .select('id,owner_user_id,workspace_id,platform,external_account_id,page_id,username,access_token,state')
+        .select('id,owner_user_id,workspace_id,platform,external_account_id,page_id,username,access_token,auth_provider,state')
         .eq('owner_user_id', ownerId).eq('workspace_id', 'vital-decor')
         .eq('platform', 'instagram').eq('state', 'connected').maybeSingle();
       if (lookupError) throw fail('Não foi possível consultar a conexão existente.', 503);
       verifiedInstagramAccount(existing);
 
       try {
-        const profile = await graph(existing.external_account_id, existing.access_token, {
-          query: { fields: 'id,username' },
+        const viaInstagram = existing.auth_provider === 'instagram_login';
+        const api = viaInstagram ? graphInstagram : graph;
+        const profile = await api(viaInstagram ? 'me' : existing.external_account_id, existing.access_token, {
+          query: { fields: viaInstagram ? 'user_id,username' : 'id,username' },
         });
-        if (String(profile?.id) !== String(existing.external_account_id)
+        if (String(viaInstagram ? profile?.user_id : profile?.id) !== String(existing.external_account_id)
           || String(profile?.username || '').toLowerCase() !== 'vitaldecor_') {
           throw fail('A Meta retornou uma conta diferente da Vital Decor.', 409);
         }
 
         // Meta must explicitly confirm the message webhook subscription.
-        const subscription = await graph((existing.page_id || existing.external_account_id) + '/subscribed_apps', existing.access_token, {
+        const subscription = await api((existing.page_id || existing.external_account_id) + '/subscribed_apps', existing.access_token, {
           method: 'POST',
-          query: { subscribed_fields: existing.page_id ? 'messages,messaging_postbacks' : 'messages,comments' },
+          query: { subscribed_fields: !viaInstagram && existing.page_id ? 'messages,messaging_postbacks' : 'messages,comments' },
         });
         if (subscription?.success !== true) {
           throw fail('A Meta não confirmou a assinatura das mensagens.', 502);

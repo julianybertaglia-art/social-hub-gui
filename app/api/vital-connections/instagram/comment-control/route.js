@@ -1,4 +1,4 @@
-import { authorize, graph } from '../../service';
+import { authorize, graph, graphInstagram } from '../../service';
 import { fail, GUI_INSTAGRAM_ID } from '../../helpers.mjs';
 
 export const runtime = 'nodejs';
@@ -19,7 +19,7 @@ export async function POST(request) {
 
     const { db, ownerId } = await authorize(request);
     const { data: connection, error } = await db.from('workspace_meta_connections')
-      .select('workspace_id,platform,external_account_id,page_id,username,access_token,state')
+      .select('workspace_id,platform,external_account_id,page_id,username,access_token,auth_provider,state')
       .eq('owner_user_id', ownerId).eq('workspace_id', 'vital-decor')
       .eq('platform', 'instagram').eq('state', 'connected').maybeSingle();
     if (error) throw fail('Não foi possível consultar a conexão da Vital Decor.', 503);
@@ -31,19 +31,21 @@ export async function POST(request) {
     }
 
     try {
-      const account = await graph(connection.external_account_id, connection.access_token, {
-        query: { fields: 'id,username' },
+      const instagramDirect = connection.auth_provider === 'instagram_login';
+      const api = instagramDirect ? graphInstagram : graph;
+      const account = await api(instagramDirect ? 'me' : connection.external_account_id, connection.access_token, {
+        query: { fields: instagramDirect ? 'user_id,username' : 'id,username' },
       });
-      if (String(account?.id || '') !== connection.external_account_id
+      if (String(instagramDirect ? account?.user_id : account?.id || '') !== connection.external_account_id
         || String(account?.username || '').toLowerCase() !== 'vitaldecor_') {
         throw fail('A Meta retornou uma conta diferente da Vital Decor.', 409);
       }
-      const subscribed = await graph((connection.page_id || connection.external_account_id) + '/subscribed_apps', connection.access_token, {
+      const subscribed = await api((connection.page_id || connection.external_account_id) + '/subscribed_apps', connection.access_token, {
         method: 'POST',
-        query: { subscribed_fields: connection.page_id ? 'messages,messaging_postbacks,comments' : 'messages,comments' },
+        query: { subscribed_fields: !instagramDirect && connection.page_id ? 'messages,messaging_postbacks,comments' : 'messages,comments' },
       });
       if (subscribed?.success !== true) throw new Error('Meta did not confirm comment subscription.');
-      const check = await graph((connection.page_id || connection.external_account_id) + '/subscribed_apps', connection.access_token, {
+      const check = await api((connection.page_id || connection.external_account_id) + '/subscribed_apps', connection.access_token, {
         query: { fields: 'id,subscribed_fields' },
       });
       if (!(check?.data || []).some((app) => (app.subscribed_fields || []).includes('comments'))) {

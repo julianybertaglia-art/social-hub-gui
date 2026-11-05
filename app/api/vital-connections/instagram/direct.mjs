@@ -27,7 +27,7 @@ export function extractVitalDirectMessages(payload) {
 }
 
 async function sendMetaMessage(connection, senderId, message) {
-  const response = await fetch('https://graph.facebook.com/' + API_VERSION + '/' + connection.external_account_id + '/messages', {
+  const response = await fetch((connection.auth_provider === 'instagram_login' ? 'https://graph.instagram.com/' : 'https://graph.facebook.com/') + API_VERSION + '/' + connection.external_account_id + '/messages', {
     method: 'POST',
     headers: {
       Authorization: 'Bearer ' + connection.access_token,
@@ -47,7 +47,7 @@ export async function processVitalInstagramDirect(payload, db) {
   if (!events.length) return 0;
   const uniqueAccounts = [...new Set(events.map((event) => event.accountId))];
   const { data: rows, error } = await db.from('workspace_meta_connections')
-    .select('id,workspace_id,platform,external_account_id,access_token,state,automatic_replies_enabled')
+    .select('id,workspace_id,platform,external_account_id,access_token,auth_provider,state,automatic_replies_enabled')
     .eq('workspace_id', 'vital-decor').eq('platform', 'instagram')
     .eq('state', 'connected').eq('automatic_replies_enabled', true)
     .in('external_account_id', uniqueAccounts);

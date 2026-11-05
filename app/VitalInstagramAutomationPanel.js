@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './CloudGate';
 import { startVitalInstagramUnifiedLogin } from './lib/vital-instagram-unified-client.mjs';
+import { startVitalInstagramOnlyLogin } from './lib/vital-instagram-only-login-client.mjs';
 import { VITAL_WHATSAPP_DISPLAY, VITAL_WHATSAPP_LINK, VITAL_STORE_LINK, VITAL_WELCOME_TEXT } from './lib/vital-direct-copy.mjs';
 import styles from './vital-instagram-automation.module.css';
 
@@ -67,6 +68,8 @@ export default function VitalInstagramAutomationPanel() {
         permissions: 'A autorização não incluiu mensagens e comentários do Instagram.',
         subscribe: 'A Meta não confirmou a assinatura dos webhooks de mensagens e comentários.',
         save: 'A autorização funcionou, mas não foi possível salvar a conexão.',
+        wrong_account: 'O Instagram autorizado não corresponde a @vitaldecor_.',
+        not_configured: 'O aplicativo Meta ainda precisa habilitar Login direto do Instagram.',
       };
       setNotice(explanations[reason] || 'A autorização não foi concluída. A conexão anterior foi preservada.');
     }
@@ -76,6 +79,7 @@ export default function VitalInstagramAutomationPanel() {
   const enabled = Boolean(instagram?.connected && instagram?.automaticReplies);
   const connected = Boolean(instagram?.connected);
   const commentsEnabled = Boolean(instagram?.connected && instagram?.commentsSubscribed);
+  const instagramOnlyAvailable = Boolean(status?.instagramDirectLoginAvailable);
   const lastLogin = status?.instagramLogin;
   const failureExplanations = {
     cancelled: 'Autorização cancelada na Meta.',
@@ -97,6 +101,18 @@ export default function VitalInstagramAutomationPanel() {
     setNotice('Abrindo o Login Unificado da Meta para @vitaldecor_...');
     try {
       const loginUrl = await startVitalInstagramUnifiedLogin(supabase);
+      window.location.assign(loginUrl);
+    } catch (error) {
+      setBusy('');
+      setNotice(error.message);
+    }
+  }
+
+  async function authorizeInstagramOnly() {
+    setBusy('instagram-only');
+    setNotice('Abrindo o login oficial de @vitaldecor_ no Instagram, sem o Facebook...');
+    try {
+      const loginUrl = await startVitalInstagramOnlyLogin(supabase);
       window.location.assign(loginUrl);
     } catch (error) {
       setBusy('');
@@ -235,6 +251,12 @@ export default function VitalInstagramAutomationPanel() {
                   {busy === 'existing' ? 'Conferindo autorização...' : 'Tentar ativar conexão atual'}
                 </button>
               )}
+              {instagramOnlyAvailable && (
+                <button type="button" className={styles.primaryButton}
+                  onClick={authorizeInstagramOnly} disabled={Boolean(busy) || loading}>
+                  {busy === 'instagram-only' ? 'Abrindo Instagram...' : 'Entrar direto pelo Instagram da Vital'}
+                </button>
+              )}
               <button type="button" className={connected ? styles.secondaryButton : styles.primaryButton}
                 onClick={authorizeDirect} disabled={Boolean(busy) || loading}>
                 {busy === 'meta' ? 'Aguardando Meta...' : connected ? 'Conectar pelo Login Unificado' : 'Autorizar Direct pela Meta'}
@@ -298,8 +320,9 @@ export default function VitalInstagramAutomationPanel() {
                 </button>
               )}
               <button type="button" className={styles.secondaryButton}
-                disabled={Boolean(busy)} onClick={authorizeDirect}>
-                Autorizar novamente pela Meta
+                disabled={Boolean(busy)}
+                onClick={instagramOnlyAvailable ? authorizeInstagramOnly : authorizeDirect}>
+                {instagramOnlyAvailable ? 'Entrar direto pelo Instagram' : 'Autorizar novamente pela Meta'}
               </button>
             </div>
           )}

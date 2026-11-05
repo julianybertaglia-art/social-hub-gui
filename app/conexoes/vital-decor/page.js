@@ -180,6 +180,33 @@ export default function VitalConnections() {
     }, loginFailure);
   }
 
+  async function activateSavedInstagramDirect() {
+    setBusy('instagram-existing');
+    setMessage('Conferindo com a Meta se a autorização já salva permite responder Directs...');
+    try {
+      if (!supabase) throw new Error('A conexão com o TidePlace está indisponível.');
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data?.session?.access_token) throw new Error('Entre novamente no TidePlace.');
+      const response = await fetch('/api/vital-connections/instagram/direct-control', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + data.session.access_token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'activate_existing' }),
+        cache: 'no-store',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'A Meta não confirmou a conexão atual.');
+      await refresh();
+      setMessage('A autorização salva foi confirmada pela Meta. Teste um Direct usando outra conta do Instagram.');
+    } catch (error) {
+      setMessage(error.message + ' Não desconecte a Vital Decor: o bloqueio de permissões deve ser corrigido no aplicativo Meta for Developers.');
+    } finally {
+      setBusy('');
+    }
+  }
+
   function connectWhatsApp() {
     const configId = configurationId(configInput);
     if (!configId) {
@@ -270,8 +297,14 @@ export default function VitalConnections() {
                   <span>Disponível em Facebook Login para Empresas, no aplicativo da Meta.</span>
                 </label>
               )}
+              {channel.id === 'instagram' && connected && !connection?.automaticReplies && (
+                <button className={styles.button} type="button" onClick={activateSavedInstagramDirect}
+                  disabled={Boolean(busy)}>
+                  {busy === 'instagram-existing' ? 'Conferindo com a Meta...' : 'Ativar com a autorização já salva'}
+                </button>
+              )}
               <button className={styles.button} onClick={channel.connect} disabled={!sdkReady || Boolean(busy)}>
-                {busy === channel.id ? 'Aguardando autorização...' : channel.id === 'instagram' && connected && !connection?.automaticReplies ? 'Ativar Direct no Instagram' : connected ? 'Renovar autorização' : 'Conectar ' + channel.label}
+                {busy === channel.id ? 'Aguardando autorização...' : channel.id === 'instagram' && connected && !connection?.automaticReplies ? 'Reautorizar pela Meta' : connected ? 'Renovar autorização' : 'Conectar ' + channel.label}
               </button>
               {channel.id === 'instagram' && (
                 <p className={styles.note}>

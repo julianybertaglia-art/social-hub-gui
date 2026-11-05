@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../whatsapp/lib';
 import {
   VITAL_IG_ID, VITAL_IG_USERNAME, IG_API_VERSION, IG_LOGIN_CALLBACK, IG_LOGIN_COOKIE,
-  exactlyVitalInstagram, directInstagramLoginConfigured, allowedInstagramAuthFailure,
+  verifiedVitalInstagramId, directInstagramLoginConfigured, allowedInstagramAuthFailure,
 } from '../lib.mjs';
 
 export const runtime = 'nodejs';
@@ -54,20 +54,21 @@ async function instagramGraph(path, token, { method = 'GET', query = {} } = {}) 
 
 async function authorizeDirectAndComments(token) {
   const profile = await instagramGraph('me', token, { query: { fields: 'user_id,username' } });
-  if (!exactlyVitalInstagram(profile)) throw authFailure('wrong_account');
-  const igId = VITAL_IG_ID;
+  const igId = verifiedVitalInstagramId(profile);
+  if (!igId) throw authFailure('wrong_account');
   let response;
   try {
-    response = await instagramGraph(igId + '/subscribed_apps', token, {
+    response = await instagramGraph('me/subscribed_apps', token, {
       method: 'POST', query: { subscribed_fields: 'messages,comments' },
     });
     if (response?.success !== true) throw authFailure('subscribe');
-    const check = await instagramGraph(igId + '/subscribed_apps', token, {
+    const check = await instagramGraph('me/subscribed_apps', token, {
       query: { fields: 'id,subscribed_fields' },
     });
     const fields = new Set((check.data || []).flatMap((value) => value.subscribed_fields || []));
     if (!fields.has('messages') || !fields.has('comments')) throw authFailure('subscribe');
   } catch { throw authFailure('subscribe'); }
+  return igId;
 }
 
 function redirectResult(kind, reason = '') {
@@ -112,14 +113,14 @@ export async function GET(request) {
     const code = url.searchParams.get('code') || '';
     if (!code || code.length > 4096) throw authFailure('missing_code');
     const token = await exchangeInstagramCode(code);
-    await authorizeDirectAndComments(token);
+    const verifiedIgId = await authorizeDirectAndComments(token);
 
     // Mutate solely the Vital Instagram connection, after all Meta checks pass.
     const now = new Date().toISOString();
     const { data: saved, error: saveError } = await db.from('workspace_meta_connections')
       .upsert({
         owner_user_id: session.owner_user_id, workspace_id: 'vital-decor',
-        platform: 'instagram', external_account_id: VITAL_IG_ID,
+        platform: 'instagram', external_account_id: verifiedIgId,
         access_token: token, auth_provider: 'instagram_login',
         page_id: null, waba_id: null, username: VITAL_IG_USERNAME,
         display_name: 'Vital Decor', picture_url: null, display_phone_number: null,

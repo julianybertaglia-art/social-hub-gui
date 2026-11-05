@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './CloudGate';
 import { startVitalInstagramUnifiedLogin } from './lib/vital-instagram-unified-client.mjs';
 import { VITAL_WHATSAPP_DISPLAY, VITAL_WHATSAPP_LINK, VITAL_STORE_LINK, VITAL_WELCOME_TEXT } from './lib/vital-direct-copy.mjs';
@@ -10,12 +10,10 @@ import styles from './vital-instagram-automation.module.css';
 export default function VitalInstagramAutomationPanel() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [sdkReady, setSdkReady] = useState(false);
   const [busy, setBusy] = useState('');
   const [notice, setNotice] = useState('');
   const [pending, setPending] = useState(null);
   const [selectedId, setSelectedId] = useState('');
-  const cancelLogin = useRef(null);
 
   const api = useCallback(async (path = '/api/vital-connections', body = null) => {
     if (!supabase) throw new Error('A conexão com TidePlace não está disponível.');
@@ -45,29 +43,8 @@ export default function VitalInstagramAutomationPanel() {
     let mounted = true;
     refresh().catch((error) => { if (mounted) setNotice(error.message); })
       .finally(() => { if (mounted) setLoading(false); });
-    return () => { mounted = false; cancelLogin.current?.(); };
-  }, [refresh]);
-
-  useEffect(() => {
-    if (!status?.appId) return;
-    let mounted = true;
-    const init = () => {
-      if (!mounted || !window.FB) return;
-      window.FB.init({ appId: status.appId, autoLogAppEvents: false, xfbml: false, version: 'v26.0' });
-      setSdkReady(true);
-    };
-    window.fbAsyncInit = init;
-    if (window.FB) init();
-    else if (!document.getElementById('facebook-jssdk')) {
-      const script = document.createElement('script');
-      script.id = 'facebook-jssdk';
-      script.src = 'https://connect.facebook.net/pt_BR/sdk.js';
-      script.async = true;
-      script.onerror = () => { if (mounted) setNotice('Não foi possível abrir o login da Meta. Atualize a página.'); };
-      document.body.appendChild(script);
-    }
     return () => { mounted = false; };
-  }, [status?.appId]);
+  }, [refresh]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -244,7 +221,7 @@ export default function VitalInstagramAutomationPanel() {
               )}
               <button type="button" className={connected ? styles.secondaryButton : styles.primaryButton}
                 onClick={authorizeDirect} disabled={Boolean(busy) || loading}>
-                {busy === 'meta' ? 'Aguardando Meta...' : connected ? 'Autorizar novamente pela Meta' : 'Autorizar e ativar Direct'}
+                {busy === 'meta' ? 'Aguardando Meta...' : connected ? 'Conectar pelo Login Unificado' : 'Autorizar Direct pela Meta'}
               </button>
             </div>
           )}

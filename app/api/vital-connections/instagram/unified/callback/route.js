@@ -5,6 +5,7 @@ import {
   CALLBACK_COOKIE, CALLBACK_URL, META_API_VERSION, UNIFIED_APP_ID,
   VITAL_BUSINESS_ID, VITAL_INSTAGRAM_ID, safeAuthError, selectVitalInstagram,
 } from '../lib.mjs';
+import { resolveAppSecret } from '../credentials.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,34 +26,6 @@ function authFailure(reason, metaError = null) {
 // when the app secret is invalid or the authorization URL's redirect must
 // also be provided on exchange. Probe credentials independently first, so
 // failures can be diagnosed without recording codes, tokens or error text.
-async function resolveAppSecret() {
-  // Instagram credentials stay entirely isolated from WhatsApp/Vivi.
-  // A different application's secret must never be used as a fallback.
-  const candidates = [
-    { value: process.env.META_APP_SECRET, source: 'meta' },
-  ].filter((candidate) =>
-    typeof candidate.value === 'string' && candidate.value.length > 8);
-  if (!candidates.length) throw authFailure('secret_missing');
-  let lastMetaError = null;
-  for (const candidate of candidates) {
-    const url = new URL('https://graph.facebook.com/' + META_API_VERSION + '/oauth/access_token');
-    url.searchParams.set('client_id', UNIFIED_APP_ID);
-    url.searchParams.set('client_secret', candidate.value);
-    url.searchParams.set('grant_type', 'client_credentials');
-    try {
-      const response = await fetch(url, {
-        cache: 'no-store', signal: AbortSignal.timeout(9000),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (response.ok && typeof payload.access_token === 'string' && payload.access_token.length > 20) {
-        return candidate;
-      }
-      lastMetaError = payload?.error || null;
-    } catch { /* Do not expose the secret or full request URL. */ }
-  }
-  throw authFailure('app_credentials', lastMetaError);
-}
-
 async function exchangeCode(code) {
   const credential = await resolveAppSecret();
   const endpoint = 'https://graph.facebook.com/' + META_API_VERSION + '/oauth/access_token';

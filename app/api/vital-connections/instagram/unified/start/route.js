@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authorize } from '../../../service';
 import { CALLBACK_COOKIE, CALLBACK_URL, unifiedLoginUrl } from '../lib.mjs';
+import { resolveAppSecret } from '../credentials.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,9 @@ export async function POST(request) {
   }
   try {
     const { db, ownerId } = await authorize(request);
+    // Fail before opening Meta if neither stored secret matches this app ID.
+    // Prevents repeated browser authorization attempts while the server is misconfigured.
+    await resolveAppSecret();
     const { data, error } = await db.from('workspace_meta_connection_sessions').insert({
       owner_user_id: ownerId,
       workspace_id: 'vital-decor',
@@ -33,8 +37,12 @@ export async function POST(request) {
     });
     return response;
   } catch (error) {
+    const credentialError = ['app_credentials', 'secret_missing'].includes(error?.reason);
     return NextResponse.json({
-      error: error?.status ? error.message : 'Não foi possível iniciar o login seguro do Instagram.',
+      error: credentialError
+        ? 'O aplicativo Meta do TidePlace ainda não passou na validação do servidor. Não repita o login: é necessário corrigir a credencial do aplicativo na Vercel.'
+        : error?.status ? error.message : 'Não foi possível iniciar o login seguro do Instagram.',
+      ...(credentialError ? { reason: error.reason, code: error.metaCode || null } : {}),
     }, { status: error?.status || 503, headers: { 'Cache-Control': 'no-store' } });
   }
 }

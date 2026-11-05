@@ -59,8 +59,8 @@ test('Callback validates state, business, Instagram ID and both webhook fields b
   const sequence = [
     "state !== cookie",
     "status: 'consuming'",
-    "const token = await exchangeCode(code);",
-    "await verifyUnifiedToken(token);",
+    "const { token, appSecret } = await exchangeCode(code);",
+    "await verifyUnifiedToken(token, appSecret);",
     "await subscribeInstagram(token);",
     ".upsert({",
   ].map((needle) => code.indexOf(needle));

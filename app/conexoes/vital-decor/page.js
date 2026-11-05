@@ -302,7 +302,7 @@ export default function VitalConnections() {
                   </Link>
                 </p>
               )}
-              {channel.id === 'whatsapp' && connected && <p className={styles.note}>Respostas automáticas pausadas.</p>
+              {channel.id === 'whatsapp' && connected && <p className={styles.note}>Respostas automáticas pausadas.</p>}
             </section>
           );
         })}

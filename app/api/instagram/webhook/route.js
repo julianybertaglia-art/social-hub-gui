@@ -14,16 +14,26 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 180;
 
 function isValidSignature(rawBody, signatureHeader) {
-  const appSecret = process.env.META_INSTAGRAM_APP_SECRET || process.env.META_APP_SECRET;
-  if (!appSecret || !signatureHeader?.startsWith('sha256=')) return false;
-
-  const received = signatureHeader.slice('sha256='.length);
-  const expected = crypto.createHmac('sha256', appSecret).update(rawBody, 'utf8').digest('hex');
-  const receivedBuffer = Buffer.from(received, 'hex');
-  const expectedBuffer = Buffer.from(expected, 'hex');
-
-  if (receivedBuffer.length !== expectedBuffer.length) return false;
-  return crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
+  if (!/^sha256=[a-f0-9]{64}$/i.test(signatureHeader || '')) return false;
+  const receivedBuffer = Buffer.from(signatureHeader.slice('sha256='.length), 'hex');
+  const legacySecret = process.env.META_INSTAGRAM_APP_SECRET || process.env.META_APP_SECRET;
+  const vitalDirectSecret = process.env.META_VITAL_IG_APP_SECRET;
+  function matches(secret) {
+    if (!secret) return false;
+    const expected = crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest();
+    return expected.length === receivedBuffer.length && crypto.timingSafeEqual(expected, receivedBuffer);
+  }
+  if (matches(legacySecret)) return true;
+  // A distinct Instagram Login app secret may authenticate only events whose
+  // entry is exclusively the Vital Decor Instagram ID. Never accept a payload
+  // for Gui signed by another Meta app's secret.
+  if (!matches(vitalDirectSecret)) return false;
+  try {
+    const payload = JSON.parse(rawBody);
+    return payload?.object === 'instagram' &&
+      Array.isArray(payload.entry) && payload.entry.length > 0 &&
+      payload.entry.every((entry) => String(entry?.id || '') === '17841439121395170');
+  } catch { return false; }
 }
 
 export async function GET(request) {

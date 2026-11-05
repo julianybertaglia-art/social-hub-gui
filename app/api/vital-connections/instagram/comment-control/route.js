@@ -24,7 +24,7 @@ export async function POST(request) {
       .eq('platform', 'instagram').eq('state', 'connected').maybeSingle();
     if (error) throw fail('Não foi possível consultar a conexão da Vital Decor.', 503);
     if (!connection || !/^\d{5,40}$/.test(String(connection.external_account_id || ''))
-      || !/^\d{5,40}$/.test(String(connection.page_id || ''))
+      || (connection.page_id && !/^\d{5,40}$/.test(String(connection.page_id)))
       || !connection.access_token || connection.external_account_id === GUI_INSTAGRAM_ID
       || String(connection.username || '').replace(/^@/, '').toLowerCase() !== 'vitaldecor_') {
       throw fail('Conecte o Instagram @vitaldecor_ pela Meta antes de ativar os comentários.', 409);
@@ -38,12 +38,12 @@ export async function POST(request) {
         || String(account?.username || '').toLowerCase() !== 'vitaldecor_') {
         throw fail('A Meta retornou uma conta diferente da Vital Decor.', 409);
       }
-      const subscribed = await graph(connection.page_id + '/subscribed_apps', connection.access_token, {
+      const subscribed = await graph((connection.page_id || connection.external_account_id) + '/subscribed_apps', connection.access_token, {
         method: 'POST',
-        query: { subscribed_fields: 'messages,messaging_postbacks,comments' },
+        query: { subscribed_fields: connection.page_id ? 'messages,messaging_postbacks,comments' : 'messages,comments' },
       });
       if (subscribed?.success !== true) throw new Error('Meta did not confirm comment subscription.');
-      const check = await graph(connection.page_id + '/subscribed_apps', connection.access_token, {
+      const check = await graph((connection.page_id || connection.external_account_id) + '/subscribed_apps', connection.access_token, {
         query: { fields: 'id,subscribed_fields' },
       });
       if (!(check?.data || []).some((app) => (app.subscribed_fields || []).includes('comments'))) {

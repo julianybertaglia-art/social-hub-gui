@@ -7,7 +7,7 @@ const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 test('Callback saves only a safe, allowlisted OAuth failure reason', () => {
   const code = read('../app/api/vital-connections/instagram/unified/callback/route.js');
   assert.match(code, /const reason = safeAuthError\(error\?\.reason\)/);
-  assert.match(code, /candidates: \\[\\{ type: 'unified_oauth_failure', reason, metaCode, metaSubcode \\}\\]/);
+  assert.ok(code.includes("candidates: [{ type: 'unified_oauth_failure', reason, metaCode, metaSubcode }]"));
   assert.match(code, /\.eq\('status', 'consuming'\)/);
   assert.doesNotMatch(code, /candidates: \[\{[^\n]*token:/);
 });

@@ -60,7 +60,7 @@ export function extractVitalMarmoreComments(payload, now = Date.now()) {
 }
 
 async function sendPrivateReply(connection, commentId) {
-  const response = await fetch('https://graph.facebook.com/' + API_VERSION + '/' + connection.external_account_id + '/messages', {
+  const response = await fetch((connection.auth_provider === 'instagram_login' ? 'https://graph.instagram.com/' : 'https://graph.facebook.com/') + API_VERSION + '/' + connection.external_account_id + '/messages', {
     method: 'POST',
     headers: {
       Authorization: 'Bearer ' + connection.access_token,
@@ -87,7 +87,7 @@ export async function processVitalMarmoreComments(payload, db) {
   // The Vital token is stored server-side; no fallback to the Gui's token.
   const accountIds = [...new Set(events.map((event) => event.accountId))];
   const { data: connections, error: connectionError } = await db.from('workspace_meta_connections')
-    .select('external_account_id,access_token,username')
+    .select('external_account_id,access_token,username,auth_provider')
     .eq('workspace_id', 'vital-decor').eq('platform', 'instagram').eq('state', 'connected')
     .in('external_account_id', accountIds);
   if (connectionError) throw connectionError;

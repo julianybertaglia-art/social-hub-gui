@@ -4,6 +4,7 @@ import { graph } from '../../../service';
 import {
   CALLBACK_COOKIE, CALLBACK_URL, META_API_VERSION, UNIFIED_APP_ID,
   VITAL_BUSINESS_ID, VITAL_INSTAGRAM_ID, safeAuthError, selectVitalInstagram,
+  isVerifiedVitalProfile,
 } from '../lib.mjs';
 import { resolveAppSecret } from '../credentials.mjs';
 
@@ -111,10 +112,7 @@ async function verifyUnifiedToken(token, secret) {
   } catch {
     throw authFailure('account_not_shared');
   }
-  if (String(profile?.id || '') !== VITAL_INSTAGRAM_ID ||
-      String(profile?.username || '').replace(/^@/, '').toLowerCase() !== 'vitaldecor_') {
-    throw authFailure('account_not_shared');
-  }
+  if (!isVerifiedVitalProfile(profile)) throw authFailure('account_not_shared');
   // No account-switching and no broad skip. This is verified against Meta.
   return assigned || { id: VITAL_INSTAGRAM_ID, username: 'vitaldecor_' };
 }

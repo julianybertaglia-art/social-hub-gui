@@ -32,7 +32,7 @@ export function selectVitalInstagram(accounts) {
 export function safeAuthError(code) {
   const known = new Set([
     'cancelled', 'expired', 'state', 'missing_code', 'secret_missing',
-    'exchange', 'wrong_business', 'account_not_shared', 'token_invalid',
+    'exchange', 'app_credentials', 'wrong_business', 'account_not_shared', 'token_invalid',
     'permissions', 'subscribe', 'save',
   ]);
   return known.has(code) ? code : 'exchange';

@@ -68,7 +68,8 @@ export default function VitalInstagramAutomationPanel() {
         permissions: 'A autorização não incluiu mensagens e comentários do Instagram.',
         subscribe: 'A Meta não confirmou a assinatura dos webhooks de mensagens e comentários.',
         save: 'A autorização funcionou, mas não foi possível salvar a conexão.',
-        wrong_account: 'O Instagram autorizado não corresponde a @vitaldecor_.',
+        wrong_account: 'A Meta não confirmou o identificador da conta @vitaldecor_.',
+        wrong_username: 'A conta aberta no Instagram é diferente de @vitaldecor_. Saia da outra conta e entre no perfil correto antes de autorizar.',
         not_configured: 'O aplicativo Meta ainda precisa habilitar Login direto do Instagram.',
       };
       setNotice(explanations[reason] || 'A autorização não foi concluída. A conexão anterior foi preservada.');

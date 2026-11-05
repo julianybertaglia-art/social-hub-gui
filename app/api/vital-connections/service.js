@@ -192,7 +192,7 @@ export async function readStatus(db, ownerId) {
     let publicRow = publicConnection(row);
     try {
       const verified = await graph(row.external_account_id, row.access_token, {
-        query: { fields: row.platform === 'instagram' ? PAGE_FIELDS : 'id,display_phone_number,verified_name,code_verification_status' },
+        query: { fields: row.platform === 'instagram' ? 'id,username' : 'id,display_phone_number,verified_name,code_verification_status' },
       });
       if (row.platform === 'whatsapp') {
         publicRow = { ...publicRow, codeVerificationStatus: verified.code_verification_status || 'UNKNOWN' };
@@ -204,9 +204,9 @@ export async function readStatus(db, ownerId) {
       // Comments are a distinct Meta subscription from Direct messages. A missing
       // permission must not make an otherwise valid Direct look disconnected.
       let commentsSubscribed = false;
-      if (publicRow.connected && row.page_id) {
+      if (publicRow.connected) {
         try {
-          const subscribed = await graph(row.page_id + '/subscribed_apps', row.access_token, {
+          const subscribed = await graph((row.page_id || row.external_account_id) + '/subscribed_apps', row.access_token, {
             query: { fields: 'id,subscribed_fields' },
           });
           commentsSubscribed = (subscribed.data || []).some((app) =>

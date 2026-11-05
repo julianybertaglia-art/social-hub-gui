@@ -34,6 +34,19 @@ export async function graph(path, token, options = {}) {
   return result;
 }
 
+export async function graphInstagram(path, token, options = {}) {
+  const url = new URL('https://graph.instagram.com/v26.0/' + path);
+  Object.entries(options.query || {}).forEach(([key, value]) => url.searchParams.set(key, String(value)));
+  const response = await fetch(url, {
+    method: options.method || 'GET',
+    headers: { Authorization: 'Bearer ' + token },
+    cache: 'no-store', signal: AbortSignal.timeout(20000),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result.error) throw fail('A API do Instagram não confirmou a operação.', 502);
+  return result;
+}
+
 async function prepare(db, ownerId, platform, candidates) {
   if (!candidates.length) throw fail('A Meta não retornou uma conta da Vital Decor. Confira as contas autorizadas.', 422);
   await clearExpiredSessions(db, ownerId);
@@ -166,6 +179,7 @@ export async function commitConnection(db, ownerId, body) {
       picture_url: profile.profile_picture_url || null,
       display_phone_number: profile.display_phone_number || null,
       state: 'connected',
+      auth_provider: 'facebook',
       connected_at: now, updated_at: now, automatic_replies_enabled: platform === 'instagram',
     };
     const { data: saved, error: saveError } = await db.from(CONNECTIONS)
@@ -191,9 +205,16 @@ export async function readStatus(db, ownerId) {
   for (const row of data || []) {
     let publicRow = publicConnection(row);
     try {
-      const verified = await graph(row.external_account_id, row.access_token, {
-        query: { fields: row.platform === 'instagram' ? 'id,username' : 'id,display_phone_number,verified_name,code_verification_status' },
-      });
+      const instagramDirect = row.platform === 'instagram' && row.auth_provider === 'instagram_login';
+      const verified = instagramDirect
+        ? await graphInstagram('me', row.access_token, { query: { fields: 'user_id,username' } })
+        : await graph(row.external_account_id, row.access_token, {
+          query: { fields: row.platform === 'instagram' ? 'id,username' : 'id,display_phone_number,verified_name,code_verification_status' },
+        });
+      if (instagramDirect && (String(verified.user_id) !== String(row.external_account_id) ||
+        String(verified.username || '').toLowerCase() !== 'vitaldecor_')) {
+        throw new Error('Instagram identity mismatch');
+      }
       if (row.platform === 'whatsapp') {
         publicRow = { ...publicRow, codeVerificationStatus: verified.code_verification_status || 'UNKNOWN' };
       }
@@ -201,17 +222,20 @@ export async function readStatus(db, ownerId) {
       publicRow = { ...publicRow, connected: false, state: 'reauthorization_required' };
     }
     if (row.platform === 'instagram') {
-      // Comments are a distinct Meta subscription from Direct messages. A missing
-      // permission must not make an otherwise valid Direct look disconnected.
       let commentsSubscribed = false;
       if (publicRow.connected) {
         try {
-          const subscribed = await graph((row.page_id || row.external_account_id) + '/subscribed_apps', row.access_token, {
-            query: { fields: 'id,subscribed_fields' },
-          });
+          const viaInstagram = row.auth_provider === 'instagram_login';
+          const subscribed = viaInstagram
+            ? await graphInstagram(row.external_account_id + '/subscribed_apps', row.access_token, {
+              query: { fields: 'id,subscribed_fields' },
+            })
+            : await graph((row.page_id || row.external_account_id) + '/subscribed_apps', row.access_token, {
+              query: { fields: 'id,subscribed_fields' },
+            });
           commentsSubscribed = (subscribed.data || []).some((app) =>
             (app.subscribed_fields || []).includes('comments'));
-        } catch { /* Keep the account and Direct connection untouched. */ }
+        } catch { /* Do not disconnect the account for missing comment permission. */ }
       }
       publicRow = { ...publicRow, commentsSubscribed };
     }
@@ -251,6 +275,7 @@ export async function readStatus(db, ownerId) {
   };
   return {
     workspace: WORKSPACE, connections, appId: APP_ID, instagramLogin,
+    instagramDirectLoginAvailable: /^\\d{5,40}$/.test(String(process.env.META_VITAL_IG_APP_ID || '')) && Boolean(process.env.META_VITAL_IG_APP_SECRET),
     whatsappConfigId: process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID || '',
     automaticReplies: connections.some((connection) => connection.platform === 'instagram' && connection.automaticReplies),
   };

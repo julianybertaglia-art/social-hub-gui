@@ -167,13 +167,20 @@ export async function GET(request) {
       .eq('id', state).eq('owner_user_id', data.owner_user_id).eq('status', 'consuming');
     return redirectForResult('connected');
   } catch (error) {
+    // The user can close the confirmation screen before taking a screenshot.
+    // Persist only the allowlisted error code, never tokens, Meta response bodies,
+    // authorization codes or private account details.
+    const reason = safeAuthError(error?.reason);
     if (session?.owner_user_id) {
-      await db.from('workspace_meta_connection_sessions').update({ status: 'expired', candidates: [] })
+      const { error: diagnosticError } = await db.from('workspace_meta_connection_sessions')
+        .update({
+          status: 'expired',
+          candidates: [{ type: 'unified_oauth_failure', reason }],
+        })
         .eq('id', state).eq('owner_user_id', session.owner_user_id)
         .eq('status', 'consuming');
+      if (diagnosticError) console.warn('VITAL:IG:OAUTH_DIAGNOSTIC_PERSIST_FAILED');
     }
-    // No secret, token or authorization code is logged or included in the URL.
-    const reason = safeAuthError(error?.reason);
     console.warn('VITAL:IG:UNIFIED_AUTH_FAILED', reason);
     return redirectForResult('failed', reason);
   }

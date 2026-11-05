@@ -8,7 +8,7 @@ function verifiedInstagramAccount(connection) {
   if (!connection || connection.workspace_id !== 'vital-decor'
     || connection.platform !== 'instagram' || connection.state !== 'connected'
     || !/^[0-9]{5,40}$/.test(String(connection.external_account_id || ''))
-    || !/^[0-9]{5,40}$/.test(String(connection.page_id || ''))
+    || (connection.page_id && !/^[0-9]{5,40}$/.test(String(connection.page_id)))
     || !connection.access_token || String(connection.external_account_id) === GUI_INSTAGRAM_ID
     || String(connection.username || '').replace(/^@/, '').toLowerCase() !== 'vitaldecor_') {
     throw fail('Não há uma conexão válida da conta @vitaldecor_. Reautorize o Instagram pela Meta.', 409);
@@ -47,9 +47,9 @@ export async function POST(request) {
         }
 
         // Meta must explicitly confirm the message webhook subscription.
-        const subscription = await graph(existing.page_id + '/subscribed_apps', existing.access_token, {
+        const subscription = await graph((existing.page_id || existing.external_account_id) + '/subscribed_apps', existing.access_token, {
           method: 'POST',
-          query: { subscribed_fields: 'messages,messaging_postbacks' },
+          query: { subscribed_fields: existing.page_id ? 'messages,messaging_postbacks' : 'messages,comments' },
         });
         if (subscription?.success !== true) {
           throw fail('A Meta não confirmou a assinatura das mensagens.', 502);

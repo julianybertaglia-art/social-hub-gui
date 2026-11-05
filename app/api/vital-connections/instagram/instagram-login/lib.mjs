@@ -23,9 +23,19 @@ export function instagramBusinessLoginUrl(state, appId) {
   return url.toString();
 }
 
+// Facebook Login and Instagram Login may identify the same account using
+// different, app-scoped IDs. Never compare the new Instagram Login user_id
+// with a previously stored Facebook Login ID. Accept only a real Instagram
+// Graph /me response for the exact Vital username and a valid numeric user_id.
+export function verifiedVitalInstagramId(profile) {
+  const userId = String(profile?.user_id || '');
+  const username = String(profile?.username || '').replace(/^@/, '').toLowerCase();
+  return username === VITAL_IG_USERNAME && /^[0-9]{5,40}$/.test(userId)
+    && userId !== '17841401155694295' ? userId : null;
+}
+
 export function exactlyVitalInstagram(profile) {
-  return String(profile?.user_id || '') === VITAL_IG_ID &&
-    String(profile?.username || '').replace(/^@/, '').toLowerCase() === VITAL_IG_USERNAME;
+  return Boolean(verifiedVitalInstagramId(profile));
 }
 
 export function allowedInstagramAuthFailure(reason) {

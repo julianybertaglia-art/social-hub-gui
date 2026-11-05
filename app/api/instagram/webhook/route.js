@@ -13,7 +13,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 180;
 
-function isValidSignature(rawBody, signatureHeader) {
+async function isValidSignature(rawBody, signatureHeader) {
   if (!/^sha256=[a-f0-9]{64}$/i.test(signatureHeader || '')) return false;
   const receivedBuffer = Buffer.from(signatureHeader.slice('sha256='.length), 'hex');
   const legacySecret = process.env.META_INSTAGRAM_APP_SECRET || process.env.META_APP_SECRET;
@@ -23,16 +23,26 @@ function isValidSignature(rawBody, signatureHeader) {
     const expected = crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest();
     return expected.length === receivedBuffer.length && crypto.timingSafeEqual(expected, receivedBuffer);
   }
+  // Leave all existing Gui/Facebook webhook behavior unchanged.
   if (matches(legacySecret)) return true;
-  // A distinct Instagram Login app secret may authenticate only events whose
-  // entry is exclusively the Vital Decor Instagram ID. Never accept a payload
-  // for Gui signed by another Meta app's secret.
   if (!matches(vitalDirectSecret)) return false;
+  // The native Instagram app has its own account-scoped ID. Accept signed
+  // native events only when the exact authorized Vital connection saved this
+  // ID; NEVER take an arbitrary ID from an inbound webhook as authorization.
   try {
     const payload = JSON.parse(rawBody);
-    return payload?.object === 'instagram' &&
-      Array.isArray(payload.entry) && payload.entry.length > 0 &&
-      payload.entry.every((entry) => String(entry?.id || '') === '17841439121395170');
+    if (payload?.object !== 'instagram' || !Array.isArray(payload.entry) ||
+        payload.entry.length === 0) return false;
+    const db = serverClient();
+    const { data, error } = await db.from('workspace_meta_connections')
+      .select('external_account_id,username,auth_provider')
+      .eq('workspace_id', 'vital-decor').eq('platform', 'instagram')
+      .eq('state', 'connected').eq('auth_provider', 'instagram_login')
+      .maybeSingle();
+    if (error || !data || String(data.username || '').toLowerCase() !== 'vitaldecor_') return false;
+    const accountId = String(data.external_account_id || '');
+    return /^[0-9]{5,40}$/.test(accountId) && accountId !== GUI_INSTAGRAM_ID &&
+      payload.entry.every((entry) => String(entry?.id || '') === accountId);
   } catch { return false; }
 }
 
@@ -60,7 +70,7 @@ export async function GET(request) {
 export async function POST(request) {
   const rawBody = await request.text();
   const signature = request.headers.get('x-hub-signature-256');
-  const signatureValid = isValidSignature(rawBody, signature);
+  const signatureValid = await isValidSignature(rawBody, signature);
 
   let previewPayload = {};
   try { previewPayload = JSON.parse(rawBody); } catch {}

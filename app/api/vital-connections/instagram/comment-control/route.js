@@ -40,12 +40,12 @@ export async function POST(request) {
         || String(account?.username || '').toLowerCase() !== 'vitaldecor_') {
         throw fail('A Meta retornou uma conta diferente da Vital Decor.', 409);
       }
-      const subscribed = await api((connection.page_id || connection.external_account_id) + '/subscribed_apps', connection.access_token, {
+      const subscribed = await api(instagramDirect ? 'me/subscribed_apps' : (connection.page_id || connection.external_account_id) + '/subscribed_apps', connection.access_token, {
         method: 'POST',
         query: { subscribed_fields: !instagramDirect && connection.page_id ? 'messages,messaging_postbacks,comments' : 'messages,comments' },
       });
       if (subscribed?.success !== true) throw new Error('Meta did not confirm comment subscription.');
-      const check = await api((connection.page_id || connection.external_account_id) + '/subscribed_apps', connection.access_token, {
+      const check = await api(instagramDirect ? 'me/subscribed_apps' : (connection.page_id || connection.external_account_id) + '/subscribed_apps', connection.access_token, {
         query: { fields: 'id,subscribed_fields' },
       });
       if (!(check?.data || []).some((app) => (app.subscribed_fields || []).includes('comments'))) {

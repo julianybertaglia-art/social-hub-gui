@@ -227,7 +227,7 @@ export async function readStatus(db, ownerId) {
         try {
           const viaInstagram = row.auth_provider === 'instagram_login';
           const subscribed = viaInstagram
-            ? await graphInstagram(row.external_account_id + '/subscribed_apps', row.access_token, {
+            ? await graphInstagram('me/subscribed_apps', row.access_token, {
               query: { fields: 'id,subscribed_fields' },
             })
             : await graph((row.page_id || row.external_account_id) + '/subscribed_apps', row.access_token, {

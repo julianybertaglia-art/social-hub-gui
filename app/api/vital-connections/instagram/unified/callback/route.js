@@ -21,28 +21,73 @@ function authFailure(reason, metaError = null) {
   });
 }
 
-async function exchangeCode(code) {
-  // Never use the WhatsApp app secret or put a token in a redirect URL.
-  const secret = process.env.META_APP_SECRET;
-  if (!secret) throw authFailure('secret_missing');
-  const url = new URL('https://graph.facebook.com/' + META_API_VERSION + '/oauth/access_token');
-  url.searchParams.set('client_id', UNIFIED_APP_ID);
-  url.searchParams.set('client_secret', secret);
-  // Meta's Unified Login with a configuration ID exchanges the one-time
-  // business-login code using app ID, app secret and code. The redirect URL is
-  // verified by Meta during the browser step and must not be sent again here.
-  url.searchParams.set('code', code);
-  let response;
-  try {
-    response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(18000) });
-  } catch { throw authFailure('exchange'); }
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok || !result?.access_token) throw authFailure('exchange', result?.error);
-  return result.access_token;
+// Facebook Login for Business can fail with a generic Graph error (#1)
+// when the app secret is invalid or the authorization URL's redirect must
+// also be provided on exchange. Probe credentials independently first, so
+// failures can be diagnosed without recording codes, tokens or error text.
+async function resolveAppSecret() {
+  const candidates = [
+    { value: process.env.META_APP_SECRET, source: 'meta' },
+    // A read-only compatibility fallback for the same registered Meta app.
+    // It does not modify or reconnect WhatsApp.
+    { value: process.env.META_WHATSAPP_APP_SECRET, source: 'legacy' },
+  ].filter((candidate, index, all) =>
+    typeof candidate.value === 'string' &&
+    candidate.value.length > 8 &&
+    all.findIndex((other) => other.value === candidate.value) === index);
+  if (!candidates.length) throw authFailure('secret_missing');
+  let lastMetaError = null;
+  for (const candidate of candidates) {
+    const url = new URL('https://graph.facebook.com/' + META_API_VERSION + '/oauth/access_token');
+    url.searchParams.set('client_id', UNIFIED_APP_ID);
+    url.searchParams.set('client_secret', candidate.value);
+    url.searchParams.set('grant_type', 'client_credentials');
+    try {
+      const response = await fetch(url, {
+        cache: 'no-store', signal: AbortSignal.timeout(9000),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok && typeof payload.access_token === 'string' && payload.access_token.length > 20) {
+        return candidate;
+      }
+      lastMetaError = payload?.error || null;
+    } catch { /* Do not expose the secret or full request URL. */ }
+  }
+  throw authFailure('app_credentials', lastMetaError);
 }
 
-async function verifyUnifiedToken(token) {
-  const secret = process.env.META_APP_SECRET;
+async function exchangeCode(code) {
+  const credential = await resolveAppSecret();
+  const endpoint = 'https://graph.facebook.com/' + META_API_VERSION + '/oauth/access_token';
+  let lastMetaError = null;
+  // Unified Login docs describe a code-only exchange. Some Facebook Login
+  // configurations bind redirect_uri to the code. Retry only after an error,
+  // and only with the exact redirect used in the authorization dialogue.
+  for (const withRedirect of [false, true]) {
+    const url = new URL(endpoint);
+    url.searchParams.set('client_id', UNIFIED_APP_ID);
+    url.searchParams.set('client_secret', credential.value);
+    url.searchParams.set('code', code);
+    if (withRedirect) url.searchParams.set('redirect_uri', CALLBACK_URL);
+    try {
+      const response = await fetch(url, {
+        cache: 'no-store', signal: AbortSignal.timeout(10000),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok && typeof payload.access_token === 'string' && payload.access_token.length > 20) {
+        return { token: payload.access_token, appSecret: credential.value };
+      }
+      lastMetaError = payload?.error || null;
+      // Code reuse and permission errors are definitive, not retryable.
+      if (lastMetaError && ![1, 100].includes(Number(lastMetaError.code))) break;
+    } catch {
+      // A transport error may be transient; retry with the exact redirect once.
+    }
+  }
+  throw authFailure('exchange', lastMetaError);
+}
+
+async function verifyUnifiedToken(token, secret) {
   let debug;
   try {
     debug = await graph('debug_token', UNIFIED_APP_ID + '|' + secret, {
@@ -143,8 +188,8 @@ export async function GET(request) {
     if (url.searchParams.has('error')) throw authFailure('cancelled');
     const code = url.searchParams.get('code') || '';
     if (!code || code.length > 4096) throw authFailure('missing_code');
-    const token = await exchangeCode(code);
-    await verifyUnifiedToken(token);
+    const { token, appSecret } = await exchangeCode(code);
+    await verifyUnifiedToken(token, appSecret);
     await subscribeInstagram(token);
 
     // Only after the new token, identity and both subscriptions pass do we

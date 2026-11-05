@@ -170,6 +170,7 @@ export async function GET(request) {
         owner_user_id: data.owner_user_id,
         workspace_id: 'vital-decor',
         platform: 'instagram',
+        auth_provider: 'facebook',
         external_account_id: VITAL_INSTAGRAM_ID,
         access_token: token,
         page_id: null,

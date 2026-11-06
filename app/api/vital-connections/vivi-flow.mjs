@@ -205,7 +205,7 @@ export async function handleViviMessage(db, connection, message, origin) {
         claimed = Boolean(data);
       }
       if (!claimed) {
-        await db.from('vital_whatsapp_flow_events').update({ status: 'skipped' })
+        await db.from('vital_whatsapp_flow_events').update({ status: 'completed' })
           .eq('connection_id', connection.id).eq('meta_message_id', message.id);
         return;
       }

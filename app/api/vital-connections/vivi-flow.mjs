@@ -25,6 +25,12 @@ const VIVI_MARKETPLACE_SUPPORT = {
   vivi_order_tiktok: 'no *TikTok Shop*',
 };
 
+export const VIVI_IDLE_MS = 24 * 60 * 60 * 1000;
+export function isWelcomeDue(lastInteractionAt, now = Date.now()) {
+  const last = Date.parse(String(lastInteractionAt || ''));
+  return !Number.isFinite(last) || now - last >= VIVI_IDLE_MS;
+}
+
 export const VIVI_WELCOME = 'Oi! 👋 Sou a Vivi, assistente virtual da Vital Decor.\n\nEstou aqui para te ajudar. Selecione abaixo sobre o que você gostaria de falar.\n\nVocê pode escrever MENU a qualquer momento para voltar ao início.';
 export const VIVI_WHOLESALE = "Que bom ter você por aqui! 🤝\n\n🛒 No nosso catálogo você escolhe os produtos, monta o carrinho e preenche seus dados.\n\nAo finalizar, o WhatsApp abre com seu pedido pronto. É só enviar!\n\n✅ Depois disso, um representante comercial dará continuidade ao atendimento.\n\n👇 *Acesse o catálogo:*";
 export const VIVI_BLUETTI = 'Ótima escolha! 🔋 Um especialista da nossa equipe vai continuar seu atendimento por aqui.\n\nEnquanto isso, você pode conhecer os modelos em nosso catálogo BLUETTI. Para agilizar, me diga seu nome e qual modelo deseja conhecer ou qual é sua dúvida sobre o produto.';
@@ -125,19 +131,46 @@ export async function handleViviMessage(db, connection, message, origin) {
   if (configError || !config?.enabled) return;
 
   const choice = extractChoice(message);
+  const explicitMenu = choice === 'vivi_menu';
   const { data: session, error: sessionError } = await db.from('vital_whatsapp_flow_sessions')
-    .select('stage,human_handoff,manual_override').eq('connection_id', connection.id)
-    .eq('contact_wa_id', to).maybeSingle();
+    .select('stage,selection,human_handoff,manual_override,last_interaction_at,updated_at')
+    .eq('connection_id', connection.id).eq('contact_wa_id', to).maybeSingle();
   if (sessionError) throw sessionError;
-  if (choice !== 'vivi_menu' && (session?.human_handoff || session?.manual_override)) return;
-  if (!session && choice !== 'vivi_menu') {
-    const { data: previous, error: historyError } = await db.from('workspace_meta_messages')
-      .select('id').eq('connection_id', connection.id).eq('contact_wa_id', to)
-      .neq('meta_message_id', message.id).limit(1);
-    if (historyError) throw historyError;
-    if (previous?.length) return; // Never greet old or manually initiated conversations.
+
+  // A manually controlled conversation stays with the human, unless the customer
+  // explicitly types MENU. Existing automated handoffs may restart after 24h idle.
+  if (!explicitMenu && session?.manual_override) return;
+  if (!explicitMenu && session?.stage === 'welcome_pending') return;
+
+  let wantsWelcome = explicitMenu;
+  if (!explicitMenu) {
+    // The webhook persists inbound messages before running Vivi. Never treat
+    // another inbound in that same burst as proof of a historical conversation.
+    const messageTime = Number(message.timestamp);
+    const currentSentAt = Number.isFinite(messageTime) && messageTime > 0
+      ? new Date(messageTime > 1e12 ? messageTime : messageTime * 1000).toISOString()
+      : new Date().toISOString();
+    const { data: activity, error: activityError } = await db.from('workspace_meta_messages')
+      .select('direction,sent_at').eq('connection_id', connection.id)
+      .eq('contact_wa_id', to).neq('meta_message_id', message.id)
+      .lt('sent_at', currentSentAt).order('sent_at', { ascending: false }).limit(1);
+    if (activityError) throw activityError;
+    const lastPriorActivity = activity?.[0]?.sent_at || session?.last_interaction_at || null;
+
+    if (!session) {
+      // Welcome first-time customers even if they sent multiple messages rapidly.
+      // Suppress an active chat that a staff member had already started.
+      const { data: humanHistory, error: humanHistoryError } = await db.from('workspace_meta_messages')
+        .select('sent_at').eq('connection_id', connection.id)
+        .eq('contact_wa_id', to).eq('direction', 'outbound')
+        .lte('sent_at', currentSentAt).order('sent_at', { ascending: false }).limit(1);
+      if (humanHistoryError) throw humanHistoryError;
+      wantsWelcome = !humanHistory?.length || isWelcomeDue(lastPriorActivity);
+    } else {
+      wantsWelcome = isWelcomeDue(lastPriorActivity);
+    }
+    if (!wantsWelcome && (session?.human_handoff || !session || !isVitalChoice(choice))) return;
   }
-  if (session && !isVitalChoice(choice) && choice !== 'vivi_menu') return;
   // Process every message id only once, even if Meta retries its webhook.
   const { error: claimError } = await db.from('vital_whatsapp_flow_events').insert({
     connection_id: connection.id, owner_user_id: connection.owner_user_id,
@@ -147,8 +180,55 @@ export async function handleViviMessage(db, connection, message, origin) {
   if (claimError) throw claimError;
 
   try {
-    if (choice === 'vivi_menu' || !session) await mainMenu(db, connection, to);
-    else if (choice === 'vivi_buy') {
+    if (wantsWelcome) {
+      // Claim per contact before sending; concurrent messages must never each
+      // produce their own welcome menu.
+      const pendingAt = new Date().toISOString();
+      let claimed = false;
+      if (!session) {
+        const { error } = await db.from('vital_whatsapp_flow_sessions').insert({
+          connection_id: connection.id, owner_user_id: connection.owner_user_id,
+          contact_wa_id: to, stage: 'welcome_pending', selection: null,
+          human_handoff: false, manual_override: false,
+          last_interaction_at: pendingAt, updated_at: pendingAt,
+        });
+        if (error && error.code !== '23505') throw error;
+        claimed = !error;
+      } else {
+        const { data, error } = await db.from('vital_whatsapp_flow_sessions').update({
+          stage: 'welcome_pending', selection: null,
+          human_handoff: false, manual_override: false,
+          last_interaction_at: pendingAt, updated_at: pendingAt,
+        }).eq('connection_id', connection.id).eq('contact_wa_id', to)
+          .eq('updated_at', session.updated_at).select('connection_id').maybeSingle();
+        if (error) throw error;
+        claimed = Boolean(data);
+      }
+      if (!claimed) {
+        await db.from('vital_whatsapp_flow_events').update({ status: 'completed' })
+          .eq('connection_id', connection.id).eq('meta_message_id', message.id);
+        return;
+      }
+      try {
+        await mainMenu(db, connection, to);
+      } catch (welcomeError) {
+        if (!session) {
+          await db.from('vital_whatsapp_flow_sessions').delete()
+            .eq('connection_id', connection.id).eq('contact_wa_id', to)
+            .eq('stage', 'welcome_pending').eq('updated_at', pendingAt);
+        } else {
+          await db.from('vital_whatsapp_flow_sessions').update({
+            stage: session.stage, selection: session.selection,
+            human_handoff: session.human_handoff,
+            manual_override: session.manual_override,
+            last_interaction_at: session.last_interaction_at,
+            updated_at: new Date().toISOString(),
+          }).eq('connection_id', connection.id).eq('contact_wa_id', to)
+            .eq('stage', 'welcome_pending').eq('updated_at', pendingAt);
+        }
+        throw welcomeError;
+      }
+    } else if (choice === 'vivi_buy') {
       await sendList(db, connection, to, 'Claro! Qual linha de produtos você procura?', 'Ver produtos', VIVI_PRODUCTS);
       await setSession(db, connection, to, { stage: 'products' });
     } else if (choice === 'vivi_order') {

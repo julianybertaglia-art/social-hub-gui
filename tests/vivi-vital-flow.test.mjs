@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  extractChoice, normalizeText, VIVI_WELCOME, VIVI_MAIN,
+  extractChoice, normalizeText, VIVI_WELCOME, VIVI_MAIN, VIVI_IDLE_MS, isWelcomeDue,
   VIVI_PRODUCTS, VIVI_MARKETPLACES, VIVI_WHOLESALE,
   VIVI_BLUETTI, VIVI_BLUETTI_NO_CATALOG, VIVI_VITAL_RETAIL, isVitalChoice,
 } from '../app/api/vital-connections/vivi-flow.mjs';
@@ -55,8 +55,11 @@ test('Vivi code only touches Vital workspace, supports handoff and silent existi
   const manual = readFileSync(new URL('../app/api/vital-whatsapp/conversations/send/route.js',import.meta.url),'utf8');
   const upload = readFileSync(new URL('../app/api/vital-whatsapp/automacoes/route.js',import.meta.url),'utf8');
   assert.match(flow,/if \(configError \|\| !config\?\.enabled\) return/);
-  assert.match(flow,/session\?\.human_handoff \|\| session\?\.manual_override/);
-  assert.match(flow,/if \(previous\?\.length\) return/);
+  assert.ok(flow.includes('if (!explicitMenu && session?.manual_override) return;'));
+  assert.ok(flow.includes('session?.human_handoff'));
+  assert.ok(flow.includes('wantsWelcome = !humanHistory?.length || isWelcomeDue(lastPriorActivity);'));
+  assert.match(flow,/stage: 'welcome_pending'/);
+  assert.ok(flow.includes('isWelcomeDue(lastPriorActivity)'));
   assert.match(flow,/vital_whatsapp_flow_events/);
   assert.match(flow,/vital_whatsapp_affiliate_applications/);
   // Atacado envia URL do catálogo por texto, nunca como documento PDF.
@@ -79,4 +82,13 @@ test('TikTok applicant view never mixes Vital candidates with Gui records', () =
   assert.match(api, /eq\('owner_user_id', ownerId\)/);
   assert.match(api, /eq\('workspace_id', 'vital-decor'\)/);
   assert.doesNotMatch(api, /whatsapp_contacts|influencer_applications'\)/);
+});
+
+test('Vivi restarts only after 24h without activity', () => {
+  const now = Date.parse('2026-11-06T20:00:00Z');
+  assert.equal(VIVI_IDLE_MS, 86_400_000);
+  assert.equal(isWelcomeDue('2026-11-05T20:00:01Z', now), false);
+  assert.equal(isWelcomeDue('2026-11-05T20:00:00Z', now), true);
+  assert.equal(isWelcomeDue('2026-11-06T19:00:00Z', now), false);
+  assert.equal(isWelcomeDue(null, now), true);
 });

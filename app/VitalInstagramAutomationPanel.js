@@ -347,6 +347,7 @@ export default function VitalInstagramAutomationPanel() {
             <div className={styles.detail}><strong>Canal</strong><span>Somente @vitaldecor_</span></div>
             <div className={styles.detail}><strong>Palavra-chave</strong><span>MARMORE (aceita acento)</span></div>
             <div className={styles.detail}><strong>Produtos</strong><span>Carrara, Preto e Calacata Gold (links oficiais)</span></div>
+            <div className={styles.detail}><strong>Resposta no comentário</strong><span>Te enviei os links no Direct! 💜 (após a confirmação do envio)</span></div>
             <div className={styles.detail}><strong>Limite da Meta</strong><span>Uma resposta privada por comentário</span></div>
             <div className={styles.detail}><strong>WhatsApp e Gui</strong><span>Não são alterados por esta regra</span></div>
           </div>

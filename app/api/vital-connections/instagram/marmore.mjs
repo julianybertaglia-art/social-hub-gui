@@ -5,6 +5,7 @@ const KEYWORD = 'MARMORE';
 const RULE_ID = 'vital-marmore-comment-link-v1';
 const API_VERSION = 'v26.0';
 const MAX_COMMENT_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+export const MARMORE_PUBLIC_REPLY = 'Te enviei os links no Direct! 💜';
 
 // Links to real, existing Vital Decor marble products. No guessed search/category URL.
 export const MARMORE_REPLY_TEXT = [
@@ -78,6 +79,31 @@ async function sendPrivateReply(connection, commentId) {
     throw new Error('Meta private reply HTTP ' + response.status + ' / ' + (payload.error?.code || 'unconfirmed'));
   }
   return payload.message_id;
+}
+
+async function sendPublicReply(connection, commentId) {
+  const origin = connection.auth_provider === 'instagram_login'
+    ? 'https://graph.instagram.com/' : 'https://graph.facebook.com/';
+  const response = await fetch(origin + API_VERSION + '/' + commentId + '/replies', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + connection.access_token,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ message: MARMORE_PUBLIC_REPLY }),
+    cache: 'no-store',
+    signal: AbortSignal.timeout(15000),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload.error) {
+    const rejected = response.status >= 400 && response.status < 500
+      && response.status !== 408 && response.status !== 429;
+    throw Object.assign(new Error('Meta did not confirm public reply'), { rejected });
+  }
+  if (typeof payload.id !== 'string' || !payload.id.trim()) {
+    throw new Error('Meta did not return a public reply ID');
+  }
+  return payload.id;
 }
 
 // A single insert, backed by a unique comment_id, is the cross-instance claim.
@@ -174,8 +200,26 @@ export async function processVitalMarmoreComments(payload, db) {
     const { error: updateError } = await db.from('instagram_automation_events')
       .update({ private_status: 'sent' }).eq('id', receipt.id);
     if (updateError) console.error('VITAL:MARMORE: event status could not be saved');
+    // Only promise a DM publicly after the private message is confirmed and
+    // durably recorded. The comment claim also prevents replay on webhook retry.
+    try {
+      const publicReplyId = await sendPublicReply(connection, event.commentId);
+      const { error: publicError } = await db.from('instagram_automation_events').update({
+        public_status: 'sent', public_reply_id: publicReplyId,
+        public_delivery_mode: 'threaded_reply', public_error: null,
+      }).eq('id', receipt.id);
+      if (publicError) console.error('VITAL:MARMORE: public reply status could not be saved');
+    } catch (error) {
+      await db.from('instagram_automation_events').update({
+        public_status: error?.rejected ? 'failed' : 'unverified',
+        public_delivery_mode: 'threaded_reply',
+        public_error: 'Meta did not confirm public reply',
+      }).eq('id', receipt.id);
+      console.error('VITAL:MARMORE: public reply not confirmed');
+    }
     sent += 1;
   }
   return sent;
 }
+
 

@@ -31,6 +31,11 @@ test('Vital Direct includes both official shopping and support destinations',()=
   assert.match(VITAL_WELCOME_TEXT,/n[aã]o realizamos atendimento pelo Direct/i);
   assert.match(VITAL_WELCOME_TEXT,/https:\/\/vitaldecor\.com\.br/);
   assert.match(VITAL_WELCOME_TEXT,/96576-5247/);
+  assert.match(VITAL_WELCOME_TEXT,/Mercado Livre, Shopee, TikTok Shop ou outro marketplace/i);
+  assert.match(VITAL_WELCOME_TEXT,/chat da plataforma onde você comprou/i);
+  assert.ok(VITAL_WELCOME_TEXT.indexOf('Quer comprar?') < VITAL_WELCOME_TEXT.indexOf('Já fez uma compra'));
+  assert.match(VITAL_WELCOME_TEXT, /💛/);
+  assert.doesNotMatch(VITAL_WELCOME_TEXT, /💜/);
   assert.ok(VITAL_WELCOME_TEXT.length <= 640, 'button template text must stay under Meta limit');
 });
 test('Direct button template offers site and WhatsApp, fallback preserves WhatsApp URL',()=>{
@@ -65,3 +70,4 @@ test('Direct UI exposes retry without pop-up while preserving reauthorization an
   assert.match(ui,/Autorizar novamente pela Meta/);
   assert.match(ui,/action: 'pause'/);
 });
+

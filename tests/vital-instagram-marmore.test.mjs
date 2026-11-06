@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   extractVitalMarmoreComments,
+  extractVitalJardimComments,
   MARMORE_REPLY_TEXT,
 } from '../app/api/vital-connections/instagram/marmore.mjs';
+import { JARDIM_REPLY_TEXT } from '../app/lib/vital-jardim-copy.mjs';
 
 const VITAL = '17841439121395170';
 const GUI = '17841401155694295';
@@ -29,6 +31,21 @@ test('Ignores the Gui and unrelated or partial keywords', () => {
   assert.equal(extractVitalMarmoreComments(payload(VITAL, 'marmoreado')).length, 0);
   assert.equal(extractVitalMarmoreComments(payload(VITAL, 'Qual valor?')).length, 0);
   assert.equal(extractVitalMarmoreComments(payload(VITAL, 'MARMORE', { from: { username: 'vitaldecor_' } })).length, 0);
+});
+
+test('JARDIM matches whole words on Vital and leaves mixed-keyword comments to MARMORE', () => {
+  assert.equal(extractVitalJardimComments(payload(VITAL, 'Quero jardim!')).length, 1);
+  assert.equal(extractVitalJardimComments(payload(VITAL, 'jardineiro')).length, 0);
+  assert.equal(extractVitalJardimComments(payload(GUI, 'JARDIM')).length, 0);
+  assert.equal(extractVitalJardimComments(payload(VITAL, 'JARDIM e MÁRMORE')).length, 0);
+  assert.equal(extractVitalMarmoreComments(payload(VITAL, 'JARDIM e MÁRMORE')).length, 1);
+});
+
+test('JARDIM message contains the verified category and Vital WhatsApp', () => {
+  const urls = JARDIM_REPLY_TEXT.match(/https?:\/\/\S+/g) || [];
+  assert.deepEqual(urls, ['https://vitaldecor.com.br/placa-jardim-vertical-artificial-buchinho-60x40/']);
+  assert.match(JARDIM_REPLY_TEXT, /jardins verticais/i);
+  assert.match(JARDIM_REPLY_TEXT, /WhatsApp:[\s\S]*\(11\) 96576-5247/);
 });
 
 test('Ignores old comments outside the permitted seven days', () => {
@@ -63,6 +80,7 @@ test('Webhook keeps both automations isolated from Gui account', () => {
   const code = readFileSync(new URL('../app/api/instagram/webhook/route.js', import.meta.url), 'utf8');
   assert.match(code, /processVitalInstagramDirect\(payload, db\)/);
   assert.match(code, /processVitalMarmoreComments\(payload, db\)/);
+  assert.match(code, /processVitalJardimComments\(payload, db\)/);
   assert.match(code, /processFlowComments\(guiPayload\)/);
 });
 

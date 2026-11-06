@@ -6,6 +6,7 @@ import { startVitalInstagramUnifiedLogin } from './lib/vital-instagram-unified-c
 import { startVitalInstagramOnlyLogin } from './lib/vital-instagram-only-login-client.mjs';
 import { VITAL_WHATSAPP_DISPLAY, VITAL_WHATSAPP_LINK, VITAL_STORE_LINK, VITAL_WELCOME_TEXT } from './lib/vital-direct-copy.mjs';
 import { MARMORE_PUBLIC_REPLY, MARMORE_REPLY_TEXT } from './lib/vital-marmore-copy.mjs';
+import { JARDIM_PUBLIC_REPLY, JARDIM_REPLY_TEXT } from './lib/vital-jardim-copy.mjs';
 import styles from './vital-instagram-automation.module.css';
 
 
@@ -370,6 +371,41 @@ export default function VitalInstagramAutomationPanel() {
             </div>
           )}
         </div>
+      </section>
+
+      <section className={styles.card}>
+        <div className={styles.cardHeader}>
+          <div className={styles.appIcon}>#</div>
+          <div className={styles.cardTitle}>
+            <h2>Comentário JARDIM → link no Direct</h2>
+            <p>@vitaldecor_ · Comentário contendo JARDIM</p>
+          </div>
+          <span className={commentsEnabled ? styles.activeBadge : styles.pendingBadge}>
+            {commentsEnabled ? 'Ativa' : 'Aguardando ativação'}
+          </span>
+        </div>
+        <div className={styles.steps}>
+          <div><b>1</b><span>Cliente comenta JARDIM</span></div>
+          <span className={styles.arrow}>→</span>
+          <div><b>2</b><span>Recebe um Direct automático</span></div>
+          <span className={styles.arrow}>→</span>
+          <div><b>3</b><span>Acessa os jardins verticais</span></div>
+        </div>
+        <div className={styles.previewGrid}>
+          <div className={styles.preview}>
+            <span className={styles.previewLabel}>PRÉVIA DO DIRECT</span>
+            <div className={styles.message}>{JARDIM_REPLY_TEXT}</div>
+          </div>
+          <div className={styles.details}>
+            <span className={styles.previewLabel}>COMO FUNCIONA</span>
+            <div className={styles.detail}><strong>Canal</strong><span>Somente @vitaldecor_</span></div>
+            <div className={styles.detail}><strong>Palavra-chave</strong><span>JARDIM</span></div>
+            <div className={styles.detail}><strong>Produtos</strong><span>Um link para os jardins verticais da loja</span></div>
+            <div className={styles.detail}><strong>Resposta no comentário</strong><span>{JARDIM_PUBLIC_REPLY} (após a confirmação do envio)</span></div>
+            <div className={styles.detail}><strong>Limite da Meta</strong><span>Uma resposta privada por comentário</span></div>
+          </div>
+        </div>
+        {!commentsEnabled && <p className={styles.notice}>Autorize os comentários na conexão acima para ativar esta resposta.</p>}
       </section>
 
       {pending && (

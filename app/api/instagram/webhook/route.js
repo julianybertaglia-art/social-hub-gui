@@ -6,7 +6,7 @@ import { processFlowComments, processFlowSelections } from '../flow-automations/
 import { processMentoriaDirectKeywords, processConsultoriaDirectKeywords } from '../flow-automations/direct.mjs';
 import { serverClient } from '../audio-automation/service.js';
 import { processVitalInstagramDirect } from '../../vital-connections/instagram/direct.mjs';
-import { processVitalMarmoreComments } from '../../vital-connections/instagram/marmore.mjs';
+import { processVitalMarmoreComments, processVitalJardimComments } from '../../vital-connections/instagram/marmore.mjs';
 import { GUI_INSTAGRAM_ID } from '../../vital-connections/helpers.mjs';
 
 export const runtime = 'nodejs';
@@ -139,16 +139,17 @@ export async function POST(request) {
         ...entry, messaging: (entry.messaging || []).filter(event =>
           !paused.has(String(event?.sender?.id || '')))
       })) };
-      const [comments, selections, mentoriaDirect, consultoriaDirect, vitalDirect, vitalMarmore] = await Promise.all([
+      const [comments, selections, mentoriaDirect, consultoriaDirect, vitalDirect, vitalMarmore, vitalJardim] = await Promise.all([
         processFlowComments(guiPayload),
         processFlowSelections(automationPayload, db),
         processMentoriaDirectKeywords(automationPayload, db),
         processConsultoriaDirectKeywords(automationPayload, db),
         processVitalInstagramDirect(payload, db),
         processVitalMarmoreComments(payload, db),
+        processVitalJardimComments(payload, db),
       ]);
-      if (comments || selections || mentoriaDirect || consultoriaDirect || vitalDirect || vitalMarmore) {
-        console.info('TIDEPLACE:FLOW', { comments, selections, mentoriaDirect, consultoriaDirect, vitalDirect, vitalMarmore });
+      if (comments || selections || mentoriaDirect || consultoriaDirect || vitalDirect || vitalMarmore || vitalJardim) {
+        console.info('TIDEPLACE:FLOW', { comments, selections, mentoriaDirect, consultoriaDirect, vitalDirect, vitalMarmore, vitalJardim });
       }
     } catch (error) {
       console.error('TIDEPLACE:FLOW: falha no processamento', error instanceof Error ? error.message : String(error));
@@ -157,3 +158,4 @@ export async function POST(request) {
 
   return Response.json({ ok: true, status: 'EVENT_RECEIVED', engine: 'tideplace-flow-v1' });
 }
+

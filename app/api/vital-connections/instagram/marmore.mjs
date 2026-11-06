@@ -1,22 +1,23 @@
 // Vital Decor Instagram comment-to-DM. This handler never touches Gui's account or WhatsApp.
 import { GUI_INSTAGRAM_ID } from '../helpers.mjs';
 import { MARMORE_PUBLIC_REPLY, MARMORE_REPLY_TEXT } from '../../../lib/vital-marmore-copy.mjs';
+import { JARDIM_PUBLIC_REPLY, JARDIM_REPLY_TEXT } from '../../../lib/vital-jardim-copy.mjs';
 
 export { MARMORE_PUBLIC_REPLY, MARMORE_REPLY_TEXT };
 
-const KEYWORD = 'MARMORE';
-const RULE_ID = 'vital-marmore-comment-link-v1';
+const MARMORE_RULE = { keyword: 'MARMORE', id: 'vital-marmore-comment-link-v1', reply: MARMORE_REPLY_TEXT, publicReply: MARMORE_PUBLIC_REPLY };
+const JARDIM_RULE = { keyword: 'JARDIM', id: 'vital-jardim-comment-link-v1', reply: JARDIM_REPLY_TEXT, publicReply: JARDIM_PUBLIC_REPLY };
 const API_VERSION = 'v26.0';
 const MAX_COMMENT_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 function normalize(value) {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
 }
-function matchesKeyword(text) {
-  return normalize(text).split(/[^A-Z0-9]+/).includes(KEYWORD);
+function matchesKeyword(text, keyword) {
+  return normalize(text).split(/[^A-Z0-9]+/).includes(keyword);
 }
 
-export function extractVitalMarmoreComments(payload, now = Date.now()) {
+function extractVitalComments(payload, keyword, now = Date.now()) {
   if (payload?.object !== 'instagram' || !Array.isArray(payload.entry)) return [];
   const found = new Set();
   const result = [];
@@ -33,7 +34,10 @@ export function extractVitalMarmoreComments(payload, now = Date.now()) {
       const commentId = String(value.id || value.comment_id || '');
       const username = String(value?.from?.username || '').replace(/^@/, '').toLowerCase();
       if (!/^\d{5,50}$/.test(commentId) || value?.from?.id === accountId
-        || username === 'vitaldecor_' || !matchesKeyword(value.text)) continue;
+        || username === 'vitaldecor_' || !matchesKeyword(value.text, keyword)) continue;
+      // Meta allows only one private reply per comment. Preserve the existing
+      // marble rule when a single comment mentions both keywords.
+      if (keyword === 'JARDIM' && matchesKeyword(value.text, 'MARMORE')) continue;
       const eventTime = Number(value.timestamp || entry.time || 0);
       const milliseconds = eventTime > 1e12 ? eventTime : eventTime * 1000;
       if (eventTime && (milliseconds < now - MAX_COMMENT_AGE_MS || milliseconds > now + 5 * 60 * 1000)) continue;
@@ -46,7 +50,15 @@ export function extractVitalMarmoreComments(payload, now = Date.now()) {
   return result;
 }
 
-async function sendPrivateReply(connection, commentId) {
+export function extractVitalMarmoreComments(payload, now = Date.now()) {
+  return extractVitalComments(payload, MARMORE_RULE.keyword, now);
+}
+
+export function extractVitalJardimComments(payload, now = Date.now()) {
+  return extractVitalComments(payload, JARDIM_RULE.keyword, now);
+}
+
+async function sendPrivateReply(connection, commentId, replyText) {
   const response = await fetch((connection.auth_provider === 'instagram_login' ? 'https://graph.instagram.com/' : 'https://graph.facebook.com/') + API_VERSION + '/' + connection.external_account_id + '/messages', {
     method: 'POST',
     headers: {
@@ -55,7 +67,7 @@ async function sendPrivateReply(connection, commentId) {
     },
     body: JSON.stringify({
       recipient: { comment_id: commentId },
-      message: { text: MARMORE_REPLY_TEXT },
+      message: { text: replyText },
     }),
     cache: 'no-store',
     signal: AbortSignal.timeout(15000),
@@ -67,7 +79,7 @@ async function sendPrivateReply(connection, commentId) {
   return payload.message_id;
 }
 
-async function sendPublicReply(connection, commentId) {
+async function sendPublicReply(connection, commentId, publicReply) {
   const origin = connection.auth_provider === 'instagram_login'
     ? 'https://graph.instagram.com/' : 'https://graph.facebook.com/';
   const response = await fetch(origin + API_VERSION + '/' + commentId + '/replies', {
@@ -76,7 +88,7 @@ async function sendPublicReply(connection, commentId) {
       Authorization: 'Bearer ' + connection.access_token,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ message: MARMORE_PUBLIC_REPLY }),
+    body: JSON.stringify({ message: publicReply }),
     cache: 'no-store',
     signal: AbortSignal.timeout(15000),
   });
@@ -116,8 +128,8 @@ async function saveCommentReceipt(db, event, values) {
   return !error && Boolean(data);
 }
 
-export async function processVitalMarmoreComments(payload, db) {
-  const events = extractVitalMarmoreComments(payload);
+async function processVitalComments(payload, db, rule) {
+  const events = extractVitalComments(payload, rule.keyword);
   if (!events.length) return 0;
 
   // The Vital token is stored server-side; no fallback to the Gui's token.
@@ -140,7 +152,7 @@ export async function processVitalMarmoreComments(payload, db) {
     // The Meta private-reply API permits one DM per comment. Don't replay failed or
     // unconfirmed sends, and don't interfere with the Gui's comment ledger entries.
     const { data: existing, error: lookupError } = await db.from('instagram_automation_events')
-      .select('id').eq('comment_id', event.commentId).eq('matched_rule_id', RULE_ID)
+      .select('id').eq('comment_id', event.commentId).eq('matched_rule_id', rule.id)
       .limit(1).maybeSingle();
     if (lookupError) throw lookupError;
     if (existing) continue;
@@ -150,8 +162,8 @@ export async function processVitalMarmoreComments(payload, db) {
         comment_id: event.commentId,
         username: event.username,
         comment_text: event.commentText,
-        matched_rule_id: RULE_ID,
-        matched_keyword: KEYWORD,
+        matched_rule_id: rule.id,
+        matched_keyword: rule.keyword,
         private_status: 'processing',
         public_status: 'skipped',
       })
@@ -162,16 +174,16 @@ export async function processVitalMarmoreComments(payload, db) {
     }
     let messageId;
     try {
-      messageId = await sendPrivateReply(connection, event.commentId);
+      messageId = await sendPrivateReply(connection, event.commentId, rule.reply);
     } catch (error) {
       if (!await saveCommentReceipt(db, event, { status: 'failed' }).catch(() => false)) {
-        console.error('VITAL:MARMORE: failed message receipt could not be saved');
+        console.error('VITAL:' + rule.keyword + ': failed message receipt could not be saved');
       }
       await db.from('instagram_automation_events').update({
         private_status: 'failed',
         private_error: String(error?.message || 'Meta did not confirm sending').slice(0, 250),
       }).eq('id', receipt.id);
-      console.error('VITAL:MARMORE: private reply not confirmed', { receiptId: receipt.id });
+      console.error('VITAL:' + rule.keyword + ': private reply not confirmed', { receiptId: receipt.id });
       continue;
     }
     const saved = await saveCommentReceipt(db, event, { status: 'sent', meta_message_id: messageId })
@@ -180,32 +192,40 @@ export async function processVitalMarmoreComments(payload, db) {
       await db.from('instagram_automation_events').update({
         private_status: 'unverified', private_error: 'Confirmed by Meta but receipt could not be saved',
       }).eq('id', receipt.id);
-      console.error('VITAL:MARMORE: confirmed message receipt could not be saved');
+      console.error('VITAL:' + rule.keyword + ': confirmed message receipt could not be saved');
       continue;
     }
     const { error: updateError } = await db.from('instagram_automation_events')
       .update({ private_status: 'sent' }).eq('id', receipt.id);
-    if (updateError) console.error('VITAL:MARMORE: event status could not be saved');
+    if (updateError) console.error('VITAL:' + rule.keyword + ': event status could not be saved');
     // Only promise a DM publicly after the private message is confirmed and
     // durably recorded. The comment claim also prevents replay on webhook retry.
     try {
-      const publicReplyId = await sendPublicReply(connection, event.commentId);
+      const publicReplyId = await sendPublicReply(connection, event.commentId, rule.publicReply);
       const { error: publicError } = await db.from('instagram_automation_events').update({
         public_status: 'sent', public_reply_id: publicReplyId,
         public_delivery_mode: 'threaded_reply', public_error: null,
       }).eq('id', receipt.id);
-      if (publicError) console.error('VITAL:MARMORE: public reply status could not be saved');
+      if (publicError) console.error('VITAL:' + rule.keyword + ': public reply status could not be saved');
     } catch (error) {
       await db.from('instagram_automation_events').update({
         public_status: error?.rejected ? 'failed' : 'unverified',
         public_delivery_mode: 'threaded_reply',
         public_error: 'Meta did not confirm public reply',
       }).eq('id', receipt.id);
-      console.error('VITAL:MARMORE: public reply not confirmed');
+      console.error('VITAL:' + rule.keyword + ': public reply not confirmed');
     }
     sent += 1;
   }
   return sent;
+}
+
+export function processVitalMarmoreComments(payload, db) {
+  return processVitalComments(payload, db, MARMORE_RULE);
+}
+
+export function processVitalJardimComments(payload, db) {
+  return processVitalComments(payload, db, JARDIM_RULE);
 }
 
 

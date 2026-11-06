@@ -162,6 +162,37 @@ export default function VitalInstagramAutomationPanel() {
     }
   }
 
+  async function diagnoseConnection() {
+    setBusy('diagnostic');
+    setNotice('Consultando o perfil e as assinaturas existentes na Meta, sem alterar a conexão...');
+    try {
+      const result = await api('/api/vital-connections/instagram/diagnostic');
+      const code = (step) => step?.code ? ` (código Meta ${step.code}${step.subcode ? '/' + step.subcode : ''})` : '';
+      if (result.profile?.status === 'connection_invalid') {
+        setNotice('Não há uma conexão válida da Vital para verificar.');
+      } else if (result.profile?.status === 'identity_mismatch') {
+        setNotice('A Meta retornou uma identidade diferente da conexão salva da Vital.');
+      } else if (result.profile?.status !== 'ok') {
+        setNotice('Não foi possível confirmar o perfil da Vital' + code(result.profile) + '.');
+      } else if (result.subscription?.status === 'error') {
+        setNotice('Perfil da Vital confirmado. Não foi possível consultar a assinatura dos eventos' + code(result.subscription) + '.');
+      } else if (result.subscription?.status === 'app_not_listed') {
+        setNotice('Perfil da Vital confirmado. O aplicativo TidePlace não apareceu entre as assinaturas consultadas.');
+      } else if (result.subscription?.status === 'ok') {
+        setNotice('Perfil da Vital confirmado. Eventos: mensagens ' +
+          (result.subscription.messages ? 'assinados' : 'não assinados') +
+          '; comentários ' + (result.subscription.comments ? 'assinados' : 'não assinados') +
+          '. É necessário fazer testes reais para confirmar as respostas.');
+      } else {
+        setNotice('Perfil da Vital confirmado. A Meta não forneceu informações suficientes para confirmar as assinaturas.');
+      }
+    } catch (error) {
+      setNotice(error.message);
+    } finally {
+      setBusy('');
+    }
+  }
+
   async function activateComments() {
     setBusy('comments');
     setNotice('Conferindo a autorização de comentários da Vital Decor na Meta...');
@@ -246,6 +277,12 @@ export default function VitalInstagramAutomationPanel() {
             <strong>{loading ? 'Consultando a conexão...' : enabled ? 'Resposta automática ligada' : connected ? 'Instagram conectado. Tente liberar as mensagens com a conexão atual ou autorize novamente.' : 'É preciso reconectar o Instagram da Vital Decor.'}</strong>
             <p>{enabled ? 'O TidePlace está autorizado a responder os novos Directs da Vital.' : 'Autorize o recebimento e o envio de mensagens na Meta. Nenhuma resposta será disparada até concluir.'}</p>
           </div>
+          {instagram && (
+            <button type="button" className={styles.secondaryButton} onClick={diagnoseConnection}
+              disabled={Boolean(busy) || loading}>
+              {busy === 'diagnostic' ? 'Verificando conexão...' : 'Verificar conexão sem alterar'}
+            </button>
+          )}
           {enabled ? (
             <button type="button" className={styles.secondaryButton} onClick={pauseDirect} disabled={Boolean(busy)}> {busy === 'pausing' ? 'Pausando...' : 'Pausar automação'} </button>
           ) : (
@@ -369,4 +406,5 @@ export default function VitalInstagramAutomationPanel() {
     </main>
   );
 }
+
 

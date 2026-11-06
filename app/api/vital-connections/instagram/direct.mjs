@@ -38,8 +38,44 @@ async function sendMetaMessage(connection, senderId, message) {
     signal: AbortSignal.timeout(15000),
   });
   const result = await response.json().catch(() => ({}));
-  if (!response.ok || result?.error) throw new Error('Meta Instagram Direct HTTP ' + response.status + ' / ' + (result?.error?.code || 'unknown'));
+  if (!response.ok || result?.error) {
+    // Only an explicit client rejection proves the template was not sent.
+    // Timeouts, throttling and server errors can have an ambiguous outcome.
+    const rejected = response.status >= 400 && response.status < 500 &&
+      response.status !== 408 && response.status !== 429;
+    throw Object.assign(new Error('Meta Instagram Direct HTTP ' + response.status), {
+      templateRejected: rejected,
+    });
+  }
+  if (typeof result?.message_id !== 'string' || !result.message_id.trim()) {
+    throw new Error('Meta did not confirm the Direct message ID');
+  }
   return result;
+}
+
+// Reuse the existing, account-scoped delivery ledger. Its (account_id,
+// message_id) primary key prevents concurrent webhook retries from sending
+// the same incoming message twice, without changing Gui's records.
+async function claimDelivery(db, event) {
+  const { data, error } = await db.from('instagram_direct_keyword_deliveries')
+    .insert({
+      account_id: event.accountId,
+      message_id: event.messageId,
+      sender_id: event.senderId,
+      flow_id: 'vital-direct-welcome-v1',
+      keyword: 'BOAS_VINDAS',
+      status: 'processing',
+    }).select('message_id').maybeSingle();
+  if (error?.code === '23505') return false;
+  if (error || !data) throw new Error('Vital Direct delivery could not be recorded');
+  return true;
+}
+
+async function updateDelivery(db, event, status, errorMessage = null) {
+  const { error } = await db.from('instagram_direct_keyword_deliveries')
+    .update({ status, error_message: errorMessage, updated_at: new Date().toISOString() })
+    .eq('account_id', event.accountId).eq('message_id', event.messageId);
+  if (error) console.error('VITAL:IG:DIRECT: delivery status could not be recorded');
 }
 
 export async function processVitalInstagramDirect(payload, db) {
@@ -47,12 +83,13 @@ export async function processVitalInstagramDirect(payload, db) {
   if (!events.length) return 0;
   const uniqueAccounts = [...new Set(events.map((event) => event.accountId))];
   const { data: rows, error } = await db.from('workspace_meta_connections')
-    .select('id,workspace_id,platform,external_account_id,access_token,auth_provider,state,automatic_replies_enabled')
+    .select('id,workspace_id,platform,external_account_id,username,access_token,auth_provider,state,automatic_replies_enabled')
     .eq('workspace_id', 'vital-decor').eq('platform', 'instagram')
     .eq('state', 'connected').eq('automatic_replies_enabled', true)
     .in('external_account_id', uniqueAccounts);
   if (error) throw error;
-  const byAccount = new Map((rows || []).filter((row) => row.access_token && row.external_account_id !== GUI_INSTAGRAM_ID)
+  const byAccount = new Map((rows || []).filter((row) => row.access_token && row.external_account_id !== GUI_INSTAGRAM_ID
+      && String(row.username || '').replace(/^@/, '').toLowerCase() === 'vitaldecor_')
     .map((row) => [String(row.external_account_id), row]));
   let sent = 0;
   for (const event of events) {
@@ -65,22 +102,32 @@ export async function processVitalInstagramDirect(payload, db) {
     });
     if (claimError) throw claimError;
     if (!shouldReply) continue;
+    if (!await claimDelivery(db, event)) continue;
     try {
-      await sendMetaMessage(connection, event.senderId, {
-        attachment: { type: 'template', payload: {
-          template_type: 'button',
-          text: VITAL_WELCOME_TEXT,
-          buttons: [
-            { type: 'web_url', url: VITAL_STORE_LINK, title: 'Comprar no site' },
-            { type: 'web_url', url: VITAL_WHATSAPP_LINK, title: 'Falar no WhatsApp' },
-          ],
-        } },
-      });
-    } catch (templateError) {
-      console.warn('Vital Instagram: template unavailable, sending text with link.', templateError.message);
-      await sendMetaMessage(connection, event.senderId, { text: VITAL_WELCOME_TEXT + '\n\nWhatsApp: ' + VITAL_WHATSAPP_LINK });
+      try {
+        await sendMetaMessage(connection, event.senderId, {
+          attachment: { type: 'template', payload: {
+            template_type: 'button',
+            text: VITAL_WELCOME_TEXT,
+            buttons: [
+              { type: 'web_url', url: VITAL_STORE_LINK, title: 'Comprar no site' },
+              { type: 'web_url', url: VITAL_WHATSAPP_LINK, title: 'Falar no WhatsApp' },
+            ],
+          } },
+        });
+      } catch (templateError) {
+        if (!templateError?.templateRejected) throw templateError;
+        console.warn('Vital Instagram: template rejected, sending text with link.');
+        await sendMetaMessage(connection, event.senderId, { text: VITAL_WELCOME_TEXT + '\n\nWhatsApp: ' + VITAL_WHATSAPP_LINK });
+      }
+      await updateDelivery(db, event, 'sent');
+      sent += 1;
+    } catch {
+      // An uncertain response must never trigger a second automatic send.
+      await updateDelivery(db, event, 'failed', 'Meta did not confirm Direct delivery');
+      console.error('VITAL:IG:DIRECT: delivery not confirmed');
     }
-    sent += 1;
   }
   return sent;
 }
+

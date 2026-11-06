@@ -153,7 +153,7 @@ export async function handleViviMessage(db, connection, message, origin) {
     const { data: activity, error: activityError } = await db.from('workspace_meta_messages')
       .select('direction,sent_at').eq('connection_id', connection.id)
       .eq('contact_wa_id', to).neq('meta_message_id', message.id)
-      .lte('sent_at', currentSentAt).order('sent_at', { ascending: false }).limit(1);
+      .lt('sent_at', currentSentAt).order('sent_at', { ascending: false }).limit(1);
     if (activityError) throw activityError;
     const lastPriorActivity = activity?.[0]?.sent_at || session?.last_interaction_at || null;
 

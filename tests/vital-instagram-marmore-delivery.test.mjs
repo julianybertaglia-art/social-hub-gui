@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MARMORE_REPLY_TEXT, processVitalMarmoreComments } from '../app/api/vital-connections/instagram/marmore.mjs';
+import { MARMORE_REPLY_TEXT, processVitalMarmoreComments, processVitalJardimComments } from '../app/api/vital-connections/instagram/marmore.mjs';
+import { JARDIM_REPLY_TEXT } from '../app/lib/vital-jardim-copy.mjs';
 
 const vital = '17841439121395170';
 const gui = '17841401155694295';
@@ -139,6 +140,61 @@ test('a 200 response without a Meta message ID is recorded as failed', async () 
   assert.equal(db.events[0].private_status, 'failed');
   assert.equal(db.events[0].public_status, 'skipped');
   assert.equal(db.deliveries.get('1799999000111222').status, 'failed');
+});
+
+test('a matching JARDIM comment receives the garden link privately and a public reply only once', async () => {
+  const db = fakeDb();
+  let calls = 0;
+  await withFetch(async (url, options) => {
+    calls++;
+    assert.match(url, /^https:\/\/graph\.instagram\.com\//);
+    const body = JSON.parse(options.body);
+    if (calls === 1) {
+      assert.equal(body.recipient.comment_id, '1799999000111222');
+      assert.equal(body.message.text, JARDIM_REPLY_TEXT);
+      return Response.json({ message_id: 'garden-private-123' });
+    }
+    assert.match(url, /\/1799999000111222\/replies$/);
+    assert.equal(body.message, 'Te enviei o link no Direct! 💜');
+    return Response.json({ id: 'garden-public-123' });
+  }, async () => {
+    assert.equal(await processVitalJardimComments(incoming(vital, 'JARDIM'), db), 1);
+    assert.equal(await processVitalJardimComments(incoming(vital, 'JARDIM'), db), 0);
+  });
+  assert.equal(calls, 2);
+  assert.equal(db.events[0].matched_rule_id, 'vital-jardim-comment-link-v1');
+  assert.equal(db.events[0].matched_keyword, 'JARDIM');
+  assert.equal(db.events[0].private_status, 'sent');
+  assert.equal(db.events[0].public_status, 'sent');
+});
+
+test('a mixed keyword comment sends just the existing marble response', async () => {
+  const db = fakeDb();
+  let calls = 0;
+  await withFetch(async (_url, options) => {
+    calls++;
+    if (calls === 1) {
+      assert.equal(JSON.parse(options.body).message.text, MARMORE_REPLY_TEXT);
+      return Response.json({ message_id: 'mixed-private-123' });
+    }
+    return Response.json({ id: 'mixed-public-123' });
+  }, async () => {
+    const mixed = incoming(vital, 'Quero jardim e mármore');
+    const results = await Promise.all([processVitalMarmoreComments(mixed, db), processVitalJardimComments(mixed, db)]);
+    assert.deepEqual(results, [1, 0]);
+  });
+  assert.equal(calls, 2);
+  assert.equal(db.events.length, 1);
+});
+
+test('JARDIM never sends to Gui or another Instagram account', async () => {
+  for (const [account, db] of [[gui, fakeDb()], [vital, fakeDb({ username: 'other-account' })]]) {
+    let calls = 0;
+    await withFetch(async () => { calls++; }, async () => {
+      assert.equal(await processVitalJardimComments(incoming(account, 'JARDIM'), db), 0);
+    });
+    assert.equal(calls, 0);
+  }
 });
 
 test('a Facebook-authenticated Vital connection sends both replies using Facebook Graph', async () => {

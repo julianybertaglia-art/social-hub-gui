@@ -48,6 +48,7 @@ test('DM contains one verified storefront link for the marble models', () => {
   const urls = MARMORE_REPLY_TEXT.match(/https?:\/\/\S+/g) || [];
   assert.deepEqual(urls, ['https://vitaldecor.com.br/search/?q=m%C3%A1rmore']);
   assert.match(MARMORE_REPLY_TEXT, /adesivos de mármore/i);
+  assert.match(MARMORE_REPLY_TEXT, /WhatsApp:[\s\S]*\(11\) 96576-5247/);
 });
 
 test('Private reply uses a comment id and never sends WhatsApp messages', () => {

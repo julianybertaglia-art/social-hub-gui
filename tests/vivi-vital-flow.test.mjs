@@ -55,10 +55,11 @@ test('Vivi code only touches Vital workspace, supports handoff and silent existi
   const manual = readFileSync(new URL('../app/api/vital-whatsapp/conversations/send/route.js',import.meta.url),'utf8');
   const upload = readFileSync(new URL('../app/api/vital-whatsapp/automacoes/route.js',import.meta.url),'utf8');
   assert.match(flow,/if \(configError \|\| !config\?\.enabled\) return/);
-  assert.match(flow,/session\?\.human_handoff \|\| session\?\.manual_override/);
-  assert.match(flow,/!humanHistory\\?\\.length \\|\\| isWelcomeDue\\(lastPriorActivity\\)/);
+  assert.ok(flow.includes('if (!explicitMenu && session?.manual_override) return;'));
+  assert.ok(flow.includes('session?.human_handoff'));
+  assert.ok(flow.includes('wantsWelcome = !humanHistory?.length || isWelcomeDue(lastPriorActivity);'));
   assert.match(flow,/stage: 'welcome_pending'/);
-  assert.match(flow,/isWelcomeDue\\(lastPriorActivity\\)/);
+  assert.ok(flow.includes('isWelcomeDue(lastPriorActivity)'));
   assert.match(flow,/vital_whatsapp_flow_events/);
   assert.match(flow,/vital_whatsapp_affiliate_applications/);
   // Atacado envia URL do catálogo por texto, nunca como documento PDF.

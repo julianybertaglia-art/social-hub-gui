@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { processVitalMarmoreComments } from '../app/api/vital-connections/instagram/marmore.mjs';
+import { MARMORE_REPLY_TEXT, processVitalMarmoreComments } from '../app/api/vital-connections/instagram/marmore.mjs';
 
 const vital = '17841439121395170';
 const gui = '17841401155694295';
@@ -111,10 +111,11 @@ test('a matching Vital comment receives a confirmed private reply', async () => 
     assert.match(url, /^https:\/\/graph\.instagram\.com\//);
     if (calls === 1) {
       assert.equal(JSON.parse(options.body).recipient.comment_id, '1799999000111222');
+      assert.equal(JSON.parse(options.body).message.text, MARMORE_REPLY_TEXT);
       return Response.json({ message_id: 'meta-private-message-123' });
     }
     assert.match(url, /\/1799999000111222\/replies$/);
-    assert.equal(JSON.parse(options.body).message, 'Te enviei os links no Direct! 💜');
+    assert.equal(JSON.parse(options.body).message, 'Te enviei o link no Direct! 💜');
     return Response.json({ id: 'meta-public-reply-123' });
   }, async () => assert.equal(await processVitalMarmoreComments(incoming(), db), 1));
   assert.equal(calls, 2);
@@ -231,4 +232,5 @@ test('a confirmed response is unverified when the durable receipt cannot be save
   assert.equal(calls, 1);
   assert.equal(db.events[0].private_status, 'unverified');
 });
+
 

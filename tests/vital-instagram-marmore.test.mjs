@@ -44,10 +44,10 @@ test('One event per distinct comment even for repeated webhook notifications', (
   assert.equal(extractVitalMarmoreComments(dup).length, 1);
 });
 
-test('DM has actual Vital Decor marble product URLs (not an invented category)', () => {
-  assert.match(MARMORE_REPLY_TEXT, /vitaldecor\.com\.br\/produtos\/placa-adesiva-marmore/);
-  assert.match(MARMORE_REPLY_TEXT, /Carrara/i);
-  assert.match(MARMORE_REPLY_TEXT, /Calacata/i);
+test('DM contains one verified storefront link for the marble models', () => {
+  const urls = MARMORE_REPLY_TEXT.match(/https?:\/\/\S+/g) || [];
+  assert.deepEqual(urls, ['https://vitaldecor.com.br/search/?q=m%C3%A1rmore']);
+  assert.match(MARMORE_REPLY_TEXT, /adesivos de mármore/i);
 });
 
 test('Private reply uses a comment id and never sends WhatsApp messages', () => {
@@ -64,3 +64,4 @@ test('Webhook keeps both automations isolated from Gui account', () => {
   assert.match(code, /processVitalMarmoreComments\(payload, db\)/);
   assert.match(code, /processFlowComments\(guiPayload\)/);
 });
+

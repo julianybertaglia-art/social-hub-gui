@@ -29,6 +29,13 @@ export function selectVitalInstagram(accounts) {
   return vital ? { id: VITAL_INSTAGRAM_ID, username: 'vitaldecor_' } : null;
 }
 
+// The OAuth code alone is not evidence of Instagram account access.
+// Only a live Graph API profile with BOTH exact identifiers can verify Vital.
+export function isVerifiedVitalProfile(profile) {
+  return String(profile?.id || '') === VITAL_INSTAGRAM_ID &&
+    String(profile?.username || '').replace(/^@/, '').toLowerCase() === 'vitaldecor_';
+}
+
 export function safeAuthError(code) {
   const known = new Set([
     'cancelled', 'expired', 'state', 'missing_code', 'secret_missing',

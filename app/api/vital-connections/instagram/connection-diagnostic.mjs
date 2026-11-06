@@ -2,6 +2,12 @@
 // Graph response bodies, account identifiers, or customer data to the client.
 const GUI_INSTAGRAM_ID = '17841401155694295';
 const VERSION = 'v26.0';
+const KNOWN_PERMISSIONS = [
+  'pages_manage_metadata', 'pages_read_engagement', 'pages_show_list',
+  'instagram_basic', 'instagram_manage_messages', 'instagram_manage_comments',
+  'instagram_business_basic', 'instagram_business_manage_messages',
+  'instagram_business_manage_comments',
+];
 const num = (value) => {
   const n = Number(value);
   return Number.isSafeInteger(n) && n > 0 && n < 1000000000 ? n : null;
@@ -19,20 +25,26 @@ async function safeGet(base, version, path, query, token, fetchImpl) {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || data?.error) {
-      return { ok: false, code: num(data?.error?.code), subcode: num(data?.error?.error_subcode) };
+      // A raw Meta message may contain private details. Keep only names from
+      // this allowlist; a mentioned permission is a hint, not proof of cause.
+      const message = [data?.error?.message, data?.error?.error_user_msg]
+        .filter((value) => typeof value === 'string').join(' ').toLowerCase();
+      const permissions = KNOWN_PERMISSIONS.filter((permission) =>
+        new RegExp(`(^|[^a-z0-9_])${permission}([^a-z0-9_]|$)`).test(message));
+      return { ok: false, code: num(data?.error?.code), subcode: num(data?.error?.error_subcode), permissions };
     }
     return { ok: true, data };
   } catch {
-    return { ok: false, code: null, subcode: null };
+    return { ok: false, code: null, subcode: null, permissions: [] };
   }
 }
 
 export async function diagnoseVitalInstagram(connection, {
   fetchImpl = fetch, facebookAppId = '', instagramAppId = '', facebookApiVersion = VERSION,
 } = {}) {
-  const profile = { status: 'not_checked', code: null, subcode: null };
+  const profile = { status: 'not_checked', code: null, subcode: null, permissions: [] };
   const subscription = { status: 'not_checked', code: null, subcode: null,
-    messages: null, comments: null };
+    permissions: [], messages: null, comments: null };
   const result = { profile, subscription, automaticReplies: false };
   if (!connection || connection.workspace_id !== 'vital-decor'
       || connection.platform !== 'instagram' || connection.state !== 'connected'
@@ -54,7 +66,7 @@ export async function diagnoseVitalInstagram(connection, {
   const account = await safeGet(base, version, viaInstagram ? 'me' : accountId,
     { fields: viaInstagram ? 'user_id,username' : 'id,username' }, connection.access_token, fetchImpl);
   if (!account.ok) {
-    Object.assign(profile, { status: 'error', code: account.code, subcode: account.subcode });
+    Object.assign(profile, { status: 'error', code: account.code, subcode: account.subcode, permissions: account.permissions });
     return result;
   }
   const returnedId = String((viaInstagram ? account.data?.user_id : account.data?.id) || '');
@@ -67,7 +79,7 @@ export async function diagnoseVitalInstagram(connection, {
   const apps = await safeGet(base, version, `${target}/subscribed_apps`,
     { fields: 'id,subscribed_fields' }, connection.access_token, fetchImpl);
   if (!apps.ok) {
-    Object.assign(subscription, { status: 'error', code: apps.code, subcode: apps.subcode });
+    Object.assign(subscription, { status: 'error', code: apps.code, subcode: apps.subcode, permissions: apps.permissions });
     return result;
   }
   if (!Array.isArray(apps.data?.data)) {

@@ -167,7 +167,12 @@ export default function VitalInstagramAutomationPanel() {
     setNotice('Consultando o perfil e as assinaturas existentes na Meta, sem alterar a conexão...');
     try {
       const result = await api('/api/vital-connections/instagram/diagnostic');
-      const code = (step) => step?.code ? ` (código Meta ${step.code}${step.subcode ? '/' + step.subcode : ''})` : '';
+      const code = (step) => {
+        const parts = [];
+        if (step?.code) parts.push(`código Meta ${step.code}${step.subcode ? '/' + step.subcode : ''}`);
+        if (step?.permissions?.length) parts.push('permissões citadas: ' + step.permissions.join(', '));
+        return parts.length ? ' (' + parts.join('; ') + ')' : '';
+      };
       if (result.profile?.status === 'connection_invalid') {
         setNotice('Não há uma conexão válida da Vital para verificar.');
       } else if (result.profile?.status === 'identity_mismatch') {

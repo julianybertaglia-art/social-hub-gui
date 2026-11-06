@@ -28,8 +28,8 @@ test('the existing Facebook connection is checked using read-only requests and i
     ] }]], calls),
   });
   assert.deepEqual(result, {
-    profile: { status: 'ok', code: null, subcode: null },
-    subscription: { status: 'ok', code: null, subcode: null, messages: false, comments: true },
+    profile: { status: 'ok', code: null, subcode: null, permissions: [] },
+    subscription: { status: 'ok', code: null, subcode: null, permissions: [], messages: false, comments: true },
     automaticReplies: false,
   });
   assert.match(calls[0].url, /^https:\/\/graph\.facebook\.com\/v25\.0\/17841439121395170\?/);
@@ -72,11 +72,12 @@ test('only numeric Meta error codes leave the server on a subscription failure',
   const result = await diagnoseVitalInstagram(connection, {
     facebookAppId: appId,
     fetchImpl: sequence([[identity], [{ error: {
-      code: 200, error_subcode: 12345, message: 'private details and secret-token-only-for-tests',
+      code: 200, error_subcode: 12345, message: 'pages_manage_metadata private details and secret-token-only-for-tests',
     } }, 403]], calls),
   });
   assert.equal(result.profile.status, 'ok');
-  assert.deepEqual(result.subscription, { status: 'error', code: 200, subcode: 12345, messages: null, comments: null });
+  assert.deepEqual(result.subscription, { status: 'error', code: 200, subcode: 12345,
+    permissions: ['pages_manage_metadata'], messages: null, comments: null });
   assert.ok(!JSON.stringify(result).includes('secret-token-only-for-tests'));
   assert.ok(!JSON.stringify(result).includes('private details'));
 });
@@ -119,6 +120,6 @@ test('network errors never disclose exception text or imply a permission error',
   const result = await diagnoseVitalInstagram(connection, {
     facebookAppId: appId, fetchImpl: async () => { throw new Error('secret-token-only-for-tests'); },
   });
-  assert.deepEqual(result.profile, { status: 'error', code: null, subcode: null });
+  assert.deepEqual(result.profile, { status: 'error', code: null, subcode: null, permissions: [] });
   assert.ok(!JSON.stringify(result).includes(connection.access_token));
 });

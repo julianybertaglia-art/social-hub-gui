@@ -1,4 +1,5 @@
 import { getSupabaseAdmin, getMetaCredentials, WHATSAPP_API_VERSION } from '../whatsapp/lib';
+import { summarizeInstagramAttempt } from './instagram/login-diagnostics.mjs';
 import { WORKSPACE, GUI_INSTAGRAM_ID, SESSION_TTL_MS, fail, publicCandidate,
   selectCandidate, validAppToken, safePhoneId, publicConnection, bearerToken, connectionOwner } from './helpers.mjs';
 
@@ -197,7 +198,6 @@ export async function commitConnection(db, ownerId, body) {
 }
 
 export async function readStatus(db, ownerId) {
-  await clearExpiredSessions(db, ownerId);
   const { data, error } = await db.from(CONNECTIONS).select('*')
     .eq('owner_user_id', ownerId).eq('workspace_id', WORKSPACE);
   if (error) throw fail('Não foi possível consultar as conexões da Vital Decor.', 503);
@@ -245,34 +245,14 @@ export async function readStatus(db, ownerId) {
   // owner. Only a known failure code is exposed; never return candidates,
   // tokens, raw Graph responses or user identifiers.
   const { data: attempts, error: attemptsError } = await db.from(SESSIONS)
-    .select('status,created_at,candidates')
+    .select('status,created_at,expires_at,candidates')
     .eq('owner_user_id', ownerId)
     .eq('workspace_id', WORKSPACE)
     .eq('platform', 'instagram')
     .order('created_at', { ascending: false })
     .limit(1);
   const latest = attemptsError ? null : attempts?.[0];
-  const validFailureReasons = new Set([
-    'cancelled', 'expired', 'state', 'missing_code', 'secret_missing',
-    'exchange', 'app_credentials', 'wrong_business', 'account_not_shared', 'token_invalid',
-    'permissions', 'subscribe', 'save',
-  ]);
-  const rawReason = latest?.status === 'expired' && Array.isArray(latest.candidates)
-    ? latest.candidates.find((candidate) => candidate?.type === 'unified_oauth_failure')?.reason
-    : null;
-  const rawDiagnostic = latest?.status === 'expired' && Array.isArray(latest.candidates)
-    ? latest.candidates.find((candidate) => candidate?.type === 'unified_oauth_failure')
-    : null;
-  const safeNumericCode = (value, maximum) =>
-    Number.isInteger(value) && value > 0 && value < maximum ? value : null;
-  const instagramLogin = {
-    status: latest?.status === 'consumed' ? 'confirmed'
-      : latest?.status === 'expired' ? 'failed' : 'pending',
-    reason: validFailureReasons.has(rawReason) ? rawReason : null,
-    metaCode: safeNumericCode(rawDiagnostic?.metaCode, 1000000),
-    metaSubcode: safeNumericCode(rawDiagnostic?.metaSubcode, 1000000000),
-    checkedAt: latest?.created_at || null,
-  };
+  const instagramLogin = summarizeInstagramAttempt(latest);
   return {
     workspace: WORKSPACE, connections, appId: APP_ID, instagramLogin,
     instagramDirectLoginAvailable: /^[0-9]{5,40}$/.test(String(process.env.META_VITAL_IG_APP_ID || '')) && Boolean(process.env.META_VITAL_IG_APP_SECRET),
@@ -280,3 +260,4 @@ export async function readStatus(db, ownerId) {
     automaticReplies: connections.some((connection) => connection.platform === 'instagram' && connection.automaticReplies),
   };
 }
+

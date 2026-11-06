@@ -74,10 +74,34 @@ async function sendPrivateReply(connection, commentId) {
     signal: AbortSignal.timeout(15000),
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok || payload.error || !payload.message_id) {
+  if (!response.ok || payload.error || typeof payload.message_id !== 'string' || !payload.message_id.trim()) {
     throw new Error('Meta private reply HTTP ' + response.status + ' / ' + (payload.error?.code || 'unconfirmed'));
   }
   return payload.message_id;
+}
+
+// A single insert, backed by a unique comment_id, is the cross-instance claim.
+// If Meta's response is uncertain, keep the receipt and never replay blindly.
+async function claimComment(db, connection, event) {
+  const { data, error } = await db.from('vital_instagram_comment_deliveries')
+    .insert({
+      connection_id: connection.id,
+      workspace_id: 'vital-decor',
+      account_id: event.accountId,
+      comment_id: event.commentId,
+      status: 'processing',
+    }).select('comment_id').maybeSingle();
+  if (error?.code === '23505') return false;
+  if (error || !data) throw new Error('Vital comment receipt could not be recorded');
+  return true;
+}
+
+async function saveCommentReceipt(db, event, values) {
+  const { data, error } = await db.from('vital_instagram_comment_deliveries')
+    .update({ ...values, updated_at: new Date().toISOString() })
+    .eq('workspace_id', 'vital-decor').eq('account_id', event.accountId)
+    .eq('comment_id', event.commentId).select('comment_id').maybeSingle();
+  return !error && Boolean(data);
 }
 
 export async function processVitalMarmoreComments(payload, db) {
@@ -87,12 +111,12 @@ export async function processVitalMarmoreComments(payload, db) {
   // The Vital token is stored server-side; no fallback to the Gui's token.
   const accountIds = [...new Set(events.map((event) => event.accountId))];
   const { data: connections, error: connectionError } = await db.from('workspace_meta_connections')
-    .select('external_account_id,access_token,username,auth_provider')
+    .select('id,external_account_id,access_token,username,auth_provider')
     .eq('workspace_id', 'vital-decor').eq('platform', 'instagram').eq('state', 'connected')
     .in('external_account_id', accountIds);
   if (connectionError) throw connectionError;
   const validConnections = new Map((connections || [])
-    .filter((connection) => connection.access_token
+    .filter((connection) => connection.id && connection.access_token
       && String(connection.username || '').replace(/^@/, '').toLowerCase() === 'vitaldecor_'
       && connection.external_account_id !== GUI_INSTAGRAM_ID)
     .map((connection) => [String(connection.external_account_id), connection]));
@@ -108,6 +132,7 @@ export async function processVitalMarmoreComments(payload, db) {
       .limit(1).maybeSingle();
     if (lookupError) throw lookupError;
     if (existing) continue;
+    if (!await claimComment(db, connection, event)) continue;
     const { data: receipt, error: claimError } = await db.from('instagram_automation_events')
       .insert({
         comment_id: event.commentId,
@@ -119,18 +144,38 @@ export async function processVitalMarmoreComments(payload, db) {
         public_status: 'skipped',
       })
       .select('id').single();
-    if (claimError || !receipt) throw claimError || new Error('Instagram comment receipt not confirmed');
+    if (claimError || !receipt) {
+      await saveCommentReceipt(db, event, { status: 'failed' });
+      throw claimError || new Error('Instagram comment receipt not confirmed');
+    }
+    let messageId;
     try {
-      await sendPrivateReply(connection, event.commentId);
-      await db.from('instagram_automation_events').update({ private_status: 'sent' }).eq('id', receipt.id);
-      sent += 1;
+      messageId = await sendPrivateReply(connection, event.commentId);
     } catch (error) {
+      if (!await saveCommentReceipt(db, event, { status: 'failed' }).catch(() => false)) {
+        console.error('VITAL:MARMORE: failed message receipt could not be saved');
+      }
       await db.from('instagram_automation_events').update({
         private_status: 'failed',
         private_error: String(error?.message || 'Meta did not confirm sending').slice(0, 250),
       }).eq('id', receipt.id);
       console.error('VITAL:MARMORE: private reply not confirmed', { receiptId: receipt.id });
+      continue;
     }
+    const saved = await saveCommentReceipt(db, event, { status: 'sent', meta_message_id: messageId })
+      .catch(() => false);
+    if (!saved) {
+      await db.from('instagram_automation_events').update({
+        private_status: 'unverified', private_error: 'Confirmed by Meta but receipt could not be saved',
+      }).eq('id', receipt.id);
+      console.error('VITAL:MARMORE: confirmed message receipt could not be saved');
+      continue;
+    }
+    const { error: updateError } = await db.from('instagram_automation_events')
+      .update({ private_status: 'sent' }).eq('id', receipt.id);
+    if (updateError) console.error('VITAL:MARMORE: event status could not be saved');
+    sent += 1;
   }
   return sent;
 }
+

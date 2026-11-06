@@ -89,12 +89,16 @@ export default function VitalInstagramAutomationPanel() {
     missing_code: 'A Meta não devolveu o código de autorização.',
     secret_missing: 'A credencial do aplicativo Meta no servidor está incompleta.',
     exchange: 'A Meta não confirmou a troca do código pelo token.',
+    app_credentials: 'As credenciais do aplicativo Meta não foram validadas.',
     wrong_business: 'O portfólio empresarial autorizado não corresponde à Vital Decor.',
     account_not_shared: 'A Meta não devolveu o Instagram da Vital entre os ativos compartilhados.',
     token_invalid: 'A Meta não validou a credencial do aplicativo.',
     permissions: 'A Meta não concedeu todas as permissões de mensagens e comentários.',
     subscribe: 'A Meta não confirmou a assinatura dos eventos de mensagens e comentários.',
     save: 'A autorização foi validada, mas houve falha ao registrar a conexão.',
+    wrong_account: 'A Meta não confirmou o identificador da conta da Vital.',
+    wrong_username: 'A conta autorizada é diferente de @vitaldecor_.',
+    not_configured: 'O aplicativo Meta ainda precisa habilitar o login direto do Instagram.',
   };
 
   async function authorizeDirect() {
@@ -365,3 +369,4 @@ export default function VitalInstagramAutomationPanel() {
     </main>
   );
 }
+

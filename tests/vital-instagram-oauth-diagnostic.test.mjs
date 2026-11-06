@@ -15,9 +15,11 @@ test('Callback saves only a safe, allowlisted OAuth failure reason', () => {
 test('Owner-only status exposes safe diagnostic, not session candidates or credentials', () => {
   const code = read('../app/api/vital-connections/service.js');
   assert.match(code, /\.eq\('owner_user_id', ownerId\)/);
-  assert.match(code, /validFailureReasons\.has\(rawReason\)/);
+  assert.match(code, /summarizeInstagramAttempt\(latest\)/);
   assert.match(code, /appId: APP_ID, instagramLogin/);
   assert.doesNotMatch(code, /instagramLogin:[^\n]*candidates/);
+  const readStatus = code.split('export async function readStatus(')[1];
+  assert.doesNotMatch(readStatus, /clearExpiredSessions|\.update\(|\.insert\(|\.delete\(/);
 });
 
 test('Vital Instagram UI keeps failure visible after the Meta return tab closes', () => {
@@ -37,3 +39,4 @@ test('Meta token exchange uses code first, then exact redirect only as controlle
   assert.match(callback, /metaCode: Number\.isInteger/);
   assert.doesNotMatch(callback, /candidates: \[\{[^\n]*access_token/);
 });
+

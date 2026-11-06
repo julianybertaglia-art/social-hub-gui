@@ -1,27 +1,13 @@
 // Vital Decor Instagram comment-to-DM. This handler never touches Gui's account or WhatsApp.
 import { GUI_INSTAGRAM_ID } from '../helpers.mjs';
+import { MARMORE_PUBLIC_REPLY, MARMORE_REPLY_TEXT } from '../../../lib/vital-marmore-copy.mjs';
+
+export { MARMORE_PUBLIC_REPLY, MARMORE_REPLY_TEXT };
 
 const KEYWORD = 'MARMORE';
 const RULE_ID = 'vital-marmore-comment-link-v1';
 const API_VERSION = 'v26.0';
 const MAX_COMMENT_AGE_MS = 7 * 24 * 60 * 60 * 1000;
-export const MARMORE_PUBLIC_REPLY = 'Te enviei os links no Direct! 💜';
-
-// Links to real, existing Vital Decor marble products. No guessed search/category URL.
-export const MARMORE_REPLY_TEXT = [
-  'Oi! 💜 Aqui estão os adesivos de mármore da Vital Decor que você pediu:',
-  '',
-  '🤍 Carrara branco 60x60:',
-  'https://vitaldecor.com.br/produtos/placa-adesiva-marmore-branco-carrara-60x60cm-vsoc7',
-  '',
-  '🖤 Mármore preto 60x60:',
-  'https://vitaldecor.com.br/produtos/placa-adesiva-marmore-preto-60x60cm-autocolante-1kddz',
-  '',
-  '✨ Calacata Gold 60x60:',
-  'https://vitaldecor.com.br/produtos/placa-adesiva-marmore-calacata-gold-60x60cm-3viup',
-  '',
-  'É só acessar o modelo que você mais gostou para conferir e comprar! 😊',
-].join('\n');
 
 function normalize(value) {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
@@ -221,5 +207,6 @@ export async function processVitalMarmoreComments(payload, db) {
   }
   return sent;
 }
+
 
 

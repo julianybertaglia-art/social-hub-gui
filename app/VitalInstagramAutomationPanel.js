@@ -5,6 +5,7 @@ import { supabase } from './CloudGate';
 import { startVitalInstagramUnifiedLogin } from './lib/vital-instagram-unified-client.mjs';
 import { startVitalInstagramOnlyLogin } from './lib/vital-instagram-only-login-client.mjs';
 import { VITAL_WHATSAPP_DISPLAY, VITAL_WHATSAPP_LINK, VITAL_STORE_LINK, VITAL_WELCOME_TEXT } from './lib/vital-direct-copy.mjs';
+import { MARMORE_PUBLIC_REPLY, MARMORE_REPLY_TEXT } from './lib/vital-marmore-copy.mjs';
 import styles from './vital-instagram-automation.module.css';
 
 
@@ -334,20 +335,14 @@ export default function VitalInstagramAutomationPanel() {
         <div className={styles.previewGrid}>
           <div className={styles.preview}>
             <span className={styles.previewLabel}>PRÉVIA DO DIRECT</span>
-            <div className={styles.message}>
-              Oi! 💜 Aqui estão os adesivos de mármore da Vital Decor que você pediu!
-              {'\n\n'}🤍 Carrara branco 60x60
-              {'\n'}🖤 Mármore preto 60x60
-              {'\n'}✨ Calacata Gold 60x60
-              {'\n\n'}Cada modelo acompanha seu link direto para comprar. 😊
-            </div>
+            <div className={styles.message}>{MARMORE_REPLY_TEXT}</div>
           </div>
           <div className={styles.details}>
             <span className={styles.previewLabel}>COMO FUNCIONA</span>
             <div className={styles.detail}><strong>Canal</strong><span>Somente @vitaldecor_</span></div>
             <div className={styles.detail}><strong>Palavra-chave</strong><span>MARMORE (aceita acento)</span></div>
-            <div className={styles.detail}><strong>Produtos</strong><span>Carrara, Preto e Calacata Gold (links oficiais)</span></div>
-            <div className={styles.detail}><strong>Resposta no comentário</strong><span>Te enviei os links no Direct! 💜 (após a confirmação do envio)</span></div>
+            <div className={styles.detail}><strong>Produtos</strong><span>Um link para os modelos de mármore da loja</span></div>
+            <div className={styles.detail}><strong>Resposta no comentário</strong><span>{MARMORE_PUBLIC_REPLY} (após a confirmação do envio)</span></div>
             <div className={styles.detail}><strong>Limite da Meta</strong><span>Uma resposta privada por comentário</span></div>
             <div className={styles.detail}><strong>WhatsApp e Gui</strong><span>Não são alterados por esta regra</span></div>
           </div>
@@ -412,5 +407,6 @@ export default function VitalInstagramAutomationPanel() {
     </main>
   );
 }
+
 
 

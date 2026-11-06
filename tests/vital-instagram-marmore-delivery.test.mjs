@@ -13,14 +13,14 @@ const incoming = (account = vital, text = 'MÁRMORE') => ({
   }],
 });
 
-function fakeDb({ username = 'vitaldecor_', persistReceipt = true } = {}) {
+function fakeDb({ username = 'vitaldecor_', persistReceipt = true, authProvider = 'instagram_login' } = {}) {
   const events = [];
   const deliveries = new Map();
   const connection = {
     id: 'vital-connection',
     workspace_id: 'vital-decor', platform: 'instagram', state: 'connected',
     external_account_id: vital, username, access_token: 'test-token',
-    auth_provider: 'instagram_login',
+    auth_provider: authProvider,
   };
   return {
     events,
@@ -109,12 +109,19 @@ test('a matching Vital comment receives a confirmed private reply', async () => 
   await withFetch(async (url, options) => {
     calls++;
     assert.match(url, /^https:\/\/graph\.instagram\.com\//);
-    assert.equal(JSON.parse(options.body).recipient.comment_id, '1799999000111222');
-    return Response.json({ message_id: 'meta-private-message-123' });
+    if (calls === 1) {
+      assert.equal(JSON.parse(options.body).recipient.comment_id, '1799999000111222');
+      return Response.json({ message_id: 'meta-private-message-123' });
+    }
+    assert.match(url, /\/1799999000111222\/replies$/);
+    assert.equal(JSON.parse(options.body).message, 'Te enviei os links no Direct! 💜');
+    return Response.json({ id: 'meta-public-reply-123' });
   }, async () => assert.equal(await processVitalMarmoreComments(incoming(), db), 1));
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
   assert.equal(db.events[0].matched_rule_id, 'vital-marmore-comment-link-v1');
   assert.equal(db.events[0].private_status, 'sent');
+  assert.equal(db.events[0].public_status, 'sent');
+  assert.equal(db.events[0].public_reply_id, 'meta-public-reply-123');
   assert.equal(db.deliveries.get('1799999000111222').workspace_id, 'vital-decor');
   assert.equal(db.deliveries.get('1799999000111222').account_id, vital);
   assert.equal(db.deliveries.get('1799999000111222').connection_id, 'vital-connection');
@@ -123,11 +130,26 @@ test('a matching Vital comment receives a confirmed private reply', async () => 
 
 test('a 200 response without a Meta message ID is recorded as failed', async () => {
   const db = fakeDb();
-  await withFetch(async () => Response.json({}), async () => {
+  let calls = 0;
+  await withFetch(async () => { calls++; return Response.json({}); }, async () => {
     assert.equal(await processVitalMarmoreComments(incoming(), db), 0);
   });
+  assert.equal(calls, 1);
   assert.equal(db.events[0].private_status, 'failed');
+  assert.equal(db.events[0].public_status, 'skipped');
   assert.equal(db.deliveries.get('1799999000111222').status, 'failed');
+});
+
+test('a Facebook-authenticated Vital connection sends both replies using Facebook Graph', async () => {
+  const db = fakeDb({ authProvider: 'facebook' });
+  let calls = 0;
+  await withFetch(async (url) => {
+    calls++;
+    assert.match(url, /^https:\/\/graph\.facebook\.com\//);
+    return Response.json(calls === 1 ? { message_id: 'meta-private-message-123' } : { id: 'meta-public-reply-123' });
+  }, async () => assert.equal(await processVitalMarmoreComments(incoming(), db), 1));
+  assert.equal(calls, 2);
+  assert.equal(db.events[0].public_status, 'sent');
 });
 
 test('other accounts and the Gui never trigger the Vital comment rule', async () => {
@@ -146,12 +168,12 @@ test('a previously processed comment is not replayed in a later webhook', async 
   let calls = 0;
   await withFetch(async () => {
     calls++;
-    return Response.json({ message_id: 'meta-private-message-123' });
+    return Response.json(calls === 1 ? { message_id: 'meta-private-message-123' } : { id: 'meta-public-reply-123' });
   }, async () => {
     assert.equal(await processVitalMarmoreComments(incoming(), db), 1);
     assert.equal(await processVitalMarmoreComments(incoming(), db), 0);
   });
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
 });
 
 test('concurrent copies of the same comment are claimed only once', async () => {
@@ -159,7 +181,7 @@ test('concurrent copies of the same comment are claimed only once', async () => 
   let calls = 0;
   await withFetch(async () => {
     calls++;
-    return Response.json({ message_id: 'meta-private-message-123' });
+    return Response.json(calls === 1 ? { message_id: 'meta-private-message-123' } : { id: 'meta-public-reply-123' });
   }, async () => {
     const results = await Promise.all([
       processVitalMarmoreComments(incoming(), db),
@@ -167,9 +189,36 @@ test('concurrent copies of the same comment are claimed only once', async () => 
     ]);
     assert.equal(results.reduce((a, b) => a + b, 0), 1);
   });
-  assert.equal(calls, 1);
+  assert.equal(calls, 2);
   assert.equal(db.events.length, 1);
   assert.equal(db.deliveries.size, 1);
+});
+
+test('a rejected public reply does not erase a confirmed private reply', async () => {
+  const db = fakeDb();
+  let calls = 0;
+  await withFetch(async () => {
+    calls++;
+    return calls === 1 ? Response.json({ message_id: 'meta-private-message-123' })
+      : Response.json({ error: { code: 200 } }, { status: 403 });
+  }, async () => assert.equal(await processVitalMarmoreComments(incoming(), db), 1));
+  assert.equal(db.events[0].private_status, 'sent');
+  assert.equal(db.events[0].public_status, 'failed');
+  assert.equal(db.deliveries.get('1799999000111222').status, 'sent');
+});
+
+test('an unconfirmed public reply is not replayed on a duplicate webhook', async () => {
+  const db = fakeDb();
+  let calls = 0;
+  await withFetch(async () => {
+    calls++;
+    return Response.json(calls === 1 ? { message_id: 'meta-private-message-123' } : {});
+  }, async () => {
+    assert.equal(await processVitalMarmoreComments(incoming(), db), 1);
+    assert.equal(await processVitalMarmoreComments(incoming(), db), 0);
+  });
+  assert.equal(calls, 2);
+  assert.equal(db.events[0].public_status, 'unverified');
 });
 
 test('a confirmed response is unverified when the durable receipt cannot be saved', async () => {
@@ -182,3 +231,4 @@ test('a confirmed response is unverified when the durable receipt cannot be save
   assert.equal(calls, 1);
   assert.equal(db.events[0].private_status, 'unverified');
 });
+

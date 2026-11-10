@@ -1,0 +1,67 @@
+name: Testar migrations CRM Vital e MIA (sem Vercel)
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261103150000_vital_crm_notes_reply_mia_security.sql'
+      - 'tests/sql/**'
+      - '.github/workflows/vital-crm-mia-postgres.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-postgres:
+    name: Postgres 17 descartável - migrations, RLS e RPC
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci-not-production
+          POSTGRES_DB: tide_crm_smoke
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tide_crm_smoke"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 15
+    steps:
+      - name: Buscar código
+        uses: actions/checkout@v4
+
+      - name: Aplicar somente migrations do CRM em banco isolado
+        env:
+          DB_CONTAINER: ${{ job.services.postgres.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          apply() {
+            echo "::group::Aplicando $1"
+            docker exec -i "$DB_CONTAINER" psql -U postgres -d tide_crm_smoke -X -v ON_ERROR_STOP=1 < "$1"
+            echo "::endgroup::"
+          }
+          apply tests/sql/vital_mia_bootstrap.sql
+          apply supabase/migrations/20261008151532_vital_decor_connections.sql
+          apply tests/sql/vital_mia_seed_connection.sql
+          apply supabase/migrations/20261009122500_vivi_vital_whatsapp_flow.sql
+          apply supabase/migrations/20261009150000_argo_bridge_vital.sql
+          apply supabase/migrations/20261028_vital_crm_team_permissions_foundation.sql
+          apply supabase/migrations/20261028_vital_crm_operational_queues.sql
+          apply supabase/migrations/20261028_vital_crm_invite_drafts.sql
+          apply supabase/migrations/20261028_vital_crm_conversation_status.sql
+          apply supabase/migrations/20261028_vital_crm_atomic_transfer.sql
+          apply supabase/migrations/20261028_vital_crm_atomic_status.sql
+          apply tests/sql/vital_mia_seed_before_migration.sql
+          apply supabase/migrations/20261103150000_vital_crm_notes_reply_mia_security.sql
+          apply tests/sql/vital_mia_assertions.sql
+          echo "Migrations, políticas RLS e RPCs: aprovados."
+
+      - name: Testar concorrência real de duas sessões PostgreSQL
+        env:
+          DB_CONTAINER: ${{ job.services.postgres.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tests/sql/vital_mia_concurrency.sh

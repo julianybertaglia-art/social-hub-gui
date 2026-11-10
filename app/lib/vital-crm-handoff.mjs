@@ -1,4 +1,4 @@
-// Only a definite client-error rejection permits undoing the handoff.
+// Timeouts and server errors are ambiguous; preserve the handoff until a person checks.
 export function metaRejectionIsDefinitive(status,payload) {
   return status>=400&&status<500&&Boolean(payload?.error)&&!payload?.messages?.[0]?.id;
 }

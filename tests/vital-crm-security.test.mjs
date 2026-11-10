@@ -59,8 +59,11 @@ test('status changes are compare-and-set audited and supervisors remain read-onl
 
 test('one reply lease per contact prevents simultaneous sends and Vivi handoff happens before Meta send',()=>{
  const reply=source('app/api/crm/vital/reply/route.js');
- assert.ok(reply.indexOf('crm_vital_claim_reply_atomic')<reply.indexOf('graph.facebook.com'));
- assert.ok(reply.indexOf("stage:'await_human'")<reply.indexOf('graph.facebook.com'));
+ const send=reply.indexOf('graph.facebook.com');
+ const lock=reply.indexOf('crm_vital_claim_reply_atomic');
+ const handoff=reply.indexOf('reserveViviHandoff(db,handoffArgs)');
+ assert.ok(send>0&&lock>0&&lock<send);
+ assert.ok(handoff>0&&handoff<send);
  assert.match(reply,/crm_vital_release_reply_atomic/);
  assert.match(migration,/create table if not exists public\.crm_vital_reply_locks/);
  assert.match(migration,/primary key\(organization_id,connection_id,contact_wa_id\)/);

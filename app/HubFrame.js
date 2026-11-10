@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import styles from './hub-frame.module.css';
 import ThemeCustomizer from './ThemeCustomizer';
 import WorkspaceSwitcher, { useWorkspace, useVitalConnectionStatus } from './WorkspaceSwitcher';
+import {useAccessScope} from './CloudGate';
 import VitalWhatsAppInbox from './VitalWhatsAppInbox';
 import ViviAutomationPanel from './ViviAutomationPanel';
 import VitalAffiliatePanel from './VitalAffiliatePanel';
@@ -42,7 +43,10 @@ function pageLabel(pathname) {
 
 export default function HubFrame({ children }) {
   const pathname = usePathname();
-  const [workspace] = useWorkspace();
+  const router=useRouter();
+  const accessScope=useAccessScope();
+  const isStaff=accessScope?.scope==='staff';
+  const [workspace,setWorkspace] = useWorkspace();
   const vital = useVitalConnectionStatus();
   const vitalConnected = vital.instagram === true && vital.whatsapp === true;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -57,6 +61,11 @@ export default function HubFrame({ children }) {
       setArea('studio');
     }
   }, [pathname]);
+  useEffect(()=>{
+    if(!isStaff)return;
+    if(workspace.id!=='vital-decor')setWorkspace('vital-decor');
+    if(pathname!=='/crm/vital')router.replace('/crm/vital');
+  },[isStaff,pathname,router,workspace.id]);
   function areaHref(next) {
     if (next === 'crm') return workspace.id === 'vital-decor' ? '/crm/vital' : '/crm';
     if (next === 'settings') return workspace.id === 'vital-decor' ? '/conexoes/vital-decor' : '/admin/conexoes';
@@ -83,7 +92,12 @@ export default function HubFrame({ children }) {
   }
 
   const framed = pathname === '/' || pathname.startsWith('/whatsapp') || pathname.startsWith('/automacoes') || pathname.startsWith('/instagram') || pathname.startsWith('/tiktok') || pathname.startsWith('/youtube') || pathname.startsWith('/admin') || pathname.startsWith('/criar-post') || pathname.startsWith('/publicar') || pathname.startsWith('/crm') || pathname.startsWith('/conteudo') || pathname.startsWith('/radar');
+  if(isStaff&&pathname!=='/crm/vital')return <main className={styles.frame}><p style={{padding:32}}>Abrindo a central autorizada da Vital Decor…</p></main>;
   if (!framed) return children;
+
+  const navGroups=isStaff?[{label:'TIDE CRM',items:[
+    {href:'/crm/vital',label:'Central de atendimento',icon:'inbox',description:'Conversas das filas autorizadas'},
+  ]}]:visibleNavGroups(workspace.id,area);
 
   return (
     <div className={`${styles.frame} ${workspace.id==='vital-decor'&&area==='crm'?styles.crmMode:''}`}>
@@ -96,7 +110,7 @@ export default function HubFrame({ children }) {
           </div>
         </Link>
 
-        <div className={styles.areaSwitch} role="group" aria-label="Ambiente TidePlace">
+        {!isStaff&&<div className={styles.areaSwitch} role="group" aria-label="Ambiente TidePlace">
           <Link href="/" onClick={() => { setArea('studio'); setMenuOpen(false); }}
             className={area === 'studio' ? styles.areaActive : ''}>
             <Icon name="calendar" size={16} /> Social
@@ -105,9 +119,9 @@ export default function HubFrame({ children }) {
             className={area === 'crm' ? styles.areaActive : ''}>
             <Icon name="users" size={16} /> CRM
           </Link>
-        </div>
+        </div>}
         <nav className={styles.nav} aria-label="Áreas da TidePlace">
-          {visibleNavGroups(workspace.id, area).map((group) => (
+          {navGroups.map((group) => (
             <div className={styles.group} key={group.label}>
               <span className={styles.groupLabel}>{group.label}</span>
               {group.items.map((item) => {
@@ -136,14 +150,14 @@ export default function HubFrame({ children }) {
           ))}
         </nav>
 
-        <Link href={areaHref('settings')} onClick={() => setMenuOpen(false)} className={styles.settingsShortcut}>
+        {!isStaff&&<Link href={areaHref('settings')} onClick={() => setMenuOpen(false)} className={styles.settingsShortcut}>
           <Icon name="settings" size={17} /> Configurações
-        </Link>
+        </Link>}
         <div className={styles.profile}>
-          <div className={styles.profileDot}>J</div>
+          <div className={styles.profileDot}>{(accessScope?.displayName||'J').slice(0,1).toUpperCase()}</div>
           <div>
-            <strong>Juliany</strong>
-            <span>Social media</span>
+            <strong>{accessScope?.displayName||'Juliany'}</strong>
+            <span>{accessScope?.role==='supervisor'?'Supervisão':isStaff?'Atendimento':'Social media'}</span>
           </div>
         </div>
       </aside>
@@ -155,7 +169,7 @@ export default function HubFrame({ children }) {
       <div className={styles.main}>
         <header className={styles.topbar}>
           <button type="button" className={styles.menuButton} onClick={() => setMenuOpen(true)} aria-label="Abrir menu"><Icon name="menu" size={21} /></button>
-          <WorkspaceSwitcher />
+          {!isStaff&&<WorkspaceSwitcher />}
           <NavigationSearch workspaceId={workspace.id} pathname={pathname} onSectionChange={changeSection} />
           <ThemeCustomizer />
           <HubHealthBell />

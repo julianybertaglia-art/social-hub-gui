@@ -71,22 +71,24 @@ export default function ViviAutomationPanel() {
       </p>
       <section style={{...common,marginTop:24,display:'flex',alignItems:'center',justifyContent:'space-between',gap:18,flexWrap:'wrap'}}>
         <div>
-          <strong style={{fontSize:16}}>Status: {status?.enabled ? 'Ativada' : 'Pausada'}</strong>
+          <strong style={{fontSize:16}}>Status: {status ? (status.enabled ? 'Ativada' : 'Pausada') : (error ? 'Indisponível' : 'Consultando…')}</strong>
           <p style={{fontSize:12,color:'var(--muted)',margin:'6px 0 0'}}>
-            {status?.enabled ? 'Novos contatos recebem o menu da Vivi.' :
-              'Nenhuma nova resposta automática será enviada até a ativação.'}
+            {!status ? (error ? 'Não foi possível confirmar o status da Vivi.' : 'Consultando o status real da Vivi…') :
+              (status.enabled ? 'Novos contatos recebem o menu da Vivi.' :
+                'Nenhuma nova resposta automática será enviada até a ativação.')}
           </p>
         </div>
         <button type="button" onClick={toggle} disabled={busy || !status} style={{
           padding:'12px 20px',border:0,borderRadius:9,background:'var(--gold-dark)',color:'white',
           fontWeight:800,cursor:'pointer'
-        }}>{status?.enabled ? 'Pausar Vivi' : 'Ativar Vivi'}</button>
+        }}>{!status ? 'Aguarde' : status.enabled ? 'Pausar Vivi' : 'Ativar Vivi'}</button>
       </section>
       <section style={{...common,marginTop:14}}>
         <strong>Catálogo BLUETTI (PDF)</strong>
         <p style={{fontSize:12,color:'var(--muted)'}}>
-          {status?.bluettiCatalogReady ? 'Catálogo disponível para envio automático no menu BLUETTI.' :
-            'Envie o PDF aqui para que a Vivi possa encaminhá-lo aos clientes. A ativação ocorre após o upload.'}
+          {!status ? (error ? 'Não foi possível verificar o catálogo.' : 'Verificando o catálogo…') :
+            (status.bluettiCatalogReady ? 'Catálogo disponível para envio automático no menu BLUETTI.' :
+              'Envie o PDF aqui para que a Vivi possa encaminhá-lo aos clientes. A ativação ocorre após o upload.')}
         </p>
         <form onSubmit={upload} style={{display:'flex',flexWrap:'wrap',gap:10,alignItems:'center'}}>
           <input type="file" accept=".pdf,application/pdf" onChange={e=>setFile(e.target.files?.[0]||null)}

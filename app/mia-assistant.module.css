@@ -1,5 +1,5 @@
 
-/* MIA · restrained, accessible TidePlace assistant shell. Does not call Gemini. */
+/* MIA · restrained, accessible TidePlace assistant shell. */
 .floating{position:fixed;right:19px;bottom:20px;z-index:88;width:54px;height:54px;touch-action:none}
 .bubble{display:grid;place-items:center;width:54px;height:54px;padding:0;border:2px solid #f2dedf;border-radius:50%;background:linear-gradient(135deg,#a45a7c,#6a2847);color:#fff;box-shadow:0 9px 24px #28152135;cursor:grab;user-select:none;touch-action:none}
 .bubble:hover{box-shadow:0 12px 29px #28152148}
@@ -55,7 +55,7 @@
 
 /* Interactive assistant additions, retaining the current TidePlace styling. */
 .header button:disabled{opacity:.45;cursor:not-allowed}
-.body{display:flex;flex:1;flex-direction:column}
+.body{display:flex;flex:1;flex-direction:column;}
 .compose{display:flex;align-items:center;gap:8px;padding:7px;background:var(--surface-soft);border:1px solid var(--border);border-radius:13px}
 .compose textarea{flex:1;min-width:0;min-height:38px;max-height:110px;resize:vertical;border:0;padding:7px;background:transparent;color:var(--text);font:inherit;font-size:13px;line-height:1.4}
 .compose textarea::placeholder{color:var(--muted)}

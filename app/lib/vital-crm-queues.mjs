@@ -12,7 +12,7 @@ export const VITAL_QUEUE_SECTORS = Object.freeze({
 export const VITAL_QUEUE_OWNER_LABEL = Object.freeze({
   varejo_nv:'Juliany',pos_nv:'Juliany',afiliados:'Juliany',
   pos_shopee:'Andrey',pos_tiktok:'Andrey',
-  atacado:'Vitor',vtx:'Vitor',bluetti:'Vitor',pos_ml:'Vitor',
+  atacado:'Vitor',vtx:'Vitor',bluetti:'Vitor',pos_ml:'Andrey',
 });
 export function normalizeViviSelection(value) {
   return String(value||'').trim().normalize('NFD')
@@ -30,6 +30,8 @@ export const VIVI_SELECTION_QUEUES = Object.freeze({
   'pos-venda - tiktok shop':'pos_tiktok',
   'pos-venda · nuvemshop':'pos_nv',
   'pos-venda - nuvemshop':'pos_nv',
+  'pos-venda · site vital decor':'pos_nv',
+  'pos-venda - site vital decor':'pos_nv',
   'afiliados tiktok':'afiliados',
   'afiliados tiktok shop':'afiliados',
   'vtx fitness':'vtx',

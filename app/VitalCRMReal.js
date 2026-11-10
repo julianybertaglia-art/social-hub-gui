@@ -4,12 +4,8 @@ import Icon from './ui/Icon';
 import {api} from './operations/useOperations';
 import css from './vital-crm-real.module.css';
 import ThemeCustomizer from './ThemeCustomizer';
+import {VITAL_QUEUE_OWNER_LABEL as OWNER} from './lib/vital-crm-queues.mjs';
 
-const OWNER={
- varejo_nv:'Juliany',pos_nv:'Juliany',afiliados:'Juliany',
- pos_shopee:'Andrey',pos_tiktok:'Andrey',
- atacado:'Vitor',vtx:'Vitor',bluetti:'Vitor',pos_ml:'Vitor',
-};
 const MINE=['varejo_nv','pos_nv','afiliados'];
 const STATUS=[
  {code:'pending',label:'Aguardando resposta',color:'#da8740'},

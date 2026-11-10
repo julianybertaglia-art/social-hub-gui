@@ -1,11 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {viviQueue,resolveVitalQueue,canAccessVitalQueue,VITAL_QUEUE_ORDER,queueStatus,crmConversationStatus,vitalTransferDestinations} from '../app/lib/vital-crm-queues.mjs';
+import {viviQueue,resolveVitalQueue,canAccessVitalQueue,VITAL_QUEUE_ORDER,VITAL_QUEUE_OWNER_LABEL,queueStatus,crmConversationStatus,vitalTransferDestinations} from '../app/lib/vital-crm-queues.mjs';
 test('nine distinct queues with no accidental cross-postsale routing',()=>{
  assert.equal(VITAL_QUEUE_ORDER.length,9);
  assert.equal(new Set(VITAL_QUEUE_ORDER).size,9);
  assert.equal(resolveVitalQueue({sector:'pos_venda'}),null);
  assert.equal(resolveVitalQueue({selection:'Pós-venda · Mercado Livre',sector:'pos_venda'}),'pos_ml');
+ assert.equal(VITAL_QUEUE_OWNER_LABEL.pos_ml,'Andrey');
+ assert.equal(resolveVitalQueue({selection:'Pós-venda · Site Vital Decor',sector:'pos_venda'}),'pos_nv');
+ assert.equal(resolveVitalQueue({selection:'Pós-venda - Nuvemshop',sector:'pos_venda'}),'pos_nv');
  assert.equal(resolveVitalQueue({selection:'Revenda',sector:'atacado'}),'atacado');
  assert.equal(resolveVitalQueue({selection:'Produtos Vital Decor'}),'varejo_nv');
  assert.equal(viviQueue('qualquer outra coisa'),null);

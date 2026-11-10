@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { getSupabaseAdmin } from '../../../whatsapp/lib.js';
 import { fail } from '../../../vital-connections/helpers.mjs';
+import { isMarketplacePostSale, mayRouteToArgo } from '../../../../lib/vital-postsale-routing.mjs';
 export { WHATSAPP_API_VERSION } from '../../../whatsapp/lib.js';
 export { canReplyWithinWindow } from '../../../vital-whatsapp/conversations/inbox.mjs';
 
@@ -100,13 +101,15 @@ export async function routeViviConversation(db,connection,contact,stage,selectio
   const now=new Date().toISOString();
   // Assigned sectors remain in TidePlace until explicitly activated and a live agent key exists.
   let assignee = 'tide';
-  if(setting?.routing_enabled && AGENTS.includes(setting.default_assignee)){
+  const eligible = sector !== 'pos_venda' ||
+    (setting?.default_assignee === 'andrey' && isMarketplacePostSale(selection));
+  if(setting?.routing_enabled && AGENTS.includes(setting.default_assignee) && eligible){
     const {count,error:keyError}=await db.from('vital_whatsapp_argo_keys')
       .select('id',{count:'exact',head:true}).eq('connection_id',connection.id)
       .eq('owner_user_id',connection.owner_user_id).eq('agent',setting.default_assignee)
       .is('revoked_at',null).gt('expires_at',now);
     if(keyError)throw keyError;
-    if(count>0)assignee=setting.default_assignee;
+    if(mayRouteToArgo({sector,selection,setting,keyAvailable:count>0}))assignee=setting.default_assignee;
   }
   const {error}=await db.from('vital_whatsapp_assignments').upsert({
     connection_id:connection.id,owner_user_id:connection.owner_user_id,contact_wa_id:contact,

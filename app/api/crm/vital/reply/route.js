@@ -3,6 +3,7 @@ import {resolveVitalQueue,canAccessVitalQueue} from '../../../../lib/vital-crm-q
 import {fail} from '../../../vital-connections/helpers.mjs';
 import {WHATSAPP_API_VERSION} from '../../../whatsapp/lib';
 import {canReplyWithinWindow} from '../../../vital-whatsapp/conversations/inbox.mjs';
+import {metaRejectionIsDefinitive,reserveViviHandoff,restoreViviHandoff} from '../../../../lib/vital-crm-handoff.mjs';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -34,7 +35,7 @@ export async function POST(request){
   const [manual,flow,legacy,grants,lastInbound]=await Promise.all([
     db.from('crm_vital_queue_assignments').select('queue_code')
       .eq('organization_id',organization.id).eq('connection_id',connection.id).eq('contact_wa_id',to).maybeSingle(),
-    db.from('vital_whatsapp_flow_sessions').select('selection')
+    db.from('vital_whatsapp_flow_sessions').select('stage,selection,human_handoff,manual_override,updated_at,last_interaction_at')
       .eq('owner_user_id',organization.ownerUserId).eq('connection_id',connection.id).eq('contact_wa_id',to).maybeSingle(),
     db.from('vital_whatsapp_assignments').select('sector,assigned_to,status')
       .eq('owner_user_id',organization.ownerUserId).eq('connection_id',connection.id).eq('contact_wa_id',to).maybeSingle(),
@@ -93,26 +94,36 @@ export async function POST(request){
   if(verifyArgo.data?.status!=='closed'&&verifyArgo.data?.assigned_to&&verifyArgo.data.assigned_to!=='tide')
     throw fail('A conversa voltou para a atribuição do Argo. Nenhuma mensagem foi enviada.',409);
 
-  // Pause Vivi before sending. If this write fails, no human message is sent.
+  // Reserve the handoff without overwriting changes made since the initial read.
   const now=new Date().toISOString();
-  const handoff=await db.from('vital_whatsapp_flow_sessions').upsert({
-    connection_id:connection.id,owner_user_id:organization.ownerUserId,contact_wa_id:to,
-    stage:'await_human',human_handoff:true,manual_override:true,
-    updated_at:now,last_interaction_at:now,
-  },{onConflict:'connection_id,contact_wa_id'});
-  if(handoff.error)throw fail('Não foi possível pausar a Vivi com segurança. Nenhuma mensagem foi enviada.',503);
+  const handoffArgs={connectionId:connection.id,ownerId:organization.ownerUserId,
+    contact:to,previous:flow.data,marker:now};
+  const handoff=await reserveViviHandoff(db,handoffArgs);
+  if(!handoff.ok)throw fail(handoff.reason==='changed'
+    ?'O atendimento mudou enquanto você respondia. Atualize a conversa; nenhuma mensagem foi enviada.'
+    :'Não foi possível pausar a Vivi com segurança. Nenhuma mensagem foi enviada.',
+    handoff.reason==='changed'?409:503);
 
-  const response=await fetch(
+  let response;
+  try{response=await fetch(
     'https://graph.facebook.com/'+WHATSAPP_API_VERSION+'/'+connection.external_account_id+'/messages',{
       method:'POST',
       headers:{Authorization:'Bearer '+connection.access_token,'Content-Type':'application/json'},
       body:JSON.stringify({messaging_product:'whatsapp',recipient_type:'individual',to,
         type:'text',text:{preview_url:false,body:message}}),
       signal:AbortSignal.timeout(20000),cache:'no-store',
-    });
+    });}catch{
+    throw fail('A Meta não confirmou se a mensagem foi enviada. Confira o histórico antes de tentar novamente; a Vivi ficou pausada nesta conversa.',502);
+  }
   const delivered=await response.json().catch(()=>({}));
-  if(!response.ok||delivered.error||!delivered.messages?.[0]?.id)
-    throw fail('A Meta não confirmou o envio ('+String(delivered.error?.code||response.status)+').',502);
+  if(!response.ok||delivered.error||!delivered.messages?.[0]?.id){
+    if(metaRejectionIsDefinitive(response.status,delivered)){
+      const restored=await restoreViviHandoff(db,handoffArgs);
+      throw fail('A Meta recusou o envio ('+String(delivered.error?.code||response.status)+'). '+
+        (restored?'A Vivi manteve o estado anterior.':'Confira a conversa: não foi possível restaurar o estado anterior da Vivi.'),502);
+    }
+    throw fail('A Meta não confirmou se a mensagem foi enviada. Confira o histórico antes de tentar novamente; a Vivi ficou pausada nesta conversa.',502);
+  }
   const messageId=String(delivered.messages[0].id);
   const log=await db.from('workspace_meta_messages').upsert({
       connection_id:connection.id,owner_user_id:organization.ownerUserId,

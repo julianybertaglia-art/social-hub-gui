@@ -42,6 +42,8 @@ test('reserves and restores the previous Vivi state after a definite rejection',
  assert.equal((await reserveViviHandoff(db,args)).ok,true);
  assert.equal(db.read().selection,previous.selection);
  assert.equal(db.read().human_handoff,true);
+ assert.equal(db.read().manual_override,true);
+ assert.equal(db.read().stage,'await_human');
  assert.equal(await restoreViviHandoff(db,args),true);
  for(const field of ['stage','selection','human_handoff','manual_override','last_interaction_at'])
   assert.equal(db.read()[field],previous[field]);

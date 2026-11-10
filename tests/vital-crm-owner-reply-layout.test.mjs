@@ -31,8 +31,8 @@ test('authorized human reply preserves identity, queue grants, Argo guard, and 2
  assert.match(reply,/\.eq\('workspace_id','vital-decor'\)/);
  assert.match(reply,/canReplyWithinWindow\(lastInbound\.data\?\.sent_at\)/);
  assert.match(reply,/legacy\.data\.assigned_to!=='tide'/);
- assert.match(reply,/stage:'await_human',human_handoff:true,manual_override:true/);
- assert.match(reply,/handOff|handoff\.error/);
+ assert.match(reply,/reserveViviHandoff\(db,handoffArgs\)/);
+ assert.match(reply,/!handoff\.ok/);
  assert.match(reply,/crm_vital_claim_reply_atomic/);
  assert.match(reply,/crm_vital_release_reply_atomic/);
  assert.match(reply,/Outro atendente está respondendo a esta conversa/);

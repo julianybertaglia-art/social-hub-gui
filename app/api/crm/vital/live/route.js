@@ -3,6 +3,7 @@ import { fail } from '../../../vital-connections/helpers.mjs';
 import {canReplyWithinWindow} from '../../../vital-whatsapp/conversations/inbox.mjs';
 import {readRows} from '../../../../lib/operations.mjs';
 import {resolveVitalQueue,canAccessVitalQueue,crmConversationStatus,VITAL_QUEUE_ORDER,vitalTransferDestinations} from '../../../../lib/vital-crm-queues.mjs';
+import {manualBridgePlan,transferManually} from '../../../../lib/vital-crm-manual-bridge.mjs';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -176,21 +177,25 @@ export async function PATCH(request){
       throw fail('Você não pode transferir conversas de outro setor.',403);
     if(!current.queue&&ctx.access.role!=='owner')
       throw fail('Somente a administração pode distribuir conversas não classificadas.',403);
-    if(current.queue===toQueue)return Response.json({ok:true,unchanged:true,toQueue},{headers});
+    const plan=manualBridgePlan({
+      enabled:process.env.VITAL_CRM_ARGO_MANUAL_ENABLED==='true',
+      toQueue,currentQueue:current.queue,assignment:current.assignment,
+    });
+    if(plan.unchanged)return Response.json({ok:true,unchanged:true,toQueue},{headers});
     // Confirm conversation exists before accepting a manual assignment.
     const {data:exists,error:existsError}=await ctx.db.from('workspace_meta_messages')
       .select('id').eq('owner_user_id',ctx.owner).eq('connection_id',ctx.connection.id)
       .eq('contact_wa_id',phone).limit(1).maybeSingle();
     if(existsError||!exists)throw fail('Conversa não encontrada.',404);
-    const {data:result,error:transferError}=await ctx.db.rpc('crm_vital_transfer_atomic',{
-      p_org:ctx.organization.id,p_conn:ctx.connection.id,p_owner:ctx.owner,
-      p_phone:phone,p_to_queue:toQueue,p_expected_from:current.queue,
-      p_expected_override_at:current.manual?.updated_at||null,p_actor:ctx.userId,
+    const {confirmed,error:transferError}=await transferManually({
+      db:ctx.db,plan,organizationId:ctx.organization.id,connectionId:ctx.connection.id,
+      ownerId:ctx.owner,phone,toQueue,current,actorId:ctx.userId,
     });
-    if(transferError||result!==toQueue){
+    if(!confirmed){
       if(transferError?.code==='40001')throw fail('Esta conversa foi modificada. Atualize a página e tente novamente.',409);
       if(transferError?.code==='42501')throw fail('Seu acesso a esta conversa foi alterado. Atualize a página.',403);
-      throw fail('Não foi possível registrar a transferência. Nenhuma alteração foi concluída.',503);
+      if(transferError?.code==='55P03')throw fail('Há uma resposta em andamento. Aguarde antes de transferir.',409);
+      throw fail('Não foi possível confirmar a transferência. Atualize a conversa e confira o destino antes de tentar novamente.',503);
     }
     return Response.json({ok:true,toQueue,fromQueue:current.queue,auditRecorded:true},{headers});
   }catch(e){
@@ -198,3 +203,4 @@ export async function PATCH(request){
       {status:e.status||503,headers});
   }
 }
+

@@ -439,6 +439,8 @@
  .inboxFocus .header h1{font-size:19px}
  .inboxFocus .eyebrow{display:none}
  .inboxHasSelection .inboxToolbar{display:none}
+ .inboxFocus .tabs.hasStoreTab{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .inboxFocus .tabs.hasStoreTab button{min-width:0;padding:6px 4px;gap:4px;font-size:12px;line-height:1.2}
  .inboxToolbar{align-items:flex-start}
  .inboxToolbar .inboxSummary{gap:5px}
  .inboxToolbar .summaryPill{padding:6px 8px;min-height:35px}

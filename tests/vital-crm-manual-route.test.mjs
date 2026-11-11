@@ -94,6 +94,31 @@ test('missing database operation fails closed without legacy fallback',async()=>
   assert.equal(f.calls.length,1);
   assert.equal(f.calls[0].name,'crm_vital_transfer_argo_atomic');
 });
+test('choosing the same marketplace queue still reconciles an assignment left in Tide',async()=>{
+  const f=fixture({override:{queue_code:'pos_ml',updated_at:'before'},
+    assignment:{assigned_to:'tide',status:'open',sector:'pos_venda',updated_at:'bridge-before'},
+    rpcData:{to_queue:'pos_ml',assigned_to:'andrey',audit_recorded:true}});
+  const result=await run(f,true);
+  assert.equal(result.status,200);
+  assert.equal(result.body.unchanged,undefined);
+  assert.equal(f.calls.length,1);
+  assert.equal(f.calls[0].name,'crm_vital_transfer_argo_atomic');
+});
+test('a conflict or in-flight reply is reported without retry or fallback',async()=>{
+  for(const code of ['40001','55P03']){
+    const f=fixture({rpcData:null,rpcError:{code}});
+    const result=await run(f,true);
+    assert.equal(result.status,409);
+    assert.equal(f.calls.length,1);
+    assert.equal(f.calls[0].name,'crm_vital_transfer_argo_atomic');
+  }
+});
+test('an incomplete atomic response never claims success',async()=>{
+  const f=fixture({rpcData:{to_queue:'pos_ml',assigned_to:'andrey',audit_recorded:false}});
+  const result=await run(f,true);
+  assert.equal(result.status,503);
+  assert.equal(f.calls.length,1);
+});
 test('bad origin and unauthorized role cannot call either transfer operation',async()=>{
   const a=fixture();
   assert.equal((await run(a,true,'pos_ml','https://wrong.test')).status,403);

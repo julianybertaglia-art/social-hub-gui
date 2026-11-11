@@ -94,3 +94,13 @@
 @media(min-width:811px) and (max-width:1100px){.crmMode{--frame-sidebar:252px}}
 @media(max-width:810px){.crmMode{--frame-sidebar:260px}}
 @media(prefers-reduced-motion:reduce){.crmMode .navLink{transition:none}}
+
+/* The conversation area can use the full width, while the menu stays one click away. */
+.desktopMenuButton{display:none}
+@media(min-width:811px){
+ .frame.sidebarCollapsed{--frame-sidebar:0px}
+ .sidebarCollapsed .sidebar{transform:translateX(-100%);visibility:hidden;pointer-events:none}
+ .desktopMenuButton{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border:1px solid var(--tp-line);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer}
+ .desktopMenuButton:hover{background:var(--surface-soft)}
+ .desktopMenuButton:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+}

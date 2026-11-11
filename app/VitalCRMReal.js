@@ -223,7 +223,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
     {page!=='store'&&<button type="button" onClick={reload}><Icon name="refresh" size={15}/> Atualizar</button>}
    </div>
   </header>
-  <nav className={css.tabs} aria-label="Navegação do CRM">
+  <nav className={`${css.tabs} ${storeAllowed&&!storeOnly?css.hasStoreTab:''}`} aria-label="Navegação do CRM">
    {!storeOnly&&<button className={page==='dashboard'?css.active:''} onClick={()=>setPage('dashboard')}><Icon name="chart" size={17}/> Dashboard</button>}
    {!storeOnly&&<button className={page==='inbox'?css.active:''} onClick={()=>setPage('inbox')}><Icon name="inbox" size={17}/> Atendimentos</button>}
    {storeAllowed&&<button className={page==='store'?css.active:''} onClick={()=>setPage('store')}><Icon name="chart" size={17}/> Loja Nuvemshop</button>}

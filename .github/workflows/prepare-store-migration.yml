@@ -1,0 +1,30 @@
+name: Preparar migration da loja Vital (temporário)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/prepare-store-migration.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v2
+        with:
+          version: 2.122.1
+      - name: Criar arquivo candidato sem acessar produção
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase migration new vital_store_rate_limit
+          file="$(find supabase/migrations -maxdepth 1 -type f -name '*_vital_store_rate_limit.sql' -print)"
+          [[ -f "$file" && "$(printf '%s\n' "$file" | wc -l)" -eq 1 ]]
+          printf '%s\n' '-- Store read request limiter. Review and validate before applying to production.' > "$file"
+          sed '1,5d' docs/vital-store-rate-limit-draft.sql >> "$file"
+          echo "CREATED_MIGRATION_PATH=$file"
+          sha256sum "$file"

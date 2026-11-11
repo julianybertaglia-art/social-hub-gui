@@ -1,0 +1,1 @@
+export default function Icon({name,size=16}){return <span aria-hidden="true" style={{display:'inline-grid',placeItems:'center',width:size,height:size,fontSize:size*.8}}>{name==='menu'?'☰':name==='close'?'×':'·'}</span>}

@@ -1,0 +1,2 @@
+:root{--bg:#f8f5f4;--surface:#fff;--surface-soft:#fbf9f8;--text:#171417;--muted:#756d70;--border:#eadfe2;--gold:#8f2945;--gold-soft:#f6eaee;--tp-line:#e7e3e6;--tp-side-bg:#151216;--tp-side-text:#f4f1f3;--tp-side-muted:#b8aab3;--tp-side-line:rgba(255,255,255,.08)}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:var(--text);background:var(--bg)}button,input,select,textarea{font:inherit}button{cursor:pointer}

@@ -41,7 +41,7 @@ function Donut({title,subtitle,segments,total,compact=false}){
 }
 const emptyCounts={total:0,pending:0,open:0,closed:0,unassigned:0,queues:{}};
 const SPLIT_WIDTH_KEY='tideplace:crm-vital:split-width';
-const DEFAULT_SPLIT_WIDTH=36;
+const DEFAULT_SPLIT_WIDTH=30;
 const BOARD_HEIGHT_KEY='tideplace:crm-vital:board-height';
 const clampSplitWidth=value=>Math.max(25,Math.min(70,Math.round(value)));
 const clampBoardHeight=value=>Math.max(440,Math.min(1000,Math.round(value)));
@@ -223,7 +223,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
     {page!=='store'&&<button type="button" onClick={reload}><Icon name="refresh" size={15}/> Atualizar</button>}
    </div>
   </header>
-  <nav className={css.tabs} aria-label="Navegação do CRM">
+  <nav className={`${css.tabs} ${storeAllowed&&!storeOnly?css.hasStoreTab:''}`} aria-label="Navegação do CRM">
    {!storeOnly&&<button className={page==='dashboard'?css.active:''} onClick={()=>setPage('dashboard')}><Icon name="chart" size={17}/> Dashboard</button>}
    {!storeOnly&&<button className={page==='inbox'?css.active:''} onClick={()=>setPage('inbox')}><Icon name="inbox" size={17}/> Atendimentos</button>}
    {storeAllowed&&<button className={page==='store'?css.active:''} onClick={()=>setPage('store')}><Icon name="chart" size={17}/> Loja Nuvemshop</button>}
@@ -283,8 +283,9 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    </aside>
   </div>}
   {data && page==='inbox' && <>
+   <div className={css.inboxToolbar}>
    <div className={css.inboxSummary}>
-    {STATUS.map(item=><button key={item.code} className={css.summaryPill} style={{'--accent':item.color}} onClick={()=>setStatusFilter(statusFilter===item.code?'all':item.code)}>
+    {STATUS.map(item=><button key={item.code} className={css.summaryPill} aria-pressed={statusFilter===item.code} style={{'--accent':item.color}} onClick={()=>setStatusFilter(statusFilter===item.code?'all':item.code)}>
      <strong>{counts[item.code]||0}</strong><span>{item.label}</span>
     </button>)}
    </div>
@@ -292,8 +293,9 @@ export default function VitalCRMReal({embedded=false,onLogout}){
     <button className={view==='all'?css.active:''} onClick={()=>{setView('all');setQueueFilter('all');}}>Todas as filas</button>
     <button className={view==='mine'?css.active:''} onClick={()=>{setView('mine');setQueueFilter('all');}}>Minha operação</button>
    </div>}
+   </div>
    <div ref={boardFrame} className={css.boardFrame} style={boardHeight?{'--vital-board-height':boardHeight+'px'}:undefined}>
-   <div data-crm-board ref={splitBoard} className={css.board} style={{'--vital-split-width':splitWidth+'%'}}>
+   <div data-crm-board ref={splitBoard} className={`${css.board} ${selected?css.hasSelection:''}`} style={{'--vital-split-width':splitWidth+'%'}}>
     <section className={css.list}>
      <div className={css.listHeader}><h2>Atendimentos</h2><span>{effective.length} nesta página</span></div>
      <label className={css.search}><span>Buscar conversa</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Nome, número ou assunto…"/></label>
@@ -404,7 +406,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    </div>
   </>}
  </>;
- if(embedded)return <main className={css.embedded}>{main}</main>;
+ if(embedded)return <main className={`${css.embedded} ${page==='inbox'?css.inboxFocus:''} ${page==='inbox'&&selected?css.inboxHasSelection:''}`}>{main}</main>;
  return <div className={css.shell}>
   <aside className={css.sidebar}>
    <div className={css.brand}><img src="/brand/tideplace-mark.svg" alt=""/><div><strong>TIDEPLACE</strong><span>Vital Decor · CRM</span></div></div>
@@ -416,6 +418,6 @@ export default function VitalCRMReal({embedded=false,onLogout}){
     {onLogout&&<button onClick={onLogout} type="button"><Icon name="logout" size={16}/> Sair</button>}
    </div>
   </aside>
-  <main className={css.main}>{main}</main>
+  <main className={`${css.main} ${page==='inbox'?css.inboxFocus:''} ${page==='inbox'&&selected?css.inboxHasSelection:''}`}>{main}</main>
  </div>;
 }

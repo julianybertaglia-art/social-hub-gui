@@ -1,0 +1,43 @@
+name: Testar limite da loja Vital (banco descartável)
+
+on:
+  pull_request:
+    paths:
+      - 'docs/vital-store-rate-limit-draft.sql'
+      - 'tests/sql/vital_store_*'
+      - '.github/workflows/vital-store-limiter-postgres.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci-not-production
+          POSTGRES_DB: tide_store_test
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tide_store_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Testar proposta SQL, RLS e permissões
+        env:
+          DB_CONTAINER: ${{ job.services.postgres.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in tests/sql/vital_store_bootstrap.sql docs/vital-store-rate-limit-draft.sql tests/sql/vital_store_assertions.sql; do
+            docker exec -i "$DB_CONTAINER" psql -U postgres -d tide_store_test -X -v ON_ERROR_STOP=1 < "$file"
+          done
+      - name: Testar chamadas simultâneas
+        env:
+          DB_CONTAINER: ${{ job.services.postgres.id }}
+        shell: bash
+        run: bash tests/sql/vital_store_concurrency.sh

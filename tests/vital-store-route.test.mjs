@@ -81,7 +81,9 @@ test('Guilherme remains blocked until his individual identity is configured',asy
 });
 test('the access probe requires the same permissions and never calls the store',async()=>{
   const owner=fixture();const permitted=await run(owner,{resource:'access'});
-  assert.equal(permitted.status,200);assert.equal(permitted.body.available,true);assert.equal(owner.calls,0);
+  assert.equal(permitted.status,200);assert.equal(permitted.body.available,true);assert.equal(permitted.body.storeOnly,false);assert.equal(owner.calls,0);
+  const gui=fixture({userId:'gui-id',role:'supervisor'});const storeOnly=await run(gui,{resource:'access'});
+  assert.equal(storeOnly.status,200);assert.equal(storeOnly.body.available,true);assert.equal(storeOnly.body.storeOnly,true);assert.equal(gui.calls,0);
   const other=fixture({userId:'vitor-id',role:'agent'});const denied=await run(other,{resource:'access'});
   assert.equal(denied.status,403);assert.equal(other.calls,0);
   const inactive=fixture();const disabled=await run(inactive,{resource:'access',enabled:false});

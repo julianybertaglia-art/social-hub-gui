@@ -3,7 +3,7 @@ name: Testar limite da loja Vital (banco descartável)
 on:
   pull_request:
     paths:
-      - 'docs/vital-store-rate-limit-draft.sql'
+      - 'supabase/migrations/*_vital_store_rate_limit.sql'
       - 'tests/sql/vital_store_*'
       - '.github/workflows/vital-store-limiter-postgres.yml'
 
@@ -33,7 +33,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in tests/sql/vital_store_bootstrap.sql docs/vital-store-rate-limit-draft.sql tests/sql/vital_store_assertions.sql; do
+          for file in tests/sql/vital_store_bootstrap.sql supabase/migrations/20261111135829_vital_store_rate_limit.sql tests/sql/vital_store_assertions.sql; do
             docker exec -i "$DB_CONTAINER" psql -U postgres -d tide_store_test -X -v ON_ERROR_STOP=1 < "$file"
           done
       - name: Testar chamadas simultâneas

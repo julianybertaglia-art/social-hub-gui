@@ -1,8 +1,4 @@
--- DESIGN DRAFT ONLY: do not apply directly to any hosted database.
--- Before release, create a proper migration with the Supabase CLI, review the
--- current schema/privileges, and test concurrent claims on an isolated DB.
--- No customer data or Nuvemshop credentials are stored here.
-
+-- Store read request limiter. Review and validate before applying to production.
 create table public.crm_vital_store_request_limits (
   organization_id uuid primary key references public.crm_organizations(id) on delete cascade,
   next_request_at timestamptz not null default '-infinity',

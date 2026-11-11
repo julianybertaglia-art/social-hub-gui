@@ -1,0 +1,21 @@
+.store{display:flex;flex-direction:column;gap:14px;color:var(--ink,#302833)}
+.intro{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 22px;background:linear-gradient(115deg,#fff,#fcf5f8);border:1px solid var(--line,#ebe2e9);border-radius:15px}
+.intro h2{margin:5px 0;font-size:21px;letter-spacing:-.025em}
+.intro p{margin:0;color:var(--muted,#756b74);font-size:13px}
+.eyebrow{color:var(--wine,#8f2945);font-size:11px;font-weight:800;letter-spacing:.1em}
+.refresh,.pagination button{border:1px solid var(--line,#ebe2e9);border-radius:9px;background:#fff;color:inherit;padding:9px 13px;font-size:12px;font-weight:700;cursor:pointer}
+.refresh:disabled,.tabs button:disabled{opacity:.55;cursor:wait}
+.notice{padding:12px 15px;border-radius:10px;background:#fcf5f8;border:1px solid #efdee7;color:#6d4e60;font-size:12.5px}
+.panel{background:#fff;border:1px solid var(--line,#ebe2e9);border-radius:14px;overflow:hidden}
+.tabs{display:flex;flex-wrap:wrap;gap:5px;padding:12px;border-bottom:1px solid var(--line,#ebe2e9)}
+.tabs button{border:0;background:transparent;color:#6d606b;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700}
+.tabs button.active{background:#873154;color:#fff}
+.row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:15px 18px;border-bottom:1px solid var(--line,#ebe2e9);font-size:12.5px}
+.row strong{font-size:13.5px}.row p{margin:4px 0 0;color:var(--muted,#756b74);overflow-wrap:anywhere}
+.row span{color:var(--muted,#756b74);font-size:11.5px}
+.rowEnd{display:flex;flex-direction:column;align-items:flex-end;gap:3px;text-align:right}
+.hint,.state,.error{margin:0;padding:18px;color:var(--muted,#756b74);font-size:12.5px}
+.hint{padding-bottom:6px}.error{color:#942e1d}
+.pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;color:var(--muted,#756b74);font-size:12px}
+.pagination button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:600px){.intro{align-items:flex-start;flex-direction:column}.row{align-items:flex-start;flex-direction:column;gap:7px}.rowEnd{align-items:flex-start;text-align:left}.tabs button{flex:1 1 auto}.row p{line-height:1.5}}

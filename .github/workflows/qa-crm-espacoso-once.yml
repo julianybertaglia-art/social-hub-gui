@@ -18,7 +18,7 @@ jobs:
       - run: npm install --no-save --ignore-scripts playwright
       - name: Preparar interface com dados fictícios
         run: |
-          cp app/HubFrame.js app/hub-frame.module.css app/VitalCRMReal.js app/vital-crm-real.module.css qa-crm/app/
+          cp app/HubFrame.js app/hub-frame.module.css app/VitalCRMReal.js app/vital-crm-real.module.css app/VitalStoreCRM.js app/vital-store-crm.module.css qa-crm/app/
           ln -s "$GITHUB_WORKSPACE/node_modules" qa-crm/node_modules
       - name: Exercitar desktop e celular
         working-directory: qa-crm

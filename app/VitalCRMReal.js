@@ -53,7 +53,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const [revision,setRevision]=useState(0),[pageNumber,setPageNumber]=useState(0);
  const [queueFilter,setQueueFilter]=useState('all'),[statusFilter,setStatusFilter]=useState('all'),[search,setSearch]=useState('');
  const [destination,setDestination]=useState(''),[draft,setDraft]=useState('');
- const [storeAllowed,setStoreAllowed]=useState(false);
+ const [storeAllowed,setStoreAllowed]=useState(false),[storeOnly,setStoreOnly]=useState(false);
  const [splitWidth,setSplitWidth]=useState(DEFAULT_SPLIT_WIDTH);
  const [boardHeight,setBoardHeight]=useState(null);
  const splitBoard=useRef(null),splitDragging=useRef(false);
@@ -125,7 +125,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  useEffect(()=>{
   let active=true;
   api('/api/crm/vital/store?resource=access')
-   .then(result=>{if(active)setStoreAllowed(result.available===true);})
+   .then(result=>{if(active){setStoreAllowed(result.available===true);setStoreOnly(result.storeOnly===true);if(result.storeOnly===true)setPage('store');}})
    .catch(()=>{if(active)setStoreAllowed(false);});
   return()=>{active=false};
  },[]);
@@ -224,17 +224,17 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    </div>
   </header>
   <nav className={css.tabs} aria-label="Navegação do CRM">
-   <button className={page==='dashboard'?css.active:''} onClick={()=>setPage('dashboard')}><Icon name="chart" size={17}/> Dashboard</button>
-   <button className={page==='inbox'?css.active:''} onClick={()=>setPage('inbox')}><Icon name="inbox" size={17}/> Atendimentos</button>
+   {!storeOnly&&<button className={page==='dashboard'?css.active:''} onClick={()=>setPage('dashboard')}><Icon name="chart" size={17}/> Dashboard</button>}
+   {!storeOnly&&<button className={page==='inbox'?css.active:''} onClick={()=>setPage('inbox')}><Icon name="inbox" size={17}/> Atendimentos</button>}
    {storeAllowed&&<button className={page==='store'?css.active:''} onClick={()=>setPage('store')}><Icon name="chart" size={17}/> Loja Nuvemshop</button>}
   </nav>
-  {error&&<div className={css.alert} role="alert">{error}</div>}
+  {page!=='store'&&error&&<div className={css.alert} role="alert">{error}</div>}
   {notice&&<div className={css.notice} role="status">{notice}</div>}
   {page!=='store'&&data?.readOnly&&!data?.canReply&&<p className={css.smallNotice} role="status"><strong>CRM conectado, somente leitura:</strong> os dados e as mensagens são reais. As respostas serão habilitadas após os testes de segurança com a Meta e o Argo.</p>}
   {page!=='store'&&data?.readOnly&&data?.canReply&&<p className={css.smallNotice} role="status"><strong>Respostas disponíveis para a administradora:</strong> apenas na janela de 24 horas e em conversas não atribuídas ao Argo. Transferências e encerramentos continuam desativados.</p>}
   {page!=='store'&&data?.sampled&&<p className={css.smallNotice}>Os indicadores consideram as conversas sincronizadas dentro do limite atual de consulta.</p>}
   {page==='store'&&storeAllowed&&<VitalStoreCRM/>}
-  {loading&&!data?<div className={css.loading}>Consultando conversas e permissões da Vital…</div>:null}
+  {page!=='store'&&loading&&!data?<div className={css.loading}>Consultando conversas e permissões da Vital…</div>:null}
   {data && page==='dashboard' && <div className={css.dashboardLayout}>
    <div className={css.dashboardPrimary}>
     <div className={css.cards}>
@@ -409,8 +409,8 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   <aside className={css.sidebar}>
    <div className={css.brand}><img src="/brand/tideplace-mark.svg" alt=""/><div><strong>TIDEPLACE</strong><span>Vital Decor · CRM</span></div></div>
    <div className={css.sidebarLabel}>CENTRAL DE ATENDIMENTO</div>
-   <button className={page==='dashboard'?css.sidebarActive:css.sidebarButton} onClick={()=>setPage('dashboard')}><Icon name="chart" size={17}/> Dashboard</button>
-   <button className={page==='inbox'?css.sidebarActive:css.sidebarButton} onClick={()=>setPage('inbox')}><Icon name="inbox" size={17}/> Atendimentos</button>
+   {!storeOnly&&<button className={page==='dashboard'?css.sidebarActive:css.sidebarButton} onClick={()=>setPage('dashboard')}><Icon name="chart" size={17}/> Dashboard</button>}
+   {!storeOnly&&<button className={page==='inbox'?css.sidebarActive:css.sidebarButton} onClick={()=>setPage('inbox')}><Icon name="inbox" size={17}/> Atendimentos</button>}
    {storeAllowed&&<button className={page==='store'?css.sidebarActive:css.sidebarButton} onClick={()=>setPage('store')}><Icon name="chart" size={17}/> Loja Nuvemshop</button>}
    <div className={css.sidebarBottom}><span>Acesso individual · Vital Decor</span>
     {onLogout&&<button onClick={onLogout} type="button"><Icon name="logout" size={16}/> Sair</button>}

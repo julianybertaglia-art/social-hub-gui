@@ -4,7 +4,7 @@ import {canReadVitalStore} from '../app/lib/server/vital-store-access.mjs';
 
 const organization={id:'org',workspace_code:'vital-decor',owner_user_id:'ju-id'};
 const member=(id,role='agent',status='active',org='org')=>({user_id:id,role,status,organization_id:org});
-const check=(userId,record,extra={})=>canReadVitalStore({userId,organization,member:record,guilhermeUserId:'gui-id',...extra});
+const check=(userId,record,extra={})=>canReadVitalStore({userId,organization,member:record,guilhermeUserId:'gui-id',trustedOrganizationId:'org',...extra});
 test('only the verified owner and explicitly identified Guilherme are allowed',()=>{
   assert.equal(check('ju-id',member('ju-id','owner')),true);
   assert.equal(check('gui-id',member('gui-id','supervisor')),true);
@@ -20,4 +20,8 @@ test('inactive, mismatched organization, forged owner, and missing identity fail
   assert.equal(check('ju-id',member('ju-id','agent')),false);
   assert.equal(check('gui-id',member('gui-id','supervisor'),{guilhermeUserId:null}),false);
   assert.equal(check('gui-id',member('gui-id','supervisor'),{organization:{...organization,workspace_code:'gui'}}),false);
+  assert.equal(check('ju-id',member('ju-id','owner'),{trustedOrganizationId:null}),false);
+  assert.equal(check('ju-id',member('ju-id','owner'),{trustedOrganizationId:'other-org'}),false);
+  const impostor={id:'impostor-org',workspace_code:'vital-decor',owner_user_id:'impostor'};
+  assert.equal(check('impostor',member('impostor','owner','active','impostor-org'),{organization:impostor}),false);
 });

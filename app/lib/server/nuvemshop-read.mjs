@@ -13,6 +13,13 @@ export class NuvemshopReadError extends Error {
   }
 }
 
+export function validateNuvemshopQuery(resource, {page = 1, perPage = 25} = {}) {
+  if (!RESOURCES.has(resource)) throw new NuvemshopReadError('resource', 'Consulta não permitida.');
+  if (!Number.isSafeInteger(page) || page < 1 || page > 10000 ||
+      !Number.isSafeInteger(perPage) || perPage < 1 || perPage > 50)
+    throw new NuvemshopReadError('pagination', 'Página inválida.');
+}
+
 export function createNuvemshopReader({storeId, accessToken, userAgent, fetchImpl = fetch} = {}) {
   const id = String(storeId || '');
   if (!/^[0-9]{1,20}$/.test(id)) throw new NuvemshopReadError('config', 'Loja não configurada.');
@@ -24,10 +31,7 @@ export function createNuvemshopReader({storeId, accessToken, userAgent, fetchImp
 
   return Object.freeze({
     async list(resource, {page = 1, perPage = 25} = {}) {
-      if (!RESOURCES.has(resource)) throw new NuvemshopReadError('resource', 'Consulta não permitida.');
-      if (!Number.isSafeInteger(page) || page < 1 || page > 10000 ||
-          !Number.isSafeInteger(perPage) || perPage < 1 || perPage > 50)
-        throw new NuvemshopReadError('pagination', 'Página inválida.');
+      validateNuvemshopQuery(resource,{page,perPage});
       const url = new URL(BASE + id + '/' + resource);
       url.searchParams.set('page', String(page));
       url.searchParams.set('per_page', String(perPage));

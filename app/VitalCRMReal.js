@@ -395,7 +395,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    </div>
   </>}
  </>;
- if(embedded)return <main className={`${css.embedded} ${page==='inbox'?css.inboxFocus:''}`}>{main}</main>;
+ if(embedded)return <main className={`${css.embedded} ${page==='inbox'?css.inboxFocus:''} ${page==='inbox'&&selected?css.inboxHasSelection:''}`}>{main}</main>;
  return <div className={css.shell}>
   <aside className={css.sidebar}>
    <div className={css.brand}><img src="/brand/tideplace-mark.svg" alt=""/><div><strong>TIDEPLACE</strong><span>Vital Decor · CRM</span></div></div>
@@ -406,6 +406,6 @@ export default function VitalCRMReal({embedded=false,onLogout}){
     {onLogout&&<button onClick={onLogout} type="button"><Icon name="logout" size={16}/> Sair</button>}
    </div>
   </aside>
-  <main className={`${css.main} ${page==='inbox'?css.inboxFocus:''}`}>{main}</main>
+  <main className={`${css.main} ${page==='inbox'?css.inboxFocus:''} ${page==='inbox'&&selected?css.inboxHasSelection:''}`}>{main}</main>
  </div>;
 }

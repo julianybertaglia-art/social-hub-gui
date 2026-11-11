@@ -27,6 +27,13 @@ export async function GET(request) {
       return reply({error:'A conexão com a loja ainda não está disponível.'},503);
     const url=new URL(request.url);
     const resource=url.searchParams.get('resource')||'';
+    // This probe is authenticated and never contacts the store. It only says
+    // the integration is configured, not that the upstream is healthy.
+    if(resource==='access') {
+      if(!process.env.NUVEMSHOP_VITAL_ACCESS_TOKEN||!process.env.NUVEMSHOP_VITAL_USER_AGENT)
+        return reply({error:'A conexão com a loja ainda não está disponível.'},503);
+      return reply({available:true});
+    }
     const page=Number(url.searchParams.get('page')||'1');
     const perPage=Number(url.searchParams.get('perPage')||'25');
     const reader=createNuvemshopReader({storeId:process.env.NUVEMSHOP_VITAL_STORE_ID,

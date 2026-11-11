@@ -25,7 +25,7 @@ function fixture({userId='ju-id',role='owner',status='active',memberOrg='org',me
     get calls(){return fetchCalls},
   };
 }
-async function run(f,{enabled=true,gui='gui-id',resource='customers',storeId='7938728'}={}){
+async function run(f,{enabled=true,gui='gui-id',resource='customers',storeId='7938728',token='fake-secret'}={}){
   const oldFetch=globalThis.fetch,keys=['VITAL_STORE_READ_ENABLED','VITAL_STORE_GUILHERME_USER_ID',
     'NUVEMSHOP_VITAL_STORE_ID','NUVEMSHOP_VITAL_ACCESS_TOKEN','NUVEMSHOP_VITAL_USER_AGENT'];
   const old=Object.fromEntries(keys.map(k=>[k,process.env[k]]));
@@ -33,7 +33,7 @@ async function run(f,{enabled=true,gui='gui-id',resource='customers',storeId='79
   process.env.VITAL_STORE_READ_ENABLED=enabled?'true':'false';
   if(gui)process.env.VITAL_STORE_GUILHERME_USER_ID=gui;else delete process.env.VITAL_STORE_GUILHERME_USER_ID;
   process.env.NUVEMSHOP_VITAL_STORE_ID=storeId;
-  process.env.NUVEMSHOP_VITAL_ACCESS_TOKEN='fake-secret';
+  if(token)process.env.NUVEMSHOP_VITAL_ACCESS_TOKEN=token;else delete process.env.NUVEMSHOP_VITAL_ACCESS_TOKEN;
   process.env.NUVEMSHOP_VITAL_USER_AGENT='TidePlace (https://example.test)';
   try {
     const response=await GET(new Request('https://tide.test/api/crm/vital/store?resource='+resource));
@@ -68,6 +68,16 @@ test('Guilherme remains blocked until his individual identity is configured',asy
   const f=fixture({userId:'gui-id',role:'supervisor'});
   const result=await run(f,{gui:null});
   assert.equal(result.status,403);assert.equal(f.calls,0);
+});
+test('the access probe requires the same permissions and never calls the store',async()=>{
+  const owner=fixture();const permitted=await run(owner,{resource:'access'});
+  assert.equal(permitted.status,200);assert.equal(permitted.body.available,true);assert.equal(owner.calls,0);
+  const other=fixture({userId:'vitor-id',role:'agent'});const denied=await run(other,{resource:'access'});
+  assert.equal(denied.status,403);assert.equal(other.calls,0);
+  const inactive=fixture();const disabled=await run(inactive,{resource:'access',enabled:false});
+  assert.equal(disabled.status,503);assert.equal(inactive.calls,0);
+  const noToken=fixture();const unconfigured=await run(noToken,{resource:'access',token:null});
+  assert.equal(unconfigured.status,503);assert.equal(noToken.calls,0);
 });
 test('a different store cannot be queried using the Vital CRM connection',async()=>{
   const f=fixture();const result=await run(f,{storeId:'99999'});

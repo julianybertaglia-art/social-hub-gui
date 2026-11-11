@@ -4,6 +4,7 @@ import Icon from './ui/Icon';
 import {api} from './operations/useOperations';
 import css from './vital-crm-real.module.css';
 import ThemeCustomizer from './ThemeCustomizer';
+import VitalStoreCRM from './VitalStoreCRM';
 
 const OWNER={
  varejo_nv:'Juliany',pos_nv:'Juliany',afiliados:'Juliany',
@@ -52,6 +53,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const [revision,setRevision]=useState(0),[pageNumber,setPageNumber]=useState(0);
  const [queueFilter,setQueueFilter]=useState('all'),[statusFilter,setStatusFilter]=useState('all'),[search,setSearch]=useState('');
  const [destination,setDestination]=useState(''),[draft,setDraft]=useState('');
+ const [storeAllowed,setStoreAllowed]=useState(false);
  const [splitWidth,setSplitWidth]=useState(DEFAULT_SPLIT_WIDTH);
  const [boardHeight,setBoardHeight]=useState(null);
  const splitBoard=useRef(null),splitDragging=useRef(false);
@@ -120,6 +122,13 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    if(detail&&messagesRef.current)messagesRef.current.scrollTop=messagesRef.current.scrollHeight;
  },[detail?.contact?.id,detail?.messages?.length]);
  const reload=useCallback(()=>setRevision(v=>v+1),[]);
+ useEffect(()=>{
+  let active=true;
+  api('/api/crm/vital/store?resource=access')
+   .then(result=>{if(active)setStoreAllowed(result.available===true);})
+   .catch(()=>{if(active)setStoreAllowed(false);});
+  return()=>{active=false};
+ },[]);
  useEffect(()=>{
   let active=true;setLoading(true);setError('');
   api('/api/crm/vital/live?page='+pageNumber).then(result=>{if(active)setData(result);})
@@ -205,24 +214,26 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   <header className={css.header}>
    <div>
     <span className={css.eyebrow}>TIDEPLACE / VITAL DECOR / CRM</span>
-    <h1>{page==='dashboard'?'Visão geral da operação':'Central de atendimento'}</h1>
-    <p>{manager?'Distribuição, acompanhamento e transferências das conversas reais.':'Atendimentos das filas sob sua responsabilidade.'}</p>
+    <h1>{page==='dashboard'?'Visão geral da operação':page==='store'?'Loja Vital Decor':'Central de atendimento'}</h1>
+    <p>{page==='store'?'Relacionamento com os clientes da loja.':manager?'Distribuição, acompanhamento e transferências das conversas reais.':'Atendimentos das filas sob sua responsabilidade.'}</p>
    </div>
    <div className={css.topActions}>
     <span className={css.liveIndicator}><i/> DADOS REAIS</span>
     {!embedded&&<ThemeCustomizer />}
-    <button type="button" onClick={reload}><Icon name="refresh" size={15}/> Atualizar</button>
+    {page!=='store'&&<button type="button" onClick={reload}><Icon name="refresh" size={15}/> Atualizar</button>}
    </div>
   </header>
   <nav className={css.tabs} aria-label="Navegação do CRM">
    <button className={page==='dashboard'?css.active:''} onClick={()=>setPage('dashboard')}><Icon name="chart" size={17}/> Dashboard</button>
    <button className={page==='inbox'?css.active:''} onClick={()=>setPage('inbox')}><Icon name="inbox" size={17}/> Atendimentos</button>
+   {storeAllowed&&<button className={page==='store'?css.active:''} onClick={()=>setPage('store')}><Icon name="chart" size={17}/> Loja Nuvemshop</button>}
   </nav>
   {error&&<div className={css.alert} role="alert">{error}</div>}
   {notice&&<div className={css.notice} role="status">{notice}</div>}
-  {data?.readOnly&&!data?.canReply&&<p className={css.smallNotice} role="status"><strong>CRM conectado, somente leitura:</strong> os dados e as mensagens são reais. As respostas serão habilitadas após os testes de segurança com a Meta e o Argo.</p>}
-  {data?.readOnly&&data?.canReply&&<p className={css.smallNotice} role="status"><strong>Respostas disponíveis para a administradora:</strong> apenas na janela de 24 horas e em conversas não atribuídas ao Argo. Transferências e encerramentos continuam desativados.</p>}
-  {data?.sampled&&<p className={css.smallNotice}>Os indicadores consideram as conversas sincronizadas dentro do limite atual de consulta.</p>}
+  {page!=='store'&&data?.readOnly&&!data?.canReply&&<p className={css.smallNotice} role="status"><strong>CRM conectado, somente leitura:</strong> os dados e as mensagens são reais. As respostas serão habilitadas após os testes de segurança com a Meta e o Argo.</p>}
+  {page!=='store'&&data?.readOnly&&data?.canReply&&<p className={css.smallNotice} role="status"><strong>Respostas disponíveis para a administradora:</strong> apenas na janela de 24 horas e em conversas não atribuídas ao Argo. Transferências e encerramentos continuam desativados.</p>}
+  {page!=='store'&&data?.sampled&&<p className={css.smallNotice}>Os indicadores consideram as conversas sincronizadas dentro do limite atual de consulta.</p>}
+  {page==='store'&&storeAllowed&&<VitalStoreCRM/>}
   {loading&&!data?<div className={css.loading}>Consultando conversas e permissões da Vital…</div>:null}
   {data && page==='dashboard' && <div className={css.dashboardLayout}>
    <div className={css.dashboardPrimary}>
@@ -400,6 +411,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    <div className={css.sidebarLabel}>CENTRAL DE ATENDIMENTO</div>
    <button className={page==='dashboard'?css.sidebarActive:css.sidebarButton} onClick={()=>setPage('dashboard')}><Icon name="chart" size={17}/> Dashboard</button>
    <button className={page==='inbox'?css.sidebarActive:css.sidebarButton} onClick={()=>setPage('inbox')}><Icon name="inbox" size={17}/> Atendimentos</button>
+   {storeAllowed&&<button className={page==='store'?css.sidebarActive:css.sidebarButton} onClick={()=>setPage('store')}><Icon name="chart" size={17}/> Loja Nuvemshop</button>}
    <div className={css.sidebarBottom}><span>Acesso individual · Vital Decor</span>
     {onLogout&&<button onClick={onLogout} type="button"><Icon name="logout" size={16}/> Sair</button>}
    </div>

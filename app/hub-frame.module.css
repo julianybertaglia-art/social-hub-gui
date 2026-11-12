@@ -95,12 +95,35 @@
 @media(max-width:810px){.crmMode{--frame-sidebar:260px}}
 @media(prefers-reduced-motion:reduce){.crmMode .navLink{transition:none}}
 
-/* The conversation area can use the full width, while the menu stays one click away. */
+/* Desktop navigation: compact icon rail instead of hiding the sidebar.
+   The toggle always remains reachable in the header. No CRM data or channels change. */
 .desktopMenuButton{display:none}
 @media(min-width:811px){
- .frame.sidebarCollapsed{--frame-sidebar:0px}
- .sidebarCollapsed .sidebar{transform:translateX(-100%);visibility:hidden;pointer-events:none}
+ .frame.sidebarCollapsed{--frame-sidebar:72px}
+ .frame .main{transition:margin-left .2s ease}
+ .frame .sidebar{transition:width .2s ease}
+ .sidebarCollapsed .sidebar{transform:none;visibility:visible;pointer-events:auto;overflow:hidden;padding:14px 9px}
+ .sidebarCollapsed .brand{justify-content:center;gap:0;margin:0 0 12px;padding:1px 0 13px}
+ .sidebarCollapsed .brandMark{width:40px;height:40px;flex-basis:40px}
+ .sidebarCollapsed .brandCopy{display:none}
+ .sidebarCollapsed .areaSwitch{display:flex;flex-direction:column;gap:5px;margin:0 0 12px;padding:4px}
+ .sidebarCollapsed .areaSwitch a{min-height:41px;gap:0;padding:0}
+ .sidebarCollapsed .areaLabel{display:none}
+ .sidebarCollapsed .nav{gap:10px;padding:1px 2px 9px;overflow-x:hidden}
+ .sidebarCollapsed .group{gap:5px}
+ .sidebarCollapsed .group + .group{padding-top:9px;border-top:1px solid var(--tp-side-line,rgba(255,255,255,.12))}
+ .sidebarCollapsed .groupLabel{display:none}
+ .sidebarCollapsed .navLink{justify-content:center;gap:0;width:100%;min-height:44px;padding:10px 0}
+ .sidebarCollapsed .navLink > span:not(.icon){display:none}
+ .sidebarCollapsed .navLink .icon{width:24px;flex-basis:24px}
+ .sidebarCollapsed .settingsShortcut{justify-content:center;gap:0;margin:0;padding:11px 0;min-height:44px;border-radius:9px}
+ .sidebarCollapsed .settingsLabel{display:none}
+ .sidebarCollapsed .profile{justify-content:center;gap:0;margin:10px 0 0;padding:12px 0 0}
+ .sidebarCollapsed .profileDetails{display:none}
  .desktopMenuButton{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border:1px solid var(--tp-line);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer}
  .desktopMenuButton:hover{background:var(--surface-soft)}
  .desktopMenuButton:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+}
+@media(prefers-reduced-motion:reduce){
+ .frame .main,.frame .sidebar{transition:none}
 }

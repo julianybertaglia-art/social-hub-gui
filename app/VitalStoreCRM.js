@@ -2,12 +2,14 @@
 import {useEffect,useState} from 'react';
 import {api} from './operations/useOperations';
 import css from './vital-store-crm.module.css';
+import VitalInsightsCRM from './VitalInsightsCRM';
 
 const TABS=[
  {id:'customers',label:'Clientes'},
  {id:'orders',label:'Pedidos'},
  {id:'checkouts',label:'Checkouts não concluídos'},
  {id:'products',label:'Produtos'},
+ {id:'insights',label:'Tráfego e comportamento'},
 ];
 function date(value){
  const stamp=Date.parse(value||'');
@@ -45,6 +47,7 @@ export default function VitalStoreCRM(){
  const [items,setItems]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
  useEffect(()=>{
   let active=true;const controller=new AbortController();setLoading(true);setError('');setItems([]);
+  if(resource==='insights'){setLoading(false);return()=>{active=false;controller.abort();};}
   api('/api/crm/vital/store?resource='+encodeURIComponent(resource)+'&page='+page+'&perPage=25',{signal:controller.signal})
    .then(result=>{if(active)setItems(Array.isArray(result.items)?result.items:[]);})
    .catch(e=>{if(active)setError(e.message||'Não foi possível consultar a loja.');})
@@ -59,12 +62,13 @@ export default function VitalStoreCRM(){
     <p>Clientes, pedidos e produtos da Nuvemshop em um só lugar.</p></div>
    <button type="button" disabled={loading} onClick={()=>setRevision(v=>v+1)} className={css.refresh}>Atualizar</button>
   </div>
-  <div className={css.notice}>Visitas e automações de e-mail e WhatsApp ainda não estão disponíveis aqui.</div>
+  <div className={css.notice}>Os indicadores de tráfego ficam na aba própria após a conexão. Automações de e-mail e WhatsApp ainda não estão disponíveis nesta área.</div>
   <div className={css.panel}>
    <nav className={css.tabs} aria-label="Dados da loja">
     {TABS.map(tab=><button key={tab.id} type="button" disabled={loading} aria-pressed={resource===tab.id}
       className={resource===tab.id?css.active:''} onClick={()=>select(tab.id)}>{tab.label}</button>)}
    </nav>
+   {resource==='insights'?<VitalInsightsCRM/>:<>
    {resource==='checkouts'&&<p className={css.hint}>A Nuvemshop disponibiliza checkouts abandonados dos últimos 30 dias, que podem levar até 6 horas para aparecer. Eles não incluem todas as visitas ou todos os carrinhos.</p>}
    {loading&&<p role="status" className={css.state}>Consultando a loja…</p>}
    {!loading&&error&&<p role="alert" className={css.error}>{error}</p>}
@@ -75,6 +79,7 @@ export default function VitalStoreCRM(){
     <span>Página {page}</span>
     <button type="button" disabled={loading||Boolean(error)||items.length<25} onClick={()=>setPage(p=>p+1)}>Próxima</button>
    </div>
+   </>}
   </div>
  </section>;
 }

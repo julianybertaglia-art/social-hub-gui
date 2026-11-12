@@ -37,7 +37,7 @@ test('Guilherme can view only when active and explicitly granted the supervisor 
   queueGrants:grants(VITAL_TEAM_QUEUE_PLAN.Guilherme.queues),staffEnabled:true});
  assert.equal(result.access.role,'supervisor');
  assert.equal(result.access.canTransfer,false);
- assert.equal(result.access.sectors.length,9);
+ assert.equal(result.access.sectors.length,10);
 });
 
 test('missing identity, inactive membership, missing release, or missing queues deny access',()=>{

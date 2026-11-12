@@ -26,7 +26,7 @@ function fixture({assignment={assigned_to:'tide',status:'open',sector:'comercial
     workspace_meta_connections:{id:'conn'},
     crm_vital_member_queues:grants.map(queue_code=>({queue_code})),
     crm_vital_queues:[
-      {queue_code:'varejo_nv'}, {queue_code:'pos_ml'}, {queue_code:'pos_nv'}, {queue_code:'pos_shopee'},
+      {queue_code:'varejo_nv'}, {queue_code:'pos_ml'}, {queue_code:'pos_nv'}, {queue_code:'pos_shopee'}, {queue_code:'pos_amazon'},
     ],
     crm_vital_queue_assignments:override,
     vital_whatsapp_flow_sessions:{selection},
@@ -73,6 +73,14 @@ test('enabled bridge confirms marketplace only after one atomic response',async(
   const result=await run(f,true);
   assert.equal(result.status,200);
   assert.equal(result.body.toQueue,'pos_ml');
+  assert.equal(f.calls.length,1);
+  assert.equal(f.calls[0].name,'crm_vital_transfer_argo_atomic');
+  assert.equal(f.calls[0].args.p_assignee,'andrey');
+});
+test('Amazon is sent to Andrey only after an atomic bridge confirmation',async()=>{
+  const f=fixture({rpcData:{to_queue:'pos_amazon',assigned_to:'andrey',audit_recorded:true}});
+  const result=await run(f,true,'pos_amazon');
+  assert.equal(result.status,200);
   assert.equal(f.calls.length,1);
   assert.equal(f.calls[0].name,'crm_vital_transfer_argo_atomic');
   assert.equal(f.calls[0].args.p_assignee,'andrey');

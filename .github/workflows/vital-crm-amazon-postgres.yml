@@ -1,0 +1,60 @@
+name: Validar fila Amazon do CRM Vital
+
+on:
+  pull_request:
+    paths:
+      - 'tests/sql/vital_amazon_queue_*'
+      - '.github/workflows/vital-crm-amazon-postgres.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci-not-production
+          POSTGRES_DB: tide_amazon_qa
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tide_amazon_qa"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@v3
+        with:
+          version: v2.stable
+      - name: Gerar migration e validar em PostgreSQL descartável
+        env:
+          DB_CONTAINER: ${{ job.services.postgres.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          apply() { docker exec -i "$DB_CONTAINER" psql -U postgres -d tide_amazon_qa -X -v ON_ERROR_STOP=1 < "$1"; }
+          apply tests/sql/vital_mia_bootstrap.sql
+          apply supabase/migrations/20261008151532_vital_decor_connections.sql
+          apply tests/sql/vital_mia_seed_connection.sql
+          apply supabase/migrations/20261028_vital_crm_team_permissions_foundation.sql
+          apply supabase/migrations/20261028_vital_crm_operational_queues.sql
+          apply tests/sql/vital_amazon_queue_prepare.sql
+          mkdir -p "$RUNNER_TEMP/vital-amazon-cli"
+          cd "$RUNNER_TEMP/vital-amazon-cli"
+          supabase --help >/dev/null
+          supabase migration --help >/dev/null
+          supabase migration new --help >/dev/null
+          supabase init --yes
+          supabase migration new vital_crm_amazon_queue
+          generated=$(find supabase/migrations -name '*_vital_crm_amazon_queue.sql' -type f -print)
+          test "$(printf '%s\n' "$generated" | wc -l)" -eq 1
+          cp "$GITHUB_WORKSPACE/tests/sql/vital_amazon_queue_seed_source.sql" "$generated"
+          echo "GENERATED_MIGRATION=$(basename "$generated")"
+          apply "$generated"
+          apply "$generated"
+          apply "$GITHUB_WORKSPACE/tests/sql/vital_amazon_queue_assertions.sql"

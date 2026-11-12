@@ -11,7 +11,7 @@ const args = db => ({db, organizationId:'org', connectionId:'conn', ownerId:'own
   phone:'5511999999999', actorId:'actor', current});
 
 test('marketplaces are planned for Andrey, site and other sectors stay in Tide',()=>{
-  for (const toQueue of ['pos_shopee','pos_tiktok','pos_ml']) {
+  for (const toQueue of ['pos_shopee','pos_tiktok','pos_ml','pos_amazon']) {
     const p=manualBridgePlan({enabled:true,toQueue,currentQueue:'varejo_nv',assignment:current.assignment});
     assert.equal(p.desiredAssignee,'andrey');
     assert.equal(p.usesBridge,true);

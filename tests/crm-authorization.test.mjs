@@ -9,14 +9,14 @@ test('unknown, inactive and missing profiles are rejected by default',()=>{
  assert.equal(canCrmAccess(undefined,'read_conversation','pos_shopee'),false);
 });
 
-test('the four requested profiles have only their explicit nine-queue grants',()=>{
+test('the four requested profiles have only their explicit ten-queue grants',()=>{
  assert.deepEqual(VITAL_QUEUE_ORDER,[
-  'varejo_nv','pos_nv','afiliados','pos_shopee','pos_tiktok','atacado','vtx','bluetti','pos_ml',
+  'varejo_nv','pos_nv','afiliados','pos_shopee','pos_tiktok','atacado','vtx','bluetti','pos_ml','pos_amazon',
  ]);
- assert.deepEqual(VITAL_TEAM_QUEUE_PLAN.Andrey.queues,['pos_shopee','pos_tiktok','pos_ml']);
+ assert.deepEqual(VITAL_TEAM_QUEUE_PLAN.Andrey.queues,['pos_shopee','pos_tiktok','pos_ml','pos_amazon']);
  assert.deepEqual(VITAL_TEAM_QUEUE_PLAN.Vitor.queues,['atacado','vtx','bluetti']);
- assert.equal(VITAL_TEAM_QUEUE_PLAN.Juliany.queues.length,9);
- assert.equal(VITAL_TEAM_QUEUE_PLAN.Guilherme.queues.length,9);
+ assert.equal(VITAL_TEAM_QUEUE_PLAN.Juliany.queues.length,10);
+ assert.equal(VITAL_TEAM_QUEUE_PLAN.Guilherme.queues.length,10);
  for(const [name,plan] of Object.entries(VITAL_TEAM_QUEUE_PLAN)){
   const grant=plan.queues;
   for(const queue of VITAL_QUEUE_ORDER){
@@ -30,6 +30,7 @@ test('an attendant cannot change a requested queue or transfer without an explic
  assert.equal(canCrmAccess(andrey,'read_conversation','pos_shopee'),true);
  assert.equal(canCrmAccess(andrey,'reply_conversation','pos_tiktok'),true);
  assert.equal(canCrmAccess(andrey,'read_conversation','pos_ml'),true);
+ assert.equal(canCrmAccess(andrey,'read_conversation','pos_amazon'),true);
  assert.equal(canCrmAccess(andrey,'read_conversation','pos_nv'),false);
  assert.equal(canCrmAccess(andrey,'assign_conversation','pos_shopee'),false);
  assert.equal(canCrmAccess({...andrey,canTransfer:true},'assign_conversation','pos_shopee'),true);

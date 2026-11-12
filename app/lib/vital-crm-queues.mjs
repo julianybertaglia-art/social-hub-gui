@@ -2,19 +2,19 @@
 // of private message bodies. Unrecognized pós-venda marketplaces stay unassigned.
 export const VITAL_QUEUE_ORDER = [
   'varejo_nv','pos_nv','afiliados','pos_shopee','pos_tiktok',
-  'atacado','vtx','bluetti','pos_ml',
+  'atacado','vtx','bluetti','pos_ml','pos_amazon',
 ];
 export const VITAL_QUEUE_SECTORS = Object.freeze({
   varejo_nv:'comercial_vital',pos_nv:'pos_venda',afiliados:'afiliados',
   pos_shopee:'pos_venda',pos_tiktok:'pos_venda',
-  atacado:'atacado',vtx:'vtx',bluetti:'bluetti',pos_ml:'pos_venda',
+  atacado:'atacado',vtx:'vtx',bluetti:'bluetti',pos_ml:'pos_venda',pos_amazon:'pos_venda',
 });
 export const VITAL_QUEUE_OWNER_LABEL = Object.freeze({
   varejo_nv:'Juliany',pos_nv:'Juliany',afiliados:'Juliany',
   pos_shopee:'Andrey',pos_tiktok:'Andrey',
-  atacado:'Vitor',vtx:'Vitor',bluetti:'Vitor',pos_ml:'Andrey',
+  atacado:'Vitor',vtx:'Vitor',bluetti:'Vitor',pos_ml:'Andrey',pos_amazon:'Andrey',
 });
-export const VITAL_ARGO_POSTSALE_QUEUES=Object.freeze(['pos_shopee','pos_tiktok','pos_ml']);
+export const VITAL_ARGO_POSTSALE_QUEUES=Object.freeze(['pos_shopee','pos_tiktok','pos_ml','pos_amazon']);
 export function needsVitalArgoReconciliation(enabled,queue,assignee) {
   if(!enabled || !Object.hasOwn(VITAL_QUEUE_SECTORS,queue))return false;
   if(VITAL_ARGO_POSTSALE_QUEUES.includes(queue))return assignee!=='andrey';
@@ -23,7 +23,7 @@ export function needsVitalArgoReconciliation(enabled,queue,assignee) {
 const ALL_VITAL_QUEUES=Object.freeze([...VITAL_QUEUE_ORDER]);
 export const VITAL_TEAM_QUEUE_PLAN=Object.freeze({
   Juliany:Object.freeze({role:'Administradora',access:'owner',queues:ALL_VITAL_QUEUES}),
-  Andrey:Object.freeze({role:'Atendente',access:'agent',queues:Object.freeze(['pos_shopee','pos_tiktok','pos_ml'])}),
+  Andrey:Object.freeze({role:'Atendente',access:'agent',queues:Object.freeze(['pos_shopee','pos_tiktok','pos_ml','pos_amazon'])}),
   Vitor:Object.freeze({role:'Atendente',access:'agent',queues:Object.freeze(['atacado','vtx','bluetti'])}),
   Guilherme:Object.freeze({role:'Supervisor · somente leitura',access:'supervisor',queues:ALL_VITAL_QUEUES}),
 });
@@ -41,6 +41,8 @@ export const VIVI_SELECTION_QUEUES = Object.freeze({
   'pos-venda - shopee':'pos_shopee',
   'pos-venda · tiktok shop':'pos_tiktok',
   'pos-venda - tiktok shop':'pos_tiktok',
+  'pos-venda · amazon':'pos_amazon',
+  'pos-venda - amazon':'pos_amazon',
   'pos-venda · nuvemshop':'pos_nv',
   'pos-venda - nuvemshop':'pos_nv',
   'pos-venda · site vital decor':'pos_nv',
@@ -58,7 +60,7 @@ export function resolveVitalQueue({override, selection, sector}={}) {
   if (override && VITAL_QUEUE_SECTORS[override]) return override;
   const classified = viviQueue(selection);
   if(classified) return classified;
-  // "pos_venda" is NOT unique: Shopee, TikTok, Mercado Livre and Nuvemshop.
+  // "pos_venda" is NOT unique: marketplaces and the site have separate queues.
   return UNIQUE_SECTOR_QUEUE[sector] || null;
 }
 // The destination list is public queue metadata within an authenticated Vital

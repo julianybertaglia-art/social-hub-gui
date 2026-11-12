@@ -173,7 +173,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  },{});
  const responsibleColors={Juliany:'#b54880',Andrey:'#e0783b',Vitor:'#009992'};
  const areaMap=[
-   {name:'Pós-venda',codes:['pos_nv','pos_shopee','pos_tiktok','pos_ml'],color:'#dd843f'},
+   {name:'Pós-venda',codes:['pos_nv','pos_shopee','pos_tiktok','pos_ml','pos_amazon'],color:'#dd843f'},
    {name:'Varejo',codes:['varejo_nv'],color:'#327fc2'},
    {name:'Atacado',codes:['atacado'],color:'#845bb8'},
    {name:'Produtos',codes:['vtx','bluetti'],color:'#009c96'},

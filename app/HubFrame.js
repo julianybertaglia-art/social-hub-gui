@@ -175,9 +175,9 @@ export default function HubFrame({ children }) {
         <header className={styles.topbar}>
           <button type="button" className={styles.menuButton} onClick={() => setMenuOpen(true)} aria-label="Abrir menu" aria-expanded={menuOpen} aria-controls="tideplace-navigation"><Icon name="menu" size={21} /></button>
           <button type="button" className={styles.desktopMenuButton} onClick={toggleSidebar}
-            aria-label={sidebarCollapsed ? 'Abrir menu lateral' : 'Recolher menu lateral'}
-            title={sidebarCollapsed ? 'Abrir menu lateral' : 'Recolher menu lateral'}
-            aria-expanded={!sidebarCollapsed} aria-controls="tideplace-navigation"><Icon name="menu" size={21} /></button>
+            aria-label={sidebarCollapsed ? 'Expandir menu lateral' : 'Reduzir menu lateral'}
+            title={sidebarCollapsed ? 'Expandir menu lateral' : 'Reduzir menu lateral'}
+            aria-expanded={!sidebarCollapsed} aria-controls="tideplace-navigation"><Icon name={sidebarCollapsed ? 'arrowRight' : 'arrowLeft'} size={20} /></button>
           <WorkspaceSwitcher />
           <NavigationSearch workspaceId={workspace.id} pathname={pathname} onSectionChange={changeSection} />
           <ThemeCustomizer />

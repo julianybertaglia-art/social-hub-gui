@@ -62,7 +62,7 @@ export default function VitalStoreCRM(){
     <p>Clientes, pedidos e produtos da Nuvemshop em um só lugar.</p></div>
    <button type="button" disabled={loading} onClick={()=>setRevision(v=>v+1)} className={css.refresh}>Atualizar</button>
   </div>
-  <div className={css.notice}>Visitas e automações de e-mail e WhatsApp ainda não estão disponíveis aqui.</div>
+  <div className={css.notice}>Os indicadores de tráfego ficam na aba própria após a conexão. Automações de e-mail e WhatsApp ainda não estão disponíveis nesta área.</div>
   <div className={css.panel}>
    <nav className={css.tabs} aria-label="Dados da loja">
     {TABS.map(tab=><button key={tab.id} type="button" disabled={loading} aria-pressed={resource===tab.id}

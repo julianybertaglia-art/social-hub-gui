@@ -1,4 +1,4 @@
--- Candidate RPC for isolated validation. Do not enable the bridge until every
+-- Do not enable the bridge until every
 -- assignment writer and both reply paths share the same concurrency contract.
 create or replace function public.crm_vital_transfer_argo_atomic(
  p_org uuid,p_conn uuid,p_owner uuid,p_phone text,p_to_queue text,

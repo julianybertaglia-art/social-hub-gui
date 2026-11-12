@@ -105,7 +105,7 @@ export default function HubFrame({ children }) {
   return (
     <div className={`${styles.frame} ${workspace.id==='vital-decor'&&area==='crm'?styles.crmMode:''} ${sidebarCollapsed ? styles.sidebarCollapsed : ''}`}>
       <aside id="tideplace-navigation" className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
-        <Link href="/" className={styles.brand} onClick={() => setMenuOpen(false)}>
+        <Link href="/" className={styles.brand} onClick={() => setMenuOpen(false)} aria-label="TidePlace — página inicial" title="TidePlace">
           <div className={styles.brandMark}><img src="/brand/tideplace-mark.svg" alt="" /></div>
           <div className={styles.brandCopy}>
             <strong><b>TIDE</b>PLACE</strong>
@@ -115,12 +115,12 @@ export default function HubFrame({ children }) {
 
         <div className={styles.areaSwitch} role="group" aria-label="Ambiente TidePlace">
           <Link href="/" onClick={() => { setArea('studio'); setMenuOpen(false); }}
-            className={area === 'studio' ? styles.areaActive : ''}>
-            <Icon name="calendar" size={16} /> Social
+            className={area === 'studio' ? styles.areaActive : ''} title="Social" aria-label="Social">
+            <Icon name="calendar" size={18} /><span className={styles.areaLabel}>Social</span>
           </Link>
           <Link href={areaHref('crm')} onClick={() => { setArea('crm'); setMenuOpen(false); }}
-            className={area === 'crm' ? styles.areaActive : ''}>
-            <Icon name="users" size={16} /> CRM
+            className={area === 'crm' ? styles.areaActive : ''} title="CRM" aria-label="CRM">
+            <Icon name="users" size={18} /><span className={styles.areaLabel}>CRM</span>
           </Link>
         </div>
         <nav className={styles.nav} aria-label="Áreas da TidePlace">
@@ -135,7 +135,8 @@ export default function HubFrame({ children }) {
                     key={item.href}
                     className={`${styles.navLink} ${active ? styles.active : ''}`}
                     aria-current={active ? 'page' : undefined}
-                    title={item.description}
+                    title={sidebarCollapsed ? item.label + (item.description ? ' — ' + item.description : '') : (item.description || item.label)}
+                    aria-label={item.label}
                     onClick={(event) => {
                       if (pathname === '/' && item.section) {
                         event.preventDefault();
@@ -153,12 +154,13 @@ export default function HubFrame({ children }) {
           ))}
         </nav>
 
-        <Link href={areaHref('settings')} onClick={() => setMenuOpen(false)} className={styles.settingsShortcut}>
-          <Icon name="settings" size={17} /> Configurações
+        <Link href={areaHref('settings')} onClick={() => setMenuOpen(false)} className={styles.settingsShortcut}
+          title="Configurações" aria-label="Configurações">
+          <Icon name="settings" size={19} /><span className={styles.settingsLabel}>Configurações</span>
         </Link>
         <div className={styles.profile}>
           <div className={styles.profileDot}>J</div>
-          <div>
+          <div className={styles.profileDetails}>
             <strong>Juliany</strong>
             <span>Social media</span>
           </div>

@@ -4,6 +4,7 @@ import { graph } from '../../../service';
 import {
   CALLBACK_COOKIE, CALLBACK_URL, META_API_VERSION, UNIFIED_APP_ID,
   VITAL_BUSINESS_ID, VITAL_INSTAGRAM_ID, safeAuthError, selectVitalInstagram,
+  isVerifiedVitalProfile,
 } from '../lib.mjs';
 import { resolveAppSecret } from '../credentials.mjs';
 
@@ -80,25 +81,40 @@ async function verifyUnifiedToken(token, secret) {
   if (String(identity?.client_business_id || '') !== VITAL_BUSINESS_ID) {
     throw authFailure('wrong_business');
   }
-  let accounts;
+  // Meta Unified Login may issue a valid business integration system-user
+  // token yet return no assets from /me/assigned_instagram_accounts.
+  // We never assume a blank list is permission: verify the exact account with
+  // that same token after checking its app, scopes and client_business_id.
+  let accounts = null;
   try {
     accounts = await graph('me/assigned_instagram_accounts', token, {
       query: { fields: 'id,username', limit: '100' },
     });
-  } catch { throw authFailure('account_not_shared'); }
-  const account = selectVitalInstagram(accounts);
-  if (!account) throw authFailure('account_not_shared');
-
-  // A valid shared asset must also be accessible with this exact token.
-  let profile;
-  try {
-    profile = await graph(VITAL_INSTAGRAM_ID, token, { query: { fields: 'id,username' } });
-  } catch { throw authFailure('account_not_shared'); }
-  if (String(profile.id || '') !== VITAL_INSTAGRAM_ID ||
-      String(profile.username || '').toLowerCase() !== 'vitaldecor_') {
+  } catch {
+    // Do not discard a valid token merely because this listing edge failed.
+    // A direct read of the *fixed* Vital IG ID must still succeed below.
+  }
+  const assigned = selectVitalInstagram(accounts);
+  const listed = Array.isArray(accounts?.data) ? accounts.data : [];
+  if (listed.length > 0 && !assigned) {
+    // A nonempty list sharing other IG accounts is not consent for Vital.
     throw authFailure('account_not_shared');
   }
-  return account;
+
+  // Authorization requires a real successful Graph read, not a matching ID
+  // hardcoded into the TidePlace. The exact ID AND username must be returned
+  // by Meta, otherwise the old connection is preserved.
+  let profile;
+  try {
+    profile = await graph(VITAL_INSTAGRAM_ID, token, {
+      query: { fields: 'id,username' },
+    });
+  } catch {
+    throw authFailure('account_not_shared');
+  }
+  if (!isVerifiedVitalProfile(profile)) throw authFailure('account_not_shared');
+  // No account-switching and no broad skip. This is verified against Meta.
+  return assigned || { id: VITAL_INSTAGRAM_ID, username: 'vitaldecor_' };
 }
 
 async function subscribeInstagram(token) {

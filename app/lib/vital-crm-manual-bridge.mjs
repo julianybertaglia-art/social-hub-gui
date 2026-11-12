@@ -8,7 +8,9 @@ export function manualBridgePlan({ enabled, toQueue, currentQueue, assignment })
   const desiredAssignee = MARKETPLACE_POSTSALE.has(toQueue) ? 'andrey' : 'tide';
   const existingAssignee = assignment?.assigned_to || null;
   const externalOpen = EXTERNAL_ASSIGNEES.has(existingAssignee) && assignment?.status !== 'closed';
-  const usesBridge = enabled && (desiredAssignee === 'andrey' || externalOpen);
+  // Every manual transfer shares the atomic path while the bridge is enabled,
+  // including Tide-to-Tide moves that could race with automatic routing.
+  const usesBridge = enabled;
   const blocked = !enabled && externalOpen && currentQueue !== toQueue;
   return { desiredAssignee, usesBridge, blocked,
     // Even when already assigned to Andrey, the RPC must revalidate the
@@ -36,6 +38,9 @@ export async function transferManually({ db, plan, organizationId, connectionId,
     p_expected_bridge_updated_at: current.assignment?.updated_at || null,
     p_expected_bridge_assignee: current.assignment?.assigned_to || null,
     p_expected_bridge_status: current.assignment?.status || null,
+    p_expected_bridge_sector: current.assignment?.sector || null,
+    p_expected_flow_selection: current.flow?.selection ?? null,
+    p_expected_flow_last_interaction_at: current.flow?.last_interaction_at ?? null,
   });
   return { ...result, confirmed: !result.error && result.data?.to_queue === toQueue &&
     result.data?.assigned_to === plan.desiredAssignee && result.data?.audit_recorded === true };

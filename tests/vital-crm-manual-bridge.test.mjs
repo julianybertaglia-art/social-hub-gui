@@ -54,6 +54,16 @@ test('bridge routing uses one atomic operation including bridge state and audit 
   assert.equal(db.calls[0].args.p_expected_bridge_assignee,'tide');
   assert.equal(db.calls[0].args.p_expected_bridge_updated_at,'t1');
   assert.equal(db.calls[0].args.p_expected_bridge_status,'open');
+  assert.equal(db.calls[0].args.p_expected_flow_selection,null);
+});
+test('enabled bridge also coordinates a Tide-to-Tide move through the atomic RPC',async()=>{
+  const db=fakeDb({to_queue:'pos_nv',assigned_to:'tide',audit_recorded:true});
+  const plan=manualBridgePlan({enabled:true,toQueue:'pos_nv',currentQueue:'varejo_nv',assignment:current.assignment});
+  const result=await transferManually({...args(db),plan,toQueue:'pos_nv'});
+  assert.equal(result.confirmed,true);
+  assert.equal(db.calls.length,1);
+  assert.equal(db.calls[0].name,'crm_vital_transfer_argo_atomic');
+  assert.equal(db.calls[0].args.p_assignee,'tide');
 });
 test('same queue is not treated as delivered when bridge still points to Tide',()=>{
   assert.equal(manualBridgePlan({enabled:true,toQueue:'pos_ml',currentQueue:'pos_ml',

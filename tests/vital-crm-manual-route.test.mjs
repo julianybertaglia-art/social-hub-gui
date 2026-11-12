@@ -76,6 +76,8 @@ test('enabled bridge confirms marketplace only after one atomic response',async(
   assert.equal(f.calls.length,1);
   assert.equal(f.calls[0].name,'crm_vital_transfer_argo_atomic');
   assert.equal(f.calls[0].args.p_assignee,'andrey');
+  assert.equal(f.calls[0].args.p_expected_flow_selection,'Produtos Vital Decor');
+  assert.equal(f.calls[0].args.p_expected_bridge_sector,'comercial_vital');
 });
 test('Amazon is sent to Andrey only after an atomic bridge confirmation',async()=>{
   const f=fixture({rpcData:{to_queue:'pos_amazon',assigned_to:'andrey',audit_recorded:true}});

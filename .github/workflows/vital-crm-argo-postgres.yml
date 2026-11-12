@@ -1,0 +1,55 @@
+name: Validar transferência Tide e Argoplace
+
+on:
+  pull_request:
+    paths:
+      - 'tests/sql/vital_argo_transfer_*'
+      - 'supabase/migrations/20261112122435_vital_crm_argo_transfer.sql'
+      - '.github/workflows/vital-crm-argo-postgres.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci-not-production
+          POSTGRES_DB: tide_argo_qa
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tide_argo_qa"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validar a operação em banco descartável
+        env:
+          DB_CONTAINER: ${{ job.services.postgres.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          apply() { docker exec -i "$DB_CONTAINER" psql -U postgres -d tide_argo_qa -X -v ON_ERROR_STOP=1 < "$1"; }
+          apply tests/sql/vital_mia_bootstrap.sql
+          apply supabase/migrations/20261008151532_vital_decor_connections.sql
+          apply tests/sql/vital_mia_seed_connection.sql
+          apply supabase/migrations/20261009122500_vivi_vital_whatsapp_flow.sql
+          apply supabase/migrations/20261009150000_argo_bridge_vital.sql
+          apply supabase/migrations/20261028_vital_crm_team_permissions_foundation.sql
+          apply supabase/migrations/20261028_vital_crm_operational_queues.sql
+          apply supabase/migrations/20261028_vital_crm_invite_drafts.sql
+          apply supabase/migrations/20261028_vital_crm_conversation_status.sql
+          apply supabase/migrations/20261028_vital_crm_atomic_transfer.sql
+          apply supabase/migrations/20261028_vital_crm_atomic_status.sql
+          apply tests/sql/vital_mia_seed_before_migration.sql
+          apply supabase/migrations/20261103150000_vital_crm_notes_reply_mia_security.sql
+          apply supabase/migrations/20261112121259_vital_crm_amazon_queue.sql
+          apply supabase/migrations/20261112122435_vital_crm_argo_transfer.sql
+          apply tests/sql/vital_argo_transfer_assertions.sql
+          bash tests/sql/vital_argo_transfer_concurrency.sh

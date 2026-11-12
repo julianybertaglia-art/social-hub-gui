@@ -1,0 +1,47 @@
+name: Validar fila Amazon do CRM Vital
+
+on:
+  pull_request:
+    paths:
+      - 'tests/sql/vital_amazon_queue_*'
+      - 'supabase/migrations/20261112121259_vital_crm_amazon_queue.sql'
+      - '.github/workflows/vital-crm-amazon-postgres.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci-not-production
+          POSTGRES_DB: tide_amazon_qa
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tide_amazon_qa"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validar migration em PostgreSQL descartável
+        env:
+          DB_CONTAINER: ${{ job.services.postgres.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          apply() { docker exec -i "$DB_CONTAINER" psql -U postgres -d tide_amazon_qa -X -v ON_ERROR_STOP=1 < "$1"; }
+          apply tests/sql/vital_mia_bootstrap.sql
+          apply supabase/migrations/20261008151532_vital_decor_connections.sql
+          apply tests/sql/vital_mia_seed_connection.sql
+          apply supabase/migrations/20261028_vital_crm_team_permissions_foundation.sql
+          apply supabase/migrations/20261028_vital_crm_operational_queues.sql
+          apply tests/sql/vital_amazon_queue_prepare.sql
+          apply supabase/migrations/20261112121259_vital_crm_amazon_queue.sql
+          apply supabase/migrations/20261112121259_vital_crm_amazon_queue.sql
+          apply tests/sql/vital_amazon_queue_assertions.sql

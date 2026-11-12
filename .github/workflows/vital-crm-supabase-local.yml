@@ -5,6 +5,8 @@ on:
     paths:
       - 'tests/local_supabase_auth_smoke.mjs'
       - '.github/workflows/vital-crm-supabase-local.yml'
+      - 'supabase/migrations/20261112121259_vital_crm_amazon_queue.sql'
+      - 'supabase/migrations/20261112122435_vital_crm_argo_transfer.sql'
   workflow_dispatch:
 
 permissions:
@@ -95,6 +97,8 @@ jobs:
           run_sql supabase/migrations/20261028_vital_crm_atomic_status.sql
           run_sql "$QA_DIR/vital_mia_seed_before_migration.sql"
           run_sql supabase/migrations/20261103150000_vital_crm_notes_reply_mia_security.sql
+          run_sql supabase/migrations/20261112121259_vital_crm_amazon_queue.sql
+          run_sql supabase/migrations/20261112122435_vital_crm_argo_transfer.sql
           psql "$DB_URL" -X -q -c "NOTIFY pgrst, 'reload schema';" >/dev/null
           echo 'Migrações aplicadas em Supabase local com cinco usuários fictícios.'
       - name: Testar HTTP real do TidePlace com Auth e banco locais
@@ -114,6 +118,8 @@ jobs:
           export VITAL_CRM_INVITES_ENABLED='true'
           export VITAL_CRM_REPLY_ENABLED='false'
           export VITAL_CRM_WRITES_ENABLED='true'
+          # Bridge writes target only the disposable local database; Meta remains disabled.
+          export VITAL_CRM_ARGO_MANUAL_ENABLED='true'
           export GEMINI_API_KEY=''
           # Local only: no external Gemini requests, no billable API calls.
           export MIA_CI_MOCK_URL='http://127.0.0.1:39751/generate'

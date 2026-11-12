@@ -7,9 +7,9 @@ import {canViewDemoConversation,canReplyDemo,canChangeDemoStatus,canTransferDemo
 
 const USERS=[
  {name:'Juliany',role:'Administradora',description:'Acesso a todas as filas',queues:null},
- {name:'Andrey',role:'Atendente',description:'Pós-venda Shopee e TikTok',queues:['pos_shopee','pos_tiktok']},
- {name:'Vitor',role:'Atendente',description:'Atacado, Bluetti, VTX e Mercado Livre',queues:['atacado','bluetti','vtx','pos_ml']},
- {name:'Guilherme',role:'Supervisor',description:'Visão das nove filas',queues:null}
+ {name:'Andrey',role:'Atendente',description:'Pós-venda Shopee, TikTok, Mercado Livre e Amazon',queues:['pos_shopee','pos_tiktok','pos_ml','pos_amazon']},
+ {name:'Vitor',role:'Atendente',description:'Atacado, Bluetti e VTX',queues:['atacado','bluetti','vtx']},
+ {name:'Guilherme',role:'Supervisor',description:'Visão das dez filas',queues:null}
 ];
 const QUEUES=[
  {code:'varejo_nv',name:'Varejo Nuvemshop',owner:'Juliany'},
@@ -20,7 +20,8 @@ const QUEUES=[
  {code:'atacado',name:'Atacado',owner:'Vitor'},
  {code:'vtx',name:'VTX Fitness',owner:'Vitor'},
  {code:'bluetti',name:'Bluetti',owner:'Vitor'},
- {code:'pos_ml',name:'Pós-venda Mercado Livre',owner:'Vitor'}
+ {code:'pos_ml',name:'Pós-venda Mercado Livre',owner:'Andrey'},
+ {code:'pos_amazon',name:'Pós-venda Amazon',owner:'Andrey'}
 ];
 const DEMOS=[
  {id:'a',name:'Cliente exemplo A',queue:'varejo_nv',status:'Aguardando',last:'Gostaria de saber os modelos disponíveis',when:'10:42',

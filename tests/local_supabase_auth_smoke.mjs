@@ -33,6 +33,7 @@ async function verify(){
  const ids=JSON.parse(readFileSync(idsPath,'utf8'));
  const writesEnabled=process.env.VITAL_CRM_WRITES_ENABLED==='true';
  const staffEnabled=process.env.VITAL_CRM_STAFF_ENABLED==='true';
+ const bridgeEnabled=process.env.VITAL_CRM_ARGO_MANUAL_ENABLED==='true';
  const tokens={};
 
  // Only a local database receives fictional grants; production membership is untouched.
@@ -179,10 +180,11 @@ async function verify(){
    .eq('owner_user_id',ids.owner).eq('workspace_id','vital-decor').eq('platform','whatsapp').single();
   assert.ifError(connectionError);
   const connectionId=connections.id;
-  const shopeePhone='5511000000111',atacadoPhone='5511000000222';
+  const shopeePhone='5511000000111',atacadoPhone='5511000000222',amazonPhone='5511000000333';
   const fixtures=[
    {phone:shopeePhone,queue:'pos_shopee',message:'Pedido fictício Shopee'},
    {phone:atacadoPhone,queue:'atacado',message:'Pedido fictício Atacado'},
+   {phone:amazonPhone,queue:'pos_nv',message:'Pedido fictício para transferência Amazon'},
   ];
   const {error:assignmentError}=await admin.from('crm_vital_queue_assignments').upsert(
    fixtures.map(item=>({
@@ -280,6 +282,36 @@ async function verify(){
   assert.equal(transfers.length,1);
   assert.equal(transfers[0].changed_by,ids.owner);
   console.log('PASS: live HTTP transfer is audited, supervisor denied, old-sector access revoked');
+
+  if(bridgeEnabled){
+   const {error:keyError}=await admin.from('vital_whatsapp_argo_keys').insert({
+    connection_id:connectionId,owner_user_id:ids.owner,agent:'andrey',label:'fixture',
+    prefix:'ci-andrey-only',secret_hash:'ci-fake-hash-not-a-real-secret',
+    expires_at:new Date(Date.now()+3600000).toISOString(),
+   });
+   assert.ifError(keyError);
+   const forward=await patch('/api/crm/vital/live',tokens.owner,{contact:amazonPhone,toQueue:'pos_amazon'});
+   assert.equal(forward.status,200,JSON.stringify(forward.payload));
+   assert.equal(forward.payload.toQueue,'pos_amazon');
+   const {data:bridge,error:bridgeError}=await admin.from('vital_whatsapp_assignments')
+    .select('assigned_to,sector,status').eq('connection_id',connectionId).eq('contact_wa_id',amazonPhone).single();
+   assert.ifError(bridgeError);
+   assert.deepEqual(bridge,{assigned_to:'andrey',sector:'pos_venda',status:'open'});
+   const forwarded=await check('/api/crm/vital/live?contact='+amazonPhone,tokens.owner,200);
+   assert.equal(forwarded.contact.queue,'pos_amazon');
+   assert.equal(forwarded.contact.replyBlockedByExternal,true);
+   const back=await patch('/api/crm/vital/live',tokens.owner,{contact:amazonPhone,toQueue:'pos_nv'});
+   assert.equal(back.status,200,JSON.stringify(back.payload));
+   const {data:returned,error:returnError}=await admin.from('vital_whatsapp_assignments')
+    .select('assigned_to,sector').eq('connection_id',connectionId).eq('contact_wa_id',amazonPhone).single();
+   assert.ifError(returnError);
+   assert.deepEqual(returned,{assigned_to:'tide',sector:'pos_venda'});
+   const {data:bridgeAudits,error:bridgeAuditError}=await admin.from('crm_vital_transfer_audit')
+    .select('from_queue,to_queue').eq('organization_id',localOrg.id).eq('contact_wa_id',amazonPhone);
+   assert.ifError(bridgeAuditError);
+   assert.equal(bridgeAudits.length,2);
+   console.log('PASS: real local HTTP routes Amazon to Andrey and returns site to Tide atomically');
+  }
 
   const deniedSend=await post('/api/crm/vital/reply',tokens.owner,{
    to:shopeePhone,text:'Este texto NUNCA deve sair para a Meta.'},'http://localhost:3007');

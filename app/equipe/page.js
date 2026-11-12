@@ -16,6 +16,7 @@ const QUEUE_NAMES={
   vtx:'VTX Fitness',
   bluetti:'Bluetti',
   pos_ml:'Pós-venda Mercado Livre',
+  pos_amazon:'Pós-venda Amazon',
 };
 const TEAM_ROLES={owner:'Administração',agent:'Atendimento',supervisor:'Supervisão'};
 

@@ -5,12 +5,8 @@ import {api} from './operations/useOperations';
 import css from './vital-crm-real.module.css';
 import ThemeCustomizer from './ThemeCustomizer';
 import {shouldSendOnEnter} from './lib/vital-crm-keyboard.mjs';
+import {VITAL_QUEUE_OWNER_LABEL as OWNER,needsVitalArgoReconciliation} from './lib/vital-crm-queues.mjs';
 
-const OWNER={
- varejo_nv:'Juliany',pos_nv:'Juliany',afiliados:'Juliany',
- pos_shopee:'Andrey',pos_tiktok:'Andrey',
- atacado:'Vitor',vtx:'Vitor',bluetti:'Vitor',pos_ml:'Vitor',
-};
 const MINE=['varejo_nv','pos_nv','afiliados'];
 const STATUS=[
  {code:'pending',label:'Aguardando resposta',color:'#da8740'},
@@ -177,7 +173,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  },{});
  const responsibleColors={Juliany:'#b54880',Andrey:'#e0783b',Vitor:'#009992'};
  const areaMap=[
-   {name:'Pós-venda',codes:['pos_nv','pos_shopee','pos_tiktok','pos_ml'],color:'#dd843f'},
+   {name:'Pós-venda',codes:['pos_nv','pos_shopee','pos_tiktok','pos_ml','pos_amazon'],color:'#dd843f'},
    {name:'Varejo',codes:['varejo_nv'],color:'#327fc2'},
    {name:'Atacado',codes:['atacado'],color:'#845bb8'},
    {name:'Produtos',codes:['vtx','bluetti'],color:'#009c96'},
@@ -187,17 +183,21 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const areaSegments=areaMap.map(a=>({...a,count:a.codes.reduce((n,q)=>n+(counts.queues?.[q]||0),0)}));
  const statusSegments=STATUS.map(s=>({name:s.label,count:counts[s.code]||0,color:s.color}));
  const canMove=Boolean(detail?.contact?.queue)||role==='owner';
+ const reconcileCurrent=needsVitalArgoReconciliation(data?.bridgeManualEnabled,
+   detail?.contact?.queue,detail?.contact?.currentAssignee);
  const replyBlockReason=!data?.canReply?'As respostas ainda não foram liberadas nesta instalação.':detail?.contact?.replyBlockedByExternal?'Conversa atribuída ao Argo. Resolva a atribuição antes de responder pelo Tide.':!detail?.contact?.replyWindowOpen?'A janela de 24 horas da Meta terminou. Aguarde uma nova mensagem ou use um modelo aprovado.':'';
 
  async function transfer(){
   if(!detail||!destination||busy)return;
   const from=detail.contact.queue, to=destination;
-  if(from===to)return;
-  if(!window.confirm('Transferir esta conversa de '+queueName(from)+' para '+queueName(to)+'? O acesso do setor anterior será retirado.'))return;
+  if(from===to&&!reconcileCurrent)return;
+  const question=from===to?'Sincronizar a atribuição desta conversa com '+queueName(to)+'?':
+   'Transferir esta conversa de '+queueName(from)+' para '+queueName(to)+'? O acesso do setor anterior será retirado.';
+  if(!window.confirm(question))return;
   setBusy(true);setError('');setNotice('');
   try{
    await api('/api/crm/vital/live',{method:'PATCH',body:JSON.stringify({contact:detail.contact.id,toQueue:to})});
-   setNotice('Conversa encaminhada para '+queueName(to)+'.');
+   setNotice(from===to?'Atribuição sincronizada para '+queueName(to)+'.':'Conversa encaminhada para '+queueName(to)+'.');
    setSelected(null);reload();
   }catch(e){setError(e.message);}
   finally{setBusy(false);}
@@ -411,11 +411,11 @@ export default function VitalCRMReal({embedded=false,onLogout}){
          <div className={css.transferControls}>
           <select aria-label="Fila de destino" value={destination} onChange={e=>setDestination(e.target.value)} disabled={!canMove||busy}>
            <option value="">Escolha a fila de destino…</option>
-           {(data.transferDestinations||[]).filter(q=>q.queue_code!==detail.contact.queue).map(q=><option key={q.queue_code} value={q.queue_code}>{q.display_name} · {OWNER[q.queue_code]||'Equipe'}</option>)}
+           {(data.transferDestinations||[]).filter(q=>q.queue_code!==detail.contact.queue||reconcileCurrent).map(q=><option key={q.queue_code} value={q.queue_code}>{q.display_name} · {OWNER[q.queue_code]||'Equipe'}{q.queue_code===detail.contact.queue?' · sincronizar atribuição':''}</option>)}
           </select>
           <button type="button" disabled={!destination||busy||!canMove} onClick={transfer}>{busy?'Transferindo…':'Transferir'}</button>
          </div>
-         <span>A transferência do Tide CRM não altera a atribuição do Argo.</span>
+         <span>{data?.bridgeManualEnabled?'No pós-venda de marketplace, a atribuição ao Andrey é confirmada com a transferência.':'O encaminhamento para a Argoplace ainda está desativado.'}</span>
         </div>}
         {!data?.canTransfer&&<p className={css.restrictedInfo}>{role==='supervisor'
           ?'Perfil de supervisão: visualização das filas autorizadas, sem resposta ou transferência.'

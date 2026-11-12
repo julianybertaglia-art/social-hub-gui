@@ -1,4 +1,4 @@
--- Staged SQL for the CLI-generated migration. Adds metadata, not team grants.
+-- Add the Amazon queue for Vital WhatsApp organizations without granting team access.
 insert into public.crm_vital_queues
   (organization_id,queue_code,parent_sector,display_name,color,sort_order)
 select o.id,'pos_amazon','pos_venda','Pós-venda Amazon','#df8f2f',10

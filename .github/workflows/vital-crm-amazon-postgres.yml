@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'tests/sql/vital_amazon_queue_*'
+      - 'supabase/migrations/20261112121259_vital_crm_amazon_queue.sql'
       - '.github/workflows/vital-crm-amazon-postgres.yml'
 
 permissions:
@@ -28,10 +29,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: supabase/setup-cli@v3
-        with:
-          version: v2.stable
-      - name: Gerar migration e validar em PostgreSQL descartável
+      - name: Validar migration em PostgreSQL descartável
         env:
           DB_CONTAINER: ${{ job.services.postgres.id }}
         shell: bash
@@ -44,17 +42,6 @@ jobs:
           apply supabase/migrations/20261028_vital_crm_team_permissions_foundation.sql
           apply supabase/migrations/20261028_vital_crm_operational_queues.sql
           apply tests/sql/vital_amazon_queue_prepare.sql
-          mkdir -p "$RUNNER_TEMP/vital-amazon-cli"
-          cd "$RUNNER_TEMP/vital-amazon-cli"
-          supabase --help >/dev/null
-          supabase migration --help >/dev/null
-          supabase migration new --help >/dev/null
-          supabase init --yes
-          supabase migration new vital_crm_amazon_queue
-          generated=$(find supabase/migrations -name '*_vital_crm_amazon_queue.sql' -type f -print)
-          test "$(printf '%s\n' "$generated" | wc -l)" -eq 1
-          cp "$GITHUB_WORKSPACE/tests/sql/vital_amazon_queue_seed_source.sql" "$generated"
-          echo "GENERATED_MIGRATION=$(basename "$generated")"
-          apply "$generated"
-          apply "$generated"
-          apply "$GITHUB_WORKSPACE/tests/sql/vital_amazon_queue_assertions.sql"
+          apply supabase/migrations/20261112121259_vital_crm_amazon_queue.sql
+          apply supabase/migrations/20261112121259_vital_crm_amazon_queue.sql
+          apply tests/sql/vital_amazon_queue_assertions.sql

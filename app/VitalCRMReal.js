@@ -4,7 +4,8 @@ import Icon from './ui/Icon';
 import {api} from './operations/useOperations';
 import css from './vital-crm-real.module.css';
 import ThemeCustomizer from './ThemeCustomizer';
-import {VITAL_QUEUE_OWNER_LABEL as OWNER} from './lib/vital-crm-queues.mjs';
+import {shouldSendOnEnter} from './lib/vital-crm-keyboard.mjs';
+import {VITAL_QUEUE_OWNER_LABEL as OWNER,needsVitalArgoReconciliation} from './lib/vital-crm-queues.mjs';
 
 const MINE=['varejo_nv','pos_nv','afiliados'];
 const STATUS=[
@@ -48,10 +49,12 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const [revision,setRevision]=useState(0),[pageNumber,setPageNumber]=useState(0);
  const [queueFilter,setQueueFilter]=useState('all'),[statusFilter,setStatusFilter]=useState('all'),[search,setSearch]=useState('');
  const [destination,setDestination]=useState(''),[draft,setDraft]=useState('');
+ const [notes,setNotes]=useState([]),[noteDraft,setNoteDraft]=useState(''),[notesBusy,setNotesBusy]=useState(false);
  const [splitWidth,setSplitWidth]=useState(DEFAULT_SPLIT_WIDTH);
  const [boardHeight,setBoardHeight]=useState(null);
  const splitBoard=useRef(null),splitDragging=useRef(false);
  const boardFrame=useRef(null),heightDragging=useRef(false),messagesRef=useRef(null);
+ const sendingRef=useRef(false);
  useEffect(()=>{
    try {
      const saved=Number(window.localStorage.getItem(SPLIT_WIDTH_KEY));
@@ -132,6 +135,24 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    .finally(()=>{if(active)setOpening(false)});
   return()=>{active=false};
  },[selected,revision]);
+ useEffect(()=>{
+  window.dispatchEvent(new CustomEvent('tideplace:mia-crm-contact',{detail:{contactId:selected||null}}));
+  if(!selected){setNotes([]);setNoteDraft('');return;}
+  let active=true;
+  api('/api/crm/vital/notes?contact='+encodeURIComponent(selected)).then(result=>{
+   if(active)setNotes(result.notes||[]);
+  }).catch(()=>{if(active)setNotes([]);});
+  return()=>{active=false;};
+ },[selected,revision]);
+ useEffect(()=>{
+  function insertSuggestion(event){
+   const text=String(event?.detail?.text||'');
+   if(!text||!detail?.contact?.id||event.detail.contactId!==detail.contact.id)return;
+   setDraft(text);setNotice('Sugestão da MIA inserida no campo. Revise antes de enviar.');
+  }
+  window.addEventListener('tideplace:mia-insert-reply',insertSuggestion);
+  return()=>window.removeEventListener('tideplace:mia-insert-reply',insertSuggestion);
+ },[detail?.contact?.id]);
  const role=data?.role||'agent',manager=['owner','supervisor'].includes(role);
  const queues=data?.queues||[],counts=data?.counters||emptyCounts;
  const queueName=code=>(data?.transferDestinations||queues).find(q=>q.queue_code===code)?.display_name||(code===null?'Sem classificação':code);
@@ -162,29 +183,42 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const areaSegments=areaMap.map(a=>({...a,count:a.codes.reduce((n,q)=>n+(counts.queues?.[q]||0),0)}));
  const statusSegments=STATUS.map(s=>({name:s.label,count:counts[s.code]||0,color:s.color}));
  const canMove=Boolean(detail?.contact?.queue)||role==='owner';
+ const reconcileCurrent=needsVitalArgoReconciliation(data?.bridgeManualEnabled,
+   detail?.contact?.queue,detail?.contact?.currentAssignee);
  const replyBlockReason=!data?.canReply?'As respostas ainda não foram liberadas nesta instalação.':detail?.contact?.replyBlockedByExternal?'Conversa atribuída ao Argo. Resolva a atribuição antes de responder pelo Tide.':!detail?.contact?.replyWindowOpen?'A janela de 24 horas da Meta terminou. Aguarde uma nova mensagem ou use um modelo aprovado.':'';
 
  async function transfer(){
   if(!detail||!destination||busy)return;
   const from=detail.contact.queue, to=destination;
-  if(from===to)return;
-  if(!window.confirm('Transferir esta conversa de '+queueName(from)+' para '+queueName(to)+'? O acesso do setor anterior será retirado.'))return;
+  if(from===to&&!reconcileCurrent)return;
+  const question=from===to?'Sincronizar a atribuição desta conversa com '+queueName(to)+'?':
+   'Transferir esta conversa de '+queueName(from)+' para '+queueName(to)+'? O acesso do setor anterior será retirado.';
+  if(!window.confirm(question))return;
   setBusy(true);setError('');setNotice('');
   try{
    await api('/api/crm/vital/live',{method:'PATCH',body:JSON.stringify({contact:detail.contact.id,toQueue:to})});
-   setNotice('Conversa encaminhada para '+queueName(to)+'.');
+   setNotice(from===to?'Atribuição sincronizada para '+queueName(to)+'.':'Conversa encaminhada para '+queueName(to)+'.');
    setSelected(null);reload();
   }catch(e){setError(e.message);}
   finally{setBusy(false);}
  }
  async function reply(event){
-  event.preventDefault();
-  if(!detail||!draft.trim()||busy||replyBlockReason)return;
+  event?.preventDefault?.();
+  if(sendingRef.current||!detail||!draft.trim()||busy||replyBlockReason)return;
+  sendingRef.current=true;
   setBusy(true);setError('');setNotice('');
   try{
    const result=await api('/api/crm/vital/reply',{method:'POST',body:JSON.stringify({to:detail.contact.id,text:draft.trim()})});
    setDraft('');setNotice(result.warning||'Mensagem enviada pelo WhatsApp da Vital.');reload();
-  }catch(e){setError(e.message)}finally{setBusy(false)}
+  }catch(e){setError(e.message)}
+  finally{sendingRef.current=false;setBusy(false)}
+ }
+ function handleReplyKeyDown(event){
+  // Enter sends directly; Shift+Enter is a newline. Don't interrupt composition.
+  if(!shouldSendOnEnter(event))return;
+  event.preventDefault();
+  if(!draft.trim()||busy||replyBlockReason||sendingRef.current)return;
+  void reply(event);
  }
  async function setResolution(status){
   if(!detail||busy)return;
@@ -195,6 +229,18 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    setNotice(status==='resolved'?'Atendimento concluído.':'Atendimento reaberto.');
    reload();
   }catch(e){setError(e.message)}finally{setBusy(false)}
+ }
+ async function addNote(event){
+  event?.preventDefault?.();
+  const body=noteDraft.trim();
+  if(!detail||!body||notesBusy||!data?.canWriteNotes)return;
+  setNotesBusy(true);setError('');
+  try{
+   const result=await api('/api/crm/vital/notes',{method:'POST',
+    body:JSON.stringify({contact:detail.contact.id,body})});
+   setNotes(previous=>[...previous,result.note]);setNoteDraft('');
+  }catch(e){setError(e.message);}
+  finally{setNotesBusy(false);}
  }
  const statusName=c=>STATUS.find(s=>s.code===c)?.label||'—';
  const main=<>
@@ -340,24 +386,40 @@ export default function VitalCRMReal({embedded=false,onLogout}){
         <summary><Icon name="info" size={15}/> Informações do atendimento <span>{statusName(detail.contact.status)}</span></summary>
         <div className={css.resolution}>
          <div><strong>Situação do atendimento</strong><small>{statusName(detail.contact.status)}</small></div>
-         {!data?.readOnly&&role!=='supervisor'&&detail.contact.queue&&
+         {data?.canChangeStatus&&detail.contact.queue&&
           <button type="button" disabled={busy} onClick={()=>setResolution(detail.contact.status==='closed'?'open':'resolved')}>
            <Icon name={detail.contact.status==='closed'?'refresh':'check'} size={15}/>
            {detail.contact.status==='closed'?'Reabrir atendimento':'Marcar como resolvido'}
           </button>}
         </div>
-        {!data?.readOnly&&<div className={css.transfer}>
+        {detail.contact.currentAssignee&&<p className={css.assignee}>Responsável no Argo: {detail.contact.currentAssignee}</p>}
+        <section className={css.notes} aria-label="Observações internas">
+         <div className={css.notesHeading}><strong>Observações internas</strong><span>Visíveis apenas à equipe · não enviadas ao WhatsApp</span></div>
+         <div className={css.notesList}>
+          {notes.map(note=><article key={note.id}><p>{note.body}</p><small>{note.author} · {date(note.createdAt)}</small></article>)}
+          {!notes.length&&<p className={css.notesEmpty}>Nenhuma observação registrada.</p>}
+         </div>
+         {data?.canWriteNotes&&<form className={css.noteForm} onSubmit={addNote}>
+          <label className={css.visuallyHidden} htmlFor="vital-internal-note">Adicionar observação interna</label>
+          <textarea id="vital-internal-note" rows={2} maxLength={2000} value={noteDraft}
+           onChange={event=>setNoteDraft(event.target.value)} placeholder="Escreva uma observação interna…"/>
+          <button type="submit" disabled={!noteDraft.trim()||notesBusy}>{notesBusy?'Salvando…':'Salvar nota'}</button>
+         </form>}
+        </section>
+        {data?.canTransfer&&<div className={css.transfer}>
          <div><strong><Icon name="flow" size={15} inline/> Encaminhar conversa</strong><p>Escolha a fila que dará continuidade ao atendimento.</p></div>
          <div className={css.transferControls}>
           <select aria-label="Fila de destino" value={destination} onChange={e=>setDestination(e.target.value)} disabled={!canMove||busy}>
            <option value="">Escolha a fila de destino…</option>
-           {(data.transferDestinations||[]).filter(q=>q.queue_code!==detail.contact.queue).map(q=><option key={q.queue_code} value={q.queue_code}>{q.display_name} · {OWNER[q.queue_code]||'Equipe'}</option>)}
+           {(data.transferDestinations||[]).filter(q=>q.queue_code!==detail.contact.queue||reconcileCurrent).map(q=><option key={q.queue_code} value={q.queue_code}>{q.display_name} · {OWNER[q.queue_code]||'Equipe'}{q.queue_code===detail.contact.queue?' · sincronizar atribuição':''}</option>)}
           </select>
           <button type="button" disabled={!destination||busy||!canMove} onClick={transfer}>{busy?'Transferindo…':'Transferir'}</button>
          </div>
-         <span>A transferência do Tide CRM não altera a atribuição do Argo.</span>
+         <span>{data?.bridgeManualEnabled?'No pós-venda de marketplace, a atribuição ao Andrey é confirmada com a transferência.':'O encaminhamento para a Argoplace ainda está desativado.'}</span>
         </div>}
-        {data?.readOnly&&<p className={css.restrictedInfo}>Transferências e encerramentos ainda estão desativados nesta etapa do CRM.</p>}
+        {!data?.canTransfer&&<p className={css.restrictedInfo}>{role==='supervisor'
+          ?'Perfil de supervisão: visualização das filas autorizadas, sem resposta ou transferência.'
+          :'Seu perfil pode consultar e responder às conversas autorizadas. Transferências exigem permissão explícita.'}</p>}
        </details>
        {role!=='supervisor'&&<form className={css.reply} onSubmit={reply}>
         <label className={css.visuallyHidden} htmlFor="vital-reply-text">Responder pelo WhatsApp da Vital</label>
@@ -365,7 +427,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
          <textarea id="vital-reply-text" value={draft} maxLength={4096} rows={2}
           placeholder={replyBlockReason?'Resposta indisponível nesta conversa':'Digite uma mensagem…'}
           onChange={e=>setDraft(e.target.value)} disabled={busy||Boolean(replyBlockReason)}
-          onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent?.isComposing){e.preventDefault();e.currentTarget.form?.requestSubmit();}}}/>
+          onKeyDown={handleReplyKeyDown}/>
          <button type="submit" aria-label="Enviar mensagem" title="Enviar mensagem" disabled={!draft.trim()||busy||Boolean(replyBlockReason)}>
           {busy?'…':<Icon name="send" size={20}/>}
          </button>
@@ -384,7 +446,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
     onPointerDown={startHeight} onPointerMove={moveHeight} onPointerUp={stopHeight}
     onPointerCancel={stopHeight} onLostPointerCapture={stopHeight}
     onKeyDown={heightKeyDown} onDoubleClick={resetBoardHeight}>
-    <span className={css.heightSplitterHandle} aria-hidden="true"><Icon name="chevronDown" size={15}/> Ajustar altura</span>
+    <span className={css.heightSplitterHandle} aria-hidden="true">↕</span>
    </div>
    </div>
   </>}

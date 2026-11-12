@@ -1,5 +1,5 @@
 
-/* MIA · restrained, accessible TidePlace assistant shell. Does not call Gemini. */
+/* MIA · restrained, accessible TidePlace assistant shell. */
 .floating{position:fixed;right:19px;bottom:20px;z-index:88;width:54px;height:54px;touch-action:none}
 .bubble{display:grid;place-items:center;width:54px;height:54px;padding:0;border:2px solid #f2dedf;border-radius:50%;background:linear-gradient(135deg,#a45a7c,#6a2847);color:#fff;box-shadow:0 9px 24px #28152135;cursor:grab;user-select:none;touch-action:none}
 .bubble:hover{box-shadow:0 12px 29px #28152148}
@@ -52,3 +52,28 @@
 .footerStatus strong{display:block;font-size:11px;color:var(--text);font-weight:740}
 @media(max-width:640px){.floating{right:14px;bottom:14px}.panel,.expanded{left:8px!important;right:8px!important;top:auto!important;bottom:79px!important;width:auto;max-height:calc(100dvh - 95px)}}
 @media(prefers-reduced-motion:reduce){.bubble,.panel,.actions button{transition:none}}
+
+/* Interactive assistant additions, retaining the current TidePlace styling. */
+.header button:disabled{opacity:.45;cursor:not-allowed}
+.body{display:flex;flex:1;flex-direction:column;}
+.compose{display:flex;align-items:center;gap:8px;padding:7px;background:var(--surface-soft);border:1px solid var(--border);border-radius:13px}
+.compose textarea{flex:1;min-width:0;min-height:38px;max-height:110px;resize:vertical;border:0;padding:7px;background:transparent;color:var(--text);font:inherit;font-size:13px;line-height:1.4}
+.compose textarea::placeholder{color:var(--muted)}
+.compose button{display:grid;place-items:center;width:33px;height:33px;border:0;border-radius:10px;background:var(--gold);color:#fff}
+.compose button:disabled{cursor:not-allowed;opacity:.75}
+.historySelect{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border);font-size:10.5px;color:var(--muted)}
+.historySelect label{flex:none}.historySelect select{min-width:0;flex:1;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);padding:6px;font:inherit}
+.welcome{padding:4px 2px 10px}.welcome h2{font-size:19px;margin:0 0 8px}.welcome p{margin:0}
+.message{display:flex;flex-direction:column;gap:4px;width:fit-content;max-width:92%;margin:0 0 9px;padding:9px 11px;border:1px solid var(--border);border-radius:12px;background:var(--surface-soft)}
+.message p{margin:0;color:var(--text);font-size:12.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.message time{font-size:9.5px;color:var(--muted);align-self:flex-end}
+.messageUser{align-self:flex-end;background:color-mix(in srgb,var(--gold) 12%,var(--surface));border-color:color-mix(in srgb,var(--gold) 30%,var(--border))}
+.messageAssistant{align-self:flex-start}
+.stateMessage{padding:7px 9px;margin:0 0 8px;border-radius:8px;background:var(--surface-soft);font-size:11px;color:var(--muted)}
+.quickActions{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;border-top:1px solid var(--border);scrollbar-width:thin}
+.quickActions button,.answerActions button{flex:none;border:1px solid var(--border);border-radius:8px;padding:7px 9px;background:var(--surface-soft);color:var(--text);font-size:10.5px;font-weight:650;cursor:pointer}
+.quickActions button:disabled{opacity:.5;cursor:default}
+.answerActions{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 13px;background:var(--surface-soft);border-top:1px solid var(--border)}
+.answerActions span{font-size:10px;line-height:1.4;color:var(--muted)}
+.answerActions button{background:var(--gold);border-color:var(--gold);color:#fff}
+.footer .error{color:#b42318}

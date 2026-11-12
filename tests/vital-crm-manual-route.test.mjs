@@ -19,16 +19,17 @@ source=source
 const {PATCH}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 
 function fixture({assignment={assigned_to:'tide',status:'open',sector:'comercial_vital',updated_at:'t1'},
-  override=null, rpcData='pos_ml', rpcError=null, role='owner'}={}) {
+  override=null, rpcData='pos_ml', rpcError=null, role='owner',
+  canTransfer=role==='owner', grants=[], selection='Produtos Vital Decor'}={}) {
   const calls=[];
   const rows={
     workspace_meta_connections:{id:'conn'},
-    crm_vital_member_queues:[],
+    crm_vital_member_queues:grants.map(queue_code=>({queue_code})),
     crm_vital_queues:[
-      {queue_code:'varejo_nv'}, {queue_code:'pos_ml'}, {queue_code:'pos_nv'},
+      {queue_code:'varejo_nv'}, {queue_code:'pos_ml'}, {queue_code:'pos_nv'}, {queue_code:'pos_shopee'},
     ],
     crm_vital_queue_assignments:override,
-    vital_whatsapp_flow_sessions:{selection:'Produtos Vital Decor'},
+    vital_whatsapp_flow_sessions:{selection},
     vital_whatsapp_assignments:assignment,
     crm_vital_conversation_states:null,
     workspace_meta_messages:{id:'message'},
@@ -44,7 +45,7 @@ function fixture({assignment={assigned_to:'tide',status:'open',sector:'comercial
     },
     async rpc(name,args){calls.push({name,args});return {data:rpcData,error:rpcError}},
   };
-  return {calls,auth:async()=>({db,access:{role},organization:{id:'org',ownerUserId:'owner'},userId:'owner'})};
+  return {calls,auth:async()=>({db,access:{role,canTransfer},organization:{id:'org',ownerUserId:'owner'},userId:role==='owner'?'owner':'staff'})};
 }
 function request(toQueue,origin='https://tide.test'){
   return new Request('https://tide.test/api/crm/vital/live',{
@@ -86,6 +87,14 @@ test('moving a conversation from Andrey to the site plans return to Tide',async(
   assert.equal(f.calls[0].args.p_assignee,'tide');
   assert.equal(f.calls[0].args.p_expected_bridge_updated_at,'bridge-before');
 });
+test('disabled bridge blocks an Argo-owned conversation before any queue-only write',async()=>{
+  const f=fixture({override:{queue_code:'pos_ml',updated_at:'before'},assignment:{
+    assigned_to:'andrey',status:'open',sector:'pos_venda',updated_at:'bridge-before'}});
+  const result=await run(f,false,'pos_nv');
+  assert.equal(result.status,409);
+  assert.match(result.body.error,/Argoplace/);
+  assert.equal(f.calls.length,0);
+});
 test('missing database operation fails closed without legacy fallback',async()=>{
   const f=fixture({rpcData:null,rpcError:{code:'42883'}});
   const result=await run(f,true);
@@ -126,4 +135,20 @@ test('bad origin and unauthorized role cannot call either transfer operation',as
   const b=fixture({role:'agent'});
   assert.equal((await run(b,true)).status,403);
   assert.equal(b.calls.length,0);
+});
+test('an agent needs both an explicit transfer grant and access to the source queue',async()=>{
+  const ok=fixture({role:'agent',canTransfer:true,grants:['pos_shopee'],
+    selection:'Pós-venda · Shopee',rpcData:{to_queue:'pos_ml',assigned_to:'andrey',audit_recorded:true}});
+  assert.equal((await run(ok,true)).status,200);
+  assert.equal(ok.calls.length,1);
+  assert.equal(ok.calls[0].args.p_expected_from,'pos_shopee');
+  const wrongQueue=fixture({role:'agent',canTransfer:true,grants:['atacado'],selection:'Pós-venda · Shopee'});
+  assert.equal((await run(wrongQueue,true)).status,403);
+  assert.equal(wrongQueue.calls.length,0);
+  const noGrant=fixture({role:'agent',canTransfer:false,grants:['pos_shopee'],selection:'Pós-venda · Shopee'});
+  assert.equal((await run(noGrant,true)).status,403);
+  assert.equal(noGrant.calls.length,0);
+  const supervisor=fixture({role:'supervisor',canTransfer:false,grants:['pos_shopee'],selection:'Pós-venda · Shopee'});
+  assert.equal((await run(supervisor,true)).status,403);
+  assert.equal(supervisor.calls.length,0);
 });

@@ -1,28 +1,61 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {canCrmAccess,crmMemberAccess} from '../app/lib/crm-authorization.mjs';
+import {canAccessVitalQueue,VITAL_QUEUE_ORDER,VITAL_TEAM_QUEUE_PLAN} from '../app/lib/vital-crm-queues.mjs';
 
-test('unrecognized and inactive profiles are rejected by default',()=>{
+test('unknown, inactive and missing profiles are rejected by default',()=>{
  assert.equal(crmMemberAccess({role:'unknown'}),null);
- assert.equal(canCrmAccess({role:'agent',status:'suspended',sectors:['pos_venda']},'read_conversation','pos_venda'),false);
- assert.equal(canCrmAccess(undefined,'read_conversation','pos_venda'),false);
+ assert.equal(crmMemberAccess({role:'agent',status:'suspended',sectors:['pos_shopee']}),null);
+ assert.equal(canCrmAccess(undefined,'read_conversation','pos_shopee'),false);
 });
-test('Vital attendant is limited to their authorized sector even when request names another',()=>{
- const user={role:'agent',status:'active',sectors:['pos_venda']};
- assert.equal(canCrmAccess(user,'read_conversation','pos_venda'),true);
- assert.equal(canCrmAccess(user,'reply_conversation','pos_venda'),true);
- assert.equal(canCrmAccess(user,'read_conversation','atacado'),false);
- assert.equal(canCrmAccess(user,'read_conversation',''),false);
- assert.equal(canCrmAccess(user,'assign_conversation','pos_venda'),false);
+
+test('the four requested profiles have only their explicit nine-queue grants',()=>{
+ assert.deepEqual(VITAL_QUEUE_ORDER,[
+  'varejo_nv','pos_nv','afiliados','pos_shopee','pos_tiktok','atacado','vtx','bluetti','pos_ml',
+ ]);
+ assert.deepEqual(VITAL_TEAM_QUEUE_PLAN.Andrey.queues,['pos_shopee','pos_tiktok','pos_ml']);
+ assert.deepEqual(VITAL_TEAM_QUEUE_PLAN.Vitor.queues,['atacado','vtx','bluetti']);
+ assert.equal(VITAL_TEAM_QUEUE_PLAN.Juliany.queues.length,9);
+ assert.equal(VITAL_TEAM_QUEUE_PLAN.Guilherme.queues.length,9);
+ for(const [name,plan] of Object.entries(VITAL_TEAM_QUEUE_PLAN)){
+  const grant=plan.queues;
+  for(const queue of VITAL_QUEUE_ORDER){
+   assert.equal(canAccessVitalQueue(plan.access,grant,queue),grant.includes(queue),`${name} / ${queue}`);
+  }
+ }
 });
-test('supervisor requires explicit sectors and owner can manage across sectors',()=>{
- assert.equal(canCrmAccess({role:'supervisor',sectors:['atacado']},'assign_conversation','atacado'),true);
- assert.equal(canCrmAccess({role:'supervisor',sectors:['atacado']},'read_conversation','pos_venda'),false);
- assert.equal(canCrmAccess({role:'owner',sectors:[]},'read_conversation','pos_venda'),true);
- assert.equal(canCrmAccess({role:'owner'},'assign_conversation','atacado'),true);
+
+test('an attendant cannot change a requested queue or transfer without an explicit grant',()=>{
+ const andrey={role:'agent',status:'active',sectors:VITAL_TEAM_QUEUE_PLAN.Andrey.queues};
+ assert.equal(canCrmAccess(andrey,'read_conversation','pos_shopee'),true);
+ assert.equal(canCrmAccess(andrey,'reply_conversation','pos_tiktok'),true);
+ assert.equal(canCrmAccess(andrey,'read_conversation','pos_ml'),true);
+ assert.equal(canCrmAccess(andrey,'read_conversation','pos_nv'),false);
+ assert.equal(canCrmAccess(andrey,'assign_conversation','pos_shopee'),false);
+ assert.equal(canCrmAccess({...andrey,canTransfer:true},'assign_conversation','pos_shopee'),true);
 });
-test('future installer role cannot read CRM chats or appointments before appointment-specific policy exists',()=>{
+
+test('supervisor can view all granted queues but cannot reply, transfer or administer',()=>{
+ const supervisor={role:'supervisor',status:'active',sectors:VITAL_TEAM_QUEUE_PLAN.Guilherme.queues};
+ for(const queue of VITAL_QUEUE_ORDER){
+  assert.equal(canCrmAccess(supervisor,'read_conversation',queue),true);
+  assert.equal(canAccessVitalQueue('supervisor',supervisor.sectors,queue),true);
+  assert.equal(canCrmAccess(supervisor,'reply_conversation',queue),false);
+  assert.equal(canCrmAccess(supervisor,'assign_conversation',queue),false);
+ }
+});
+
+test('administrator reads all queues even if a browser omits or forges its grant list',()=>{
+ const admin={role:'owner',status:'active',sectors:[]};
+ for(const queue of VITAL_QUEUE_ORDER){
+  assert.equal(canAccessVitalQueue('owner',[],queue),true);
+  assert.equal(canCrmAccess(admin,'read_conversation',queue),true);
+  assert.equal(canCrmAccess(admin,'assign_conversation',queue),true);
+ }
+});
+
+test('future installer role cannot read CRM chats or appointments before a scoped policy exists',()=>{
  const installer={role:'installer',sectors:['instalacoes']};
- assert.equal(canCrmAccess(installer,'read_conversation','pos_venda'),false);
+ assert.equal(canCrmAccess(installer,'read_conversation','pos_shopee'),false);
  assert.equal(canCrmAccess(installer,'view_appointments','instalacoes'),false);
 });

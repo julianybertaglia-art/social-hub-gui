@@ -33,6 +33,16 @@ test('disabled integration keeps the existing RPC and does not transfer to Argo'
   assert.equal(db.calls[0].name,'crm_vital_transfer_atomic');
   assert.equal('p_assignee' in db.calls[0].args,false);
 });
+test('disabled bridge never changes only the Tide queue while Argo still owns the conversation',async()=>{
+  const db=fakeDb('pos_nv');
+  const plan=manualBridgePlan({enabled:false,toQueue:'pos_nv',currentQueue:'pos_ml',
+    assignment:{assigned_to:'andrey',status:'open'}});
+  assert.equal(plan.blocked,true);
+  const result=await transferManually({...args(db),plan,toQueue:'pos_nv'});
+  assert.equal(result.confirmed,false);
+  assert.equal(result.error.code,'BRIDGE_DISABLED');
+  assert.equal(db.calls.length,0);
+});
 test('bridge routing uses one atomic operation including bridge state and audit confirmation',async()=>{
   const db=fakeDb({to_queue:'pos_ml',assigned_to:'andrey',audit_recorded:true});
   const plan=manualBridgePlan({enabled:true,toQueue:'pos_ml',currentQueue:'varejo_nv',assignment:current.assignment});

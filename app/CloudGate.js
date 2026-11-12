@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import styles from './cloudgate.module.css';
 import { hasAuthIdentityChanged, sameAuthenticatedUser } from './lib/session-gate.mjs';
 
@@ -30,6 +32,9 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 export const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null;
+const AccessScopeContext=createContext(null);
+export const useAccessScope=()=>useContext(AccessScopeContext);
+const FULL_HUB_SCOPES=new Set(['admin','legacy_admin']);
 
 function readLocalState() {
   const data = {};
@@ -155,13 +160,19 @@ async function refreshInstagramContentPerformance() {
 }
 
 export default function CloudGate({ children }) {
+  const pathname=usePathname();
+  const isTeamLogin=pathname==='/equipe';
   const [session, setSession] = useState(null);
+  const [accessScope,setAccessScope]=useState(null);
   const [initializing, setInitializing] = useState(true);
   const [ready, setReady] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [recoveringPassword,setRecoveringPassword]=useState(false);
+  const [newRecoveryPassword,setNewRecoveryPassword]=useState('');
+  const [confirmRecoveryPassword,setConfirmRecoveryPassword]=useState('');
   const [syncStatus, setSyncStatus] = useState('Conectando...');
 
   const rowIdRef = useRef(null);
@@ -186,6 +197,7 @@ export default function CloudGate({ children }) {
       const nextSession = data?.session ?? null;
       if (hasAuthIdentityChanged(authUserIdRef.current, nextSession)) {
         authUserIdRef.current = nextSession?.user?.id ?? null;
+        setAccessScope(null);
         setReady(false);
       }
       setSession((current) => sameAuthenticatedUser(current, nextSession) ? current : nextSession);
@@ -197,10 +209,13 @@ export default function CloudGate({ children }) {
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if(_event==='PASSWORD_RECOVERY')setRecoveringPassword(true);
+      if(_event==='SIGNED_OUT')setRecoveringPassword(false);
       // TOKEN_REFRESHED and tab-focus revalidation must not reset the screen.
       // Reset cloud data only when the authenticated identity truly changes.
       if (hasAuthIdentityChanged(authUserIdRef.current, nextSession)) {
         authUserIdRef.current = nextSession?.user?.id ?? null;
+        setAccessScope(null);
         rowIdRef.current = null;
         lastSnapshotRef.current = '';
         setReady(false);
@@ -214,9 +229,45 @@ export default function CloudGate({ children }) {
     };
   }, []);
 
+  useEffect(()=>{
+    if(!supabase||!session){setAccessScope(null);return undefined;}
+    let active=true;
+    const controller=new AbortController();
+    setAccessScope(null);
+    setReady(false);
+    async function loadAccessScope(){
+      try{
+        const {data}=await supabase.auth.getSession();
+        const token=data?.session?.access_token;
+        if(!token)throw new Error('Sua sessão expirou. Entre novamente.');
+        const response=await fetch('/api/auth/access-scope',{headers:{Authorization:'Bearer '+token},
+          cache:'no-store',signal:controller.signal});
+        const payload=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(payload.error||'Acesso não autorizado.');
+        if(!active)return;
+        setAccessScope(payload);
+        if(!FULL_HUB_SCOPES.has(payload.scope))setReady(true);
+      }catch(error){
+        if(!active||error.name==='AbortError')return;
+        setAccessScope({scope:'unauthorized',message:error.message});
+        setReady(true);
+      }
+    }
+    void loadAccessScope();
+    return()=>{active=false;controller.abort();};
+  },[session?.user?.id]);
+
   useEffect(() => {
     if (!supabase || !session) {
       setReady(false);
+      return undefined;
+    }
+
+    // Staff use only the server-authorized CRM area and must never enter the
+    // legacy content-state synchronization path.
+    if (!accessScope) return undefined;
+    if (!FULL_HUB_SCOPES.has(accessScope.scope)) {
+      setReady(true);
       return undefined;
     }
 
@@ -294,10 +345,10 @@ export default function CloudGate({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [session?.user?.id]);
+  }, [session?.user?.id,accessScope?.scope]);
 
   useEffect(() => {
-    if (!supabase || !session || !ready) return undefined;
+    if (!supabase || !session || !ready || !FULL_HUB_SCOPES.has(accessScope?.scope)) return undefined;
 
     let cancelled = false;
 
@@ -350,10 +401,10 @@ export default function CloudGate({ children }) {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [ready, session]);
+  }, [ready, session,accessScope?.scope]);
 
   useEffect(() => {
-    if (!supabase || !session || !ready) return undefined;
+    if (!supabase || !session || !ready || !FULL_HUB_SCOPES.has(accessScope?.scope)) return undefined;
 
     let cancelled = false;
 
@@ -395,10 +446,10 @@ export default function CloudGate({ children }) {
       window.clearInterval(intervalId);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [ready, session]);
+  }, [ready, session,accessScope?.scope]);
 
   useEffect(() => {
-    if (!supabase || !session || !ready) return undefined;
+    if (!supabase || !session || !ready || !FULL_HUB_SCOPES.has(accessScope?.scope)) return undefined;
 
     async function saveCloudState() {
       if (saveInProgressRef.current) return;
@@ -459,7 +510,7 @@ export default function CloudGate({ children }) {
       window.clearTimeout(firstSaveId);
       window.clearInterval(intervalId);
     };
-  }, [ready, session]);
+  }, [ready, session,accessScope?.scope]);
 
   async function handleLogin(event) {
     event.preventDefault();
@@ -477,11 +528,50 @@ export default function CloudGate({ children }) {
     setSubmitting(false);
   }
 
+  async function requestPasswordReset(){
+    if(!supabase)return;
+    const to=email.trim().toLowerCase();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)){
+      setMessage('Informe seu e-mail para receber o link de recuperação.');return;
+    }
+    setSubmitting(true);setMessage('');
+    try{
+      const {error}=await supabase.auth.resetPasswordForEmail(to,{
+        redirectTo:window.location.origin+'/equipe',
+      });
+      if(error)throw error;
+      // Same confirmation regardless of whether an account exists.
+      setMessage('Se houver uma conta para este e-mail, enviaremos as instruções de recuperação.');
+    }catch{
+      setMessage('Não foi possível solicitar a recuperação agora. Tente novamente.');}
+    finally{setSubmitting(false);}
+  }
+
+  async function finishPasswordRecovery(event){
+    event.preventDefault();
+    if(!supabase||submitting)return;
+    if(newRecoveryPassword.length<12||newRecoveryPassword!==confirmRecoveryPassword){
+      setMessage('A nova senha deve ter pelo menos 12 caracteres e as duas senhas devem ser iguais.');
+      return;
+    }
+    setSubmitting(true);setMessage('');
+    const {error}=await supabase.auth.updateUser({
+      password:newRecoveryPassword,data:{requires_password_setup:false},
+    });
+    if(error){setMessage('Não foi possível salvar a senha. Solicite outro link.');}
+    else{
+      setRecoveringPassword(false);setNewRecoveryPassword('');setConfirmRecoveryPassword('');
+      setMessage('');
+    }
+    setSubmitting(false);
+  }
+
   async function handleLogout() {
     if (!supabase) return;
     await supabase.auth.signOut();
     rowIdRef.current = null;
     lastSnapshotRef.current = '';
+    setAccessScope(null);
     setSession(null);
   }
 
@@ -498,7 +588,24 @@ export default function CloudGate({ children }) {
     );
   }
 
-  if (initializing || (session && !ready)) {
+  if(session&&recoveringPassword){
+    return <main className={styles.screen}><section className={styles.statusCard}>
+      <img className={styles.statusLogo} src="/brand/tideplace-mark.svg" alt=""/>
+      <p className={styles.eyebrow}>VITAL DECOR · RECUPERAÇÃO</p>
+      <h1>Escolha sua nova senha</h1>
+      <p>Essa senha é individual e não deve ser compartilhada com a equipe.</p>
+      <form className={styles.recoveryForm} onSubmit={finishPasswordRecovery}>
+        <label>Nova senha<input type="password" autoComplete="new-password" minLength={12} required
+          value={newRecoveryPassword} onChange={event=>setNewRecoveryPassword(event.target.value)}/></label>
+        <label>Confirmar senha<input type="password" autoComplete="new-password" minLength={12} required
+          value={confirmRecoveryPassword} onChange={event=>setConfirmRecoveryPassword(event.target.value)}/></label>
+        {message&&<p role="status">{message}</p>}
+        <button type="submit" disabled={submitting}>{submitting?'Salvando…':'Salvar nova senha'}</button>
+      </form>
+    </section></main>;
+  }
+
+  if (initializing || (session && (!accessScope || !ready))) {
     return (
       <main className={styles.loadingScreen} aria-live="polite">
         <div className={styles.loadingBrand}>
@@ -525,16 +632,13 @@ export default function CloudGate({ children }) {
             </div>
 
             <div className={styles.brandMessage}>
-              <span className={styles.brandKicker}>YOUR SOCIAL PLACE</span>
-              <h1>Tudo o que move sua audiência, em um só lugar.</h1>
-              <p>Conteúdo, conversas, leads e automações organizados para você acompanhar o fluxo sem perder o que importa.</p>
+              <span className={styles.brandKicker}>{isTeamLogin?'SUA CENTRAL DE ATENDIMENTO':'YOUR SOCIAL PLACE'}</span>
+              <h1>{isTeamLogin?'Sua equipe e seus atendimentos, em um só lugar.':'Tudo o que move sua audiência, em um só lugar.'}</h1>
+              <p>{isTeamLogin?'Acompanhe apenas as conversas dos seus setores, com acesso individual e permissões definidas pela administração.':'Conteúdo, conversas, leads e automações organizados para você acompanhar o fluxo sem perder o que importa.'}</p>
             </div>
 
             <div className={styles.brandFeatures}>
-              <span>Conteúdo</span>
-              <span>Audiência</span>
-              <span>Automação</span>
-              <span>Relacionamento</span>
+              {(isTeamLogin?['Atendimentos','Meus setores','Histórico','Privacidade']:['Conteúdo','Audiência','Automação','Relacionamento']).map(item=><span key={item}>{item}</span>)}
             </div>
           </div>
 
@@ -543,9 +647,9 @@ export default function CloudGate({ children }) {
               <img src="/brand/tideplace-mark.svg" alt="" />
               <strong><b>TIDE</b>PLACE</strong>
             </div>
-            <p className={styles.eyebrow}>ACESSO À PLATAFORMA</p>
-            <h2>Bem-vinda de volta.</h2>
-            <p className={styles.authIntro}>Entre para acessar sua central TidePlace.</p>
+            <p className={styles.eyebrow}>{isTeamLogin?'VITAL DECOR · ACESSO DA EQUIPE':'ACESSO À PLATAFORMA'}</p>
+            <h2>{isTeamLogin?'Bem-vindo à equipe.':'Bem-vinda de volta.'}</h2>
+            <p className={styles.authIntro}>{isTeamLogin?'Entre com seu e-mail e senha individuais. Seu acesso é limitado aos setores autorizados.':'Entre para acessar sua central TidePlace.'}</p>
 
             <form className={styles.form} onSubmit={handleLogin}>
               <label>
@@ -570,25 +674,42 @@ export default function CloudGate({ children }) {
                   required
                 />
               </label>
-              {message && <p className={styles.error}>{message}</p>}
+              {message && <p role="status" className={styles.error}>{message}</p>}
+              {isTeamLogin&&<button type="button" className={styles.forgotButton} disabled={submitting}
+                onClick={requestPasswordReset}>Esqueci minha senha</button>}
               <button type="submit" disabled={submitting}>
-                {submitting ? 'Entrando...' : 'Entrar na TidePlace'}
+                {submitting ? 'Entrando...' : isTeamLogin?'Entrar na central da equipe':'Entrar na TidePlace'}
               </button>
             </form>
-            <p className={styles.securityNote}>Acesso seguro · seus dados permanecem sincronizados.</p>
+            <p className={styles.securityNote}>{isTeamLogin?'Acesso individual · permissões verificadas pelo servidor.':'Acesso seguro · seus dados permanecem sincronizados.'}</p>
+            <p className={styles.teamEntryLink}>
+              {isTeamLogin?<Link href="/">Voltar ao login principal</Link>:<Link href="/equipe">Sou membro da equipe Vital Decor</Link>}
+            </p>
           </div>
         </section>
       </main>
     );
   }
 
+  if(accessScope?.scope==='staff_pending'||accessScope?.scope==='unauthorized'){
+    return <main className={styles.screen}><section className={styles.statusCard}>
+      <img className={styles.statusLogo} src="/brand/tideplace-mark.svg" alt=""/>
+      <p className={styles.eyebrow}>TIDEPLACE · VITAL DECOR</p>
+      <h1>{accessScope.scope==='staff_pending'?'Acesso ainda não liberado':'Conta sem permissão ativa'}</h1>
+      <p>{accessScope.scope==='staff_pending'
+        ?'Seu login ainda não foi ativado para o CRM. Aguarde a liberação da administradora.'
+        :accessScope.message||'Entre em contato com a administração da Vital Decor.'}</p>
+      <button type="button" onClick={handleLogout}>Sair da conta</button>
+    </section></main>;
+  }
+
   return (
     <>
-      {children}
-      <div className={`${styles.syncBar} ${ready ? styles.syncReady : styles.syncBusy}`}>
+      <AccessScopeContext.Provider value={accessScope}>{children}</AccessScopeContext.Provider>
+      {FULL_HUB_SCOPES.has(accessScope?.scope)&&<div className={`${styles.syncBar} ${ready ? styles.syncReady : styles.syncBusy}`}>
         <span>{ready ? syncStatus : 'Sincronizando em segundo plano...'}</span>
         <button type="button" onClick={handleLogout}>Sair</button>
-      </div>
+      </div>}
     </>
   );
 }

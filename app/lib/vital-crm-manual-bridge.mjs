@@ -1,6 +1,6 @@
-import { VITAL_QUEUE_SECTORS } from './vital-crm-queues.mjs';
+import { VITAL_QUEUE_SECTORS, VITAL_ARGO_POSTSALE_QUEUES } from './vital-crm-queues.mjs';
 
-const MARKETPLACE_POSTSALE = new Set(['pos_shopee', 'pos_tiktok', 'pos_ml']);
+const MARKETPLACE_POSTSALE = new Set(VITAL_ARGO_POSTSALE_QUEUES);
 const EXTERNAL_ASSIGNEES = new Set(['andrey', 'vitor']);
 
 export function manualBridgePlan({ enabled, toQueue, currentQueue, assignment }) {
@@ -9,7 +9,8 @@ export function manualBridgePlan({ enabled, toQueue, currentQueue, assignment })
   const existingAssignee = assignment?.assigned_to || null;
   const externalOpen = EXTERNAL_ASSIGNEES.has(existingAssignee) && assignment?.status !== 'closed';
   const usesBridge = enabled && (desiredAssignee === 'andrey' || externalOpen);
-  return { desiredAssignee, usesBridge,
+  const blocked = !enabled && externalOpen && currentQueue !== toQueue;
+  return { desiredAssignee, usesBridge, blocked,
     // Even when already assigned to Andrey, the RPC must revalidate the
     // credential and connection before reporting the handoff as confirmed.
     unchanged: currentQueue === toQueue && !usesBridge };
@@ -20,6 +21,7 @@ export function manualBridgePlan({ enabled, toQueue, currentQueue, assignment })
 // future migration: until it exists, calls fail closed without a fallback.
 export async function transferManually({ db, plan, organizationId, connectionId, ownerId,
   phone, toQueue, current, actorId }) {
+  if (plan.blocked) return { confirmed:false, error:{ code:'BRIDGE_DISABLED' } };
   const base = {
     p_org: organizationId, p_conn: connectionId, p_owner: ownerId,
     p_phone: phone, p_to_queue: toQueue, p_expected_from: current.queue,

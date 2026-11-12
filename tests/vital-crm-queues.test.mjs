@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {viviQueue,resolveVitalQueue,canAccessVitalQueue,VITAL_QUEUE_ORDER,VITAL_QUEUE_OWNER_LABEL,queueStatus,crmConversationStatus,vitalTransferDestinations} from '../app/lib/vital-crm-queues.mjs';
+import {viviQueue,resolveVitalQueue,canAccessVitalQueue,VITAL_QUEUE_ORDER,VITAL_QUEUE_OWNER_LABEL,VITAL_TEAM_QUEUE_PLAN,needsVitalArgoReconciliation,queueStatus,crmConversationStatus,vitalTransferDestinations} from '../app/lib/vital-crm-queues.mjs';
 test('nine distinct queues with no accidental cross-postsale routing',()=>{
  assert.equal(VITAL_QUEUE_ORDER.length,9);
  assert.equal(new Set(VITAL_QUEUE_ORDER).size,9);
@@ -48,4 +48,23 @@ test('staff can forward to all nine destinations while still reading only grante
  assert.equal(canAccessVitalQueue('agent',['pos_shopee'],'pos_ml'),false);
  assert.equal(canAccessVitalQueue('agent',['pos_shopee'],'pos_shopee'),true);
  assert.equal(vitalTransferDestinations([{queue_code:'unknown',display_name:'Outra empresa'}]).length,0);
+});
+
+test('the planned marketplace owner and queue access agree without changing other sectors',()=>{
+ assert.equal(VITAL_QUEUE_OWNER_LABEL.pos_ml,'Andrey');
+ assert.equal(VITAL_TEAM_QUEUE_PLAN.Andrey.queues.includes('pos_ml'),true);
+ assert.equal(VITAL_TEAM_QUEUE_PLAN.Vitor.queues.includes('pos_ml'),false);
+ for(const queue of ['atacado','vtx','bluetti'])
+  assert.equal(VITAL_TEAM_QUEUE_PLAN.Vitor.queues.includes(queue),true);
+});
+
+test('same-queue reconciliation is offered only for a mismatched enabled bridge',()=>{
+ assert.equal(needsVitalArgoReconciliation(false,'pos_ml','tide'),false);
+ assert.equal(needsVitalArgoReconciliation(true,'pos_ml','tide'),true);
+ assert.equal(needsVitalArgoReconciliation(true,'pos_ml',null),true);
+ assert.equal(needsVitalArgoReconciliation(true,'pos_ml','andrey'),false);
+ assert.equal(needsVitalArgoReconciliation(true,'pos_nv','andrey'),true);
+ assert.equal(needsVitalArgoReconciliation(true,'pos_nv','tide'),false);
+ assert.equal(needsVitalArgoReconciliation(true,'pos_nv',null),false);
+ assert.equal(needsVitalArgoReconciliation(true,'unknown','andrey'),false);
 });

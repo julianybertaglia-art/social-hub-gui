@@ -42,12 +42,12 @@ begin
 
  select q.parent_sector into v_target_sector from public.crm_vital_queues q
   where q.organization_id=p_org and q.queue_code=p_to_queue for share;
- if v_target_sector is null or v_target_sector is distinct from case p_to_queue
+ if v_target_sector is null or v_target_sector is distinct from (case p_to_queue
    when 'varejo_nv' then 'comercial_vital' when 'pos_nv' then 'pos_venda'
    when 'pos_shopee' then 'pos_venda' when 'pos_tiktok' then 'pos_venda'
    when 'pos_ml' then 'pos_venda' when 'pos_amazon' then 'pos_venda'
    when 'afiliados' then 'afiliados' when 'atacado' then 'atacado'
-   when 'vtx' then 'vtx' when 'bluetti' then 'bluetti' else null end
+   when 'vtx' then 'vtx' when 'bluetti' then 'bluetti' else null end)
  then raise exception 'Invalid destination queue' using errcode='22023'; end if;
  v_expected_assignee:=case when p_to_queue in ('pos_shopee','pos_tiktok','pos_ml','pos_amazon')
    then 'andrey' else 'tide' end;

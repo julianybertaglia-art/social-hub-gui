@@ -19,5 +19,5 @@ test('duplicate assignment is not repeated; closed assignments can be reopened',
  assert.equal(sameVitalAssignment(undefined,'bluetti',destination),false);
 });
 test('all six configured Vital sectors remain independently addressable',()=>{
- assert.deepEqual(Object.keys(VITAL_SECTOR_NAMES).sort(),['atacado','afiliados','bluetti','comercial_vital','pos_venda','vtx']);
+ assert.deepEqual(Object.keys(VITAL_SECTOR_NAMES).sort(),['afiliados','atacado','bluetti','comercial_vital','pos_venda','vtx']);
 });

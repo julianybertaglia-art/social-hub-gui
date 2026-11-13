@@ -133,30 +133,13 @@ async function handleMessages(supabase, value, origin) {
           .eq('message_id', message?.id || '')
           .eq('contact_id', contact.id);
 
-        try {
-          const fallbackText = 'Entendi. E hoje, qual é o principal ponto que mais está travando esse crescimento: margem/produto, anúncios, operação ou outra coisa?';
-          const fallbackResult = await sendWhatsAppText({ to: contact.wa_id, text: fallbackText });
-          const fallbackMessageId = fallbackResult?.messages?.[0]?.id || null;
-          const now = new Date().toISOString();
+        // Não enviar uma resposta genérica fora de contexto quando a IA falhar.
+        // O contato permanece no CRM para atendimento humano.
+        await supabase.from('whatsapp_contacts').update({
+          stage: 'Aguardando atendimento',
+          updated_at: new Date().toISOString(),
+        }).eq('id', contact.id);
 
-          await supabase.from('whatsapp_messages').insert({
-            meta_message_id: fallbackMessageId,
-            contact_id: contact.id,
-            direction: 'outbound',
-            message_type: 'text',
-            body: fallbackText,
-            status: 'sent',
-            raw_payload: { ...fallbackResult, ai_fallback: true, ai_error: aiErrorMessage },
-            sent_at: now,
-          });
-
-          await supabase.from('whatsapp_contacts').update({
-            last_message_at: now,
-            updated_at: now,
-          }).eq('id', contact.id);
-        } catch (fallbackError) {
-          console.error('WhatsApp AI fallback:', fallbackError);
-        }
       }
     } catch (automationError) {
       console.error('WhatsApp menu automation:', automationError);

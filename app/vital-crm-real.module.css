@@ -421,3 +421,40 @@
 .topActions button:hover,.pagination button:not(:disabled):hover{border-color:#4a8b9b;color:#246f81}
 @media(max-width:700px){.embedded{padding:18px 11px 28px}.tabs{width:100%;display:grid;grid-template-columns:1fr 1fr}.tabs button{justify-content:center}.summaryPill{padding:11px}.board{box-shadow:none}}
 @media(prefers-reduced-motion:reduce){.tabs button,.summaryPill{transition:none}.summaryPill:hover{transform:none}}
+
+/* Keep the useful filters, but let conversations occupy the workspace. */
+.inboxToolbar{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;margin:0 0 12px}
+.inboxToolbar .inboxSummary{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0}
+.inboxToolbar .summaryPill{display:flex;flex-direction:row;align-items:center;gap:7px;min-height:38px;padding:7px 11px;border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:9px;box-shadow:none}
+.inboxToolbar .summaryPill strong{font-size:16px}
+.inboxToolbar .summaryPill span{font-size:12px;white-space:nowrap}
+.inboxToolbar .summaryPill[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 12%,var(--surface));outline:1px solid var(--accent)}
+.inboxToolbar .scopeTabs{margin:0;flex-wrap:wrap}
+.inboxFocus .header{margin-bottom:10px;align-items:center}
+.inboxFocus .header h1{font-size:clamp(21px,2vw,27px);margin:2px 0}
+.inboxFocus .header p{display:none}
+.inboxFocus .tabs{margin-bottom:12px}
+.inboxFocus .board{height:var(--vital-board-height,max(500px,calc(100dvh - 270px)))}
+.board .messages article{max-width:min(85%,650px);padding:11px 15px}
+.board .messages article p{font-size:15px;line-height:1.55}
+.board .contactText strong{font-size:15px}
+.board .contactText small{font-size:11.5px}
+.board .composeRow textarea{font-size:15px}
+.board .reply small{flex:0 0 auto}
+@media(max-width:700px){
+ .inboxFocus .header{flex-direction:row;align-items:center;gap:8px}
+ .inboxFocus .header h1{font-size:19px}
+ .inboxFocus .eyebrow{display:none}
+ .inboxHasSelection .inboxToolbar{display:none}
+ .inboxToolbar{align-items:flex-start}
+ .inboxToolbar .inboxSummary{gap:5px}
+ .inboxToolbar .summaryPill{padding:6px 8px;min-height:35px}
+ .inboxToolbar .summaryPill span{font-size:11px;white-space:normal}
+ .inboxFocus .board{height:auto!important}
+ .board:not(.hasSelection) .thread{display:none}
+ .board:not(.hasSelection) .list{max-height:none;height:min(58dvh,520px)}
+ .board:not(.hasSelection) .contacts{max-height:none}
+ .board.hasSelection .list{display:none}
+ .board.hasSelection .thread{height:max(510px,calc(100dvh - 235px));min-height:400px}
+ .board.hasSelection .threadHeader button{min-width:40px;min-height:40px}
+}

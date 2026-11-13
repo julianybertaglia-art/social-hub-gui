@@ -466,6 +466,9 @@ export async function processWhatsAppAi(supabase, { contact, message, automation
   if (!agent) return { handled: false, reason: 'ai_off' };
 
   const session = await currentSession(supabase, contact.id);
+  // A mentoria é conduzida pelo questionário Nina e termina com atendimento humano.
+  // Não permitir que o antigo agente antecipe PDF, preço ou agendamento.
+  if (session?.current_topic === 'Mentoria') return { handled: false, reason: 'mentoria_nina_or_human' };
   if (!session || !AI_SESSION_STATES.has(session.state) || !SALES_TOPICS.has(session.current_topic)) {
     return { handled: false, reason: 'out_of_scope' };
   }

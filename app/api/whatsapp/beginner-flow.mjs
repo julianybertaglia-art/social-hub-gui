@@ -1,11 +1,24 @@
 import { callAi } from './ai.js';
 import { sendWhatsAppText } from './lib.js';
+import { sendWhatsAppReplyButtons } from './reply-buttons.js';
+import { startNinaMentoria } from './nina-flow.mjs';
 
 export const BEGINNER_TOPIC = 'Mercado Livre';
 export const BEGINNER_LINK = 'https://pay.kiwify.com.br/zaaSR1F';
 export const BEGINNER_PRICE = 'O investimento é R$197 no Pix ou 12x de R$20,37 no cartão.';
-export const BEGINNER_OPENING = 'Me conta: você está começando do zero ou já chegou a tentar vender no Mercado Livre?';
-const ACTIVE = new Set(['beginner_profile', 'beginner_context', 'beginner_offer', 'beginner_link']);
+export const BEGINNER_OPENING = 'Perfeito! 🎓 Eu sou a Nina, assistente do Gui. Antes de te mostrar o treinamento, como posso te chamar? 😊';
+const PROFILE_QUESTION = 'Prazer! 😊 Me conta: como está seu momento no Mercado Livre?';
+const PROFILE_BUTTONS = [
+  { id: 'nina_treinamento_inicio', title: 'Já vendo, início' },
+  { id: 'nina_treinamento_maior', title: 'Operação maior' },
+  { id: 'nina_treinamento_zero', title: 'Ainda não vendo' },
+];
+const MENTORIA_SWITCH = [
+  { id: 'nina_treinamento_mentoria_sim', title: 'Aplicar mentoria' },
+  { id: 'nina_treinamento_mentoria_nao', title: 'Não, obrigado' },
+];
+export const BEGINNER_COURSE = 'São mais de *30 horas de aulas gravadas* com o Gui mostrando a operação na prática, do básico às estratégias de escala. 🚀\\n\\n🔥 Encontrar produtos\\n🔥 Primeiras vendas\\n🔥 Anúncios e Product Ads\\n🔥 Logística e envios\\n🔥 Construção de marca\\n🔥 Reputação e crescimento da conta\\n🔥 Importação\\n\\nVocê estuda no seu ritmo e tem *acesso vitalício*!';
+const ACTIVE = new Set(['beginner_name', 'beginner_profile', 'beginner_context', 'beginner_offer', 'beginner_link', 'beginner_mentor_optin', 'beginner_zero_optin']);
 const INTENTS = new Set(['answer', 'price', 'link', 'access', 'curriculum', 'capital', 'time', 'support', 'human', 'mentoria', 'stop', 'purchased', 'objection', 'unknown']);
 
 export function isBeginnerSession(session) {
@@ -39,7 +52,7 @@ export function beginnerReply(state, decision) {
   if (intent === 'stop') return { text: 'Tudo bem! Se quiser retomar depois, pode chamar por aqui.', state: 'beginner_closed', tag: 'Treinamento · Atendimento pausado' };
   if (intent === 'purchased') return handoff('Vou deixar sua mensagem com a equipe para conferir a compra e te orientar sobre o acesso.', { tag: 'Treinamento · Conferir compra' });
   if (intent === 'human') return handoff('Vou deixar a conversa com a equipe para continuar seu atendimento por aqui.');
-  if (intent === 'mentoria') return handoff('A mentoria tem acompanhamento personalizado diretamente com o Gui. Mesmo começando agora, dá para avaliar se faz sentido para você.\n\nVocê já tem um produto ou nicho definido para começar?', { topic: 'Mentoria', tag: 'Interesse — Mentoria' });
+  if (intent === 'mentoria') return { switchToMentoria: true };
   if (intent === 'support') return handoff('Vou confirmar esse detalhe com a equipe para te passar a informação certinha.');
   if (decision.confidence < 0.8 || intent === 'unknown') return handoff('Vou deixar sua mensagem com a equipe para te orientar melhor por aqui.');
   if (intent === 'link') return {
@@ -48,11 +61,11 @@ export function beginnerReply(state, decision) {
   };
   if (intent === 'price') return { text: BEGINNER_PRICE + '\n\nO acesso é vitalício. ' + offerQuestion, state: 'beginner_offer', stage: 'Interessado' };
   if (intent === 'access') return { text: 'O acesso é vitalício. Você estuda no seu ritmo e pode voltar às aulas quando precisar 😊\n\n' + offerQuestion, state: 'beginner_offer', stage: 'Interessado' };
-  if (intent === 'curriculum') return { text: 'São mais de 30 horas de aulas gravadas sobre escolha de produtos, primeiras vendas, anúncios e Product Ads, logística, marca, reputação, crescimento da conta e importação.\n\n' + BEGINNER_PRICE + '\n\nO acesso é vitalício. ' + offerQuestion, state: 'beginner_offer', stage: 'Interessado' };
+  if (intent === 'curriculum') return { text: BEGINNER_COURSE + '\n\n' + BEGINNER_PRICE + '\n\n' + offerQuestion, state: 'beginner_offer', stage: 'Interessado' };
   if (intent === 'capital') return handoff('O valor do treinamento é separado do dinheiro para montar a operação, como produtos e envios. O investimento na operação depende do que você pretende vender. Vou deixar essa dúvida com a equipe para te orientar melhor.');
   if (intent === 'time') return { text: 'As aulas são gravadas e o acesso é vitalício. Você pode estudar aos poucos, conforme sua rotina, e voltar ao conteúdo quando precisar.\n\n' + offerQuestion, state: 'beginner_offer', stage: 'Interessado' };
   if (intent === 'objection') return { text: 'Vale avaliar se cabe no seu momento. ' + BEGINNER_PRICE + '\n\nSe quiser, pode me contar o que ficou pesando na sua decisão.', state: 'beginner_offer', stage: 'Interessado' };
-  if (state === 'beginner_link' || state === 'beginner_offer') return handoff('Pode me contar a dúvida que ficou? Vou deixar a conversa com a equipe para continuar te ajudando.');
+  if (state === 'beginner_link' || state === 'beginner_offer') return { text: 'Claro! 😊 Posso te explicar os módulos, acesso, valores ou como fazer sua inscrição. Qual dessas informações você precisa?', state, stage: 'Interessado' };
   if (state === 'beginner_profile' && product === 'unknown' && obstacle === 'unknown') return {
     text: profile === 'tried' || profile === 'seller'
       ? 'E o que mais dificultou continuar ou crescer nas vendas?'
@@ -89,11 +102,13 @@ export async function pauseBeginnerFlow(db, contactId) {
 }
 
 async function deliver(db, contact, reply) {
-  const result = await sendWhatsAppText({ to: contact.wa_id, text: reply.text });
+  const result = reply.buttons
+    ? await sendWhatsAppReplyButtons({ to: contact.wa_id, body: reply.text, buttons: reply.buttons })
+    : await sendWhatsAppText({ to: contact.wa_id, text: reply.text });
   const now = new Date().toISOString();
   const { error } = await db.from('whatsapp_messages').insert({
     meta_message_id: result?.messages?.[0]?.id || null, contact_id: contact.id,
-    direction: 'outbound', message_type: 'text', body: reply.text, status: 'sent',
+    direction: 'outbound', message_type: reply.buttons ? 'interactive' : 'text', body: reply.text, status: 'sent',
     raw_payload: { ...result, tide_beginner: true }, sent_at: now,
   });
   if (error) throw error;
@@ -111,7 +126,7 @@ async function deliver(db, contact, reply) {
 }
 
 export async function startBeginnerFlow(db, contact) {
-  await deliver(db, contact, { text: BEGINNER_OPENING, state: 'beginner_profile', stage: 'Conversando' });
+  await deliver(db, contact, { text: BEGINNER_OPENING, state: 'beginner_name', stage: 'Conversando' });
 }
 
 function safeHistory(rows) {
@@ -136,12 +151,69 @@ export async function processBeginnerFlow(db, { contact, message, session }, cla
   if (rows.findLast((row) => row.direction === 'inbound')?.meta_message_id !== message.id) return true;
   let reply;
   try {
-    const decision = message.type === 'text'
-      ? await classifyBeginner(safeHistory(rows), classify)
-      : { intent: 'human', confidence: 1 };
-    reply = beginnerReply(session.state, decision);
+    const text = String(message?.text?.body || '').trim();
+    const selectionId = String(message?.interactive?.button_reply?.id || '').trim();
+
+    if (session.state === 'beginner_name') {
+      const name = text.replace(/^(me chamo|meu nome é|pode me chamar de|sou a |sou o )\s*/i, '').trim();
+      reply = name.length >= 2 && name.length <= 60
+        ? { text: PROFILE_QUESTION, state: 'beginner_profile', stage: 'Conversando',
+            buttons: PROFILE_BUTTONS, saveName: name }
+        : { text: 'Como posso te chamar? Pode me dizer só seu nome? 😊', state: 'beginner_name' };
+    } else if (session.state === 'beginner_profile' && selectionId) {
+      if (selectionId === 'nina_treinamento_inicio') {
+        reply = { text: BEGINNER_COURSE + '\n\n' + BEGINNER_PRICE +
+          '\n\nQuer que eu te envie o link da inscrição?', state: 'beginner_offer',
+          stage: 'Interessado', tag: 'Treinamento · Operação inicial' };
+      } else if (selectionId === 'nina_treinamento_maior') {
+        reply = { text: 'Para quem já tem uma operação maior e quer escalar com acompanhamento estratégico, ' +
+          'a *Mentoria Ultra* costuma ser mais indicada. 🚀\n\nVocê gostaria de fazer sua aplicação para a mentoria?',
+          state: 'beginner_mentor_optin', buttons: MENTORIA_SWITCH,
+          tag: 'Treinamento · Operação maior' };
+      } else if (selectionId === 'nina_treinamento_zero') {
+        reply = { text: 'O Gui ensina desde o básico no treinamento, mas nossa indicação principal é para quem já começou a vender e está estruturando a operação. 😊\n\nSe quiser, posso te mostrar o conteúdo e o investimento para você avaliar.',
+          state: 'beginner_zero_optin',
+          buttons: [{ id: 'nina_treinamento_ver_curso', title: 'Ver treinamento' },
+            { id: 'nina_treinamento_depois', title: 'Agora não' }],
+          tag: 'Treinamento · Ainda não vende' };
+      } else {
+        reply = { text: PROFILE_QUESTION, state: 'beginner_profile', buttons: PROFILE_BUTTONS };
+      }
+    } else if (session.state === 'beginner_mentor_optin') {
+      if (selectionId === 'nina_treinamento_mentoria_sim' || /^sim,? (quero|pode)|^quero (aplicar|mentoria)/i.test(text)) {
+        reply = { switchToMentoria: true };
+      } else if (selectionId === 'nina_treinamento_mentoria_nao') {
+        reply = { text: 'Sem problema! Se precisar de alguma orientação, pode chamar por aqui. 💛', state: 'beginner_closed' };
+      } else {
+        reply = { text: 'Quer fazer a aplicação para a mentoria do Gui? 😊', state: 'beginner_mentor_optin', buttons: MENTORIA_SWITCH };
+      }
+    } else if (session.state === 'beginner_zero_optin') {
+      if (selectionId === 'nina_treinamento_ver_curso' || /^sim|quero|pode/i.test(text)) {
+        reply = { text: BEGINNER_COURSE + '\n\n' + BEGINNER_PRICE + '\n\nQuer o link da inscrição?',
+          state: 'beginner_offer', stage: 'Interessado' };
+      } else {
+        reply = { text: 'Tudo bem! Se quiser conhecer o conteúdo em outro momento, é só chamar. 😊', state: 'beginner_closed' };
+      }
+    } else {
+      // Perguntas comerciais frequentes são tratadas sem depender de disponibilidade da IA.
+      const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const direct = /\b(link|checkout|inscri[cç][aã]o|comprar|matricular)\b/.test(normalized) ? 'link'
+        : /\b(preco|valor|quanto custa|parcelas|parcelamento)\b/.test(normalized) ? 'price'
+        : /\b(modulos|conteudo|aulas|aprende|ensina)\b/.test(normalized) ? 'curriculum'
+        : /\b(acesso|vitalicio|duracao)\b/.test(normalized) ? 'access'
+        : /\b(humano|atendente|pessoa|juliany)\b/.test(normalized) ? 'human'
+        : /\b(mentoria|mentor)\b/.test(normalized) ? 'mentoria'
+        : null;
+      const decision = direct
+        ? { intent: direct, profile: 'unknown', product: 'unknown', obstacle: 'unknown', confidence: 1 }
+        : message.type === 'text'
+          ? await classifyBeginner(safeHistory(rows), classify)
+          : { intent: 'human', confidence: 1 };
+      reply = beginnerReply(session.state, decision);
+    }
   } catch {
-    reply = { text: 'Vou deixar sua mensagem com a equipe para continuar seu atendimento por aqui.', state: 'beginner_human', stage: 'Aguardando atendimento' };
+    reply = { text: 'Vou deixar sua mensagem com a equipe para continuar seu atendimento por aqui.',
+      state: 'beginner_human', stage: 'Aguardando atendimento' };
   }
   // Re-read after classification: a manual takeover or a newer lead reply wins.
   const current = await sessionFor(db, contact.id);
@@ -151,6 +223,16 @@ export async function processBeginnerFlow(db, { contact, message, session }, cla
     .order('sent_at', { ascending: false }).limit(1);
   if (latestError) throw latestError;
   if (latest?.[0]?.direction !== 'inbound' || latest[0].meta_message_id !== message.id) return true;
+  if (reply.saveName) {
+    const { error: nameError } = await db.from('whatsapp_contacts')
+      .update({ profile_name: reply.saveName, updated_at: new Date().toISOString() }).eq('id', contact.id);
+    if (nameError) throw nameError;
+    contact.profile_name = reply.saveName;
+  }
+  if (reply.switchToMentoria) {
+    await startNinaMentoria(db, contact);
+    return true;
+  }
   await deliver(db, contact, reply);
   return true;
 }

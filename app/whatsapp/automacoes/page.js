@@ -9,7 +9,7 @@ const flows = [
     title: 'Menu de entrada',
     description: 'Organiza cada novo contato por assunto antes de cair no atendimento.',
     status: 'Verificando',
-    items: ['Começar no ML', 'Importação', 'Mentoria', 'Influenciador', 'Outro'],
+    items: ['Treinamento online', 'Aplicação mentoria', 'Importação', 'Outros assuntos'],
     href: '/whatsapp',
     cta: 'Abrir CRM',
   },

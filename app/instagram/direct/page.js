@@ -3,6 +3,8 @@ import {useEffect,useMemo,useCallback,useState} from 'react';
 import {useWorkspace} from '../../WorkspaceSwitcher';
 import {api} from '../../operations/useOperations';
 import styles from './direct.module.css';
+import {TopicFilter,TopicBadge,TopicPicker,useConversationTopics} from '../../ui/ConversationTopics';
+import {resolvedTopic,topicsFor} from '../../lib/conversation-topics.mjs';
 
 const CATEGORIES=[
   {value:'unclassified',label:'A classificar',symbol:'◌'},
@@ -22,6 +24,8 @@ export default function InstagramDirectPage(){
  const [workspace]=useWorkspace();
  const [threads,setThreads]=useState([]),[selectedId,setSelectedId]=useState(null),[messages,setMessages]=useState([]);
  const [view,setView]=useState('spontaneous'),[category,setCategory]=useState('all'),[keyword,setKeyword]=useState('all');
+ const [subject,setSubject]=useState('all');
+ const subjectStore=useConversationTopics('gui-nonato','instagram');
  const [personalOpen,setPersonalOpen]=useState(false),[search,setSearch]=useState('');
  const [loading,setLoading]=useState(true),[loadingMessages,setLoadingMessages]=useState(false),[busy,setBusy]=useState('');
  const [draft,setDraft]=useState(''),[notice,setNotice]=useState(''),[hasMore,setHasMore]=useState(false);
@@ -51,13 +55,16 @@ export default function InstagramDirectPage(){
  useEffect(()=>{if(!allowed)return;const timer=setInterval(()=>{if(document.visibilityState==='visible'){void loadThreads({silent:true});if(selectedId)void loadMessages(selectedId,{silent:true});}},12000);return()=>clearInterval(timer);},[allowed,selectedId,loadThreads,loadMessages]);
 
  const keywords=useMemo(()=>[...new Set(threads.filter(t=>t.automation_keyword).map(t=>t.automation_keyword))].sort(),[threads]);
+ const subjectCounts={all:threads.length};
+ for(const t of topicsFor('gui-nonato'))subjectCounts[t.id]=threads.filter(row=>resolvedTopic('gui-nonato',row,subjectStore.assignments,'instagram')===t.id).length;
  const shown=useMemo(()=>threads.filter(t=>{
   if(t.folder!==view)return false;
+  if(subject!=='all'&&resolvedTopic('gui-nonato',t,subjectStore.assignments,'instagram')!==subject)return false;
   if(view==='spontaneous'&&category!=='all'&&t.category!==category)return false;
   if(view==='automation'&&keyword!=='all'&&t.automation_keyword!==keyword)return false;
   const hay=[t.username,t.display_name,t.sender_id,t.last_excerpt,t.automation_keyword].join(' ').toLowerCase();
   return hay.includes(search.toLowerCase().trim());
- }),[threads,view,category,keyword,search]);
+ }),[threads,view,category,keyword,search,subject,subjectStore.assignments]);
  const count=(folder,segment)=>threads.filter(t=>t.folder===folder&&(!segment||(folder==='automation'?t.automation_keyword===segment:t.category===segment))).length;
  const canReply=selected?.last_inbound_at&&Date.now()-new Date(selected.last_inbound_at).getTime()<24*3600000&&Date.now()>=new Date(selected.last_inbound_at).getTime();
  async function patch(change){
@@ -144,11 +151,16 @@ export default function InstagramDirectPage(){
      <div><strong>{FOLDERS.find(f=>f.value===view)?.label}</strong><small>{shown.length} conversas</small></div>
      <input type="search" placeholder="Buscar conversa..." aria-label="Buscar conversa no Direct" value={search} onChange={e=>setSearch(e.target.value)}/>
     </div>
+    <div style={{padding:'10px 15px',borderBottom:'1px solid var(--tp-line,#e7e3e6)'}}>
+     <p style={{fontSize:12,fontWeight:700,margin:'0 0 7px'}}>Assunto da conversa</p>
+     <TopicFilter workspace="gui-nonato" value={subject} onChange={next=>{setSubject(next);setSelectedId(null);}} counts={subjectCounts}/>
+     {subjectStore.error&&<p role="alert" style={{color:'#9d3527',fontSize:12}}>{subjectStore.error}</p>}
+    </div>
     {loading?<div className={styles.empty}>Carregando conversas reais…</div>:shown.length===0?<div className={styles.empty}><strong>Nenhuma conversa nesta pasta.</strong><span>Novos directs aparecem pelos eventos da Meta. Use a sincronização para consultar o histórico disponível.</span></div>:
      <div className={styles.threadList}>{shown.map(t=><button key={t.id} className={selectedId===t.id?styles.selectedThread:styles.thread} onClick={()=>setSelectedId(t.id)}>
       <span className={styles.avatar}>{(t.username||t.display_name||'IG').slice(0,2).toUpperCase()}</span>
       <span className={styles.threadContent}><span className={styles.threadTop}><strong>{label(t)}</strong><small>{hours(t.last_message_at)}</small></span>
-       <span className={styles.preview}>{t.last_excerpt||'Sem prévia disponível'}</span><span className={styles.tags}>{t.automation_keyword&&<Tag>#{t.automation_keyword}</Tag>}{t.needs_reply&&<Tag>A responder</Tag>}{t.automation_paused&&<Tag>Humano</Tag>}</span></span>
+       <span className={styles.preview}>{t.last_excerpt||'Sem prévia disponível'}</span><span className={styles.tags}><TopicBadge workspace="gui-nonato" topic={resolvedTopic('gui-nonato',t,subjectStore.assignments,'instagram')}/>{t.automation_keyword&&<Tag>#{t.automation_keyword}</Tag>}{t.needs_reply&&<Tag>A responder</Tag>}{t.automation_paused&&<Tag>Humano</Tag>}</span></span>
      </button>)}</div>}
     {hasMore&&<p className={styles.listFoot}>Exibindo as 350 conversas mais recentes.</p>}
    </div>
@@ -157,6 +169,7 @@ export default function InstagramDirectPage(){
     <>
      <header className={styles.contactHeader}><div className={styles.contactId}><span className={styles.avatar}>{(selected.username||selected.display_name||'IG').slice(0,2).toUpperCase()}</span><div><strong>{label(selected)}</strong><span>{selected.folder==='personal'?'Conversa pessoal':selected.automation_keyword?'Origem: '+selected.automation_keyword:'Direct espontâneo'}</span></div></div><span className={styles.igPill}>Instagram</span></header>
      <div className={styles.settings}>
+      <TopicPicker workspace="gui-nonato" value={resolvedTopic('gui-nonato',selected,subjectStore.assignments,'instagram')} disabled={subjectStore.saving||Boolean(busy)} onChange={async next=>{if(await subjectStore.save(selected.id,next))setNotice('Assunto atualizado.');}}/>
       <label>Pasta<select value={selected.folder} disabled={Boolean(busy)} onChange={e=>patch({folder:e.target.value})}>{FOLDERS.map(f=><option value={f.value} key={f.value}>{f.label}</option>)}</select></label>
       <label>Perfil<select value={selected.category} disabled={Boolean(busy)} onChange={e=>patch({category:e.target.value})}>{CATEGORIES.map(c=><option key={c.value} value={c.value}>{c.label}</option>)}</select></label>
      </div>

@@ -155,11 +155,18 @@ export async function processBeginnerFlow(db, { contact, message, session }, cla
     const selectionId = String(message?.interactive?.button_reply?.id || '').trim();
 
     if (session.state === 'beginner_name') {
-      const name = text.replace(/^(me chamo|meu nome é|pode me chamar de|sou a |sou o )\s*/i, '').trim();
-      reply = name.length >= 2 && name.length <= 60
-        ? { text: PROFILE_QUESTION, state: 'beginner_profile', stage: 'Conversando',
-            buttons: PROFILE_BUTTONS, saveName: name }
-        : { text: 'Como posso te chamar? Pode me dizer só seu nome? 😊', state: 'beginner_name' };
+      const normalized = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      if (/\b(link|checkout|inscricao|comprar|matricula)\b/.test(normalized)) {
+        reply = beginnerReply('beginner_name', { intent: 'link', confidence: 1 });
+      } else if (/\b(preco|valor|quanto custa|parcelas)\b/.test(normalized)) {
+        reply = beginnerReply('beginner_name', { intent: 'price', confidence: 1 });
+      } else {
+        const name = text.replace(/^(me chamo|meu nome é|pode me chamar de|sou a |sou o )\s*/i, '').trim();
+        reply = name.length >= 2 && name.length <= 60
+          ? { text: PROFILE_QUESTION, state: 'beginner_profile', stage: 'Conversando',
+              buttons: PROFILE_BUTTONS, saveName: name }
+          : { text: 'Como posso te chamar? Pode me dizer só seu nome? 😊', state: 'beginner_name' };
+      }
     } else if (session.state === 'beginner_profile' && selectionId) {
       if (selectionId === 'nina_treinamento_inicio') {
         reply = { text: BEGINNER_COURSE + '\n\n' + BEGINNER_PRICE +

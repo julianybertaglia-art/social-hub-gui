@@ -5,33 +5,13 @@ import {
 } from './lib.js';
 import { sendWhatsAppReplyButtons } from './reply-buttons.js';
 import { startBeginnerFlow, processBeginnerFlow } from './beginner-flow.mjs';
+import { startNinaMentoria, startNinaOther, processNinaFlow } from './nina-flow.mjs';
 
 export const WHATSAPP_MENU_ROWS = [
-  {
-    id: 'topic_mercado_livre',
-    title: 'Quero aprender a vender',
-    description: 'no Mercado Livre',
-  },
-  {
-    id: 'topic_importacao',
-    title: 'Importação',
-    description: 'Quero entender como importar',
-  },
-  {
-    id: 'topic_mentoria',
-    title: 'Já vendo e quero saber',
-    description: 'sobre a mentoria',
-  },
-  {
-    id: 'topic_influencer',
-    title: 'Afiliado TikTok Vital',
-    description: 'Quero divulgar produtos da Vital Decor',
-  },
-  {
-    id: 'topic_other',
-    title: 'Outro assunto',
-    description: 'Preciso falar sobre outro tema',
-  },
+  { id: 'topic_mercado_livre', title: 'Treinamento online', description: 'Para quem está começando a vender' },
+  { id: 'topic_mentoria', title: 'Aplicar para mentoria', description: 'Já vendo ou tenho capital para iniciar' },
+  { id: 'topic_importacao', title: 'Importação', description: 'Quero entender como importar' },
+  { id: 'topic_other', title: 'Outros assuntos', description: 'Falar com alguém da equipe' },
 ];
 
 export const AD_IMERSAO_ROWS = [
@@ -325,8 +305,8 @@ async function sendAndStoreFormButton(supabase, contact, text, url) {
 
 async function sendMainMenu(supabase, contact, { welcome = true } = {}) {
   const body = welcome
-    ? 'Oi! Eu sou a Juliany, da equipe do Gui Nonato 👋\n\nPara eu te direcionar mais rápido, toque abaixo e escolha o assunto que você quer falar:'
-    : 'Claro! Toque abaixo e escolha o assunto que você quer falar:';
+    ? 'Oii! 👋 Seja muito bem-vindo(a) à equipe do Gui Nonato! 💛\n\nEu sou a Nina, assistente virtual do Gui!\n\nPara que nossa equipe possa te atender da melhor forma, vamos primeiro entender como podemos te ajudar.\n\nQual assunto te trouxe até aqui? 😊'
+    : 'Claro! 😊 Para direcionar você à equipe da melhor forma, escolha o assunto abaixo:';
 
   const result = await sendWhatsAppInteractiveList({
     to: contact.wa_id,
@@ -530,6 +510,16 @@ async function selectTopic(supabase, contact, selectionId, origin) {
     return true;
   }
 
+  if (selectionId === 'topic_mentoria') {
+    await startNinaMentoria(supabase, contact);
+    return true;
+  }
+
+  if (selectionId === 'topic_other') {
+    await startNinaOther(supabase, contact);
+    return true;
+  }
+
   if (selectionId === 'topic_imersao') {
     await sendImersaoLanding(supabase, contact, { source: 'organic' });
     return true;
@@ -622,6 +612,10 @@ export async function processWhatsAppAutomation(supabase, {
     if (!requestsMainMenu(message) && await processBeginnerFlow(supabase, { contact, message, session })) {
       await finishEvent(supabase, messageId, 'processed');
       return { handled: true, action: 'beginner_sales_conversation' };
+    }
+    if (await processNinaFlow(supabase, { contact, message, session })) {
+      await finishEvent(supabase, messageId, 'processed');
+      return { handled: true, action: 'nina_qualification' };
     }
     if (await handleImportacaoAnswer(supabase, contact, message, session)) {
       await finishEvent(supabase, messageId, 'processed');

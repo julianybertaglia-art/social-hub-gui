@@ -17,7 +17,7 @@ const MENTORIA_SWITCH = [
   { id: 'nina_treinamento_mentoria_sim', title: 'Aplicar mentoria' },
   { id: 'nina_treinamento_mentoria_nao', title: 'Não, obrigado' },
 ];
-export const BEGINNER_COURSE = 'São mais de *30 horas de aulas gravadas* com o Gui mostrando a operação na prática, do básico às estratégias de escala. 🚀\\n\\n🔥 Encontrar produtos\\n🔥 Primeiras vendas\\n🔥 Anúncios e Product Ads\\n🔥 Logística e envios\\n🔥 Construção de marca\\n🔥 Reputação e crescimento da conta\\n🔥 Importação\\n\\nVocê estuda no seu ritmo e tem *acesso vitalício*!';
+export const BEGINNER_COURSE = 'São mais de *30 horas de aulas gravadas* com o Gui mostrando a operação na prática, do básico às estratégias de escala. 🚀\n\n🔥 Encontrar produtos\n🔥 Primeiras vendas\n🔥 Anúncios e Product Ads\n🔥 Logística e envios\n🔥 Construção de marca\n🔥 Reputação e crescimento da conta\n🔥 Importação\n\nVocê estuda no seu ritmo e tem *acesso vitalício*!';
 const ACTIVE = new Set(['beginner_name', 'beginner_profile', 'beginner_context', 'beginner_offer', 'beginner_link', 'beginner_mentor_optin', 'beginner_zero_optin']);
 const INTENTS = new Set(['answer', 'price', 'link', 'access', 'curriculum', 'capital', 'time', 'support', 'human', 'mentoria', 'stop', 'purchased', 'objection', 'unknown']);
 

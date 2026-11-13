@@ -22,9 +22,11 @@ export async function POST(request){
       .eq('owner_user_id',ownerId).eq('workspace_id',PUBLISH_WORKSPACE).maybeSingle();
     if(postError||!post)throw Object.assign(new Error('Vídeo não encontrado.'),{status:404});
     const {data:target,error:targetError}=await db.from('multichannel_post_targets')
-      .select('id,state,external_id,retry_count')
+      .select('id,state,external_id,retry_count,error_message')
       .eq('post_id',id).eq('platform','tiktok').maybeSingle();
     if(targetError||!target)throw Object.assign(new Error('Este vídeo não foi destinado ao TikTok.'),{status:404});
+    if(String(target.error_message||'').startsWith('[tiktok-direct] '))
+      throw Object.assign(new Error('Este envio foi preparado como Direct Post e não pode ser convertido em rascunho. Reprepare a publicação e confirme as opções do TikTok.'),{status:409});
     if(!['failed','unknown'].includes(target.state)||target.external_id)
       throw Object.assign(new Error('O TikTok já pode ter recebido este vídeo. Use Verificar no TikTok; não repita o envio.'),{status:409});
     if(Number(target.retry_count)>=2)

@@ -2,7 +2,7 @@ import { callAi } from './ai.js';
 import { sendWhatsAppText } from './lib.js';
 
 export const BEGINNER_TOPIC = 'Mercado Livre';
-export const BEGINNER_LINK = 'https://guilhermenonato.com.br/destravando-o-mercado-livre/';
+export const BEGINNER_LINK = 'https://pay.kiwify.com.br/zaaSR1F';
 export const BEGINNER_PRICE = 'O investimento é R$197 no Pix ou 12x de R$20,37 no cartão.';
 export const BEGINNER_OPENING = 'Me conta: você está começando do zero ou já chegou a tentar vender no Mercado Livre?';
 const ACTIVE = new Set(['beginner_profile', 'beginner_context', 'beginner_offer', 'beginner_link']);
@@ -34,7 +34,7 @@ export async function classifyBeginner(history, classify = callAi) {
 
 export function beginnerReply(state, decision) {
   const { intent, profile, product, obstacle } = decision;
-  const offerQuestion = 'Quer que eu te mande a página com as informações e a inscrição?';
+  const offerQuestion = 'Quer que eu te mande o link para fazer sua inscrição?';
   const handoff = (text, extra = {}) => ({ text, state: 'beginner_human', stage: 'Aguardando atendimento', ...extra });
   if (intent === 'stop') return { text: 'Tudo bem! Se quiser retomar depois, pode chamar por aqui.', state: 'beginner_closed', tag: 'Treinamento · Atendimento pausado' };
   if (intent === 'purchased') return handoff('Vou deixar sua mensagem com a equipe para conferir a compra e te orientar sobre o acesso.', { tag: 'Treinamento · Conferir compra' });
@@ -43,7 +43,7 @@ export function beginnerReply(state, decision) {
   if (intent === 'support') return handoff('Vou confirmar esse detalhe com a equipe para te passar a informação certinha.');
   if (decision.confidence < 0.8 || intent === 'unknown') return handoff('Vou deixar sua mensagem com a equipe para te orientar melhor por aqui.');
   if (intent === 'link') return {
-    text: 'Claro! Você pode conhecer o treinamento e fazer sua inscrição por aqui:\n\n' + BEGINNER_LINK + '\n\nSe ficar alguma dúvida antes de se inscrever, pode me contar por aqui.',
+    text: 'Claro! Você pode fazer sua inscrição no treinamento diretamente por aqui:\n\n' + BEGINNER_LINK + '\n\nSe ficar alguma dúvida antes de se inscrever, pode me contar por aqui.',
     state: 'beginner_link', stage: 'Link enviado', tag: 'Treinamento · Link enviado',
   };
   if (intent === 'price') return { text: BEGINNER_PRICE + '\n\nO acesso é vitalício. ' + offerQuestion, state: 'beginner_offer', stage: 'Interessado' };

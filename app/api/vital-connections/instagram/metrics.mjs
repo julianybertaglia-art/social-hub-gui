@@ -30,7 +30,7 @@ export function thirtyDayRange(now = new Date()) {
 
 export async function connectedInstagram(db, ownerId) {
   const { data, error } = await db.from('workspace_meta_connections')
-    .select('owner_user_id,workspace_id,platform,external_account_id,access_token,username,state')
+    .select('owner_user_id,workspace_id,platform,external_account_id,access_token,auth_provider,username,state')
     .eq('owner_user_id', ownerId).eq('workspace_id', WORKSPACE).eq('platform', 'instagram').maybeSingle();
   if (error) throw fail('Não foi possível consultar a conexão da Vital Decor.', 503);
   if (!data || data.owner_user_id !== ownerId || data.workspace_id !== WORKSPACE
@@ -71,10 +71,14 @@ export async function instagramMetrics(connection, graphRequest, now = new Date(
   }
 
   const [profile] = await Promise.all([
-    request(accountId, { fields: 'id,username,name,profile_picture_url,followers_count,media_count' }),
+    request(connection.auth_provider === 'instagram_login' ? 'me' : accountId, {
+      fields: connection.auth_provider === 'instagram_login' ? 'user_id,username,name,profile_picture_url,followers_count,media_count' : 'id,username,name,profile_picture_url,followers_count,media_count',
+    }),
     fetchInsights(),
   ]);
-  if (String(profile.id) !== accountId) throw fail('A Meta retornou outro perfil. Atualize a conexão da Vital.', 502);
+  if (String(connection.auth_provider === 'instagram_login' ? profile.user_id : profile.id) !== accountId) {
+    throw fail('A Meta retornou outro perfil. Atualize a conexão da Vital.', 502);
+  }
   const metrics = { seguidores: numericMetric(profile.followers_count), ...totals };
   return {
     workspace: WORKSPACE,

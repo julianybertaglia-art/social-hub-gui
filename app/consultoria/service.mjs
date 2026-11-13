@@ -7,7 +7,7 @@ export async function saveConsultoria(db, values, { id, fingerprint }) {
   if (count >= 5) throw applicationError('Muitos envios em pouco tempo. Aguarde alguns minutos e tente novamente.', 429);
   const { error } = await db.from('consultoria_applications').insert({
     ...values, id, owner_id: CONSULTORIA_OWNER, campaign: CONSULTORIA_CAMPAIGN,
-    request_hash: fingerprint, consent_at: new Date().toISOString(),
+    request_hash: fingerprint,
   });
   // A repeated submit or phone number must never overwrite an existing review or leak its data.
   if (error && error.code !== '23505') throw applicationError('Não foi possível salvar sua candidatura. Tente novamente.', 503);

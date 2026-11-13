@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   extractChoice, normalizeText, VIVI_WELCOME, VIVI_MAIN,
   VIVI_PRODUCTS, VIVI_MARKETPLACES, VIVI_WHOLESALE,
-  VIVI_BLUETTI, VIVI_BLUETTI_NO_CATALOG, isVitalChoice,
+  VIVI_BLUETTI, VIVI_BLUETTI_NO_CATALOG, VIVI_VITAL_RETAIL, isVitalChoice,
 } from '../app/api/vital-connections/vivi-flow.mjs';
 
 test('Vivi offers correct menu, brands, and marketplace options', () => {
@@ -22,6 +22,18 @@ test('Wholesale greeting explains how to send a catalog order', () => {
   assert.match(VIVI_WHOLESALE,/representante comercial/);
   assert.ok(VIVI_WHOLESALE.length < 400);
 });
+test('Retail Vital answer links official store, requests customer question, and preserves handoff', () => {
+  assert.match(VIVI_VITAL_RETAIL, /https:\/\/vitaldecor\.com\.br/);
+  assert.match(VIVI_VITAL_RETAIL, /nome/);
+  assert.match(VIVI_VITAL_RETAIL, /pergunta/);
+  assert.match(VIVI_VITAL_RETAIL, /equipe/);
+  assert.ok(VIVI_VITAL_RETAIL.length < 600);
+  const code = readFileSync(new URL('../app/api/vital-connections/vivi-flow.mjs',import.meta.url),'utf8');
+  assert.match(code, /choice === 'vivi_product_vital'[\s\S]*?sendText\(db, connection, to, VIVI_VITAL_RETAIL\)/);
+  assert.match(code, /stage: 'await_human', selection: product, human_handoff: true/);
+  assert.match(code, /choice === 'vivi_product_bluetti'/);
+});
+
 test('MENU works case-insensitively, with accent normalization', () => {
   assert.equal(extractChoice({text:{body:' MENU '}}),'vivi_menu');
   assert.equal(extractChoice({text:{body:'menu'}}),'vivi_menu');

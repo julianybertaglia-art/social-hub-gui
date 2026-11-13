@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import {readFileSync} from 'node:fs';
 import { WORKSPACE, GUI_INSTAGRAM_ID, publicCandidate, publicConnection, selectCandidate,
   validAppToken, safePhoneId, validWebhookSignature, webhookDestination, bearerToken, connectionOwner } from '../app/api/vital-connections/helpers.mjs';
 import { saveWorkspaceMessages, dispatchWorkspaceWebhook } from '../app/api/vital-connections/webhook.mjs';
@@ -62,7 +63,7 @@ test('public metadata never returns Meta credentials or pending authorization pa
   for (const data of [item, row]) {
     assert.doesNotMatch(JSON.stringify(data), /private-token|secret-code|access_token|accessToken|internal-waba/);
   }
-  assert.equal(row.automaticReplies, false);
+  assert.equal(row.automaticReplies, true); // Safe public boolean only; no credentials returned.
 });
 
 test('Meta token must belong to this app and remain valid', () => {
@@ -103,8 +104,10 @@ function fakeDb(rows = []) {
     const chain = {
       select() { return chain; },
       eq(key, value) { call.filters.push([key, value]); return chain; },
+      neq(key, value) { call.filters.push([key, '!==' + value]); return chain; },
       upsert(row, options) { call.row = row; call.options = options; return chain; },
       update(row) { call.row = row; return chain; },
+      async maybeSingle() { return { data: rows[0] || null, error: null }; },
       then(resolve, reject) { return Promise.resolve({ data: rows, error: null }).then(resolve, reject); },
     };
     return chain;
@@ -119,7 +122,7 @@ test('Vital Decor incoming messages only write to the private workspace table', 
     timestamp: '1791467000', type: 'text', text: { body: 'Teste' } }];
   change.value.contacts = [{ wa_id: '5511971611999', profile: { name: 'Contato' } }];
   assert.equal(await dispatchWorkspaceWebhook(db, change, primary), WORKSPACE);
-  const writes = calls.filter((call) => call.row);
+  const writes = calls.filter((call) => call.row && call.table === 'workspace_meta_messages');
   assert.equal(writes.length, 1);
   assert.equal(writes[0].table, 'workspace_meta_messages');
   assert.equal(writes[0].row.connection_id, connection.id);
@@ -127,6 +130,9 @@ test('Vital Decor incoming messages only write to the private workspace table', 
   assert.equal(writes[0].row.direction, 'inbound');
   assert.equal(writes[0].row.body, 'Teste');
   assert.equal(writes[0].options.onConflict, 'connection_id,meta_message_id');
+  const activity = calls.find(call => call.table === 'vital_whatsapp_assignments' && call.row);
+  assert.ok(activity, 'message activity must update the correct assignment scope');
+  assert.deepEqual(activity.filters.slice(0,3), [['connection_id', connection.id], ['owner_user_id', connection.owner_user_id], ['contact_wa_id', '5511971611999']]);
   const unknown = fakeDb([connection]);
   assert.equal(await dispatchWorkspaceWebhook(unknown.db, event('333333'), primary), 'ignore');
   assert.equal(unknown.calls.filter((call) => call.row).length, 0);
@@ -145,4 +151,15 @@ test('edits, revocations and delivery receipts cannot update another account', a
     assert.equal(call.table, 'workspace_meta_messages');
     assert.deepEqual(call.filters, [['connection_id', connection.id], ['meta_message_id', 'same-id']]);
   }
+});
+
+test('Vital WhatsApp reauthorization protects the previous connection if Meta does not confirm',()=>{
+  const service = readFileSync(new URL('../app/api/vital-connections/service.js', import.meta.url),'utf8');
+  const subscribe = service.indexOf("candidate.wabaId + '/subscribed_apps'");
+  const save = service.indexOf('.upsert(row, { onConflict:');
+  assert.ok(subscribe >= 0 && save > subscribe, 'verify subscription before replacing saved token');
+  assert.match(service,/subscription\?\.success !== true/);
+  assert.match(service,/state: 'connected'/);
+  assert.doesNotMatch(service,/pending_subscription/);
+  assert.match(service,/code_verification_status/);
 });

@@ -5,6 +5,7 @@ import './styles/ui.css';
 import '@fontsource-variable/hanken-grotesk';
 import CloudGate from './CloudGate';
 import HubFrame from './HubFrame';
+import MiaAssistant from './MiaAssistant';
 
 export const metadata = {
   title: 'TidePlace',
@@ -17,6 +18,7 @@ export default function RootLayout({ children }) {
       <body>
         <CloudGate>
           <HubFrame>{children}</HubFrame>
+          <MiaAssistant />
         </CloudGate>
       </body>
     </html>

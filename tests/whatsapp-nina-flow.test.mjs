@@ -14,6 +14,7 @@ function fakeDb() {
       const filters = [];
       const q = {
         select() { return q; },
+        maybeSingle() { return q; },
         insert(v) { operation = 'insert'; value = v; return q; },
         update(v) { operation = 'update'; value = v; return q; },
         upsert(v) { operation = 'upsert'; value = v; return q; },

@@ -9,6 +9,7 @@ import {
 } from '../lib';
 import { isWhatsAppServiceWindowOpen } from '../service-window.js';
 import { pauseBeginnerFlow } from '../beginner-flow.mjs';
+import { pauseNinaFlow } from '../nina-flow.mjs';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';

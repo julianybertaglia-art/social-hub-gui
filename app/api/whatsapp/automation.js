@@ -613,7 +613,7 @@ export async function processWhatsAppAutomation(supabase, {
       await finishEvent(supabase, messageId, 'processed');
       return { handled: true, action: 'beginner_sales_conversation' };
     }
-    if (await processNinaFlow(supabase, { contact, message, session })) {
+    if (!requestsMainMenu(message) && await processNinaFlow(supabase, { contact, message, session })) {
       await finishEvent(supabase, messageId, 'processed');
       return { handled: true, action: 'nina_qualification' };
     }
@@ -628,13 +628,12 @@ export async function processWhatsAppAutomation(supabase, {
       return { handled: true, action: 'ad_imersao_human_answer' };
     }
 
-    if (cameFromAd(message)) {
-      const landing = await sendImersaoLanding(supabase, contact, { source: 'ad' });
+    // Anúncios atuais não podem disparar a página da Imersão de setembro já encerrada.
+    // A primeira abordagem comercial é o mesmo menu de quatro assuntos.
+    if (cameFromAd(message) && !session) {
+      await sendMainMenu(supabase, contact, { welcome: true });
       await finishEvent(supabase, messageId, 'processed');
-      return {
-        handled: true,
-        action: landing.alreadySent ? 'ad_imersao_lp_already_sent' : 'ad_imersao_lp_sent',
-      };
+      return { handled: true, action: 'ad_welcome_menu' };
     }
 
     if (requestsMainMenu(message)) {

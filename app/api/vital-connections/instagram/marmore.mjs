@@ -2,11 +2,13 @@
 import { GUI_INSTAGRAM_ID } from '../helpers.mjs';
 import { MARMORE_PUBLIC_REPLY, MARMORE_REPLY_TEXT } from '../../../lib/vital-marmore-copy.mjs';
 import { JARDIM_PUBLIC_REPLY, JARDIM_REPLY_TEXT } from '../../../lib/vital-jardim-copy.mjs';
+import { BIKE_PUBLIC_REPLY, BIKE_REPLY_TEXT } from '../../../lib/vital-bike-copy.mjs';
 
 export { MARMORE_PUBLIC_REPLY, MARMORE_REPLY_TEXT };
 
 const MARMORE_RULE = { keyword: 'MARMORE', id: 'vital-marmore-comment-link-v1', reply: MARMORE_REPLY_TEXT, publicReply: MARMORE_PUBLIC_REPLY };
 const JARDIM_RULE = { keyword: 'JARDIM', id: 'vital-jardim-comment-link-v1', reply: JARDIM_REPLY_TEXT, publicReply: JARDIM_PUBLIC_REPLY };
+const BIKE_RULE = { keyword: 'BIKE', id: 'vital-bike-comment-link-v1', reply: BIKE_REPLY_TEXT, publicReply: BIKE_PUBLIC_REPLY };
 const API_VERSION = 'v26.0';
 const MAX_COMMENT_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -38,6 +40,8 @@ function extractVitalComments(payload, keyword, now = Date.now()) {
       // Meta allows only one private reply per comment. Preserve the existing
       // marble rule when a single comment mentions both keywords.
       if (keyword === 'JARDIM' && matchesKeyword(value.text, 'MARMORE')) continue;
+      // Respect the existing rules when multiple keywords appear in one comment.
+      if (keyword === 'BIKE' && (matchesKeyword(value.text, 'MARMORE') || matchesKeyword(value.text, 'JARDIM'))) continue;
       const eventTime = Number(value.timestamp || entry.time || 0);
       const milliseconds = eventTime > 1e12 ? eventTime : eventTime * 1000;
       if (eventTime && (milliseconds < now - MAX_COMMENT_AGE_MS || milliseconds > now + 5 * 60 * 1000)) continue;
@@ -56,6 +60,10 @@ export function extractVitalMarmoreComments(payload, now = Date.now()) {
 
 export function extractVitalJardimComments(payload, now = Date.now()) {
   return extractVitalComments(payload, JARDIM_RULE.keyword, now);
+}
+
+export function extractVitalBikeComments(payload, now = Date.now()) {
+  return extractVitalComments(payload, BIKE_RULE.keyword, now);
 }
 
 async function sendPrivateReply(connection, commentId, replyText) {
@@ -226,6 +234,10 @@ export function processVitalMarmoreComments(payload, db) {
 
 export function processVitalJardimComments(payload, db) {
   return processVitalComments(payload, db, JARDIM_RULE);
+}
+
+export function processVitalBikeComments(payload, db) {
+  return processVitalComments(payload, db, BIKE_RULE);
 }
 
 

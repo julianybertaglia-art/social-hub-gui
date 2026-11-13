@@ -133,7 +133,7 @@ test('stale answers cannot skip steps; menu can exit; other topics still work', 
     assert.equal(db.rows.session.state, 'menu_sent');
     await send(db, 'topic_mentoria');
     assert.equal(db.rows.session.current_topic, 'Mentoria');
-    assert.equal(db.rows.session.state, 'routed');
+    assert.equal(db.rows.session.state, 'nina_mentoria_nome');
     const count = sent.length;
     await send(db, IMPORTACAO_QUESTIONS[0].buttons[0].id);
     assert.equal(sent.length, count);

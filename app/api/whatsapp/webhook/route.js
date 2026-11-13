@@ -1,6 +1,7 @@
 import { getSupabaseAdmin, getMetaCredentials, messageBody, normalizeWaId, upsertWhatsAppContact, sendWhatsAppText } from '../lib';
 import { processWhatsAppAutomation } from '../automation';
 import { processWhatsAppAi } from '../ai';
+import { pauseNinaFlow } from '../nina-flow.mjs';
 import { validWebhookSignature } from '../../vital-connections/helpers.mjs';
 import { dispatchWorkspaceWebhook } from '../../vital-connections/webhook.mjs';
 
@@ -189,6 +190,16 @@ async function handleEchoes(supabase, value) {
       status: 'sent',
       sentAt,
     });
+
+    // Echo do aplicativo WhatsApp Business: não pausar a Nina em eco dos
+    // próprios envios automáticos, identificados pelo mesmo Meta message ID.
+    const { data: recorded } = await supabase.from('whatsapp_messages')
+      .select('raw_payload').eq('meta_message_id', message?.id || '').maybeSingle();
+    if (!recorded?.raw_payload?.tide_nina && !recorded?.raw_payload?.tide_beginner) {
+      await pauseNinaFlow(supabase, contact.id).catch((error) => {
+        console.warn('Nina pause on WhatsApp app echo:', error);
+      });
+    }
   }
 }
 

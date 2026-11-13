@@ -347,6 +347,8 @@ export async function processNinaFlow(db, { contact, message, session }) {
   if (!session || !['Mentoria', 'Outro assunto'].includes(session.current_topic)) return false;
   if (!String(session.state || '').startsWith('nina_')) return false;
   if (session.state === 'nina_awaiting_human' || session.state === 'nina_human') return true;
+  // Stale choices from Importação must not be interpreted as an applicant's name or answer.
+  if (selectionOf(message).startsWith('importacao_')) return true;
 
   // A response by an actual team member permanently pauses the assistant for this application.
   const { data: lastMessages, error } = await db.from('whatsapp_messages')

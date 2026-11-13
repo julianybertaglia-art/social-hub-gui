@@ -9,6 +9,7 @@ import {
 } from '../lib';
 import { isWhatsAppServiceWindowOpen } from '../service-window.js';
 import { pauseBeginnerFlow } from '../beginner-flow.mjs';
+import { pauseNinaFlow } from '../nina-flow.mjs';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -435,8 +436,10 @@ export async function POST(request) {
 
     // A manual reply from TidePlace hands this beginner conversation to the team.
     await pauseBeginnerFlow(supabase, contact.id).catch(() => {
-      // The stored manual outbound is also checked before every automated reply.
       console.warn('WhatsApp beginner session pause deferred to history check.');
+    });
+    await pauseNinaFlow(supabase, contact.id).catch(() => {
+      console.warn('Nina session pause deferred to history check.');
     });
 
     return Response.json({

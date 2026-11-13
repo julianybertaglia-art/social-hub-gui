@@ -87,34 +87,40 @@ async function send(db, text, id) {
 async function start(db) {
   return processWhatsAppAutomation(db, { contact: db.contact, message: { id: 'start', type: 'interactive', interactive: { list_reply: { id: 'topic_mercado_livre' } } } });
 }
+async function choose(db, choice, id = 'choice-' + db.rows.events.length) {
+  db.appendMessage({ meta_message_id: id, contact_id: db.contact.id, direction: 'inbound', body: choice, raw_payload: {}, sent_at: new Date().toISOString() });
+  return processWhatsAppAutomation(db, { contact: db.contact, message: {
+    id, type: 'interactive', interactive: { button_reply: { id: choice } },
+  } });
+}
 
-test('beginner text conversation qualifies in two questions, offers fixed terms and sends the official link only after consent', async () => {
+
+test('Nina collects the name and early seller profile before offering all modules and checkout', async () => {
   await withTransport(async (t) => {
     const db = fakeDb();
     await start(db);
-    assert.match(t.sent[0].text.body, /começando do zero/);
+    assert.match(t.sent[0].text.body, /como posso te chamar/i);
+    assert.equal(db.rows.session[0].state, 'beginner_name');
+    const named = await send(db, 'Rafael');
+    assert.equal(named.action, 'beginner_sales_conversation');
+    assert.equal(db.contact.profile_name, 'Rafael');
     assert.equal(db.rows.session[0].state, 'beginner_profile');
-    t.decision = answer();
-    const result = await send(db, 'Nunca vendi');
-    assert.equal(result.action, 'beginner_sales_conversation');
-    assert.equal((await processWhatsAppAi(db, { automationResult: result })).reason, 'automation_owned');
-    assert.equal(db.rows.session[0].state, 'beginner_context');
-    assert.match(t.sent.at(-1).text.body, /algum produto em mente/);
-    t.decision = answer({ product: 'searching' });
-    await send(db, 'Ainda não sei o que vender');
+    assert.deepEqual(t.sent.at(-1).interactive.action.buttons.map((x) => x.reply.id), [
+      'nina_treinamento_inicio', 'nina_treinamento_maior', 'nina_treinamento_zero',
+    ]);
+    await choose(db, 'nina_treinamento_inicio');
     const offer = t.sent.at(-1).text.body;
-    assert.match(offer, /escolher o produto/);
     assert.match(offer, /30 horas/);
+    assert.match(offer, /Product Ads/);
+    assert.match(offer, /importação/i);
     assert.match(offer, /acesso vitalício/);
     assert.match(offer, /R\$197 no Pix ou 12x de R\$20,37/);
     assert.doesNotMatch(offer, /https?:/);
     assert.equal(db.contact.stage, 'Interessado');
-    t.decision = answer({ intent: 'link' });
     await send(db, 'Pode mandar o link');
     assert.ok(t.sent.at(-1).text.body.includes(BEGINNER_LINK));
     assert.equal(db.contact.stage, 'Link enviado');
     assert.equal(db.rows.session[0].state, 'beginner_link');
-    assert.ok(t.sent.every((payload) => payload.type === 'text'));
   });
 });
 
@@ -136,21 +142,21 @@ test('unconfirmed details, refunds and purchase claims hand off without inventin
     assert.doesNotMatch(reply.text, /suporte vitalício|garantia de|reembolso garantido/);
   }
   const mentor = beginnerReply('beginner_profile', answer({ intent: 'mentoria' }));
-  assert.equal(mentor.topic, 'Mentoria');
-  assert.equal(mentor.state, 'beginner_human');
-  assert.match(mentor.text, /produto ou nicho/);
+  assert.equal(mentor.switchToMentoria, true);
   const closed = beginnerReply('beginner_offer', answer({ intent: 'stop' }));
   assert.equal(closed.state, 'beginner_closed');
 });
 
-test('provider failure hands off once, duplicate events and subsequent messages stay silent', async () => {
+test('provider failure after qualification hands off once and duplicate events stay silent', async () => {
   await withTransport(async (t) => {
     const db = fakeDb(); await start(db);
+    await send(db, 'Rafael');
+    await choose(db, 'nina_treinamento_inicio');
     t.failAi = true;
-    await send(db, 'Estou começando', 'failure-inbound');
+    await send(db, 'Não entendi como isso funciona', 'failure-inbound');
     assert.equal(db.rows.session[0].state, 'beginner_human');
     const count = t.sent.length;
-    assert.equal((await send(db, 'Estou começando', 'failure-inbound')).reason, 'duplicate');
+    assert.equal((await send(db, 'Não entendi como isso funciona', 'failure-inbound')).reason, 'duplicate');
     await send(db, 'Obrigado');
     assert.equal(t.sent.length, count);
   });
@@ -172,11 +178,13 @@ test('manual TidePlace and WhatsApp app replies pause this flow; other topics re
   });
 });
 
-test('a human takeover or newer inbound during classification suppresses the older automated reply', async () => {
+test('human takeover or newer inbound during classification suppresses older automated reply', async () => {
   await withTransport(async (t) => {
     for (const takeover of [true, false]) {
       const db = fakeDb(); await start(db);
-      const message = incoming(db, 'Nunca vendi');
+      await send(db, 'Rafael');
+      await choose(db, 'nina_treinamento_inicio');
+      const message = incoming(db, 'Gostaria de mais orientações');
       const session = { ...db.rows.session[0] };
       const before = t.sent.length;
       await processBeginnerFlow(db, { contact: db.contact, message, session }, async () => {

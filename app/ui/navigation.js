@@ -11,7 +11,7 @@ export const NAV_GROUPS = [
   {href:'/?section=tasks',label:'Tarefas',icon:'check',section:'tasks',description:'Tarefas atuais'},
  ]},
  {label:'TIDE CRM',area:'crm',items:[
-  {href:'/crm',label:'Funil e indicadores',icon:'chart',only:['gui-nonato'],description:'CRM atual do Gui'},
+  {href:'/crm',label:'Contatos e pipeline',icon:'users',only:['gui-nonato'],description:'Contatos e etapas comerciais do Gui'},
   {href:'/crm/consultorias',label:'Consultorias',icon:'users',only:['gui-nonato'],description:'Leads da consultoria do Gui'},
   {href:'/crm/vital',label:'CRM Vital Decor',icon:'inbox',only:['vital-decor'],description:'Dashboard real e histórico protegido de conversas da Vital'},
   {href:'/crm/vital/equipe',label:'Equipe planejada',icon:'users',only:['vital-decor'],description:'Rascunhos de equipe; nenhum acesso liberado'},

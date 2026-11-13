@@ -356,6 +356,13 @@
 .detailsPanel .resolution{padding:10px 15px;border-top:1px solid var(--border);background:var(--surface-soft)}
 .detailsPanel .transfer{padding:12px 15px;background:var(--surface)}
 .restrictedInfo{padding:0 16px 10px;margin:0;font-size:11.5px;color:var(--muted)}
+.salesAssistant{display:flex;flex-direction:column;gap:9px;padding:12px 15px;background:var(--surface-soft);border-bottom:1px solid var(--border)}
+.salesAssistantHeading{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 10px}
+.salesAssistantHeading strong{font-size:13px;color:var(--text)}
+.salesAssistantHeading span,.salesAssistant small{font-size:11px;color:var(--muted)}
+.salesAssistantOptions{display:flex;flex-wrap:wrap;gap:7px}
+.salesAssistantOptions button{border:1px solid var(--border);border-radius:18px;background:var(--surface);color:var(--text);padding:7px 11px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer}
+.salesAssistantOptions button:hover,.salesAssistantOptions button:focus-visible{border-color:var(--gold);color:var(--gold-dark);outline:none}
 .board .reply{padding:11px 14px 12px;gap:6px;background:var(--surface);border-top:0}
 .composeRow{display:flex;align-items:flex-end;gap:9px;width:100%}
 .board .composeRow textarea{flex:1;min-width:0;resize:vertical;min-height:45px;max-height:150px;padding:12px 13px;border-radius:12px;font-size:13.5px;line-height:1.4;background:var(--surface-soft);border-color:var(--border)}

@@ -1,5 +1,9 @@
 import { WHATSAPP_API_VERSION } from '../whatsapp/lib.js';
 import { routeViviConversation } from '../integrations/argo/v1/bridge.mjs';
+import {
+  buildViviSalesMessage, matchViviSalesIntent, VIVI_SALES_HUMAN_ID,
+  VIVI_SALES_OPTIONS, getViviSalesCategory,
+} from '../../lib/vivi-sales.mjs';
 
 export const VIVI_MAIN = [
   { id: 'vivi_buy', title: 'Quero comprar', description: 'Conhecer produtos e receber atendimento' },
@@ -25,11 +29,18 @@ const VIVI_MARKETPLACE_SUPPORT = {
   vivi_order_tiktok: 'no *TikTok Shop*',
 };
 
+export const VIVI_IDLE_MS = 24 * 60 * 60 * 1000;
+export function isWelcomeDue(lastInteractionAt, now = Date.now()) {
+  const last = Date.parse(String(lastInteractionAt || ''));
+  return !Number.isFinite(last) || now - last >= VIVI_IDLE_MS;
+}
+
 export const VIVI_WELCOME = 'Oi! 👋 Sou a Vivi, assistente virtual da Vital Decor.\n\nEstou aqui para te ajudar. Selecione abaixo sobre o que você gostaria de falar.\n\nVocê pode escrever MENU a qualquer momento para voltar ao início.';
 export const VIVI_WHOLESALE = "Que bom ter você por aqui! 🤝\n\n🛒 No nosso catálogo você escolhe os produtos, monta o carrinho e preenche seus dados.\n\nAo finalizar, o WhatsApp abre com seu pedido pronto. É só enviar!\n\n✅ Depois disso, um representante comercial dará continuidade ao atendimento.\n\n👇 *Acesse o catálogo:*";
 export const VIVI_BLUETTI = 'Ótima escolha! 🔋 Um especialista da nossa equipe vai continuar seu atendimento por aqui.\n\nEnquanto isso, você pode conhecer os modelos em nosso catálogo BLUETTI. Para agilizar, me diga seu nome e qual modelo deseja conhecer ou qual é sua dúvida sobre o produto.';
 export const VIVI_BLUETTI_NO_CATALOG = 'Ótima escolha! 🔋 Um especialista da nossa equipe vai continuar seu atendimento por aqui.\n\nPara agilizar, me diga seu nome e qual modelo BLUETTI deseja conhecer ou qual é sua dúvida. Nossa equipe também poderá compartilhar o catálogo.';
-export const VIVI_VITAL_RETAIL = 'Que bom ter você por aqui! 💜\n\nVocê pode conhecer nossos produtos e fazer sua compra diretamente pelo site oficial da Vital Decor:\n\n🛍️ https://vitaldecor.com.br\n\nPrecisa de ajuda para escolher um produto ou tem alguma dúvida sobre sua compra?\n\nEnvie seu *nome* e sua *pergunta* aqui no WhatsApp. Nossa equipe dará continuidade ao seu atendimento assim que possível! 😊';
+export const VIVI_VITAL_RETAIL = 'Que bom ter você por aqui! 💜\n\nSou a Vivi, vendedora online da Vital Decor. Vou te ajudar a encontrar opções no nosso catálogo. Escolha uma categoria para ver produtos e consultar preços e disponibilidade atualizados.\n\nSe preferir atendimento humano, escolha *Falar com atendente* ou escreva *ATENDENTE*.';
+export const VIVI_SALES_CLARIFY = 'Posso te mostrar opções de jardim vertical, grama sintética, placas 3D, adesivos e mármores ou plantas artificiais. Escolha uma categoria abaixo. Para falar com uma pessoa, escreva *ATENDENTE*.';
 
 export const VIVI_ORDER_QUESTION = 'Para localizar seu pedido, me informe: seu nome completo, o número do pedido e sua dúvida. Nossa equipe de pós-venda vai conferir e continuar o atendimento por aqui. 😊';
 
@@ -43,7 +54,23 @@ export function extractChoice(message) {
   return text === 'menu' ? 'vivi_menu' : text;
 }
 export function isVitalChoice(choice) {
-  return choice === 'vivi_menu' || /^vivi_(buy|order|wholesale|affiliate|product_(vital|bluetti|vtx)|order_(shopee|mercadolivre|tiktok|amazon|site))$/.test(choice);
+  return choice === 'vivi_menu' || /^vivi_(buy|order|wholesale|affiliate|product_(vital|bluetti|vtx)|order_(shopee|mercadolivre|tiktok|amazon|site))$/.test(choice)
+    || choice === VIVI_SALES_HUMAN_ID || Boolean(getViviSalesCategory(choice));
+}
+function resolveNaturalChoice(choice, stage) {
+  if (isVitalChoice(choice)) return choice;
+  const text = normalizeText(choice);
+  if (stage === 'menu') {
+    if (text.includes('compr')) return 'vivi_buy';
+    if (text.includes('pedido') || text.includes('entrega')) return 'vivi_order';
+    if (text.includes('revend') || text.includes('atacado')) return 'vivi_wholesale';
+    if (text.includes('afiliad') || text.includes('parceria')) return 'vivi_affiliate';
+    return matchViviSalesIntent(text) || choice;
+  }
+  if (stage === 'products' || stage === 'vital_sales') {
+    return matchViviSalesIntent(text) || choice;
+  }
+  return choice;
 }
 
 export async function metaSend(connection, to, message) {
@@ -124,20 +151,49 @@ export async function handleViviMessage(db, connection, message, origin) {
     .select('enabled,bluetti_catalog_url,wholesale_catalog_url').eq('connection_id', connection.id).maybeSingle();
   if (configError || !config?.enabled) return;
 
-  const choice = extractChoice(message);
+  const receivedChoice = extractChoice(message);
+  const explicitMenu = receivedChoice === 'vivi_menu';
   const { data: session, error: sessionError } = await db.from('vital_whatsapp_flow_sessions')
-    .select('stage,human_handoff,manual_override').eq('connection_id', connection.id)
-    .eq('contact_wa_id', to).maybeSingle();
+    .select('stage,selection,human_handoff,manual_override,last_interaction_at,updated_at')
+    .eq('connection_id', connection.id).eq('contact_wa_id', to).maybeSingle();
   if (sessionError) throw sessionError;
-  if (choice !== 'vivi_menu' && (session?.human_handoff || session?.manual_override)) return;
-  if (!session && choice !== 'vivi_menu') {
-    const { data: previous, error: historyError } = await db.from('workspace_meta_messages')
-      .select('id').eq('connection_id', connection.id).eq('contact_wa_id', to)
-      .neq('meta_message_id', message.id).limit(1);
-    if (historyError) throw historyError;
-    if (previous?.length) return; // Never greet old or manually initiated conversations.
+  const choice = resolveNaturalChoice(receivedChoice, session?.stage);
+
+  // A manually controlled conversation stays with the human, unless the customer
+  // explicitly types MENU. Existing automated handoffs may restart after 24h idle.
+  if (!explicitMenu && session?.manual_override) return;
+  if (!explicitMenu && session?.stage === 'welcome_pending') return;
+
+  let wantsWelcome = explicitMenu;
+  if (!explicitMenu) {
+    // The webhook persists inbound messages before running Vivi. Never treat
+    // another inbound in that same burst as proof of a historical conversation.
+    const messageTime = Number(message.timestamp);
+    const currentSentAt = Number.isFinite(messageTime) && messageTime > 0
+      ? new Date(messageTime > 1e12 ? messageTime : messageTime * 1000).toISOString()
+      : new Date().toISOString();
+    const { data: activity, error: activityError } = await db.from('workspace_meta_messages')
+      .select('direction,sent_at').eq('connection_id', connection.id)
+      .eq('contact_wa_id', to).neq('meta_message_id', message.id)
+      .lt('sent_at', currentSentAt).order('sent_at', { ascending: false }).limit(1);
+    if (activityError) throw activityError;
+    const lastPriorActivity = activity?.[0]?.sent_at || session?.last_interaction_at || null;
+
+    if (!session) {
+      // Welcome first-time customers even if they sent multiple messages rapidly.
+      // Suppress an active chat that a staff member had already started.
+      const { data: humanHistory, error: humanHistoryError } = await db.from('workspace_meta_messages')
+        .select('sent_at').eq('connection_id', connection.id)
+        .eq('contact_wa_id', to).eq('direction', 'outbound')
+        .lte('sent_at', currentSentAt).order('sent_at', { ascending: false }).limit(1);
+      if (humanHistoryError) throw humanHistoryError;
+      wantsWelcome = !humanHistory?.length || isWelcomeDue(lastPriorActivity);
+    } else {
+      wantsWelcome = isWelcomeDue(lastPriorActivity);
+    }
+    const acceptsGuidedText = ['menu', 'products', 'vital_sales'].includes(session?.stage);
+    if (!wantsWelcome && (session?.human_handoff || !session || (!isVitalChoice(choice) && !acceptsGuidedText))) return;
   }
-  if (session && !isVitalChoice(choice) && choice !== 'vivi_menu') return;
   // Process every message id only once, even if Meta retries its webhook.
   const { error: claimError } = await db.from('vital_whatsapp_flow_events').insert({
     connection_id: connection.id, owner_user_id: connection.owner_user_id,
@@ -147,8 +203,55 @@ export async function handleViviMessage(db, connection, message, origin) {
   if (claimError) throw claimError;
 
   try {
-    if (choice === 'vivi_menu' || !session) await mainMenu(db, connection, to);
-    else if (choice === 'vivi_buy') {
+    if (wantsWelcome) {
+      // Claim per contact before sending; concurrent messages must never each
+      // produce their own welcome menu.
+      const pendingAt = new Date().toISOString();
+      let claimed = false;
+      if (!session) {
+        const { error } = await db.from('vital_whatsapp_flow_sessions').insert({
+          connection_id: connection.id, owner_user_id: connection.owner_user_id,
+          contact_wa_id: to, stage: 'welcome_pending', selection: null,
+          human_handoff: false, manual_override: false,
+          last_interaction_at: pendingAt, updated_at: pendingAt,
+        });
+        if (error && error.code !== '23505') throw error;
+        claimed = !error;
+      } else {
+        const { data, error } = await db.from('vital_whatsapp_flow_sessions').update({
+          stage: 'welcome_pending', selection: null,
+          human_handoff: false, manual_override: false,
+          last_interaction_at: pendingAt, updated_at: pendingAt,
+        }).eq('connection_id', connection.id).eq('contact_wa_id', to)
+          .eq('updated_at', session.updated_at).select('connection_id').maybeSingle();
+        if (error) throw error;
+        claimed = Boolean(data);
+      }
+      if (!claimed) {
+        await db.from('vital_whatsapp_flow_events').update({ status: 'completed' })
+          .eq('connection_id', connection.id).eq('meta_message_id', message.id);
+        return;
+      }
+      try {
+        await mainMenu(db, connection, to);
+      } catch (welcomeError) {
+        if (!session) {
+          await db.from('vital_whatsapp_flow_sessions').delete()
+            .eq('connection_id', connection.id).eq('contact_wa_id', to)
+            .eq('stage', 'welcome_pending').eq('updated_at', pendingAt);
+        } else {
+          await db.from('vital_whatsapp_flow_sessions').update({
+            stage: session.stage, selection: session.selection,
+            human_handoff: session.human_handoff,
+            manual_override: session.manual_override,
+            last_interaction_at: session.last_interaction_at,
+            updated_at: new Date().toISOString(),
+          }).eq('connection_id', connection.id).eq('contact_wa_id', to)
+            .eq('stage', 'welcome_pending').eq('updated_at', pendingAt);
+        }
+        throw welcomeError;
+      }
+    } else if (choice === 'vivi_buy') {
       await sendList(db, connection, to, 'Claro! Qual linha de produtos você procura?', 'Ver produtos', VIVI_PRODUCTS);
       await setSession(db, connection, to, { stage: 'products' });
     } else if (choice === 'vivi_order') {
@@ -169,19 +272,42 @@ export async function handleViviMessage(db, connection, message, origin) {
         }, action: { name: 'cta_url', parameters: { display_text: 'Preencher formulário', url: url.toString() } } },
       }, 'Inscrição de afiliado TikTok Shop: ' + url.toString());
       await setSession(db, connection, to, { stage: 'affiliate_form', selection: 'Afiliado TikTok', human_handoff: true });
+    } else if (choice === VIVI_SALES_HUMAN_ID && ['menu', 'products', 'vital_sales'].includes(session?.stage)) {
+      await sendText(db, connection, to, 'Claro! Vou encaminhar sua conversa para a equipe de vendas da Vital Decor. 😊');
+      await setSession(db, connection, to, {
+        stage: 'await_human', selection: session.selection || 'Produtos Vital Decor', human_handoff: true,
+      });
+    } else if (getViviSalesCategory(choice) && ['menu', 'products', 'vital_sales'].includes(session?.stage)) {
+      await sendText(db, connection, to, buildViviSalesMessage(choice));
+      await setSession(db, connection, to, {
+        stage: 'vital_sales', selection: 'Produtos Vital Decor', human_handoff: false,
+      });
     } else if (session?.stage === 'products' && VIVI_PRODUCTS.some(row => row.id === choice)) {
       const product = VIVI_PRODUCTS.find(row => row.id === choice)?.title;
       if (choice === 'vivi_product_bluetti') {
         await sendText(db, connection, to, config.bluetti_catalog_url ? VIVI_BLUETTI : VIVI_BLUETTI_NO_CATALOG);
         if (config.bluetti_catalog_url) await sendDocument(db, connection, to, config.bluetti_catalog_url, 'Catalogo_Vital_Decor_BLUETTI.pdf');
       } else if (choice === 'vivi_product_vital') {
-        // Retail shoppers can buy directly on the official site or request human support.
+        // Guided product discovery keeps the customer in the current WhatsApp sales flow.
         await sendText(db, connection, to, VIVI_VITAL_RETAIL);
+        await sendList(db, connection, to, VIVI_SALES_CLARIFY, 'Ver categorias', VIVI_SALES_OPTIONS);
+        await setSession(db, connection, to, { stage: 'vital_sales', selection: product });
+        await db.from('vital_whatsapp_flow_events').update({ status: 'completed' })
+          .eq('connection_id', connection.id).eq('meta_message_id', message.id);
+        return;
       } else {
         await sendText(db, connection, to,
           'Perfeito! Você escolheu ' + product + '. 😊 Me diga seu nome e qual produto procura. Nossa equipe comercial vai continuar seu atendimento por aqui.');
       }
       await setSession(db, connection, to, { stage: 'await_human', selection: product, human_handoff: true });
+    } else if (session?.stage === 'vital_sales') {
+      await sendList(db, connection, to, VIVI_SALES_CLARIFY, 'Ver categorias', VIVI_SALES_OPTIONS);
+      await setSession(db, connection, to, { stage: 'vital_sales', selection: session.selection || 'Produtos Vital Decor' });
+    } else if (session?.stage === 'products') {
+      await sendList(db, connection, to, 'Qual linha de produtos você procura?', 'Ver produtos', VIVI_PRODUCTS);
+      await setSession(db, connection, to, { stage: 'products', selection: session.selection });
+    } else if (session?.stage === 'menu') {
+      await mainMenu(db, connection, to);
     } else if (session?.stage === 'order_channel' && VIVI_MARKETPLACES.some(row => row.id === choice)) {
       const channel = VIVI_MARKETPLACES.find(row => row.id === choice)?.title;
       const marketplace = VIVI_MARKETPLACE_SUPPORT[choice];

@@ -22,7 +22,15 @@ export async function GET(request){try{
   contacts=summarizeVitalConversations(messages).map(c=>({...c,profile_name:c.name,phone:c.phone,last_message_at:c.lastMessageAt,...assignments.find(a=>a.contact_wa_id===c.id)}));
  }
  return Response.json({workspace,range,contacts,assignments,truncated,crm:workspace==='gui-nonato'?crmMetrics(contacts,range):null,messaging:aggregateMessages(messages,range),activity:messages.slice(0,8).map(m=>({id:m.id,contactId:m.contact_id||m.contact_wa_id,direction:m.direction,type:m.message_type,status:m.status,date:m.sent_at})),updatedAt:new Date().toISOString()}, {headers});
- }catch(e){return Response.json({error:e.status?e.message:'Falha ao consultar a operação.'},{status:e.status||503,headers});}}
+ }catch(e){
+ const configError = typeof e?.message === 'string' && e.message.includes('Supabase do servidor não configurado');
+ const code = configError ? 'SUPABASE_PREVIEW_CONFIG' : e?.status ? 'OPERATIONS_DATA_ERROR' : 'OPERATIONS_RUNTIME_ERROR';
+ console.error('[tideplace-operations]', code, e?.name || 'Error', String(e?.message || '').slice(0,250));
+ return Response.json({error:configError
+   ? 'A prévia do CRM está sem a conexão de servidor com o banco de dados. Confira as variáveis do Supabase no ambiente Preview da Vercel.'
+   : e?.status ? e.message : 'O CRM não conseguiu carregar os dados nesta versão. Verifique as configurações de Preview e o registro de erros da Vercel.',
+   code}, {status:e?.status||503,headers});
+}}
 export async function PATCH(request){try{
  const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)throw fail('Origem inválida.',403);
  const {db}=await authorize(request),body=await request.json();

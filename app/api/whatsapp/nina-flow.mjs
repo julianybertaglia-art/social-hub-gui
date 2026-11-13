@@ -113,7 +113,23 @@ async function start(db, contact, topic, state, message) {
   await send(db, contact, message);
 }
 export async function startNinaMentoria(db, contact) {
+  const cameFromTraining = (contact.tags || []).includes('Interesse — Treinamento');
+  const knownName = cameFromTraining ? String(contact.profile_name || '').trim() : '';
+  const cleanTags = (contact.tags || []).filter((tag) =>
+    !String(tag).startsWith('Mentoria · ') && tag !== 'Mentoria · Aplicação concluída');
+  const { error: resetError } = await db.from('whatsapp_contacts').update({
+    tags: cleanTags, stage: 'Conversando', updated_at: timestamp(),
+  }).eq('id', contact.id);
+  if (resetError) throw resetError;
+  contact.tags = cleanTags;
+  contact.stage = 'Conversando';
   await saveField(db, contact, 'Interesse', 'Mentoria');
+  if (knownName) {
+    await saveField(db, contact, 'Mentoria · Nome', knownName);
+    await setState(db, contact, MENTORIA, stateFor('operacao'));
+    await send(db, contact, 'Vamos seguir com sua aplicação para a Mentoria Ultra! 🚀\n\nVocê já tem uma operação de vendas?', { type: 'buttons', items: OPERACAO });
+    return;
+  }
   await start(db, contact, MENTORIA, START_MENTORIA,
     'Que bom que você tem interesse na *Mentoria Ultra do Gui Nonato*! 🚀\n\n' +
     'A mentoria é um acompanhamento estratégico para quem já tem uma operação e deseja crescer, ' +
@@ -123,6 +139,13 @@ export async function startNinaMentoria(db, contact) {
     '*Pra começar, qual é o seu nome?*');
 }
 export async function startNinaOther(db, contact) {
+  const cleanTags = (contact.tags || []).filter((tag) => !String(tag).startsWith('Outro assunto · '));
+  const { error: resetError } = await db.from('whatsapp_contacts').update({
+    tags: cleanTags, stage: 'Conversando', updated_at: timestamp(),
+  }).eq('id', contact.id);
+  if (resetError) throw resetError;
+  contact.tags = cleanTags;
+  contact.stage = 'Conversando';
   await saveField(db, contact, 'Interesse', 'Outro assunto');
   await start(db, contact, OUTROS, START_OUTROS,
     'Claro! 😊\n\nPara que nossa equipe possa te ajudar da melhor forma, me conta:\n\n' +
@@ -337,4 +360,18 @@ export async function processNinaFlow(db, { contact, message, session }) {
   }
   if (session.current_topic === MENTORIA) return handleMentoria(db, contact, message, session.state);
   return handleOutros(db, contact, message, session.state);
+}
+
+export async function pauseNinaFlow(db, contactId) {
+  const { data: session, error: readError } = await db.from('whatsapp_automation_sessions')
+    .select('state,current_topic').eq('contact_id', contactId).maybeSingle();
+  if (readError) throw readError;
+  if (!session || !['Mentoria', 'Outro assunto'].includes(session.current_topic)
+    || !String(session.state || '').startsWith('nina_')
+    || ['nina_human', 'nina_awaiting_human'].includes(session.state)) return false;
+  const { error } = await db.from('whatsapp_automation_sessions')
+    .update({ state: 'nina_human', updated_at: timestamp() })
+    .eq('contact_id', contactId).eq('state', session.state);
+  if (error) throw error;
+  return true;
 }

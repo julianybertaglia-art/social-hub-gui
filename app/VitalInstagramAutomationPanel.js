@@ -7,6 +7,7 @@ import { startVitalInstagramOnlyLogin } from './lib/vital-instagram-only-login-c
 import { VITAL_WHATSAPP_DISPLAY, VITAL_WHATSAPP_LINK, VITAL_STORE_LINK, VITAL_WELCOME_TEXT } from './lib/vital-direct-copy.mjs';
 import { MARMORE_PUBLIC_REPLY, MARMORE_REPLY_TEXT } from './lib/vital-marmore-copy.mjs';
 import { JARDIM_PUBLIC_REPLY, JARDIM_REPLY_TEXT } from './lib/vital-jardim-copy.mjs';
+import { BIKE_PUBLIC_REPLY, BIKE_REPLY_TEXT } from './lib/vital-bike-copy.mjs';
 import styles from './vital-instagram-automation.module.css';
 
 
@@ -406,6 +407,41 @@ export default function VitalInstagramAutomationPanel() {
           </div>
         </div>
         {!commentsEnabled && <p className={styles.notice}>Autorize os comentários na conexão acima para ativar esta resposta.</p>}
+      </section>
+
+
+      <section className={styles.card}>
+        <div className={styles.cardHeader}>
+          <div className={styles.appIcon}>#</div>
+          <div className={styles.cardTitle}>
+            <h2>Comentário BIKE → link no Direct</h2>
+            <p>@vitaldecor_ · Comentário contendo BIKE</p>
+          </div>
+          <span className={commentsEnabled ? styles.activeBadge : styles.pendingBadge}>
+            {commentsEnabled ? 'Ativa' : 'Aguardando ativação'}
+          </span>
+        </div>
+        <div className={styles.steps}>
+          <div><b>1</b><span>Cliente comenta BIKE</span></div>
+          <span className={styles.arrow}>→</span>
+          <div><b>2</b><span>Recebe o link no Direct</span></div>
+          <span className={styles.arrow}>→</span>
+          <div><b>3</b><span>Abre a bicicleta na loja</span></div>
+        </div>
+        <div className={styles.previewGrid}>
+          <div className={styles.preview}>
+            <span className={styles.previewLabel}>PRÉVIA DO DIRECT</span>
+            <div className={styles.message}>{BIKE_REPLY_TEXT}</div>
+          </div>
+          <div className={styles.details}>
+            <span className={styles.previewLabel}>COMO FUNCIONA</span>
+            <div className={styles.detail}><strong>Perfil</strong><span>@vitaldecor_</span></div>
+            <div className={styles.detail}><strong>Palavra-chave</strong><span>BIKE</span></div>
+            <div className={styles.detail}><strong>Produto</strong><span>Bike spinning VTX Fitness amarela do Reels</span></div>
+            <div className={styles.detail}><strong>Resposta pública</strong><span>{BIKE_PUBLIC_REPLY}</span></div>
+          </div>
+        </div>
+        {!commentsEnabled && <p className={styles.notice}>Ative os comentários na conexão existente para liberar esta resposta.</p>}
       </section>
 
       {pending && (

@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MARMORE_REPLY_TEXT, processVitalMarmoreComments, processVitalJardimComments } from '../app/api/vital-connections/instagram/marmore.mjs';
+import { MARMORE_REPLY_TEXT, processVitalMarmoreComments, processVitalJardimComments, processVitalBikeComments } from '../app/api/vital-connections/instagram/marmore.mjs';
 import { JARDIM_REPLY_TEXT } from '../app/lib/vital-jardim-copy.mjs';
+import { BIKE_REPLY_TEXT, BIKE_PUBLIC_REPLY } from '../app/lib/vital-bike-copy.mjs';
 
 const vital = '17841439121395170';
 const gui = '17841401155694295';
@@ -290,3 +291,36 @@ test('a confirmed response is unverified when the durable receipt cannot be save
 });
 
 
+
+test('BIKE sends the product URL privately and the public reply only after confirmed delivery', async () => {
+  const db = fakeDb();
+  let calls = 0;
+  await withFetch(async (url, options) => {
+    calls++;
+    const body = JSON.parse(options.body);
+    if (calls === 1) {
+      assert.match(url, /graph.instagram.com/);
+      assert.equal(body.recipient.comment_id, '1799999000111222');
+      assert.equal(body.message.text, BIKE_REPLY_TEXT);
+      return Response.json({ message_id: 'bike-private-123' });
+    }
+    assert.equal(body.message, BIKE_PUBLIC_REPLY);
+    return Response.json({ id: 'bike-public-123' });
+  }, async () => {
+    assert.equal(await processVitalBikeComments(incoming(vital, 'BIKE'), db), 1);
+    assert.equal(await processVitalBikeComments(incoming(vital, 'BIKE'), db), 0);
+  });
+  assert.equal(calls, 2);
+  assert.equal(db.events[0].matched_rule_id, 'vital-bike-comment-link-v1');
+  assert.equal(db.events[0].private_status, 'sent');
+  assert.equal(db.events[0].public_status, 'sent');
+});
+test('BIKE does not send to Gui Instagram or an incorrectly named Vital connection', async () => {
+  for (const [account, db] of [[gui, fakeDb()], [vital, fakeDb({ username: 'another-account' })]]) {
+    let calls = 0;
+    await withFetch(async () => { calls++; }, async () => {
+      assert.equal(await processVitalBikeComments(incoming(account, 'BIKE'), db), 0);
+    });
+    assert.equal(calls, 0);
+  }
+});

@@ -4,9 +4,11 @@ import { readFileSync } from 'node:fs';
 import {
   extractVitalMarmoreComments,
   extractVitalJardimComments,
+  extractVitalBikeComments,
   MARMORE_REPLY_TEXT,
 } from '../app/api/vital-connections/instagram/marmore.mjs';
 import { JARDIM_REPLY_TEXT } from '../app/lib/vital-jardim-copy.mjs';
+import { BIKE_REPLY_TEXT, BIKE_STORE_LINK } from '../app/lib/vital-bike-copy.mjs';
 
 const VITAL = '17841439121395170';
 const GUI = '17841401155694295';
@@ -84,3 +86,20 @@ test('Webhook keeps both automations isolated from Gui account', () => {
   assert.match(code, /processFlowComments\(guiPayload\)/);
 });
 
+
+test('BIKE recognizes the exact word only on the Vital Instagram', () => {
+  assert.equal(extractVitalBikeComments(payload(VITAL, 'BIKE')).length, 1);
+  assert.equal(extractVitalBikeComments(payload(VITAL, 'Quero essa bike!')).length, 1);
+  assert.equal(extractVitalBikeComments(payload(VITAL, 'bikes')).length, 0);
+  assert.equal(extractVitalBikeComments(payload(GUI, 'BIKE')).length, 0);
+  assert.equal(extractVitalBikeComments(payload(VITAL, 'BIKE e MARMORE')).length, 0);
+  assert.equal(extractVitalBikeComments(payload(VITAL, 'JARDIM e BIKE')).length, 0);
+  assert.equal(extractVitalBikeComments(payload(VITAL, 'BIKE', { from: { username: 'vitaldecor_' } })).length, 0);
+});
+test('BIKE sends one verified product URL, and the webhook routes it separately', () => {
+  const urls = BIKE_REPLY_TEXT.match(/https?:\/\/\S+/g) || [];
+  assert.deepEqual(urls, [BIKE_STORE_LINK]);
+  assert.match(BIKE_STORE_LINK, /vtx-fitness-amarela-bike-indoor/);
+  const webhook = readFileSync(new URL('../app/api/instagram/webhook/route.js', import.meta.url), 'utf8');
+  assert.match(webhook, /processVitalBikeComments/);
+});

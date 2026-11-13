@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { startNinaMentoria, startNinaOther, processNinaFlow, NINA_MENTORIA_OPTIONS } from '../app/api/whatsapp/nina-flow.mjs';
+import { startNinaMentoria, startNinaOther, processNinaFlow, pauseNinaFlow, NINA_MENTORIA_OPTIONS } from '../app/api/whatsapp/nina-flow.mjs';
 import { buildWhatsAppReplyButtonsMessage } from '../app/api/whatsapp/reply-buttons.js';
 
 function fakeDb() {
@@ -140,6 +140,8 @@ test('human manual response stops Nina and Meta quick replies never exceed three
     const db = fakeDb();
     await startNinaMentoria(db, db.contact);
     db.rows.messages.push({ direction: 'outbound', raw_payload: { human: true }, seq: 99 });
+    // Manual TidePlace sends call pauseNinaFlow at the moment the agent replies.
+    assert.equal(await pauseNinaFlow(db, db.contact.id), true);
     const before = sent.length;
     await reply(db, 'Olha, gostaria da mentoria');
     assert.equal(db.rows.session.state, 'nina_human');

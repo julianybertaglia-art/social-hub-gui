@@ -15,12 +15,17 @@ function fakeDatabase() {
       return {
         select() { return this; },
         eq() { return this; },
+        neq() { return this; },
+        lt() { return this; },
+        lte() { return this; },
+        order() { return this; },
+        limit() { return this; },
         maybeSingle() {
           if (table === 'vital_whatsapp_flow_configs') {
             return Promise.resolve({ data: { enabled: true }, error: null });
           }
           if (table === 'vital_whatsapp_flow_sessions') {
-            return Promise.resolve({ data: { stage: 'order_channel', human_handoff: false, manual_override: false }, error: null });
+            return Promise.resolve({ data: { stage: 'order_channel', human_handoff: false, manual_override: false, last_interaction_at: new Date().toISOString(), updated_at: new Date().toISOString() }, error: null });
           }
           if (table === 'vital_whatsapp_sector_settings') {
             return Promise.resolve({ data: null, error: null });
@@ -40,7 +45,7 @@ function fakeDatabase() {
           return this;
         },
         then(resolve, reject) {
-          return Promise.resolve({ error: null }).then(resolve, reject);
+          return Promise.resolve({ data: [], error: null }).then(resolve, reject);
         },
       };
     },

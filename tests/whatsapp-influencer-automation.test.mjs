@@ -39,14 +39,16 @@ const baseApplication = {
   consent: 'yes',
 };
 
-test('the WhatsApp list fits Meta limits and exposes the five current topics', () => {
-  assert.equal(WHATSAPP_MENU_ROWS.length, 5);
-  assert.equal(new Set(WHATSAPP_MENU_ROWS.map((row) => row.id)).size, 5);
+test('the WhatsApp list fits Meta limits and exposes the four approved topics', () => {
+  assert.equal(WHATSAPP_MENU_ROWS.length, 4);
+  assert.equal(new Set(WHATSAPP_MENU_ROWS.map((row) => row.id)).size, 4);
   for (const row of WHATSAPP_MENU_ROWS) {
     assert.ok(row.title.length <= 24, row.title);
     assert.ok(row.description.length <= 72, row.description);
   }
-  assert.ok(WHATSAPP_MENU_ROWS.some((row) => row.id === 'topic_influencer'));
+  assert.deepEqual(WHATSAPP_MENU_ROWS.map((row) => row.id), [
+    'topic_mercado_livre', 'topic_mentoria', 'topic_importacao', 'topic_other',
+  ]);
 });
 
 test('a new organic first contact receives a menu, but ongoing and manual replies do not', () => {

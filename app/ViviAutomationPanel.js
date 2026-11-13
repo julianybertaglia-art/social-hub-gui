@@ -65,9 +65,9 @@ export default function ViviAutomationPanel() {
   return (
     <main style={{maxWidth:1150, margin:'0 auto',padding:'32px 30px 60px', color:'var(--text)'}}>
       <p style={{letterSpacing:2,textTransform:'uppercase',fontSize:10,color:'var(--gold-dark)',fontWeight:850}}>TIDEPLACE · VITAL DECOR</p>
-      <h1 style={{fontSize:34,letterSpacing:-1,margin:'8px 0'}}>Vivi · Atendimento automático</h1>
+      <h1 style={{fontSize:34,letterSpacing:-1,margin:'8px 0'}}>Vivi · Vendedora online</h1>
       <p style={{fontSize:13,color:'var(--muted)',maxWidth:760}}>
-        Menu de boas-vindas e triagem do WhatsApp da Vital Decor, separado do CRM e das automações do Gui Nonato.
+        Atendimento guiado pelo WhatsApp: a Vivi apresenta produtos da Vital Decor, direciona para o catálogo atualizado e encaminha para uma pessoa quando o cliente pedir. O fluxo continua separado do CRM e das automações do Gui Nonato.
       </p>
       <section style={{...common,marginTop:24,display:'flex',alignItems:'center',justifyContent:'space-between',gap:18,flexWrap:'wrap'}}>
         <div>
@@ -101,7 +101,7 @@ export default function ViviAutomationPanel() {
       </section>
       <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(225px,1fr))',gap:12,marginTop:18}}>
         {[
-          ['Comprar produtos','Vital Decor: link para comprar no site oficial ou falar com a equipe. BLUETTI e VTX Fitness: atendimento comercial.'],
+          ['Comprar produtos','Vital Decor: descoberta por categoria e links para os resultados atuais da loja. O cliente confere preço e disponibilidade no site; a equipe pode assumir a conversa quando ele pedir. BLUETTI e VTX Fitness seguem com atendimento comercial.'],
           ['Meu pedido','Shopee, Mercado Livre, TikTok Shop, Amazon e loja oficial.'],
           ['Revendedores','Mínimo geral R$ 25 mil · Grama 1.000 m² · PVC R$ 3 mil.'],
           ['Afiliados TikTok','Formulário e qualificação individual da Vital Decor.'],
@@ -112,7 +112,7 @@ export default function ViviAutomationPanel() {
         ))}
       </section>
       <p style={{fontSize:12,color:'var(--muted)',marginTop:18}}>
-        Digitar MENU reabre o início. Depois do encaminhamento para um atendente humano, o robô fica em silêncio.
+        Digitar MENU reabre o início. Depois do encaminhamento para um atendente humano, o robô fica em silêncio. A Vivi não promete estoque nem preços; a loja mostra as informações atuais.
         Catálogo de revenda: envio automático disponível quando você fornecer o arquivo.
       </p>
       {message && <p role="status" style={{color:'#246f45',fontSize:12}}>{message}</p>}

@@ -4,6 +4,7 @@ import Icon from './ui/Icon';
 import {api} from './operations/useOperations';
 import css from './vital-crm-real.module.css';
 import ThemeCustomizer from './ThemeCustomizer';
+import {getViviSalesCategory,getViviSalesLink,VIVI_SALES_CATEGORIES} from './lib/vivi-sales.mjs';
 
 const OWNER={
  varejo_nv:'Juliany',pos_nv:'Juliany',afiliados:'Juliany',
@@ -190,6 +191,11 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    setDraft('');setNotice(result.warning||'Mensagem enviada pelo WhatsApp da Vital.');reload();
   }catch(e){setError(e.message)}finally{setBusy(false)}
  }
+ function prepareSalesReply(categoryId){
+  const category=getViviSalesCategory(categoryId),link=getViviSalesLink(categoryId);
+  if(!category||!link)return;
+  setDraft(`Oi! 💜 Temos opções de ${category.title} no catálogo oficial da Vital Decor:\n\n🛍️ ${link}\n\nMe conte qual ambiente você quer transformar e as medidas aproximadas para eu te orientar melhor. Os preços e a disponibilidade estão atualizados na loja. 😊`);
+ }
  async function setResolution(status){
   if(!detail||busy)return;
   setBusy(true);setError('');setNotice('');
@@ -363,6 +369,19 @@ export default function VitalCRMReal({embedded=false,onLogout}){
         </div>}
         {data?.readOnly&&<p className={css.restrictedInfo}>Transferências e encerramentos ainda estão desativados nesta etapa do CRM.</p>}
        </details>
+       {detail.contact.queue==='varejo_nv'&&<section className={css.salesAssistant} aria-label="Apoio de vendas da Vivi">
+        <div className={css.salesAssistantHeading}>
+         <strong>Vivi · apoio de vendas</strong>
+         <span>Atalhos para o catálogo atualizado da Vital Decor</span>
+        </div>
+        <div className={css.salesAssistantOptions}>
+         {VIVI_SALES_CATEGORIES.map(category=><button type="button" key={category.id}
+          onClick={()=>prepareSalesReply(category.id)} title={'Preparar resposta sobre '+category.title}>
+          {category.title}
+         </button>)}
+        </div>
+        <small>Escolher uma opção preenche o rascunho. Revise a resposta antes de enviar.</small>
+       </section>}
        {role!=='supervisor'&&<form className={css.reply} onSubmit={reply}>
         <label className={css.visuallyHidden} htmlFor="vital-reply-text">Responder pelo WhatsApp da Vital</label>
         <div className={css.composeRow}>

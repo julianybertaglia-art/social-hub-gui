@@ -43,3 +43,7 @@
 .notice{margin:18px 0 0;padding:14px 18px;border:1px solid var(--border);border-radius:12px;background:var(--gold-soft);color:var(--gold-dark);font-size:13px;line-height:1.6}
 @media(max-width:860px){.previewGrid{grid-template-columns:1fr}.steps{flex-wrap:wrap}.steps .arrow{display:none}.actions{align-items:stretch;flex-direction:column}.actions button{width:100%}}
 @media(max-width:560px){.page{width:calc(100% - 28px);margin:20px auto 55px}.heading{align-items:flex-start;flex-direction:column}.heading h1{font-size:27px}.cardHeader{padding:20px;flex-wrap:wrap}.steps{display:grid;margin:0 18px 18px}.previewGrid{margin:0 18px 18px}.actions{padding:20px}.detail{display:block}.detail span{display:block;text-align:left;margin-top:5px}.confirmCard{padding:20px}}
+
+.activationButtons{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:flex-end}
+.activationButtons button{min-width:175px}
+@media(max-width:860px){.activationButtons{display:flex;flex-direction:column;align-items:stretch}.activationButtons button{width:100%}}

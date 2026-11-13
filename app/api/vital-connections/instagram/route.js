@@ -1,4 +1,4 @@
-import { authorize, graph } from '../service';
+import { authorize, graph, graphInstagram } from '../service';
 import { connectedInstagram, instagramMetrics } from './metrics.mjs';
 
 export const runtime = 'nodejs';
@@ -10,7 +10,8 @@ export async function GET(request) {
   try {
     const { db, ownerId } = await authorize(request);
     const connection = await connectedInstagram(db, ownerId);
-    return Response.json(await instagramMetrics(connection, graph), { headers });
+    return Response.json(await instagramMetrics(connection,
+      connection.auth_provider === 'instagram_login' ? graphInstagram : graph), { headers });
   } catch (error) {
     return Response.json({ error: error.status ? error.message : 'Não foi possível carregar as métricas da Vital Decor.' },
       { status: error.status || 503, headers });

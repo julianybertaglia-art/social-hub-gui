@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../../CloudGate';
 import VitalInstagramMetrics from '../../VitalInstagramMetrics';
 import { launchMetaLogin } from './meta-login.mjs';
+import { startVitalInstagramUnifiedLogin } from '../../lib/vital-instagram-unified-client.mjs';
 import styles from './connections.module.css';
 
 function facebookOrigin(origin) {
@@ -155,29 +156,44 @@ export default function VitalConnections() {
     return () => { window.removeEventListener('message', listener); whatsapp.current = null; };
   }, [finishWhatsApp]);
 
-  function connectInstagram() {
-    cancelLogin.current?.();
+  async function connectInstagram() {
     setPending(null);
     setBusy('instagram');
-    setAwaitingMeta(true);
-    setMessage('Conclua a autorização do Instagram na janela da Meta.');
-    cancelLogin.current = launchMetaLogin(window.FB, {
-      scope: 'instagram_basic,pages_show_list,pages_read_engagement,instagram_manage_insights,pages_manage_metadata,instagram_manage_messages',
-      auth_type: 'rerequest',
-    }, async (response) => {
-      setAwaitingMeta(false);
-      const userToken = response.authResponse?.accessToken;
-      if (!userToken) {
-        setMessage('A autorização do Instagram não foi concluída. Você pode tentar novamente.');
-        setBusy('');
-        return;
-      }
-      try {
-        showCandidates(await api({ action: 'prepare_instagram', userToken }));
-      } catch (error) {
-        setMessage(error.message);
-      } finally { setBusy(''); }
-    }, loginFailure);
+    setMessage('Abrindo o Login Unificado da Meta para @vitaldecor_...');
+    try {
+      const loginUrl = await startVitalInstagramUnifiedLogin(supabase);
+      window.location.assign(loginUrl);
+    } catch (error) {
+      setBusy('');
+      setMessage(error.message);
+    }
+  }
+
+  async function activateSavedInstagramDirect() {
+    setBusy('instagram-existing');
+    setMessage('Conferindo com a Meta se a autorização já salva permite responder Directs...');
+    try {
+      if (!supabase) throw new Error('A conexão com o TidePlace está indisponível.');
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data?.session?.access_token) throw new Error('Entre novamente no TidePlace.');
+      const response = await fetch('/api/vital-connections/instagram/direct-control', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + data.session.access_token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'activate_existing' }),
+        cache: 'no-store',
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'A Meta não confirmou a conexão atual.');
+      await refresh();
+      setMessage('A autorização salva foi confirmada pela Meta. Teste um Direct usando outra conta do Instagram.');
+    } catch (error) {
+      setMessage(error.message + ' Não desconecte a Vital Decor: o bloqueio de permissões deve ser corrigido no aplicativo Meta for Developers.');
+    } finally {
+      setBusy('');
+    }
   }
 
   function connectWhatsApp() {
@@ -270,9 +286,22 @@ export default function VitalConnections() {
                   <span>Disponível em Facebook Login para Empresas, no aplicativo da Meta.</span>
                 </label>
               )}
-              <button className={styles.button} onClick={channel.connect} disabled={!sdkReady || Boolean(busy)}>
-                {busy === channel.id ? 'Aguardando autorização...' : channel.id === 'instagram' && connected && !connection?.automaticReplies ? 'Ativar Direct no Instagram' : connected ? 'Renovar autorização' : 'Conectar ' + channel.label}
+              {channel.id === 'instagram' && connected && !connection?.automaticReplies && (
+                <button className={styles.button} type="button" onClick={activateSavedInstagramDirect}
+                  disabled={Boolean(busy)}>
+                  {busy === 'instagram-existing' ? 'Conferindo com a Meta...' : 'Ativar com a autorização já salva'}
+                </button>
+              )}
+              <button className={styles.button} onClick={channel.connect} disabled={Boolean(busy) || (channel.id === 'whatsapp' && !sdkReady)}>
+                {busy === channel.id ? 'Aguardando autorização...' : channel.id === 'instagram' && connected && !connection?.automaticReplies ? 'Reautorizar pela Meta' : connected ? 'Renovar autorização' : 'Conectar ' + channel.label}
               </button>
+              {channel.id === 'instagram' && (
+                <p className={styles.note}>
+                  <Link href="/conexoes/vital-decor/instagram-automacoes">
+                    Gerenciar automações do Instagram →
+                  </Link>
+                </p>
+              )}
               {channel.id === 'whatsapp' && connected && <p className={styles.note}>Respostas automáticas pausadas.</p>}
             </section>
           );

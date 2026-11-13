@@ -17,28 +17,50 @@ export const CONSULTORIA_DIRECT = 'Fala! 👊 Quer participar da seleção para 
 
 export function applicationError(message, status = 400) { return Object.assign(new Error(message), { status }); }
 
-function clean(value, min, max, label) {
+function optionalText(value, max, label) {
+  if (value == null) return null;
   if (typeof value !== 'string') throw applicationError('Confira ' + label + '.');
   const text = value.trim().replace(/\s+/g, ' ');
-  if (text.length < min || text.length > max) throw applicationError('Confira ' + label + '.');
+  if (!text) return null;
+  if (text.length > max) throw applicationError('Confira ' + label + '.');
   return text;
 }
 
+function optionalChoice(value, options, label) {
+  const choice = optionalText(value, 40, label);
+  if (!choice) return null;
+  if (!Object.hasOwn(options, choice)) throw applicationError('Confira ' + label + '.');
+  return choice;
+}
+
 export function validateConsultoria(values) {
-  const name = clean(values.name, 2, 120, 'seu nome');
-  let phone = clean(values.phone, 10, 30, 'seu WhatsApp com DDD').replace(/\D/g, '');
-  if (phone.length === 10 || phone.length === 11) phone = '55' + phone;
-  if (!/^55[1-9]\d\d{8,9}$/.test(phone) || /^(\d)\1+$/.test(phone.slice(4))) throw applicationError('Informe um WhatsApp brasileiro válido com DDD.');
-  let instagram = clean(values.instagram, 1, 160, 'seu Instagram');
-  instagram = instagram.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/^@/, '').replace(/\/$/, '');
-  if (!/^[A-Za-z0-9_][A-Za-z0-9_.]{0,29}$/.test(instagram)) throw applicationError('Informe seu @ do Instagram.');
-  if (!Object.hasOwn(EXPERIENCE, values.experience)) throw applicationError('Conte se você já vende no Mercado Livre.');
-  if (!Object.hasOwn(REVENUE, values.revenue)) throw applicationError('Escolha sua faixa de faturamento.');
-  if (values.experience === 'zero' && values.revenue !== 'none') throw applicationError('Se você ainda não vende, selecione “Ainda não faturo”.');
-  const product = clean(values.product, 2, 300, 'seu produto ou nicho');
-  const challenge = clean(values.challenge, 15, 1500, 'o problema que você gostaria de analisar (pelo menos 15 caracteres)');
-  if (!Object.hasOwn(RECORDING, values.recording)) throw applicationError('Responda à pergunta sobre os trechos da consultoria.');
-  if (values.consent !== 'yes') throw applicationError('Autorize a análise dos dados e o contato sobre sua candidatura.');
+  const name = optionalText(values.name, 120, 'seu nome');
+  const rawPhone = optionalText(values.phone, 30, 'seu WhatsApp com DDD');
+  let phone = null;
+  if (rawPhone) {
+    phone = rawPhone.replace(/\D/g, '');
+    if (phone.length === 10 || phone.length === 11) phone = '55' + phone;
+    if (!/^55[1-9]\d\d{8,9}$/.test(phone) || /^(\d)\1+$/.test(phone.slice(4))) {
+      throw applicationError('Confira seu WhatsApp com DDD ou deixe o campo em branco.');
+    }
+  }
+
+  let instagram = optionalText(values.instagram, 160, 'seu Instagram');
+  if (instagram) {
+    instagram = instagram.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/^@/, '').replace(/\/$/, '');
+    if (!instagram) instagram = null;
+    else if (!/^[A-Za-z0-9_][A-Za-z0-9_.]{0,29}$/.test(instagram)) {
+      throw applicationError('Confira seu Instagram ou deixe o campo em branco.');
+    } else instagram = instagram.toLowerCase();
+  }
+
+  const experience = optionalChoice(values.experience, EXPERIENCE, 'se você já vende no Mercado Livre');
+  const revenue = optionalChoice(values.revenue, REVENUE, 'sua faixa de faturamento');
+  if (experience === 'zero' && revenue && revenue !== 'none') {
+    throw applicationError('Se você ainda não vende, selecione “Ainda não faturo” ou deixe a pergunta em branco.');
+  }
+
+  const product = optionalText(values.product, 300, 'seu produto ou nicho');
   let storeUrl = String(values.storeUrl || '').trim();
   if (storeUrl) {
     let parsed;
@@ -48,8 +70,20 @@ export function validateConsultoria(values) {
       throw applicationError('Use um link https do Mercado Livre ou deixe o campo em branco.');
     }
     parsed.hash = ''; storeUrl = parsed.toString();
+  } else {
+    storeUrl = null;
   }
-  return { name, phone, instagram: instagram.toLowerCase(), experience: values.experience, revenue: values.revenue,
-    product, store_url: storeUrl || null, challenge, recording: values.recording, consent_text: CONSULTORIA_CONSENT,
-    marketing_opt_in: values.marketing === 'yes', segment: values.experience === 'zero' ? 'beginner' : 'seller' };
+
+  const challenge = optionalText(values.challenge, 1500, 'o problema que você gostaria de analisar');
+  const recording = optionalChoice(values.recording, RECORDING, 'a pergunta sobre os trechos da consultoria');
+  const hasConsent = values.consent === 'yes';
+  const segment = experience ? (experience === 'zero' ? 'beginner' : 'seller') : null;
+
+  return {
+    name, phone, instagram, experience, revenue, product, store_url: storeUrl, challenge, recording,
+    consent_text: hasConsent ? CONSULTORIA_CONSENT : null,
+    consent_at: hasConsent ? new Date().toISOString() : null,
+    marketing_opt_in: values.marketing === 'yes',
+    segment,
+  };
 }

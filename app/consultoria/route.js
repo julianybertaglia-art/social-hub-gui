@@ -1,7 +1,7 @@
 import { serverClient } from '../api/instagram/audio-automation/service.js';
-import { validateConsultoria, applicationError } from '../lib/consultoria.mjs';
+import { validateConsultoria, applicationError, CONSULTORIA_URL } from '../lib/consultoria.mjs';
 import { consultoriaHtml } from './html.mjs';
-import { formTicket, verifyTicket, requestFingerprint } from './security.mjs';
+import { formTicket, resolveFormTicket, requestFingerprint } from './security.mjs';
 import { saveConsultoria } from './service.mjs';
 
 export const runtime = 'nodejs';
@@ -33,13 +33,19 @@ async function readForm(request) {
   raw += decoder.decode(); return Object.fromEntries(new URLSearchParams(raw));
 }
 export async function POST(request) {
-  const origin = request.headers.get('origin');
-  if ((origin && origin !== new URL(request.url).origin) || request.headers.get('sec-fetch-site') === 'cross-site') return html({ error: 'Abra o formulário para enviar sua candidatura.' }, 403);
   let values = {};
   try {
     values = await readForm(request);
+    const origin = request.headers.get('origin');
+    const allowedOrigins = new Set([new URL(request.url).origin, new URL(CONSULTORIA_URL).origin]);
     if (values.company_site) return html({ success: true });
-    const id = verifyTicket(values.ticket);
+    const formTicketResult = resolveFormTicket(values.ticket);
+    // Some in-app browsers report cross-site metadata or omit stale form tickets.
+    // Accept missing/expired tickets for this same-origin form; reject a foreign Origin.
+    if (origin && !allowedOrigins.has(origin) && !formTicketResult.verified) {
+      throw applicationError('Não foi possível confirmar o envio. Atualize a página e tente novamente.', 403);
+    }
+    const id = formTicketResult.id;
     const application = validateConsultoria(values);
     await saveConsultoria(serverClient(), application, { id, fingerprint: requestFingerprint(request) });
     return html({ success: true });

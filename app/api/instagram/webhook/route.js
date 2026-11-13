@@ -6,23 +6,44 @@ import { processFlowComments, processFlowSelections } from '../flow-automations/
 import { processMentoriaDirectKeywords, processConsultoriaDirectKeywords } from '../flow-automations/direct.mjs';
 import { serverClient } from '../audio-automation/service.js';
 import { processVitalInstagramDirect } from '../../vital-connections/instagram/direct.mjs';
+import { processVitalMarmoreComments, processVitalJardimComments } from '../../vital-connections/instagram/marmore.mjs';
 import { GUI_INSTAGRAM_ID } from '../../vital-connections/helpers.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 180;
 
-function isValidSignature(rawBody, signatureHeader) {
-  const appSecret = process.env.META_INSTAGRAM_APP_SECRET || process.env.META_APP_SECRET;
-  if (!appSecret || !signatureHeader?.startsWith('sha256=')) return false;
-
-  const received = signatureHeader.slice('sha256='.length);
-  const expected = crypto.createHmac('sha256', appSecret).update(rawBody, 'utf8').digest('hex');
-  const receivedBuffer = Buffer.from(received, 'hex');
-  const expectedBuffer = Buffer.from(expected, 'hex');
-
-  if (receivedBuffer.length !== expectedBuffer.length) return false;
-  return crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
+async function isValidSignature(rawBody, signatureHeader) {
+  if (!/^sha256=[a-f0-9]{64}$/i.test(signatureHeader || '')) return false;
+  const receivedBuffer = Buffer.from(signatureHeader.slice('sha256='.length), 'hex');
+  const legacySecret = process.env.META_INSTAGRAM_APP_SECRET || process.env.META_APP_SECRET;
+  const vitalDirectSecret = process.env.META_VITAL_IG_APP_SECRET;
+  function matches(secret) {
+    if (!secret) return false;
+    const expected = crypto.createHmac('sha256', secret).update(rawBody, 'utf8').digest();
+    return expected.length === receivedBuffer.length && crypto.timingSafeEqual(expected, receivedBuffer);
+  }
+  // Leave all existing Gui/Facebook webhook behavior unchanged.
+  if (matches(legacySecret)) return true;
+  if (!matches(vitalDirectSecret)) return false;
+  // The native Instagram app has its own account-scoped ID. Accept signed
+  // native events only when the exact authorized Vital connection saved this
+  // ID; NEVER take an arbitrary ID from an inbound webhook as authorization.
+  try {
+    const payload = JSON.parse(rawBody);
+    if (payload?.object !== 'instagram' || !Array.isArray(payload.entry) ||
+        payload.entry.length === 0) return false;
+    const db = serverClient();
+    const { data, error } = await db.from('workspace_meta_connections')
+      .select('external_account_id,username,auth_provider')
+      .eq('workspace_id', 'vital-decor').eq('platform', 'instagram')
+      .eq('state', 'connected').eq('auth_provider', 'instagram_login')
+      .maybeSingle();
+    if (error || !data || String(data.username || '').toLowerCase() !== 'vitaldecor_') return false;
+    const accountId = String(data.external_account_id || '');
+    return /^[0-9]{5,40}$/.test(accountId) && accountId !== GUI_INSTAGRAM_ID &&
+      payload.entry.every((entry) => String(entry?.id || '') === accountId);
+  } catch { return false; }
 }
 
 export async function GET(request) {
@@ -49,7 +70,7 @@ export async function GET(request) {
 export async function POST(request) {
   const rawBody = await request.text();
   const signature = request.headers.get('x-hub-signature-256');
-  const signatureValid = isValidSignature(rawBody, signature);
+  const signatureValid = await isValidSignature(rawBody, signature);
 
   let previewPayload = {};
   try { previewPayload = JSON.parse(rawBody); } catch {}
@@ -118,15 +139,17 @@ export async function POST(request) {
         ...entry, messaging: (entry.messaging || []).filter(event =>
           !paused.has(String(event?.sender?.id || '')))
       })) };
-      const [comments, selections, mentoriaDirect, consultoriaDirect, vitalDirect] = await Promise.all([
+      const [comments, selections, mentoriaDirect, consultoriaDirect, vitalDirect, vitalMarmore, vitalJardim] = await Promise.all([
         processFlowComments(guiPayload),
         processFlowSelections(automationPayload, db),
         processMentoriaDirectKeywords(automationPayload, db),
         processConsultoriaDirectKeywords(automationPayload, db),
         processVitalInstagramDirect(payload, db),
+        processVitalMarmoreComments(payload, db),
+        processVitalJardimComments(payload, db),
       ]);
-      if (comments || selections || mentoriaDirect || consultoriaDirect || vitalDirect) {
-        console.info('TIDEPLACE:FLOW', { comments, selections, mentoriaDirect, consultoriaDirect, vitalDirect });
+      if (comments || selections || mentoriaDirect || consultoriaDirect || vitalDirect || vitalMarmore || vitalJardim) {
+        console.info('TIDEPLACE:FLOW', { comments, selections, mentoriaDirect, consultoriaDirect, vitalDirect, vitalMarmore, vitalJardim });
       }
     } catch (error) {
       console.error('TIDEPLACE:FLOW: falha no processamento', error instanceof Error ? error.message : String(error));
@@ -135,3 +158,4 @@ export async function POST(request) {
 
   return Response.json({ ok: true, status: 'EVENT_RECEIVED', engine: 'tideplace-flow-v1' });
 }
+

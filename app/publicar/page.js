@@ -13,7 +13,7 @@ const NETWORKS=[
 ];
 const STATE={
   ready:'Preparado',sending:'Enviando',processing:'Processando na Meta',
-  published:'Publicado',private:'Enviado como privado',draft:'Enviado à caixa do TikTok',
+  published:'Publicado',private:'Enviado como privado',draft:'Notificação sinalizada pela API',
   pending_approval:'Aguardando aprovação',failed:'Falhou',unknown:'Conferir manualmente',
 };
 const sizeLabel=n=>(n/1024/1024).toFixed(1)+' MB';
@@ -30,16 +30,18 @@ async function call(path,options={}){
   if(!response.ok)throw new Error(result.error||'Não foi possível concluir a operação.');
   return result;
 }
-function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutube,youtubeCheck,onVerifyTikTok,verifyingTikTok,tiktokCheck,onRetryTikTok,retryingTikTok,onDiagnoseTikTok,diagnosingTikTok,tiktokDiagnostic}){
+function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutube,youtubeCheck,onVerifyTikTok,verifyingTikTok,tiktokCheck,onRetryTikTok,retryingTikTok,onDiagnoseTikTok,diagnosingTikTok,tiktokDiagnostic,onPrepareNewTikTok,preparingNewTikTok,onSendSavedTikTok,sendingSavedTikTok}){
   const label=NETWORKS.find(n=>n.id===target.platform);
+  const platformStatus=target.platform==='tiktok'&&target.state==='processing'?
+    'Processando no TikTok':STATE[target.state]||target.state;
   return <div className={styles.targetRow}>
     <span className={styles.networkSymbol}>{label?.symbol||'•'}</span>
     <span className={styles.targetBody}><strong>{label?.name||target.platform}</strong>
-      <small>{target.error||(target.platform==='tiktok'&&target.state==='processing'?'Aguardando TikTok':STATE[target.state]||target.state)}</small></span>
+      <small>{target.platform==='tiktok'&&target.state==='draft'?'TikTok informou envio da notificação; confirme se ela aparece no aplicativo.':target.error||(target.platform==='tiktok'&&target.state==='processing'?'Aguardando confirmação de entrega do TikTok':platformStatus)}</small></span>
     <span className={[styles.tag,
       ['published','private'].includes(target.state)?styles.doneTag:
       ['pending_approval','processing'].includes(target.state)?styles.pendingTag:styles.neutralTag].join(' ')}>
-      {STATE[target.state]||target.state}</span>
+      {platformStatus}</span>
     {target.platform==='instagram'&&target.state==='processing'&&
       <button className={styles.finish} type="button" disabled={!!busy}
         onClick={()=>onFinish(postId)}>{busy===postId?'Verificando…':'Concluir Reel'}</button>}
@@ -76,11 +78,29 @@ function TargetState({target,postId,onFinish,busy,onVerifyYoutube,verifyingYoutu
         <button type="button" className={styles.finish} disabled={!!retryingTikTok}
           onClick={()=>onRetryTikTok(postId)}>{retryingTikTok===postId?'Reenviando…':'Tentar novamente com diagnóstico ativo'}</button>}
     </>}
+    {target.platform==='tiktok'&&target.state==='ready'&&
+      <button type="button" className={styles.finish} disabled={!!sendingSavedTikTok}
+        onClick={()=>onSendSavedTikTok(postId)}>
+        {sendingSavedTikTok===postId?'Enviando partes…':'Enviar vídeo salvo em partes'}
+      </button>}
     {target.platform==='tiktok'&&target.externalId&&<>
       <button type="button" className={styles.finish} disabled={!!verifyingTikTok}
         onClick={()=>onVerifyTikTok(postId)}>{verifyingTikTok===postId?'Consultando...':'Verificar no TikTok'}</button>
+      {tiktokCheck?.status==='PROCESSING_UPLOAD'&&tiktokCheck.uploadedBytes===0&&
+        target.state==='unknown'&&
+        <button type="button" className={styles.finish} disabled={!!preparingNewTikTok}
+          onClick={()=>onPrepareNewTikTok(postId)}>
+          {preparingNewTikTok===postId?'Preparando…':'Preparar um novo envio em partes'}
+        </button>}
       {tiktokCheck&&<div className={styles.youtubeVerification} role="status">
-        {tiktokCheck.error||tiktokCheck.message||'Status TikTok: '+tiktokCheck.status}
+        {tiktokCheck.error||<>
+          <b>Status oficial:</b> {tiktokCheck.status||'Indisponível'}
+          {Number.isFinite(tiktokCheck.uploadedBytes)&&
+            <span>{' · '}<b>Bytes recebidos:</b> {tiktokCheck.uploadedBytes.toLocaleString('pt-BR')}
+              {Number.isFinite(tiktokCheck.totalBytes)?' / '+tiktokCheck.totalBytes.toLocaleString('pt-BR'):''}
+            </span>}
+          <div style={{marginTop:5}}>{tiktokCheck.message||'Ainda não há confirmação de entrega.'}</div>
+        </>}
       </div>}
     </>}
   </div>;
@@ -102,6 +122,8 @@ export default function UnifiedPublisher(){
   const [verifyingYoutube,setVerifyingYoutube]=useState('');
   const [verifyingTikTok,setVerifyingTikTok]=useState('');
   const [retryingTikTok,setRetryingTikTok]=useState('');
+  const [preparingNewTikTok,setPreparingNewTikTok]=useState('');
+  const [sendingSavedTikTok,setSendingSavedTikTok]=useState('');
   const [diagnosingTikTok,setDiagnosingTikTok]=useState('');
   const [tiktokDiagnostics,setTikTokDiagnostics]=useState({});
   const [tiktokChecks,setTikTokChecks]=useState({});
@@ -176,6 +198,31 @@ export default function UnifiedPublisher(){
       setFile(null);setMetadata(null);
     }catch(e){setError(e.message||'Não foi possível enviar.');}
     finally{setPhase('')}
+  }
+  async function prepareNewTikTok(id){
+    if(!window.confirm('O TikTok confirmou 0 bytes recebidos na tarefa anterior. Preparar UMA nova tarefa usando o vídeo já salvo no TidePlace? Esta etapa não envia o arquivo.'))return;
+    setPreparingNewTikTok(id);setError('');setNotice('');
+    try{
+      const result=await call('/api/publicacao/reusar-video-tiktok',{
+        method:'POST',body:JSON.stringify({id})
+      });
+      setNotice(result.message+' Localize o novo registro no topo do histórico e confirme o envio.');
+      await refresh();
+    }catch(e){setError(e.message||'Não foi possível preparar um novo teste.');}
+    finally{setPreparingNewTikTok('');}
+  }
+  async function sendSavedTikTok(id){
+    if(!window.confirm('Iniciar agora a transferência em partes do vídeo já salvo para o TikTok do Gui? O destino é a caixa de entrada para rascunhos, NÃO publicação pública.'))return;
+    setSendingSavedTikTok(id);setError('');setNotice('');
+    try{
+      const result=await call('/api/publicacao/enviar',{
+        method:'POST',body:JSON.stringify({id,platform:'tiktok'})
+      });
+      setNotice(result.state==='processing'?
+        'TikTok criou a tarefa de envio em partes. Clique em Verificar no TikTok para conferir os bytes recebidos.':
+        'Solicitação realizada. Confira o histórico.');
+    }catch(e){setError(e.message||'Falha ao transferir o vídeo. Não repita antes de verificar a tarefa.');}
+    finally{await refresh();setSendingSavedTikTok('');}
   }
   async function diagnoseTikTok(id){
     setDiagnosingTikTok(id);setError('');setNotice('');
@@ -319,7 +366,9 @@ export default function UnifiedPublisher(){
               onVerifyTikTok={verifyTikTok} verifyingTikTok={verifyingTikTok} tiktokCheck={tiktokChecks[post.id]}
               onRetryTikTok={retryTikTok} retryingTikTok={retryingTikTok}
               onDiagnoseTikTok={diagnoseTikTok} diagnosingTikTok={diagnosingTikTok}
-              tiktokDiagnostic={tiktokDiagnostics[post.id]}/>)}
+              tiktokDiagnostic={tiktokDiagnostics[post.id]}
+              onPrepareNewTikTok={prepareNewTikTok} preparingNewTikTok={preparingNewTikTok}
+              onSendSavedTikTok={sendSavedTikTok} sendingSavedTikTok={sendingSavedTikTok}/>)}
           </article>)}</div>}
         </section>
       </aside>

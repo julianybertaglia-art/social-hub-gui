@@ -19,11 +19,18 @@ export const VIVI_MARKETPLACES = [
   { id: 'vivi_order_amazon', title: 'Amazon' },
   { id: 'vivi_order_site', title: 'Site Vital Decor' },
 ];
+const VIVI_MARKETPLACE_SUPPORT = {
+  vivi_order_shopee: 'na *Shopee*',
+  vivi_order_mercadolivre: 'no *Mercado Livre*',
+  vivi_order_tiktok: 'no *TikTok Shop*',
+};
 
 export const VIVI_WELCOME = 'Oi! 👋 Sou a Vivi, assistente virtual da Vital Decor.\n\nEstou aqui para te ajudar. Selecione abaixo sobre o que você gostaria de falar.\n\nVocê pode escrever MENU a qualquer momento para voltar ao início.';
 export const VIVI_WHOLESALE = "Que bom ter você por aqui! 🤝\n\n🛒 No nosso catálogo você escolhe os produtos, monta o carrinho e preenche seus dados.\n\nAo finalizar, o WhatsApp abre com seu pedido pronto. É só enviar!\n\n✅ Depois disso, um representante comercial dará continuidade ao atendimento.\n\n👇 *Acesse o catálogo:*";
 export const VIVI_BLUETTI = 'Ótima escolha! 🔋 Um especialista da nossa equipe vai continuar seu atendimento por aqui.\n\nEnquanto isso, você pode conhecer os modelos em nosso catálogo BLUETTI. Para agilizar, me diga seu nome e qual modelo deseja conhecer ou qual é sua dúvida sobre o produto.';
 export const VIVI_BLUETTI_NO_CATALOG = 'Ótima escolha! 🔋 Um especialista da nossa equipe vai continuar seu atendimento por aqui.\n\nPara agilizar, me diga seu nome e qual modelo BLUETTI deseja conhecer ou qual é sua dúvida. Nossa equipe também poderá compartilhar o catálogo.';
+export const VIVI_VITAL_RETAIL = 'Que bom ter você por aqui! 💜\n\nVocê pode conhecer nossos produtos e fazer sua compra diretamente pelo site oficial da Vital Decor:\n\n🛍️ https://vitaldecor.com.br\n\nPrecisa de ajuda para escolher um produto ou tem alguma dúvida sobre sua compra?\n\nEnvie seu *nome* e sua *pergunta* aqui no WhatsApp. Nossa equipe dará continuidade ao seu atendimento assim que possível! 😊';
+
 export const VIVI_ORDER_QUESTION = 'Para localizar seu pedido, me informe: seu nome completo, o número do pedido e sua dúvida. Nossa equipe de pós-venda vai conferir e continuar o atendimento por aqui. 😊';
 
 export function normalizeText(value) {
@@ -167,6 +174,9 @@ export async function handleViviMessage(db, connection, message, origin) {
       if (choice === 'vivi_product_bluetti') {
         await sendText(db, connection, to, config.bluetti_catalog_url ? VIVI_BLUETTI : VIVI_BLUETTI_NO_CATALOG);
         if (config.bluetti_catalog_url) await sendDocument(db, connection, to, config.bluetti_catalog_url, 'Catalogo_Vital_Decor_BLUETTI.pdf');
+      } else if (choice === 'vivi_product_vital') {
+        // Retail shoppers can buy directly on the official site or request human support.
+        await sendText(db, connection, to, VIVI_VITAL_RETAIL);
       } else {
         await sendText(db, connection, to,
           'Perfeito! Você escolheu ' + product + '. 😊 Me diga seu nome e qual produto procura. Nossa equipe comercial vai continuar seu atendimento por aqui.');
@@ -174,7 +184,11 @@ export async function handleViviMessage(db, connection, message, origin) {
       await setSession(db, connection, to, { stage: 'await_human', selection: product, human_handoff: true });
     } else if (session?.stage === 'order_channel' && VIVI_MARKETPLACES.some(row => row.id === choice)) {
       const channel = VIVI_MARKETPLACES.find(row => row.id === choice)?.title;
-      await sendText(db, connection, to, 'Compra pela ' + channel + '. ' + VIVI_ORDER_QUESTION);
+      const marketplace = VIVI_MARKETPLACE_SUPPORT[choice];
+      const reply = marketplace
+        ? `Para receber ajuda com seu pedido feito ${marketplace}, abra o aplicativo ou site, acesse os detalhes da compra e chame nossa loja pelo chat ou abra um chamado por lá. 💬\n\nNossa equipe de pós-venda atende esses pedidos exclusivamente dentro da plataforma onde a compra foi feita. 😊\n\nPara outro assunto, digite *MENU*.`
+        : 'Compra pela ' + channel + '. ' + VIVI_ORDER_QUESTION;
+      await sendText(db, connection, to, reply);
       await setSession(db, connection, to, { stage: 'await_human', selection: 'Pós-venda · ' + channel, human_handoff: true });
     }
     await db.from('vital_whatsapp_flow_events').update({ status: 'completed' })
@@ -185,3 +199,4 @@ export async function handleViviMessage(db, connection, message, origin) {
     throw error;
   }
 }
+

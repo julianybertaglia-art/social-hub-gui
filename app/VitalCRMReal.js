@@ -369,11 +369,11 @@ export default function VitalCRMReal({embedded=false,onLogout}){
         </div>}
         {data?.readOnly&&<p className={css.restrictedInfo}>Transferências e encerramentos ainda estão desativados nesta etapa do CRM.</p>}
        </details>
-       {detail.contact.queue==='varejo_nv'&&<section className={css.salesAssistant} aria-label="Apoio de vendas da Vivi">
-        <div className={css.salesAssistantHeading}>
+       {detail.contact.queue==='varejo_nv'&&<details className={css.salesAssistant} aria-label="Apoio de vendas da Vivi">
+        <summary className={css.salesAssistantHeading}>
          <strong>Vivi · apoio de vendas</strong>
-         <span>Atalhos para o catálogo atualizado da Vital Decor</span>
-        </div>
+         <span>Toque para mostrar ou ocultar os atalhos do catálogo</span>
+        </summary>
         <div className={css.salesAssistantOptions}>
          {VIVI_SALES_CATEGORIES.map(category=><button type="button" key={category.id}
           onClick={()=>prepareSalesReply(category.id)} title={'Preparar resposta sobre '+category.title}>
@@ -381,7 +381,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
          </button>)}
         </div>
         <small>Escolher uma opção preenche o rascunho. Revise a resposta antes de enviar.</small>
-       </section>}
+       </details>}
        {role!=='supervisor'&&<form className={css.reply} onSubmit={reply}>
         <label className={css.visuallyHidden} htmlFor="vital-reply-text">Responder pelo WhatsApp da Vital</label>
         <div className={css.composeRow}>

@@ -421,3 +421,32 @@
 .topActions button:hover,.pagination button:not(:disabled):hover{border-color:#4a8b9b;color:#246f81}
 @media(max-width:700px){.embedded{padding:18px 11px 28px}.tabs{width:100%;display:grid;grid-template-columns:1fr 1fr}.tabs button{justify-content:center}.summaryPill{padding:11px}.board{box-shadow:none}}
 @media(prefers-reduced-motion:reduce){.tabs button,.summaryPill{transition:none}.summaryPill:hover{transform:none}}
+
+/* Mobile CRM: prioritize the conversation history over controls.
+   The previous fixed 510px thread allowed Vivi + composer to squeeze messages
+   into a nearly invisible strip. Keep messages scrollable at their own height. */
+.salesAssistant{display:block}
+.salesAssistant>summary{cursor:pointer;list-style:none}
+.salesAssistant>summary::-webkit-details-marker{display:none}
+.salesAssistant>summary::after{content:'▾';margin-left:auto;color:var(--muted);font-size:16px;align-self:center;transition:transform .15s}
+.salesAssistant[open]>summary::after{transform:rotate(180deg)}
+.salesAssistant:not([open]){padding:12px 15px}
+.salesAssistant:not([open]) .salesAssistantHeading{margin:0}
+.salesAssistant[open] .salesAssistantHeading{margin-bottom:9px}
+@media(max-width:700px){
+ .board .list{max-height:300px}
+ .board .thread{height:auto;min-height:0;overflow:visible}
+ .board .messages{
+  flex:0 0 auto;
+  height:clamp(340px,55dvh,650px);
+  min-height:340px;
+  max-height:none;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+ }
+ .board .threadBottom{flex:0 0 auto}
+ .board .reply{padding:10px 12px}
+ .board .composeRow textarea{min-height:45px;max-height:110px}
+ .salesAssistant{gap:7px;padding:10px 12px}
+}
+@media(prefers-reduced-motion:reduce){.salesAssistant>summary::after{transition:none}}

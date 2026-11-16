@@ -129,37 +129,23 @@ test('when Meta refuses a marketplace message, Vivi records failure without chan
   assert.equal(db.writes.some(write => write.table === 'vital_whatsapp_assignments' && write.action === 'upsert'), false);
 });
 
-test('Vital product selection opens guided categories without handing the customer off', async () => {
+test('Vital product selection returns official store and hands off without more menus', async () => {
   const { db, sent, error } = await simulateChoice('vivi_product_vital', false, 'products');
   assert.equal(error, null);
-  assert.equal(sent.length, 2);
-  assert.match(sent[0].payload.text.body, /vendedora online/);
-  assert.equal(sent[1].payload.interactive.type, 'list');
-  assert.deepEqual(sent[1].payload.interactive.action.sections[0].rows.map(row => row.id), [
-    'vivi_sales_garden', 'vivi_sales_grass', 'vivi_sales_3d', 'vivi_sales_adhesive', 'vivi_sales_plants', 'vivi_sales_human',
-  ]);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].payload.type, 'text');
+  assert.match(sent[0].payload.text.body, /https:\/\/vitaldecor\.com\.br/);
   const session = db.writes.find(write => write.table === 'vital_whatsapp_flow_sessions' && write.action === 'upsert');
-  assert.equal(session.data.stage, 'vital_sales');
-  assert.equal(session.data.selection, 'Produtos Vital Decor');
-  assert.equal(session.data.human_handoff, false);
+  assert.equal(session.data.stage, 'await_human');
+  assert.equal(session.data.human_handoff, true);
 });
 
-test('Vivi sends the current official catalog search and only hands off when the customer asks', async () => {
-  const product = await simulateChoice('vivi_sales_adhesive', false, 'vital_sales', 'Produtos Vital Decor');
-  assert.equal(product.error, null);
-  assert.equal(product.sent.length, 1);
-  assert.match(product.sent[0].payload.text.body, /https:\/\/vitaldecor\.com\.br\/search\/\?q=placa\+adesiva\+marmore/);
-  assert.match(product.sent[0].payload.text.body, /preços e a disponibilidade/);
-  const productSession = product.db.writes.find(write => write.table === 'vital_whatsapp_flow_sessions' && write.action === 'upsert');
-  assert.equal(productSession.data.stage, 'vital_sales');
-  assert.equal(productSession.data.human_handoff, false);
-
-  const human = await simulateChoice('vivi_sales_human', false, 'vital_sales', 'Produtos Vital Decor');
-  assert.equal(human.error, null);
-  assert.equal(human.sent.length, 1);
-  assert.match(human.sent[0].payload.text.body, /encaminhar sua conversa/);
-  const humanSession = human.db.writes.find(write => write.table === 'vital_whatsapp_flow_sessions' && write.action === 'upsert');
-  assert.equal(humanSession.data.stage, 'await_human');
-  assert.equal(humanSession.data.human_handoff, true);
+test('Open guided-sales sessions resolve to human support without repeated menus', async () => {
+  const { db, sent, error } = await simulateChoice('vivi_sales_adhesive', false, 'vital_sales', 'Produtos Vital Decor');
+  assert.equal(error, null);
+  assert.equal(sent.length, 1);
+  assert.match(sent[0].payload.text.body, /site oficial/);
+  const session = db.writes.find(write => write.table === 'vital_whatsapp_flow_sessions' && write.action === 'upsert');
+  assert.equal(session.data.stage, 'await_human');
+  assert.equal(session.data.human_handoff, true);
 });
-

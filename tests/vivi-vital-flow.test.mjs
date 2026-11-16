@@ -23,15 +23,14 @@ test('Wholesale greeting explains how to send a catalog order', () => {
   assert.match(VIVI_WHOLESALE,/representante comercial/);
   assert.ok(VIVI_WHOLESALE.length < 400);
 });
-test('Retail Vital introduces Vivi as an online seller and keeps the customer in guided shopping', () => {
-  assert.match(VIVI_VITAL_RETAIL, /vendedora online/);
-  assert.match(VIVI_VITAL_RETAIL, /catálogo/);
-  assert.match(VIVI_VITAL_RETAIL, /ATENDENTE/);
-  assert.ok(VIVI_VITAL_RETAIL.length < 600);
+test('Retail Vital returns official store and human handoff without sales menu', () => {
+  assert.match(VIVI_VITAL_RETAIL, /https:\/\/vitaldecor\.com\.br/);
+  assert.match(VIVI_VITAL_RETAIL, /nome/);
+  assert.match(VIVI_VITAL_RETAIL, /pergunta/);
   const code = readFileSync(new URL('../app/api/vital-connections/vivi-flow.mjs',import.meta.url),'utf8');
-  assert.match(code, /choice === 'vivi_product_vital'[\s\S]*?sendText\(db, connection, to, VIVI_VITAL_RETAIL\)[\s\S]*?VIVI_SALES_OPTIONS/);
-  assert.match(code, /stage: 'vital_sales', selection: product/);
-  assert.match(code, /choice === 'vivi_product_bluetti'/);
+  assert.match(code, /choice === 'vivi_product_vital'[\s\S]*?sendText\(db, connection, to, VIVI_VITAL_RETAIL\)/);
+  assert.doesNotMatch(code, /VIVI_SALES_OPTIONS|buildViviSalesMessage/);
+  assert.match(code, /stage: 'await_human', selection: product, human_handoff: true/);
 });
 
 test('Vivi sales links are fixed to safe official catalog searches and do not include customer text', () => {
@@ -59,8 +58,8 @@ test('MENU works case-insensitively, with accent normalization', () => {
   assert.equal(extractChoice({interactive:{list_reply:{id:'vivi_order_tiktok'}}}),'vivi_order_tiktok');
   assert.equal(isVitalChoice('vivi_product_bluetti'),true);
   assert.equal(isVitalChoice('vivi_order_amazon'),true);
-  assert.equal(isVitalChoice('vivi_sales_garden'),true);
-  assert.equal(isVitalChoice(VIVI_SALES_HUMAN_ID),true);
+  assert.equal(isVitalChoice('vivi_sales_garden'),false);
+  assert.equal(isVitalChoice(VIVI_SALES_HUMAN_ID),false);
   assert.equal(isVitalChoice('vivi_bad_value'),false);
 });
 test('BLUETTI flow includes human handoff and catalog when file exists', () => {

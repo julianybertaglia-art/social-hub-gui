@@ -15,6 +15,7 @@ test('Vivi offers correct menu, brands, and marketplace options', () => {
   assert.equal(VIVI_MARKETPLACES.length,5);
   assert.match(VIVI_WELCOME,/MENU/);
   assert.match(VIVI_WELCOME,/Vivi/);
+  assert.match(VIVI_WELCOME,/não realiza chamadas/);
 });
 test('Wholesale greeting explains how to send a catalog order', () => {
   assert.match(VIVI_WHOLESALE,/No nosso catálogo/);

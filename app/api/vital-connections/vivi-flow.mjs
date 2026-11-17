@@ -279,7 +279,7 @@ export async function handleViviMessage(db, connection, message, origin) {
       const marketplace = VIVI_MARKETPLACE_SUPPORT[choice];
       if (marketplace) {
         await sendText(db, connection, to,
-          `Para receber ajuda com seu pedido feito ${marketplace}, acesse a compra pelo aplicativo ou site da plataforma e entre em contato com a loja pelo chat ou suporte do próprio pedido. 💬\n\nNosso pós-venda atende *exclusivamente pela plataforma em que a compra foi realizada*. Não realizamos atendimento desses pedidos por este WhatsApp.\n\nPara outro assunto, digite *MENU*.`);
+          `Para receber ajuda com seu pedido feito ${marketplace}, acesse a compra pelo aplicativo ou site da plataforma e entre em contato com a loja pelo chat ou abra um chamado no suporte do próprio pedido. 💬\n\nNosso pós-venda atende *exclusivamente pela plataforma em que a compra foi realizada*. Não realizamos atendimento desses pedidos por este WhatsApp.\n\nPara outro assunto, digite *MENU*.`);
         // Não abrir fila de pós-venda nem encaminhar ao Argo/WhatsApp.
         await setSession(db, connection, to, {
           stage: 'marketplace_redirect', selection: 'Marketplace · ' + channel,

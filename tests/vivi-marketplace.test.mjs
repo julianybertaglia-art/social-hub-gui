@@ -77,11 +77,12 @@ async function simulateChoice(choice, rejectSend = false, stage = 'order_channel
   return { db, sent, error };
 }
 
-test('Vivi directs the three marketplace order options to the corresponding platform', async () => {
+test('Vivi sends every marketplace order to the purchase platform without WhatsApp handoff', async () => {
   for (const [choice, platform] of [
     ['vivi_order_shopee', 'Shopee'],
     ['vivi_order_mercadolivre', 'Mercado Livre'],
     ['vivi_order_tiktok', 'TikTok Shop'],
+    ['vivi_order_amazon', 'Amazon'],
   ]) {
     const { db, sent, error } = await simulateChoice(choice);
     assert.equal(error, null);
@@ -94,30 +95,35 @@ test('Vivi directs the three marketplace order options to the corresponding plat
     assert.match(message.text.body, /chat/);
     assert.match(message.text.body, /chamado/);
     assert.match(message.text.body, /pós-venda.*exclusivamente/s);
+    assert.match(message.text.body, /Não realizamos atendimento desses pedidos por este WhatsApp/);
     assert.match(message.text.body, /MENU/);
     assert.doesNotMatch(message.text.body, /número do pedido/);
     assert.doesNotMatch(message.text.body, /continuar o atendimento por aqui/);
 
     const session = db.writes.find(write => write.table === 'vital_whatsapp_flow_sessions' && write.action === 'upsert');
-    assert.equal(session.data.human_handoff, true);
-    assert.equal(session.data.selection, 'Pós-venda · ' + platform);
-    const assignment = db.writes.find(write => write.table === 'vital_whatsapp_assignments' && write.action === 'upsert');
-    assert.equal(assignment.data.sector, 'pos_venda');
+    assert.equal(session.data.stage, 'marketplace_redirect');
+    assert.equal(session.data.human_handoff, false);
+    assert.equal(session.data.selection, 'Marketplace · ' + platform);
+    assert.equal(db.writes.some(write => write.table === 'vital_whatsapp_assignments' && write.action === 'upsert'), false);
+    assert.ok(db.writes.some(write => write.table === 'vital_whatsapp_assignments' && write.action === 'update' && write.data.status === 'closed'));
     assert.ok(db.writes.some(write => write.table === 'vital_whatsapp_flow_events' && write.data.status === 'completed'));
   }
 });
 
-test('site and Amazon orders retain their existing WhatsApp support flow', async () => {
-  for (const choice of ['vivi_order_site', 'vivi_order_amazon']) {
-    const { db, sent, error } = await simulateChoice(choice);
-    assert.equal(error, null);
-    assert.equal(sent.length, 1);
-    assert.match(sent[0].payload.text.body, /nome completo/);
-    assert.match(sent[0].payload.text.body, /número do pedido/);
-    assert.match(sent[0].payload.text.body, /continuar o atendimento por aqui/);
-    assert.doesNotMatch(sent[0].payload.text.body, /exclusivamente dentro da plataforma/);
-    assert.ok(db.writes.some(write => write.table === 'vital_whatsapp_assignments' && write.action === 'upsert'));
-  }
+test('site orders request name and phone and stay with the Tide Vital support team', async () => {
+  const { db, sent, error } = await simulateChoice('vivi_order_site');
+  assert.equal(error, null);
+  assert.equal(sent.length, 1);
+  assert.match(sent[0].payload.text.body, /nome completo/);
+  assert.match(sent[0].payload.text.body, /telefone para contato/);
+  assert.match(sent[0].payload.text.body, /Logo alguém da nossa equipe/);
+  assert.doesNotMatch(sent[0].payload.text.body, /exclusivamente pela plataforma/);
+  const session = db.writes.find(write => write.table === 'vital_whatsapp_flow_sessions' && write.action === 'upsert');
+  assert.equal(session.data.stage, 'await_human');
+  assert.equal(session.data.human_handoff, true);
+  assert.equal(session.data.selection, 'Pós-venda · Site Vital Decor');
+  const assignment = db.writes.find(write => write.table === 'vital_whatsapp_assignments' && write.action === 'upsert');
+  assert.equal(assignment.data.sector, 'comercial_vital');
 });
 
 test('when Meta refuses a marketplace message, Vivi records failure without changing its session', async () => {

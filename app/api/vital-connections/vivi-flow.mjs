@@ -23,6 +23,7 @@ const VIVI_MARKETPLACE_SUPPORT = {
   vivi_order_shopee: 'na *Shopee*',
   vivi_order_mercadolivre: 'no *Mercado Livre*',
   vivi_order_tiktok: 'no *TikTok Shop*',
+  vivi_order_amazon: 'na *Amazon*',
 };
 
 export const VIVI_IDLE_MS = 24 * 60 * 60 * 1000;
@@ -31,13 +32,13 @@ export function isWelcomeDue(lastInteractionAt, now = Date.now()) {
   return !Number.isFinite(last) || now - last >= VIVI_IDLE_MS;
 }
 
-export const VIVI_WELCOME = 'Oi! 👋 Sou a Vivi, assistente virtual da Vital Decor.\n\nEstou aqui para te ajudar. Selecione abaixo sobre o que você gostaria de falar.\n\nVocê pode escrever MENU a qualquer momento para voltar ao início.';
+export const VIVI_WELCOME = 'Oi! 👋 Sou a Vivi, assistente virtual da Vital Decor.\n\nEstou aqui para te ajudar. Selecione abaixo sobre o que você gostaria de falar.\n\n📵 Este número não realiza chamadas. Nosso atendimento é feito por mensagens.\n\nVocê pode escrever MENU a qualquer momento para voltar ao início.';
 export const VIVI_WHOLESALE = "Que bom ter você por aqui! 🤝\n\n🛒 No nosso catálogo você escolhe os produtos, monta o carrinho e preenche seus dados.\n\nAo finalizar, o WhatsApp abre com seu pedido pronto. É só enviar!\n\n✅ Depois disso, um representante comercial dará continuidade ao atendimento.\n\n👇 *Acesse o catálogo:*";
 export const VIVI_BLUETTI = 'Ótima escolha! 🔋 Um especialista da nossa equipe vai continuar seu atendimento por aqui.\n\nEnquanto isso, você pode conhecer os modelos em nosso catálogo BLUETTI. Para agilizar, me diga seu nome e qual modelo deseja conhecer ou qual é sua dúvida sobre o produto.';
 export const VIVI_BLUETTI_NO_CATALOG = 'Ótima escolha! 🔋 Um especialista da nossa equipe vai continuar seu atendimento por aqui.\n\nPara agilizar, me diga seu nome e qual modelo BLUETTI deseja conhecer ou qual é sua dúvida. Nossa equipe também poderá compartilhar o catálogo.';
 export const VIVI_VITAL_RETAIL = 'Que bom ter você por aqui! 💜\n\nVocê pode conhecer nossos produtos e fazer sua compra diretamente pelo site oficial da Vital Decor:\n\n🛍️ https://vitaldecor.com.br\n\nPrecisa de ajuda para escolher um produto ou tem alguma dúvida sobre sua compra?\n\nEnvie seu *nome* e sua *pergunta* aqui no WhatsApp. Nossa equipe dará continuidade ao seu atendimento assim que possível! 😊';
 
-export const VIVI_ORDER_QUESTION = 'Para localizar seu pedido, me informe: seu nome completo, o número do pedido e sua dúvida. Nossa equipe de pós-venda vai conferir e continuar o atendimento por aqui. 😊';
+export const VIVI_ORDER_QUESTION = 'Você comprou pelo site da Vital Decor? 💜\n\nPor favor, envie seu *nome completo* e seu *telefone para contato*.\n\nLogo alguém da nossa equipe dará continuidade ao seu atendimento por aqui. 😊';
 
 export function normalizeText(value) {
   return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
@@ -276,11 +277,21 @@ export async function handleViviMessage(db, connection, message, origin) {
     } else if (session?.stage === 'order_channel' && VIVI_MARKETPLACES.some(row => row.id === choice)) {
       const channel = VIVI_MARKETPLACES.find(row => row.id === choice)?.title;
       const marketplace = VIVI_MARKETPLACE_SUPPORT[choice];
-      const reply = marketplace
-        ? `Para receber ajuda com seu pedido feito ${marketplace}, abra o aplicativo ou site, acesse os detalhes da compra e chame nossa loja pelo chat ou abra um chamado por lá. 💬\n\nNossa equipe de pós-venda atende esses pedidos exclusivamente dentro da plataforma onde a compra foi feita. 😊\n\nPara outro assunto, digite *MENU*.`
-        : 'Compra pela ' + channel + '. ' + VIVI_ORDER_QUESTION;
-      await sendText(db, connection, to, reply);
-      await setSession(db, connection, to, { stage: 'await_human', selection: 'Pós-venda · ' + channel, human_handoff: true });
+      if (marketplace) {
+        await sendText(db, connection, to,
+          `Para receber ajuda com seu pedido feito ${marketplace}, acesse a compra pelo aplicativo ou site da plataforma e entre em contato com a loja pelo chat ou abra um chamado no suporte do próprio pedido. 💬\n\nNosso pós-venda atende *exclusivamente pela plataforma em que a compra foi realizada*. Não realizamos atendimento desses pedidos por este WhatsApp.\n\nPara outro assunto, digite *MENU*.`);
+        // Não abrir fila de pós-venda nem encaminhar ao Argo/WhatsApp.
+        await setSession(db, connection, to, {
+          stage: 'marketplace_redirect', selection: 'Marketplace · ' + channel,
+          human_handoff: false,
+        });
+      } else {
+        await sendText(db, connection, to, VIVI_ORDER_QUESTION);
+        await setSession(db, connection, to, {
+          stage: 'await_human', selection: 'Pós-venda · Site Vital Decor',
+          human_handoff: true,
+        });
+      }
     }
     await db.from('vital_whatsapp_flow_events').update({ status: 'completed' })
       .eq('connection_id', connection.id).eq('meta_message_id', message.id);

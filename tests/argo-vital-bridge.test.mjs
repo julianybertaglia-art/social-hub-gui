@@ -21,6 +21,7 @@ test('Vivi sectors stay deterministic, default belongs to Tide',()=>{
  assert.equal(sectorFromStage('await_human','Geradores BLUETTI'),'bluetti');
  assert.equal(sectorFromStage('await_human','Produtos VTX Fitness'),'vtx');
  assert.equal(sectorFromStage('await_human','Pós-venda · Mercado Livre'),'pos_venda');
+ assert.equal(sectorFromStage('await_human','Pós-venda · Site Vital Decor'),'comercial_vital');
  assert.equal(sectorFromStage('await_human','Revenda'),'atacado');
  assert.equal(sectorFromStage('affiliate_form','Afiliado TikTok'),'afiliados');
  assert.equal(SECTORS.length,6);

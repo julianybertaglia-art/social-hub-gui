@@ -12,6 +12,8 @@ export const HEADER_OPTIONS = { 'Cache-Control':'private, no-store', Vary:'Autho
 
 export function sectorFromStage(stage, selection) {
   if (stage === 'affiliate_form' || /Afiliado TikTok/i.test(selection || '')) return 'afiliados';
+  // Pedidos feitos no site pertencem ao atendimento da Vital no Tide, não ao Argo.
+  if (/Pós-venda\s*[·-]\s*(?:Site Vital Decor|Nuvemshop)/i.test(selection || '')) return 'comercial_vital';
   if (/Pós-venda/i.test(selection || '')) return 'pos_venda';
   if (/Revenda/i.test(selection || '')) return 'atacado';
   if (/BLUETTI/i.test(selection || '')) return 'bluetti';
@@ -84,8 +86,9 @@ export function requireSameOrigin(request) {
 }
 export async function routeViviConversation(db,connection,contact,stage,selection) {
   if(!/^\d{8,15}$/.test(String(contact||'')))return;
-  if(stage==='menu'){
-    // A new MENU request returns the conversation to Tide triage, not to an old Argo assignee.
+  if(stage==='menu'||stage==='marketplace_redirect'){
+    // MENU e redirecionamento ao marketplace encerram atribuições antigas no Argo,
+    // sem abrir um novo atendimento de pós-venda no WhatsApp.
     const {error}=await db.from('vital_whatsapp_assignments').update({
       assigned_to:'tide',status:'closed',updated_at:new Date().toISOString()
     }).eq('connection_id',connection.id).eq('contact_wa_id',contact);

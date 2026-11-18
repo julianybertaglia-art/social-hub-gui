@@ -31,6 +31,19 @@ export function summarizeGa4Sources(report){
     sessions:nonnegative(row.metricValues?.[sessions]?.value)
   }));
 }
+const SHOP_EVENTS=['view_item','add_to_cart','begin_checkout','purchase'];
+export function summarizeGa4Events(report){
+  if(!Array.isArray(report?.dimensionHeaders)||!Array.isArray(report?.metricHeaders))return null;
+  const name=report.dimensionHeaders.findIndex(x=>x.name==='eventName');
+  const count=report.metricHeaders.findIndex(x=>x.name==='eventCount');
+  if(name<0||count<0)return null;
+  const found=new Map();
+  for(const row of Array.isArray(report.rows)?report.rows:[]){
+    const key=row.dimensionValues?.[name]?.value;
+    if(SHOP_EVENTS.includes(key))found.set(key,nonnegative(row.metricValues?.[count]?.value));
+  }
+  return SHOP_EVENTS.map(event=>({event,count:found.get(event)??null}));
+}
 export function summarizeClarity(data) {
   const traffic=Array.isArray(data)?data.find(x=>x?.metricName==='Traffic'):null;
   const rows=Array.isArray(traffic?.information)?traffic.information:[];
@@ -82,7 +95,10 @@ export async function readGa4(env=process.env,fetcher=fetch){
       dimensions:[{name:'sessionSourceMedium'},{name:'sessionCampaignName'}],metrics:[{name:'sessions'}],
       orderBys:[{metric:{metricName:'sessions'},desc:true}],limit:'10'}})
       .then(summarizeGa4Sources).catch(()=>null);
-    return {status:'ready',data:{...summarizeGa4(await totals),sources:await sources}};
+    const events=gaReport({property,token,fetcher,body:{dateRanges,dimensions:[{name:'eventName'}],
+      metrics:[{name:'eventCount'}],dimensionFilter:{filter:{fieldName:'eventName',
+        inListFilter:{values:SHOP_EVENTS}}},limit:'4'}}).then(summarizeGa4Events).catch(()=>null);
+    return {status:'ready',data:{...summarizeGa4(await totals),sources:await sources,events:await events}};
   }catch{return {status:'unavailable'};}
 }
 

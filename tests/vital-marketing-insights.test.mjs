@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync} from 'node:crypto';
-import {readMeta,readGtm,readGa4,readVitalInsights,summarizeGa4Sources,summarizeMeta,summarizeClarity} from '../app/lib/server/vital-insights.mjs';
+import {readMeta,readGtm,readGa4,readVitalInsights,summarizeGa4Sources,summarizeGa4Events,summarizeMeta,summarizeClarity} from '../app/lib/server/vital-insights.mjs';
 
 const json=body=>new Response(JSON.stringify(body),{status:200,headers:{'Content-Type':'application/json'}});
 const {privateKey}=generateKeyPairSync('rsa',{modulusLength:2048,privateKeyEncoding:{type:'pkcs8',format:'pem'},publicKeyEncoding:{type:'spki',format:'pem'}});
@@ -48,6 +48,9 @@ test('GA4 reads sessions by source and campaign with readonly scope, and keeps t
   }
   assert.ok(url.startsWith('https://analyticsdata.googleapis.com/'));assert.equal(options.headers.Authorization,'Bearer fake-google-token');
   const body=JSON.parse(options.body);requests.push(body);
+  if(body.dimensions?.[0]?.name==='eventName')return json({dimensionHeaders:[{name:'eventName'}],metricHeaders:[{name:'eventCount'}],
+    rows:[{dimensionValues:[{value:'view_item'}],metricValues:[{value:'25'}]},
+      {dimensionValues:[{value:'add_to_cart'}],metricValues:[{value:'3'}]}]});
   if(body.dimensions)return json({dimensionHeaders:[{name:'sessionCampaignName'},{name:'sessionSourceMedium'}],metricHeaders:[{name:'sessions'}],
     rows:[{dimensionValues:[{value:'primavera'},{value:'facebook / paid'}],metricValues:[{value:'15'}]}]});
   return json({metricHeaders:[{name:'sessions'},{name:'purchaseRevenue'}],rows:[{metricValues:[{value:'20'},{value:'-5'}]}],metadata:{currencyCode:'BRL'}});
@@ -55,14 +58,17 @@ test('GA4 reads sessions by source and campaign with readonly scope, and keeps t
  const result=await readGa4({...googleEnv,VITAL_GA4_PROPERTY_ID:'123456'},fetcher);
  assert.equal(result.status,'ready');assert.equal(result.data.sessions,20);assert.equal(result.data.purchaseRevenue,-5);
  assert.equal(result.data.currency,'BRL');assert.deepEqual(result.data.sources,[{source:'facebook / paid',campaign:'primavera',sessions:15}]);
- assert.deepEqual(scopes,['https://www.googleapis.com/auth/analytics.readonly']);assert.equal(requests.length,2);
+ assert.deepEqual(result.data.events,[{event:'view_item',count:25},{event:'add_to_cart',count:3},
+   {event:'begin_checkout',count:null},{event:'purchase',count:null}]);
+ assert.deepEqual(scopes,['https://www.googleapis.com/auth/analytics.readonly']);assert.equal(requests.length,3);
  assert.equal(summarizeGa4Sources({rows:[]}),null);
  const partial=await readGa4({...googleEnv,VITAL_GA4_PROPERTY_ID:'123456'},async(url,options)=>{
   if(url.includes('oauth2.googleapis.com'))return json({access_token:'fake'});
   if(JSON.parse(options.body).dimensions)return new Response('',{status:403});
   return json({metricHeaders:[{name:'sessions'}],rows:[{metricValues:[{value:'2'}]}]});
  });
- assert.equal(partial.status,'ready');assert.equal(partial.data.sessions,2);assert.equal(partial.data.sources,null);
+ assert.equal(partial.status,'ready');assert.equal(partial.data.sessions,2);assert.equal(partial.data.sources,null);assert.equal(partial.data.events,null);
+ assert.equal(summarizeGa4Events({rows:[]}),null);
 });
 test('GTM requests only published-version metadata and does not return tag contents',async()=>{
  const scope=[];let target='';

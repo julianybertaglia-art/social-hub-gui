@@ -4,6 +4,8 @@ import {api} from './operations/useOperations';
 import css from './vital-insights-crm.module.css';
 
 const n=v=>typeof v==='number'&&Number.isFinite(v)?new Intl.NumberFormat('pt-BR').format(v):'—';
+const eventLabels={view_item:'Visualizações de produto',add_to_cart:'Adições ao carrinho',
+ begin_checkout:'Inícios de checkout',purchase:'Eventos de compra'};
 function money(v,currency){
  if(typeof v!=='number'||!Number.isFinite(v)||!currency)return '—';
  try{return new Intl.NumberFormat('pt-BR',{style:'currency',currency}).format(v);}catch{return '—';}
@@ -65,6 +67,14 @@ export default function VitalInsightsCRM({revision=0}){
      <Tile label="Compras registradas" value={n(ga.data.purchases)} help="Eventos de compra captados pelo GA4"/>
      <Tile label="Receita de compras" value={money(ga.data.purchaseRevenue,ga.data.currency)} help="GA4 · não substitui os pedidos da loja"/>
     </div>
+    <h4 className={css.subhead}>Etapas registradas no site</h4>
+    {ga.data.events===null?<p className={css.message}>Não foi possível consultar os eventos de compra agora.</p>:
+     <>
+      <div className={css.tiles}>{ga.data.events?.map(item=><Tile key={item.event}
+       label={eventLabels[item.event]||item.event} value={n(item.count)}
+       help={item.count===null?'Evento não retornado pelo GA4':'Número de registros do evento'}/>)}</div>
+      <p className={css.foot}>São quantidades de eventos, que podem se repetir para uma pessoa. Um traço indica que o evento não foi retornado; verifique a configuração antes de concluir que não ocorreu.</p>
+     </>}
     {ga.data.sources===null?<p className={css.message}>O detalhamento de origem está indisponível no momento.</p>:
      ga.data.sources?.length?<div className={css.tableWrap}><table className={css.table}>
       <caption>Origens e campanhas das visitas · até 10 resultados</caption>

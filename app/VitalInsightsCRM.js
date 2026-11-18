@@ -160,7 +160,7 @@ export default function VitalInsightsCRM({revision=0}){
     <div className={css.aiTitle}><span className={css.aiIcon} aria-hidden="true">✦</span><div><span className={css.sectionEyebrow}>UMA LEITURA A MAIS</span><h4>Quer uma análise com IA?</h4></div></div>
     <p>Peça um diagnóstico em linguagem simples e sugestões para investigar seus resultados.</p>
     <button type="button" className={css.primaryButton} disabled={aiBusy} onClick={askAi}>{aiBusy?'Analisando…':report.example?'Analisar exemplo com IA':'Gerar análise com IA'}</button>
-    <small>Ao pedir a análise, os números acima e o período, incluindo gastos e faturamento, são enviados ao Google Gemini e, se necessário, à OpenAI pela Vercel. Não enviamos dados de clientes.</small>
+    <small>Ao pedir a análise, os números acima e o período, incluindo gastos e faturamento, são enviados ao Google Gemini. Não enviamos dados de clientes.</small>
     {aiError&&<p className={css.formError} role="alert">{aiError}</p>}
     {ai&&<div className={css.aiResult}><span className={css.sectionEyebrow}>ANÁLISE DA IA</span>
      <h5>O que os dados mostram</h5><p>{ai.summary}</p>

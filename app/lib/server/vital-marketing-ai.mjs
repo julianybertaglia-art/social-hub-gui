@@ -38,9 +38,9 @@ export function sanitizeAiReport(input){
  throw Error('invalid_report');
 }
 
-export async function createAiMarketingReport(input,{apiKey,gatewayKey,model='gemini-3.6-flash',fetcher=fetch}={}){
+export async function createAiMarketingReport(input,{apiKey,model='gemini-3.6-flash',fetcher=fetch}={}){
  const report=sanitizeAiReport(input);
- if(!apiKey&&!gatewayKey)throw Error('not_configured');
+ if(!apiKey)throw Error('not_configured');
  const system=`Você é uma analista de marketing de e-commerce ajudando uma pessoa iniciante. Responda em português do Brasil, com frases claras e curtas. Use somente o JSON fornecido. Diga o que é observado, o que é hipótese e quais dados faltam. Sugira até três ações específicas e verificáveis, sem prometer resultados. Nunca invente metas, valores anteriores, tendências, taxas, causas de vendas ou benchmarks. Um valor nulo significa dado não informado, não zero. Não atribua pedidos, receita ou faturamento aos anúncios, nem calcule ROAS, CAC ou lucro com totais gerais. Cliques não são visitas. Compras registradas no GA4 não comprovam pedidos pagos; períodos e atribuição das plataformas podem diferir. Não recomende alterar campanhas ou orçamento como decisão automática. Não execute ações. Se for exemplo, trate como fictício. Retorne apenas JSON com resumo (texto), atencao (texto), acoes (lista de textos) e limite (texto curto explicando a principal limitação).`;
  const parse=(text,provider)=>{
   let result;try{result=JSON.parse(text);}catch{throw Error('invalid_response');}
@@ -51,24 +51,13 @@ export async function createAiMarketingReport(input,{apiKey,gatewayKey,model='ge
   if(!output.summary||!output.actions.length)throw Error('invalid_response');
   return output;
  };
- if(apiKey){
-  try{
-   const response=await fetcher('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent',{
-    method:'POST',headers:{'x-goog-api-key':apiKey,'Content-Type':'application/json'},
-    body:JSON.stringify({system_instruction:{parts:[{text:system}]},contents:[{role:'user',parts:[{text:JSON.stringify(report)}]}],
-     generationConfig:{responseMimeType:'application/json',maxOutputTokens:1600,thinkingConfig:{thinkingLevel:'low'}}}),
-    cache:'no-store',signal:AbortSignal.timeout(20000)});
-   if(!response.ok)throw Error('provider_failure');
-   const payload=await response.json();
-   const text=(payload?.candidates?.[0]?.content?.parts||[]).filter(part=>!part.thought&&typeof part.text==='string').map(part=>part.text).join('');
-   return parse(text,'Google Gemini');
-  }catch(error){if(!gatewayKey)throw error;}
- }
- const response=await fetcher('https://ai-gateway.vercel.sh/v1/chat/completions',{
-  method:'POST',headers:{Authorization:'Bearer '+gatewayKey,'Content-Type':'application/json'},
-  body:JSON.stringify({model:'openai/gpt-5.5',messages:[{role:'system',content:system},{role:'user',content:JSON.stringify(report)}],
-   response_format:{type:'json_object'},max_completion_tokens:1600}),cache:'no-store',signal:AbortSignal.timeout(25000)});
+ const response=await fetcher('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent',{
+  method:'POST',headers:{'x-goog-api-key':apiKey,'Content-Type':'application/json'},
+  body:JSON.stringify({system_instruction:{parts:[{text:system}]},contents:[{role:'user',parts:[{text:JSON.stringify(report)}]}],
+   generationConfig:{responseMimeType:'application/json',maxOutputTokens:1600,thinkingConfig:{thinkingLevel:'low'}}}),
+  cache:'no-store',signal:AbortSignal.timeout(30000)});
  if(!response.ok)throw Error('provider_failure');
  const payload=await response.json();
- return parse(payload?.choices?.[0]?.message?.content||'','OpenAI via Vercel');
+ const text=(payload?.candidates?.[0]?.content?.parts||[]).filter(part=>!part.thought&&typeof part.text==='string').map(part=>part.text).join('');
+ return parse(text,'Google Gemini');
 }

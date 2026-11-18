@@ -51,16 +51,3 @@ test('AI request is opt-in, bounded, rejects bad output and omits unapproved fie
  await assert.rejects(createAiMarketingReport(input,{apiKey:'mock',fetcher:async()=>new Response('{}')}),/invalid_response/);
  await assert.rejects(createAiMarketingReport(input,{apiKey:'mock',fetcher:async()=>new Response('',{status:500})}),/provider_failure/);
 });
-test('AI uses the configured gateway only when the primary provider fails',async()=>{
- const calls=[];
- const result=await createAiMarketingReport({kind:'manual',period:'7',metrics:{visits:2,orders:0}},
-  {apiKey:'gemini-mock',gatewayKey:'gateway-mock',fetcher:async(url,options)=>{
-   calls.push({url,options});
-   if(url.includes('googleapis'))return new Response('',{status:503});
-   return new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({resumo:'Teste',acoes:['Verifique os dados.']})}}]}));
-  }});
- assert.equal(result.provider,'OpenAI via Vercel');assert.equal(calls.length,2);
- assert.match(calls[1].url,/^https:\/\/ai-gateway\.vercel\.sh\//);
- assert.equal(calls[1].options.headers.Authorization,'Bearer gateway-mock');
- assert.doesNotMatch(calls[1].options.body,/gemini-mock|gateway-mock/);
-});

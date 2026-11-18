@@ -19,7 +19,7 @@ export async function POST(request){
   const raw=await request.text();
   if(raw.length>5000)return reply({error:'Dados do relatório muito extensos.'},400);
   let input;try{input=JSON.parse(raw);}catch{return reply({error:'Dados do relatório inválidos.'},400);}
-  const report=await createAiMarketingReport(input,{apiKey:process.env.GEMINI_API_KEY,gatewayKey:process.env.AI_GATEWAY_API_KEY||process.env.VERCEL_OIDC_TOKEN,
+  const report=await createAiMarketingReport(input,{apiKey:process.env.GEMINI_API_KEY,
    model:process.env.CONTENT_AI_MODEL||'gemini-3.6-flash'});
   return reply({report});
  }catch(error){

@@ -101,6 +101,6 @@
  .dashboard{padding:14px}.hero{min-height:171px;padding:22px 20px;border-radius:15px}.hero h3{max-width:260px;font-size:25px}.hero p{max-width:230px;font-size:13px}
  .heroArt{right:-112px;top:-32px;opacity:.7}.toolbar{gap:8px}.toolbar .primaryButton,.toolbar .secondaryButton{flex:1}.toolbar .textButton{flex-basis:100%;text-align:left;padding-left:2px}
  .emptyCard,.formCard,.actionsCard,.aiCard{padding:17px}.emptyCard{gap:12px}.emptyIcon{width:37px;height:37px}.formGrid{grid-template-columns:1fr;gap:14px}
- .reportHeading{align-items:flex-start;flex-direction:column}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{min-height:112px;padding:12px}.metric strong{font-size:19px}
+ .reportHeading{align-items:flex-start;flex-direction:column}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{min-height:112px;padding:12px}.metricTop{font-size:12px}.metric strong{font-size:20px}.metric small{font-size:11px}
  .diagnosis{padding:15px;gap:11px}.diagnosisIcon{width:37px;height:37px}.periodBadge{font-size:10.5px}
 }

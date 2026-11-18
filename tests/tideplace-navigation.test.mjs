@@ -30,6 +30,8 @@ test('workspace permissions remain isolated and sensitive routes remain unchange
  assert.ok(!vital.includes('/whatsapp'));
  assert.ok(vital.includes('/crm/vital'));
  assert.ok(vital.includes('/crm/vital/equipe'));
+ assert.ok(vital.includes('/crm/vital/marketing'));
+ assert.ok(!gui.includes('/crm/vital/marketing'));
  assert.ok(!gui.includes('/whatsapp/setores'));
  assert.ok(vital.includes('/whatsapp/integracao-argo'));
  assert.ok(!gui.includes('/whatsapp/integracao-argo'));
@@ -60,4 +62,7 @@ test('active navigation only matches the intended section or route',()=>{
  const central=vital.find(i=>i.href==='/crm/vital');
  assert.equal(matchesNavigation(central,'/crm/vital'),true);
  assert.equal(matchesNavigation(central,'/crm/vital/equipe'),false);
+ const marketing=vital.find(i=>i.href==='/crm/vital/marketing');
+ assert.equal(matchesNavigation(marketing,'/crm/vital/marketing'),true);
+ assert.equal(matchesNavigation(central,'/crm/vital/marketing'),false);
 });

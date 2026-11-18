@@ -19,6 +19,7 @@ import { visibleNavGroups, matchesNavigation } from './ui/navigation';
 function pageLabel(pathname) {
   if (pathname.startsWith('/crm/consultorias')) return 'CRM · Consultorias';
   if (pathname.startsWith('/radar')) return 'Criação · Radar de conteúdo';
+  if (pathname.startsWith('/crm/vital/marketing')) return 'CRM · Marketing Vital';
   if (pathname.startsWith('/crm/vital')) return 'CRM · Vital Decor';
   if (pathname.startsWith('/crm')) return 'CRM · Funil';
   if (pathname.startsWith('/conteudo')) return 'Conteúdo · IA';

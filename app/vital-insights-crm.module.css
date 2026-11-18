@@ -17,3 +17,13 @@
 .links a:hover{text-decoration:underline}
 .foot{font-size:11px;color:var(--muted,#756b74);line-height:1.5;margin:3px 0 0}
 @media(max-width:600px){.source{flex-direction:column;align-items:flex-start}.source span{text-align:left}.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tableWrap{overflow-x:auto;border:1px solid var(--line,#ebe2e9);border-radius:9px;background:white}
+.subhead{margin:4px 0 0;color:#6e2849;font-size:13px}
+.table{width:100%;border-collapse:collapse;font-size:12px;text-align:left;min-width:430px}
+.table caption{padding:13px;text-align:left;font-size:12px;font-weight:800;color:#6e2849}
+.table th,.table td{padding:10px 13px;border-top:1px solid var(--line,#ebe2e9);vertical-align:top}
+.table th{color:#665865;font-size:11px}
+.table td:not(:first-child){font-variant-numeric:tabular-nums}
+.guide{border:1px solid #eadbe3;border-radius:10px;background:#fbf6f9;padding:15px;color:#51404c;font-size:12px;line-height:1.6}
+.guide strong{font-size:13px;color:#6e2849}
+.guide p{margin:6px 0 0}

@@ -14,6 +14,7 @@ export const NAV_GROUPS = [
   {href:'/crm',label:'Contatos e pipeline',icon:'users',only:['gui-nonato'],description:'Contatos e etapas comerciais do Gui'},
   {href:'/crm/consultorias',label:'Consultorias',icon:'users',only:['gui-nonato'],description:'Leads da consultoria do Gui'},
   {href:'/crm/vital',label:'CRM Vital Decor',icon:'inbox',only:['vital-decor'],description:'Dashboard real e histórico protegido de conversas da Vital'},
+  {href:'/crm/vital/marketing',label:'Marketing e anúncios',icon:'chart',only:['vital-decor'],description:'Campanhas, visitas e desempenho da loja'},
   {href:'/crm/vital/equipe',label:'Equipe planejada',icon:'users',only:['vital-decor'],description:'Rascunhos de equipe; nenhum acesso liberado'},
   {href:'/whatsapp',label:'Atendimentos WhatsApp',icon:'chat',only:['gui-nonato'],description:'Caixa de entrada atual do Gui'},
   // Vital sector filters remain in the CRM; preserve the legacy /whatsapp/setores URL.

@@ -9,7 +9,7 @@ const TABS=[
  {id:'orders',label:'Pedidos'},
  {id:'checkouts',label:'Checkouts não concluídos'},
  {id:'products',label:'Produtos'},
- {id:'insights',label:'Tráfego e comportamento'},
+ {id:'insights',label:'Marketing e anúncios'},
 ];
 function date(value){
  const stamp=Date.parse(value||'');
@@ -68,7 +68,7 @@ export default function VitalStoreCRM(){
     {TABS.map(tab=><button key={tab.id} type="button" disabled={loading} aria-pressed={resource===tab.id}
       className={resource===tab.id?css.active:''} onClick={()=>select(tab.id)}>{tab.label}</button>)}
    </nav>
-   {resource==='insights'?<VitalInsightsCRM/>:<>
+   {resource==='insights'?<VitalInsightsCRM revision={revision}/>:<>
    {resource==='checkouts'&&<p className={css.hint}>A Nuvemshop disponibiliza checkouts abandonados dos últimos 30 dias, que podem levar até 6 horas para aparecer. Eles não incluem todas as visitas ou todos os carrinhos.</p>}
    {loading&&<p role="status" className={css.state}>Consultando a loja…</p>}
    {!loading&&error&&<p role="alert" className={css.error}>{error}</p>}

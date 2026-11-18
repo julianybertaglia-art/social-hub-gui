@@ -1,116 +1,180 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {api} from './operations/useOperations';
+import {parseManualReport,manualDiagnosis,EXAMPLE_REPORT} from './lib/vital-marketing-report.mjs';
+import VitalInsightsSourceDetails from './VitalInsightsSourceDetails';
 import css from './vital-insights-crm.module.css';
 
-const n=v=>typeof v==='number'&&Number.isFinite(v)?new Intl.NumberFormat('pt-BR').format(v):'—';
-const eventLabels={view_item:'Visualizações de produto',add_to_cart:'Adições ao carrinho',
- begin_checkout:'Inícios de checkout',purchase:'Eventos de compra'};
-function money(v,currency){
- if(typeof v!=='number'||!Number.isFinite(v)||!currency)return '—';
- try{return new Intl.NumberFormat('pt-BR',{style:'currency',currency}).format(v);}catch{return '—';}
+const number=value=>typeof value==='number'&&Number.isFinite(value)?new Intl.NumberFormat('pt-BR').format(value):'—';
+const money=(value,currency='BRL')=>{
+ if(typeof value!=='number'||!Number.isFinite(value))return '—';
+ if(!currency)return `${number(value)} (moeda não informada)`;
+ try{return new Intl.NumberFormat('pt-BR',{style:'currency',currency}).format(value);}catch{return `${number(value)} (moeda não informada)`;}
+};
+const isNumber=value=>typeof value==='number'&&Number.isFinite(value);
+const blank={visits:'',orders:'',spend:'',revenue:''};
+
+function Metric({icon,label,value,source}){
+ return <article className={css.metric}>
+  <div className={css.metricTop}><span className={css.metricIcon} aria-hidden="true">{icon}</span><span>{label}</span></div>
+  <strong>{value}</strong><small>{source}</small>
+ </article>;
 }
-function day(value){if(!value)return null;const parts=value.split('-');return parts.length===3?parts.reverse().join('/'):null;}
-function Tile({label,value,help}){return <article className={css.tile}><span>{label}</span><strong>{value}</strong><small>{help}</small></article>;}
-function State({source,name,period}){
- const status=source?.status;
- return <div className={css.source}><strong>{name}</strong>
-  <span>{status==='ready'?(period||'Conectado para leitura'):
-     status==='not_configured'?'Aguardando conexão de leitura':'Não foi possível consultar agora'}</span></div>;
+
+function connectedReport(insights){
+ const ga=insights?.ga4?.status==='ready'?insights.ga4.data:null;
+ const meta=insights?.meta?.status==='ready'?insights.meta.data:null;
+ if(!ga&&!meta)return null;
+ if(![ga?.sessions,ga?.purchases,ga?.purchaseRevenue,meta?.spend,meta?.linkClicks,meta?.impressions].some(isNumber))return null;
+ const actions=[];
+ let headline='Seus números já estão chegando';
+ let summary='Veja os dados de cada fonte e confira os períodos antes de compará-los.';
+ if(isNumber(ga?.sessions)&&isNumber(ga?.purchases)){
+  summary=`O Analytics registrou ${number(ga.sessions)} visitas e ${number(ga.purchases)} compras no período dele. As compras do Analytics devem ser conferidas na loja.`;
+  if(ga.sessions>0&&ga.purchases===0){
+   headline='Confira a jornada de compra';
+   summary+=' Confira a medição antes de concluir o que causou esse resultado.';
+   actions.push('Simule uma compra até a etapa do frete e verifique se preço, prazo e pagamento aparecem corretamente.');
+  }
+ }
+ if(meta&&isNumber(meta.spend)&&meta.spend>0)actions.push('Antes de mudar o orçamento, confirme quais pedidos vieram dos anúncios.');
+ if(ga)actions.push('Compare as compras registradas no Analytics com os pedidos pagos da Nuvemshop.');
+ if(!actions.length)actions.push('Conecte as outras fontes para complementar o diagnóstico.');
+ return {kind:'connected',ga4:ga,meta,headline,summary,actions:actions.slice(0,3)};
 }
-function NoConnection({source,children}){
- if(source?.status==='ready')return null;
- return <p className={css.message}>{source?.status==='not_configured'?children:'Não foi possível consultar essa fonte. Verifique o acesso e tente novamente.'}</p>;
+
+function ConnectionPill({insights,loading,error}){
+ const sources=[insights?.meta,insights?.ga4,insights?.clarity,insights?.gtm];
+ const ready=sources.filter(source=>source?.status==='ready').length;
+ return <span className={css.connectionPill}><span aria-hidden="true" className={ready?css.dotReady:css.dotPending}/>
+  {loading?'Verificando conexões':error?'Conexões indisponíveis':ready?`${ready} ${ready===1?'fonte conectada':'fontes conectadas'}`:'Sem conexões ativas'}
+ </span>;
 }
+
 export default function VitalInsightsCRM({revision=0}){
  const [insights,setInsights]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
- const [reload,setReload]=useState(0);
+ const [reload,setReload]=useState(0),[formVisible,setFormVisible]=useState(false);
+ const [fields,setFields]=useState(blank),[period,setPeriod]=useState('7'),[manual,setManual]=useState(null),[formError,setFormError]=useState('');
+ const [ai,setAi]=useState(null),[aiError,setAiError]=useState(''),[aiBusy,setAiBusy]=useState(false);
+ const aiRequest=useRef(0);
  useEffect(()=>{
   let active=true;const controller=new AbortController();setLoading(true);setError('');
   api('/api/crm/vital/insights',{signal:controller.signal})
-   .then(data=>{if(active)setInsights(data);})
+   .then(data=>{if(active){aiRequest.current+=1;setAi(null);setAiError('');setAiBusy(false);setInsights(data);}})
    .catch(e=>{if(active)setError(e.message||'Métricas indisponíveis.');})
    .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;controller.abort();};
  },[revision,reload]);
- const ga=insights?.ga4,cl=insights?.clarity,meta=insights?.meta,gtm=insights?.gtm;
- return <section className={css.insights} aria-label="Marketing e anúncios da Vital Decor">
-  <div className={css.head}>
-   <div><span className={css.eyebrow}>VISÃO DE MARKETING</span>
-    <h3>Campanhas e resultados da loja</h3>
-    <p>Acompanhe anúncios, visitas e experiência em um só lugar.</p></div>
-   <button type="button" className={css.refresh} disabled={loading} onClick={()=>setReload(v=>v+1)}>Atualizar</button>
+ const report=manual||connectedReport(insights);
+ const resetAi=()=>{aiRequest.current+=1;setAiBusy(false);setAi(null);setAiError('');};
+ function showForm(){setFormVisible(true);setFormError('');resetAi();}
+ function showExample(){setManual({kind:'manual',period:'7',values:{...EXAMPLE_REPORT},example:true});setFormVisible(false);resetAi();}
+ function showConnections(){setManual(null);setFormVisible(false);resetAi();}
+ function submit(event){
+  event.preventDefault();const parsed=parseManualReport(fields);
+  if(parsed.error){setFormError(parsed.error);return;}
+  setManual({kind:'manual',period,values:parsed.values,example:false});setFormVisible(false);setFormError('');resetAi();
+ }
+ async function askAi(){
+  if(!report||aiBusy)return;
+  const requestId=++aiRequest.current;
+  setAiBusy(true);setAiError('');setAi(null);
+  const input=report.kind==='manual'?{kind:'manual',period:report.period,metrics:report.values,example:report.example}:
+   {kind:'connected',ga4:report.ga4?{sessions:report.ga4.sessions,purchases:report.ga4.purchases,
+    purchaseRevenue:report.ga4.purchaseRevenue,currency:report.ga4.currency}:null,
+    meta:report.meta?{spend:report.meta.spend,linkClicks:report.meta.linkClicks,impressions:report.meta.impressions,
+     currency:report.meta.currency,range:report.meta.start&&report.meta.end?`${report.meta.start}/${report.meta.end}`:null}:null};
+  try{const response=await api('/api/crm/vital/marketing-report',{method:'POST',body:JSON.stringify(input)});if(requestId===aiRequest.current)setAi(response.report);}
+  catch(e){if(requestId===aiRequest.current)setAiError(e.message||'Não foi possível gerar a análise agora.');}
+  finally{if(requestId===aiRequest.current)setAiBusy(false);}
+ }
+ const diagnosis=report?.kind==='manual'?manualDiagnosis(report.values):report;
+ return <section className={css.dashboard} aria-label="Resultados de marketing da Vital Decor">
+  <header className={css.hero}>
+   <div className={css.heroCopy}><span className={css.kicker}>MARKETING SEM COMPLICAÇÃO</span>
+    <h3>Entenda seus resultados</h3><p>Veja o que aconteceu e descubra por onde começar.</p>
+    <ConnectionPill insights={insights} loading={loading} error={error}/>
+   </div><div className={css.heroArt} aria-hidden="true"><svg viewBox="0 0 90 65" fill="none"><path d="M12 50L35 32L49 41L76 14"/><path d="M61 14H76V29"/></svg></div>
+  </header>
+
+  <div className={css.toolbar}>
+   <button type="button" className={css.primaryButton} onClick={showForm}>＋ &nbsp; Criar meu resumo</button>
+   <button type="button" className={css.secondaryButton} onClick={showExample}>Ver exemplo</button>
+   {manual&&<button type="button" className={css.textButton} onClick={showConnections}>Voltar para dados conectados</button>}
   </div>
-  {loading&&<p role="status" className={css.message}>Carregando indicadores…</p>}
-  {!loading&&error&&<p role="alert" className={css.message}>{error}</p>}
-  {!loading&&!error&&<>
-   {insights?.enabled===false&&<p className={css.message}>O painel está preparado. As conexões ainda precisam ser configuradas e ativadas para mostrar dados reais.</p>}
-   <State name="Meta Ads · Campanhas" source={meta} period={meta?.data?.start&&meta?.data?.end?`${day(meta.data.start)} a ${day(meta.data.end)}`:meta?.data?.period}/>
-   {meta?.status==='ready'&&<>
-    <div className={css.tiles}>
-     <Tile label="Investimento" value={money(meta.data.spend,meta.data.currency)} help="Total da conta de anúncios no período"/>
-     <Tile label="Impressões" value={n(meta.data.impressions)} help="Vezes que os anúncios apareceram"/>
-     <Tile label="Cliques no link" value={n(meta.data.linkClicks)} help="Conforme Meta Ads; não são visitas confirmadas"/>
-    </div>
-    {meta.data.campaigns===null?<p className={css.message}>O detalhamento por campanha está indisponível no momento.</p>:
-     meta.data.campaigns.length?<div className={css.tableWrap}><table className={css.table}>
-      <caption>Campanhas com atividade no período{meta.data.campaignsMore?' · primeiras 25':''}</caption>
-      <thead><tr><th>Campanha</th><th>Investimento</th><th>Cliques no link</th><th>Impressões</th></tr></thead>
-      <tbody>{meta.data.campaigns.map((c,i)=><tr key={`${c.id||'campaign'}-${i}`}><td>{c.name}</td><td>{money(c.spend,meta.data.currency)}</td><td>{n(c.linkClicks)}</td><td>{n(c.impressions)}</td></tr>)}</tbody>
-     </table></div>:<p className={css.message}>A Meta não retornou campanhas para este período.</p>}
-   </>}
-   <NoConnection source={meta}>A leitura da Meta mostrará investimento, impressões e cliques por campanha depois de autorizada.</NoConnection>
 
-   <State name="Google Analytics 4 · Loja" source={ga} period={ga?.data?.period}/>
-   {ga?.status==='ready'&&<>
-    <div className={css.tiles}>
-     <Tile label="Sessões" value={n(ga.data.sessions)} help="Visitas registradas no site"/>
-     <Tile label="Usuários" value={n(ga.data.users)} help="Usuários medidos pelo GA4"/>
-     <Tile label="Visualizações de páginas" value={n(ga.data.pageViews)} help="Navegação no site"/>
-     <Tile label="Compras registradas" value={n(ga.data.purchases)} help="Eventos de compra captados pelo GA4"/>
-     <Tile label="Receita de compras" value={money(ga.data.purchaseRevenue,ga.data.currency)} help="GA4 · não substitui os pedidos da loja"/>
-    </div>
-    <h4 className={css.subhead}>Etapas registradas no site</h4>
-    {ga.data.events===null?<p className={css.message}>Não foi possível consultar os eventos de compra agora.</p>:
-     <>
-      <div className={css.tiles}>{ga.data.events?.map(item=><Tile key={item.event}
-       label={eventLabels[item.event]||item.event} value={n(item.count)}
-       help={item.count===null?'Evento não retornado pelo GA4':'Número de registros do evento'}/>)}</div>
-      <p className={css.foot}>São quantidades de eventos, que podem se repetir para uma pessoa. Um traço indica que o evento não foi retornado; verifique a configuração antes de concluir que não ocorreu.</p>
-     </>}
-    {ga.data.sources===null?<p className={css.message}>O detalhamento de origem está indisponível no momento.</p>:
-     ga.data.sources?.length?<div className={css.tableWrap}><table className={css.table}>
-      <caption>Origens e campanhas das visitas · até 10 resultados</caption>
-      <thead><tr><th>Origem / mídia</th><th>Campanha informada</th><th>Sessões</th></tr></thead>
-      <tbody>{ga.data.sources.map((s,i)=><tr key={`${s.source}-${s.campaign}-${i}`}><td>{s.source}</td><td>{s.campaign}</td><td>{n(s.sessions)}</td></tr>)}</tbody>
-     </table></div>:<p className={css.message}>O GA4 não retornou origens para este período.</p>}
-   </>}
-   <NoConnection source={ga}>O GA4 mostrará visitas, origens e compras registradas após a conta de leitura receber acesso à propriedade.</NoConnection>
-
-   <State name="Microsoft Clarity · Experiência" source={cl} period={cl?.data?.period}/>
-   {cl?.status==='ready'&&<div className={css.tiles}>
-    <Tile label="Sessões registradas" value={n(cl.data.sessions)} help="Clarity · últimas 72 horas"/>
-    <Tile label="Sessões identificadas como bots" value={n(cl.data.botSessions)} help="Não confundir com compradores"/>
-    {cl.data.devices?.slice(0,3).map(x=><Tile key={x.device} label={'Dispositivo: '+x.device} value={n(x.sessions)} help="Sessões por dispositivo"/>)}
-   </div>}
-   <NoConnection source={cl}>O Clarity mostrará dados de sessões e dispositivos após a exportação ser ativada. Os mapas de calor e gravações permanecem no Clarity.</NoConnection>
-
-   <State name="Google Tag Manager · Configuração" source={gtm}/>
-   {gtm?.status==='ready'?<p className={css.message}>Contêiner {gtm.data.publicId||'identificado no GTM'} · versão publicada {gtm.data.version}. Uma versão publicada não confirma se uma tag disparou corretamente no site.</p>:
-    <NoConnection source={gtm}>A conexão poderá consultar qual versão do contêiner está publicada. A criação, alteração e publicação de tags continuam no GTM.</NoConnection>}
-
-   <div className={css.guide}>
-    <strong>Como usar esses dados</strong>
-    <p>Compare o investimento e os cliques da Meta com as sessões por origem do GA4. Se houver interesse e poucas compras, examine as páginas e o checkout no Clarity e confira os pedidos da Nuvemshop.</p>
-    <p>Os períodos e modelos de atribuição podem ser diferentes. Para calcular CAC ou ROAS por campanha, primeiro é preciso validar os eventos e como cada venda foi atribuída; o painel não faz essa associação automaticamente.</p>
+  {formVisible&&<form onSubmit={submit} className={css.formCard}>
+   <div className={css.sectionHeading}><div><span className={css.sectionEyebrow}>SEUS NÚMEROS</span><h4>Vamos montar seu resumo</h4>
+    <p>Preencha o que souber. Use o mesmo período para todos os números.</p></div>
+    <button type="button" className={css.closeButton} aria-label="Fechar formulário" onClick={()=>setFormVisible(false)}>×</button></div>
+   <label className={css.field}><span>Período</span><select value={period} onChange={e=>setPeriod(e.target.value)}>
+    <option value="7">Últimos 7 dias</option><option value="30">Últimos 30 dias</option></select></label>
+   <div className={css.formGrid}>
+    <label className={css.field}><span>Visitas ao site</span><input inputMode="numeric" placeholder="Ex.: 1200" value={fields.visits} onChange={e=>setFields({...fields,visits:e.target.value})}/><small>No Google Analytics</small></label>
+    <label className={css.field}><span>Pedidos pagos</span><input inputMode="numeric" placeholder="Ex.: 5" value={fields.orders} onChange={e=>setFields({...fields,orders:e.target.value})}/><small>Na Nuvemshop</small></label>
+    <label className={css.field}><span>Gasto com anúncios (R$)</span><input inputMode="decimal" placeholder="Ex.: 400,00" value={fields.spend} onChange={e=>setFields({...fields,spend:e.target.value})}/><small>Na conta de anúncios</small></label>
+    <label className={css.field}><span>Faturamento dos pedidos pagos (R$)</span><input inputMode="decimal" placeholder="Ex.: 1200,00" value={fields.revenue} onChange={e=>setFields({...fields,revenue:e.target.value})}/><small>Receita, antes dos custos</small></label>
    </div>
-  </>}
-  <div className={css.links}>
-   <a href="https://business.facebook.com/adsmanager/manage/campaigns" target="_blank" rel="noopener noreferrer">Abrir Meta Ads</a>
-   <a href="https://analytics.google.com/" target="_blank" rel="noopener noreferrer">Abrir GA4</a>
-   <a href="https://clarity.microsoft.com/" target="_blank" rel="noopener noreferrer">Abrir Clarity</a>
-   <a href="https://tagmanager.google.com/" target="_blank" rel="noopener noreferrer">Abrir GTM</a>
-  </div>
-  <p className={css.foot}>Os relatórios agregados não identificam automaticamente os contatos do WhatsApp nem são associados a fichas de clientes.</p>
+   {formError&&<p role="alert" className={css.formError}>{formError}</p>}
+   <div className={css.formActions}><button className={css.primaryButton} type="submit">Gerar resumo</button><span>Os números ficam nesta tela até você sair.</span></div>
+  </form>}
+
+  {!report&&!formVisible&&<div className={css.emptyCard}>
+   <div className={css.emptyIcon} aria-hidden="true">✦</div>
+   <div><span className={css.sectionEyebrow}>COMECE POR AQUI</span><h4>Seu painel está esperando os primeiros números</h4>
+    <p>Você não precisa conectar nada agora. Crie um resumo com os dados que tiver ou explore um exemplo.</p></div>
+  </div>}
+
+  {report&&!formVisible&&<div className={css.report} aria-live="polite">
+   {report.example&&<div className={css.exampleBanner}><strong>Exemplo com dados fictícios.</strong> Estes números não são da Vital Decor.</div>}
+   <div className={css.reportHeading}><div><span className={css.sectionEyebrow}>O QUE ACONTECEU</span><h4>Seu resumo</h4></div>
+    <span className={css.periodBadge}>{report.kind==='manual'?`Últimos ${report.period} dias · ${report.example?'exemplo':'informado por você'}`:'Dados das fontes conectadas'}</span></div>
+   {report.kind==='manual'?<div className={css.metrics}>
+    <Metric icon="◉" label="Visitas ao site" value={number(report.values.visits)} source="Visitas informadas"/>
+    <Metric icon="✓" label="Pedidos pagos" value={number(report.values.orders)} source="Pedidos informados"/>
+    <Metric icon="$" label="Gasto com anúncios" value={money(report.values.spend)} source="Investimento informado"/>
+    <Metric icon="R$" label="Faturamento" value={money(report.values.revenue)} source="Pedidos pagos informados"/>
+   </div>:<>
+    {report.ga4&&<><p className={css.sourceLabel}>GOOGLE ANALYTICS · ÚLTIMOS 30 DIAS COMPLETOS</p><div className={css.metrics}>
+     <Metric icon="◉" label="Visitas ao site" value={number(report.ga4.sessions)} source="Sessões no GA4"/>
+     <Metric icon="✓" label="Compras registradas" value={number(report.ga4.purchases)} source="Eventos registrados no GA4"/>
+     <Metric icon="R$" label="Receita de compras" value={money(report.ga4.purchaseRevenue,report.ga4.currency)} source="GA4 · conferir na loja"/>
+    </div></>}
+    {report.meta&&<><p className={css.sourceLabel}>META ADS · {report.meta.start&&report.meta.end?`${report.meta.start.split('-').reverse().join('/')} A ${report.meta.end.split('-').reverse().join('/')}`:'ÚLTIMOS 30 DIAS CONFORME META'}</p><div className={css.metrics}>
+     <Metric icon="$" label="Gasto com anúncios" value={money(report.meta.spend,report.meta.currency)} source="Meta Ads"/>
+     <Metric icon="+" label="Cliques nos links" value={number(report.meta.linkClicks)} source="Não são visitas confirmadas"/>
+     <Metric icon="◉" label="Impressões" value={number(report.meta.impressions)} source="Vezes que anúncios apareceram"/>
+    </div></>}
+   </>}
+   <p className={css.metricNote}>O traço (—) significa que o número não foi informado ou não está disponível.</p>
+   <div className={css.diagnosis}>
+    <div className={css.diagnosisIcon} aria-hidden="true">✦</div><div>
+     <span className={css.sectionEyebrow}>O QUE MERECE ATENÇÃO</span><h4>{diagnosis.headline}</h4><p>{diagnosis.summary}</p>
+    </div>
+   </div>
+   <div className={css.actionsCard}><span className={css.sectionEyebrow}>O QUE FAZER AGORA</span><h4>Próximos passos</h4>
+    <ol>{diagnosis.actions.map((action,index)=><li key={action}><span>{String(index+1).padStart(2,'0')}</span><p>{action}</p></li>)}</ol>
+    <p className={css.metricNote}>Essas orientações são automáticas e não alteram suas campanhas.</p>
+   </div>
+   <div className={css.aiCard}>
+    <div className={css.aiTitle}><span className={css.aiIcon} aria-hidden="true">✦</span><div><span className={css.sectionEyebrow}>UMA LEITURA A MAIS</span><h4>Quer uma análise com IA?</h4></div></div>
+    <p>Peça um diagnóstico em linguagem simples e sugestões para investigar seus resultados.</p>
+    <button type="button" className={css.primaryButton} disabled={aiBusy} onClick={askAi}>{aiBusy?'Analisando…':report.example?'Analisar exemplo com IA':'Gerar análise com IA'}</button>
+    <small>Ao pedir a análise, os números acima e o período, incluindo gastos e faturamento, são enviados ao Google Gemini. Não enviamos dados de clientes.</small>
+    {aiError&&<p className={css.formError} role="alert">{aiError}</p>}
+    {ai&&<div className={css.aiResult}><span className={css.sectionEyebrow}>ANÁLISE DA IA</span>
+     <h5>O que os dados mostram</h5><p>{ai.summary}</p>
+     {ai.attention&&<><h5>Vale investigar</h5><p>{ai.attention}</p></>}
+     <h5>O que fazer</h5><ul>{ai.actions.map((action,index)=><li key={index}>{action}</li>)}</ul>
+     {ai.limit&&<p className={css.aiLimit}>{ai.limit}</p>}
+     {ai.provider&&<p className={css.aiLimit}>Análise gerada por {ai.provider}.</p>}
+     <p className={css.aiLimit}>Sugestões de IA podem conter erros. Confira os dados antes de tomar decisões.</p>
+    </div>}
+   </div>
+  </div>}
+
+  <details className={css.connections}><summary><span><strong>Conexões e detalhes</strong><small>Meta Ads, Analytics, Clarity e GTM</small></span><span aria-hidden="true">⌄</span></summary>
+   <VitalInsightsSourceDetails insights={insights} loading={loading} error={error} onReload={()=>setReload(v=>v+1)}/>
+  </details>
  </section>;
 }

@@ -57,7 +57,7 @@ export async function readVitalStoreSummary(env=process.env,fetcher=fetch,now=ne
     // totals as a complete dashboard.
     const limit=200,maxPages=5;
     for(let page=1;page<=maxPages;page++){
-      const url=new URL('https://api.nuvemshop.com/v1/'+storeId+'/orders');
+      const url=new URL('https://api.nuvemshop.com.br/2025-03/'+storeId+'/orders');
       url.searchParams.set('page',String(page));
       url.searchParams.set('per_page',String(limit));
       url.searchParams.set('created_at_min',start+'T00:00:00-03:00');
@@ -65,9 +65,18 @@ export async function readVitalStoreSummary(env=process.env,fetcher=fetch,now=ne
       const response=await fetcher(url.toString(),{method:'GET',
         headers:{Authorization:'Bearer '+token,'User-Agent':env.NUVEMSHOP_VITAL_USER_AGENT||'TidePlace Vital Decor (read-only)',
           Accept:'application/json'},signal:AbortSignal.timeout(15000),cache:'no-store'});
-      if(!response.ok)return {status:'unavailable'};
+      if(!response.ok){
+        // Only expose HTTP status classes; never log headers, tokens, body or customer data.
+        const issue=response.status===401?'auth_invalid':response.status===403?'orders_permission':
+          response.status===404?'store_not_found':response.status===429?'rate_limited':'api_error';
+        console.error('[vital-store-summary] Nuvemshop request failed',response.status,issue);
+        return {status:'unavailable',issue};
+      }
       const payload=await response.json();
-      if(!Array.isArray(payload))return {status:'unavailable'};
+      if(!Array.isArray(payload)){
+        console.error('[vital-store-summary] Unexpected Nuvemshop response shape');
+        return {status:'unavailable',issue:'response_format'};
+      }
       collected.push(...payload);
       if(payload.length<limit){
         return {status:'ready',data:{...summarizeStoreOrders(collected,{start,end}),
@@ -75,5 +84,8 @@ export async function readVitalStoreSummary(env=process.env,fetcher=fetch,now=ne
       }
     }
     return {status:'incomplete'};
-  }catch{return {status:'unavailable'};}
+  }catch(error){
+    console.error('[vital-store-summary] Request could not be completed',error?.name||'UnknownError');
+    return {status:'unavailable',issue:'network_error'};
+  }
 }

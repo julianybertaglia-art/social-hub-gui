@@ -64,12 +64,15 @@ async function googleAccessToken({email,privateKey,scope,fetcher=fetch,now=Date.
   const claims=encode({iss:email,scope,aud:'https://oauth2.googleapis.com/token',iat:timestamp,exp:timestamp+3000});
   const unsigned=header+'.'+claims;
   const signer=createSign('RSA-SHA256');signer.update(unsigned);signer.end();
-  const assertion=unsigned+'.'+signer.sign(privateKey.trim().replace(/\\n/g,'\n').replace(/\r\n/g,'\n')).toString('base64url');
+  let signature;
+  try{signature=signer.sign(privateKey.trim().replace(/\\n/g,'\n').replace(/\r\n/g,'\n')).toString('base64url');}
+  catch{console.error('[vital-insights] Google JWT signing failed');throw Error('google_sign');}
+  const assertion=unsigned+'.'+claims+'.'+signature;
   const response=await fetcher('https://oauth2.googleapis.com/token',{
     method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
     body:new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion}),
     signal:AbortSignal.timeout(10000),cache:'no-store'});
-  if(!response.ok)throw Error('google_token');
+  if(!response.ok){console.error('[vital-insights] Google token request failed',response.status);throw Error('google_token');}
   const payload=await response.json();
   if(typeof payload?.access_token!=='string')throw Error('google_token');
   return payload.access_token;
@@ -78,7 +81,7 @@ async function gaReport({property,token,fetcher,body}){
   const response=await fetcher('https://analyticsdata.googleapis.com/v1beta/properties/'+property+':runReport',{
     method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
     body:JSON.stringify(body),signal:AbortSignal.timeout(10000),cache:'no-store'});
-  if(!response.ok)throw Error('ga4_report');
+  if(!response.ok){console.error('[vital-insights] GA4 report request failed',response.status);throw Error('ga4_report');}
   return response.json();
 }
 export async function readGa4(env=process.env,fetcher=fetch){
@@ -99,7 +102,7 @@ export async function readGa4(env=process.env,fetcher=fetch){
       metrics:[{name:'eventCount'}],dimensionFilter:{filter:{fieldName:'eventName',
         inListFilter:{values:SHOP_EVENTS}}},limit:'4'}}).then(summarizeGa4Events).catch(()=>null);
     return {status:'ready',data:{...summarizeGa4(await totals),sources:await sources,events:await events}};
-  }catch{return {status:'unavailable'};}
+  }catch(error){console.error('[vital-insights] GA4 read failed',error?.name||'UnknownError');return {status:'unavailable'};}
 }
 
 const CLARITY_CACHE_MS=12*60*60*1000;
@@ -164,12 +167,12 @@ export async function readGtm(env=process.env,fetcher=fetch){
     const url='https://tagmanager.googleapis.com/tagmanager/v2/accounts/'+account+'/containers/'+container+'/versions:live';
     const response=await fetcher(url,{headers:{Authorization:'Bearer '+token,Accept:'application/json'},
       signal:AbortSignal.timeout(10000),cache:'no-store'});
-    if(!response.ok)throw Error('gtm_live');
+    if(!response.ok){console.error('[vital-insights] GTM live request failed',response.status);throw Error('gtm_live');}
     const body=await response.json();
     if(!body||typeof body!=='object'||!body.containerVersionId)throw Error('gtm_live');
     // Never return tags, triggers, tag source or other container configuration.
     return {status:'ready',data:{publicId:short(body.container?.publicId),version:short(body.containerVersionId)}};
-  }catch{return {status:'unavailable'};}
+  }catch(error){console.error('[vital-insights] GTM read failed',error?.name||'UnknownError');return {status:'unavailable'};}
 }
 export async function readVitalInsights(env=process.env,fetcher=fetch){
   const [ga4,clarity,meta,gtm]=await Promise.all([readGa4(env,fetcher),readClarity(env,fetcher),readMeta(env,fetcher),readGtm(env,fetcher)]);

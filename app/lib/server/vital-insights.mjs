@@ -67,7 +67,7 @@ async function googleAccessToken({email,privateKey,scope,fetcher=fetch,now=Date.
   let signature;
   try{signature=signer.sign(privateKey.trim().replace(/\\n/g,'\n').replace(/\r\n/g,'\n')).toString('base64url');}
   catch{console.error('[vital-insights] Google JWT signing failed');throw Error('google_sign');}
-  const assertion=unsigned+'.'+claims+'.'+signature;
+  const assertion=unsigned+'.'+signature;
   const response=await fetcher('https://oauth2.googleapis.com/token',{
     method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
     body:new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion}),

@@ -57,6 +57,40 @@ export function summarizeClarity(data) {
        .map(r=>({device:String(r.Device).slice(0,50),sessions:nonnegative(r.totalSessionCount)}))
        .sort((a,b)=>b.sessions-a.sessions).slice(0,5)};
 }
+
+// Accept the private_key PEM field from Google service-account JSON, an escaped
+// PEM, or the full downloaded JSON. The raw credential never reaches a response.
+export function normalizeGooglePrivateKey(value,email=''){
+  if(typeof value!=='string'||!value.trim())throw Error('google_key_format');
+  let raw=value.trim();
+  if(raw.startsWith('{')||raw.startsWith('"')){
+    let parsed;
+    try{parsed=JSON.parse(raw);}
+    catch{
+      if(raw.startsWith('"')&&raw.endsWith('"'))parsed=raw.slice(1,-1);
+      else throw Error('google_key_format');
+    }
+    if(typeof parsed==='string')raw=parsed;
+    else if(parsed&&typeof parsed==='object'&&typeof parsed.private_key==='string'){
+      if(typeof parsed.client_email==='string'&&
+        parsed.client_email.trim().toLowerCase()!==String(email).trim().toLowerCase())
+        throw Error('google_key_email_mismatch');
+      raw=parsed.private_key;
+    }else throw Error('google_key_format');
+  }
+  const key=raw.trim().replace(/\\\\n/g,'\\n').replace(/\\r\\n/g,'\n')
+    .replace(/\\n/g,'\n').replace(/\r\n/g,'\n').trim();
+  if(!/^-----BEGIN (?:RSA )?PRIVATE KEY-----\n[\s\S]+\n-----END (?:RSA )?PRIVATE KEY-----$/.test(key))
+    throw Error('google_key_format');
+  return key;
+}
+function googleKeyIssue(error){
+  if(error?.message==='google_key_format'||error?.message==='google_sign')
+    return 'google_key_invalid';
+  if(error?.message==='google_key_email_mismatch')return 'google_email_mismatch';
+  return null;
+}
+
 const encode=value=>Buffer.from(JSON.stringify(value)).toString('base64url');
 async function googleAccessToken({email,privateKey,scope,fetcher=fetch,now=Date.now}){
   const timestamp=Math.floor(now()/1000);
@@ -65,7 +99,7 @@ async function googleAccessToken({email,privateKey,scope,fetcher=fetch,now=Date.
   const unsigned=header+'.'+claims;
   const signer=createSign('RSA-SHA256');signer.update(unsigned);signer.end();
   let signature;
-  try{signature=signer.sign(privateKey.trim().replace(/\\n/g,'\n').replace(/\r\n/g,'\n')).toString('base64url');}
+  try{signature=signer.sign(normalizeGooglePrivateKey(privateKey,email)).toString('base64url');}
   catch{console.error('[vital-insights] Google JWT signing failed');throw Error('google_sign');}
   const assertion=unsigned+'.'+signature;
   const response=await fetcher('https://oauth2.googleapis.com/token',{
@@ -102,7 +136,7 @@ export async function readGa4(env=process.env,fetcher=fetch){
       metrics:[{name:'eventCount'}],dimensionFilter:{filter:{fieldName:'eventName',
         inListFilter:{values:SHOP_EVENTS}}},limit:'4'}}).then(summarizeGa4Events).catch(()=>null);
     return {status:'ready',data:{...summarizeGa4(await totals),sources:await sources,events:await events}};
-  }catch(error){console.error('[vital-insights] GA4 read failed',error?.name||'UnknownError');return {status:'unavailable'};}
+  }catch(error){const issue=googleKeyIssue(error);console.error('[vital-insights] GA4 read failed',issue||error?.name||'UnknownError');return {status:'unavailable',...(issue?{issue}:{})};}
 }
 
 const CLARITY_CACHE_MS=12*60*60*1000;
@@ -172,7 +206,7 @@ export async function readGtm(env=process.env,fetcher=fetch){
     if(!body||typeof body!=='object'||!body.containerVersionId)throw Error('gtm_live');
     // Never return tags, triggers, tag source or other container configuration.
     return {status:'ready',data:{publicId:short(body.container?.publicId),version:short(body.containerVersionId)}};
-  }catch(error){console.error('[vital-insights] GTM read failed',error?.name||'UnknownError');return {status:'unavailable'};}
+  }catch(error){const issue=googleKeyIssue(error);console.error('[vital-insights] GTM read failed',issue||error?.name||'UnknownError');return {status:'unavailable',...(issue?{issue}:{})};}
 }
 export async function readVitalInsights(env=process.env,fetcher=fetch){
   const [ga4,clarity,meta,gtm]=await Promise.all([readGa4(env,fetcher),readClarity(env,fetcher),readMeta(env,fetcher),readGtm(env,fetcher)]);

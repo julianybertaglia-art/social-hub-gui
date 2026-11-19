@@ -98,8 +98,9 @@ async function googleAccessToken({email,privateKey,scope,fetcher=fetch,now=Date.
   const claims=encode({iss:email,scope,aud:'https://oauth2.googleapis.com/token',iat:timestamp,exp:timestamp+3000});
   const unsigned=header+'.'+claims;
   const signer=createSign('RSA-SHA256');signer.update(unsigned);signer.end();
+  const signingKey=normalizeGooglePrivateKey(privateKey,email);
   let signature;
-  try{signature=signer.sign(normalizeGooglePrivateKey(privateKey,email)).toString('base64url');}
+  try{signature=signer.sign(signingKey).toString('base64url');}
   catch{console.error('[vital-insights] Google JWT signing failed');throw Error('google_sign');}
   const assertion=unsigned+'.'+signature;
   const response=await fetcher('https://oauth2.googleapis.com/token',{

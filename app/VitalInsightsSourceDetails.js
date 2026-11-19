@@ -14,11 +14,15 @@ function State({source,name,period}){
  const status=source?.status;
  return <div className={css.source}><strong>{name}</strong>
   <span>{status==='ready'?(period||'Conectado para leitura'):
-     status==='not_configured'?'Aguardando conexão de leitura':'Não foi possível consultar agora'}</span></div>;
+     status==='not_configured'?'Aguardando conexão de leitura':source?.issue?.startsWith('google_')?'Verifique a credencial Google':'Não foi possível consultar agora'}</span></div>;
 }
 function NoConnection({source,children}){
  if(source?.status==='ready')return null;
- return <p className={css.message}>{source?.status==='not_configured'?children:'Não foi possível consultar essa fonte. Verifique o acesso e tente novamente.'}</p>;
+ const help=source?.issue==='google_key_invalid'?
+  'A chave privada Google configurada no servidor está inválida. Confira o campo VITAL_GA4_PRIVATE_KEY na Vercel: ele deve conter o valor private_key do JSON da conta de serviço (ou o JSON completo). Não envie essa chave pelo chat.':
+  source?.issue==='google_email_mismatch'?
+  'O e-mail da conta de serviço não corresponde à chave Google configurada. Confira VITAL_GA4_SERVICE_EMAIL e VITAL_GA4_PRIVATE_KEY na Vercel. Não envie credenciais pelo chat.':null;
+ return <p className={css.message}>{source?.status==='not_configured'?children:help||'Não foi possível consultar essa fonte. Verifique o acesso e tente novamente.'}</p>;
 }
 export default function VitalInsightsSourceDetails({insights,loading,error,onReload}){
  const ga=insights?.ga4,cl=insights?.clarity,meta=insights?.meta,gtm=insights?.gtm;

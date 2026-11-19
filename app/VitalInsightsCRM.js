@@ -158,7 +158,7 @@ export default function VitalInsightsCRM({revision=0}){
     <Metric icon="$" label="Gasto com anúncios" value={money(report.values.spend)} source="Investimento informado"/>
     <Metric icon="R$" label="Faturamento" value={money(report.values.revenue)} source="Pedidos pagos informados"/>
    </div>:<>
-    {report.store&&<><p className={css.sourceLabel}>NUVEMSHOP · ${report.store.start} A ${report.store.end}</p>
+    {report.store&&<><p className={css.sourceLabel}>NUVEMSHOP · {report.store.start} A {report.store.end}</p>
      <div className={css.metrics}>
       <Metric icon="✓" label="Pedidos pagos" value={number(report.store.paidOrders)} source="Nuvemshop · pedidos criados no período"/>
       <Metric icon="R$" label="Valor dos pedidos pagos" value={money(report.store.revenue,'BRL')} source="Soma dos pedidos, não é lucro"/>

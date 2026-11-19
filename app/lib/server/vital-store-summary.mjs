@@ -1,0 +1,77 @@
+// Read-only aggregation for the Vital Decor store marketing overview.
+// Never return customer or contact fields. Missing/incomplete data is not zero.
+const digits=value=>typeof value==='string'&&/^\d{3,20}$/.test(value);
+const finite=value=>{
+  if(typeof value!=='string'&&typeof value!=='number')return null;
+  if(String(value).trim()==='')return null;
+  const parsed=Number(value);
+  return Number.isFinite(parsed)&&parsed>=0?parsed:null;
+};
+const safeName=value=>typeof value==='string'?value.slice(0,80):'Produto sem nome';
+const money=value=>Math.round((value+Number.EPSILON)*100)/100;
+
+export function summarizeStoreOrders(orders,{period='Últimos 30 dias completos',start,end}={}){
+  let paidOrders=0,revenue=0,unknownTotals=0;
+  const items=new Map();
+  for(const order of orders){
+    const created=String(order?.completed_at||order?.created_at||'').slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(created)||created<start||created>end)continue;
+    if(String(order?.payment_status||'')!=='paid'||String(order?.status||'')==='cancelled')continue;
+    const total=finite(order?.total);
+    paidOrders+=1;
+    if(total===null)unknownTotals+=1;else revenue+=total;
+    if(Array.isArray(order?.products)){
+      for(const product of order.products){
+        const key=String(product?.product_id||product?.id||safeName(product?.name)).slice(0,80);
+        const qty=finite(product?.quantity);
+        if(qty===null)continue;
+        const prev=items.get(key)||{name:safeName(product?.name),quantity:0};
+        prev.quantity+=qty;items.set(key,prev);
+      }
+    }
+  }
+  return {period,start,end,paidOrders,revenue:unknownTotals?null:money(revenue),
+    averageTicket:unknownTotals||!paidOrders?null:money(revenue/paidOrders),
+    currency:'BRL',topProducts:[...items.values()].sort((a,b)=>b.quantity-a.quantity).slice(0,5)};
+}
+function completedDays(now){
+  const local=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',
+    month:'2-digit',day:'2-digit'}).format(now);
+  // Timezone is deliberate: show complete Brazilian calendar days (exclude today).
+  const day=new Date(local+'T12:00:00Z');
+  if(Number.isNaN(day.getTime()))throw Error('date_invalid');
+  const end=new Date(day.getTime()-86400000).toISOString().slice(0,10);
+  const start=new Date(day.getTime()-30*86400000).toISOString().slice(0,10);
+  return {start,end};
+}
+export async function readVitalStoreSummary(env=process.env,fetcher=fetch,now=new Date()){
+  const storeId=String(env.NUVEMSHOP_VITAL_STORE_ID||'');
+  const token=env.NUVEMSHOP_VITAL_ACCESS_TOKEN;
+  if(!digits(storeId)||!token)return {status:'not_configured'};
+  const {start,end}=completedDays(now);
+  const collected=[];
+  try{
+    // Use a bounded read: if there are more than 1,000 orders, never present partial
+    // totals as a complete dashboard.
+    const limit=200,maxPages=5;
+    for(let page=1;page<=maxPages;page++){
+      const url=new URL('https://api.nuvemshop.com/v1/'+storeId+'/orders');
+      url.searchParams.set('page',String(page));
+      url.searchParams.set('per_page',String(limit));
+      url.searchParams.set('created_at_min',start+'T00:00:00-03:00');
+      url.searchParams.set('created_at_max',end+'T23:59:59-03:00');
+      const response=await fetcher(url.toString(),{method:'GET',
+        headers:{Authentication:'bearer '+token,'User-Agent':env.NUVEMSHOP_VITAL_USER_AGENT||'TidePlace Vital Decor (read-only)',
+          Accept:'application/json'},signal:AbortSignal.timeout(15000),cache:'no-store'});
+      if(!response.ok)return {status:'unavailable'};
+      const payload=await response.json();
+      if(!Array.isArray(payload))return {status:'unavailable'};
+      collected.push(...payload);
+      if(payload.length<limit){
+        return {status:'ready',data:{...summarizeStoreOrders(collected,{start,end}),
+          fetchedAt:now.toISOString(),scope:'Pedidos criados no período e pagos; valor total dos pedidos, não receita líquida.'}};
+      }
+    }
+    return {status:'incomplete'};
+  }catch{return {status:'unavailable'};}
+}

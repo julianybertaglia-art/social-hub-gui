@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync,verify} from 'node:crypto';
-import {summarizeGa4,summarizeClarity,readGa4,readClarity} from '../app/lib/server/vital-insights.mjs';
+import {summarizeGa4,summarizeClarity,readGa4,readClarity,readGtm,normalizeGooglePrivateKey} from '../app/lib/server/vital-insights.mjs';
 
 test('GA4 maps metrics by header, never invents missing values',()=>{
   const result=summarizeGa4({metricHeaders:[{name:'sessions'},{name:'purchaseRevenue'},{name:'totalUsers'}],
@@ -66,4 +66,35 @@ test('GA4 service account signs a valid RSA JWT with exactly three segments',asy
   assert.equal(result.data.purchases,2);
   assert.equal(oauthCalls,1);
   assert.equal(reportCalls,3);
+});
+
+
+test('Google private key normalization supports PEM, escaped PEM and downloaded service-account JSON',()=>{
+  const {privateKey}=generateKeyPairSync('rsa',{modulusLength:2048});
+  const pem=privateKey.export({type:'pkcs8',format:'pem'}).trim();
+  const email='vital-readonly@example.test';
+  const variants=[
+    pem,
+    pem.replace(/\n/g,'\\n'),
+    JSON.stringify(pem),
+    JSON.stringify({type:'service_account',client_email:email,private_key:pem})
+  ];
+  for(const input of variants)assert.equal(normalizeGooglePrivateKey(input,email),pem);
+  assert.throws(()=>normalizeGooglePrivateKey('not a key',email),/google_key_format/);
+  assert.throws(()=>normalizeGooglePrivateKey(
+    JSON.stringify({client_email:'other@example.test',private_key:pem}),email),
+    /google_key_email_mismatch/);
+});
+
+test('Invalid Google key returns safe, actionable source statuses without contacting Google',async()=>{
+  const env={
+    VITAL_GA4_PROPERTY_ID:'123456789',
+    VITAL_GA4_SERVICE_EMAIL:'vital-readonly@example.test',
+    VITAL_GA4_PRIVATE_KEY:'wrong-key',
+    VITAL_GTM_ACCOUNT_ID:'123456789',
+    VITAL_GTM_CONTAINER_ID:'123456'
+  };
+  const noNetwork=()=>{throw Error('must not contact Google');};
+  assert.deepEqual(await readGa4(env,noNetwork),{status:'unavailable',issue:'google_key_invalid'});
+  assert.deepEqual(await readGtm(env,noNetwork),{status:'unavailable',issue:'google_key_invalid'});
 });

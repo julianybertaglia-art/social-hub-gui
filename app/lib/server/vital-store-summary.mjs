@@ -35,8 +35,10 @@ export function summarizeStoreOrders(orders,{period='Últimos 30 dias completos'
     currency:'BRL',topProducts:[...items.values()].sort((a,b)=>b.quantity-a.quantity).slice(0,5)};
 }
 function completedDays(now){
-  const local=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',
-    month:'2-digit',day:'2-digit'}).format(now);
+  const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',year:'numeric',
+    month:'2-digit',day:'2-digit'}).formatToParts(now);
+  const value=name=>parts.find(part=>part.type===name)?.value;
+  const local=`${value('year')}-${value('month')}-${value('day')}`;
   // Timezone is deliberate: show complete Brazilian calendar days (exclude today).
   const day=new Date(local+'T12:00:00Z');
   if(Number.isNaN(day.getTime()))throw Error('date_invalid');
@@ -61,7 +63,7 @@ export async function readVitalStoreSummary(env=process.env,fetcher=fetch,now=ne
       url.searchParams.set('created_at_min',start+'T00:00:00-03:00');
       url.searchParams.set('created_at_max',end+'T23:59:59-03:00');
       const response=await fetcher(url.toString(),{method:'GET',
-        headers:{Authentication:'bearer '+token,'User-Agent':env.NUVEMSHOP_VITAL_USER_AGENT||'TidePlace Vital Decor (read-only)',
+        headers:{Authorization:'Bearer '+token,'User-Agent':env.NUVEMSHOP_VITAL_USER_AGENT||'TidePlace Vital Decor (read-only)',
           Accept:'application/json'},signal:AbortSignal.timeout(15000),cache:'no-store'});
       if(!response.ok)return {status:'unavailable'};
       const payload=await response.json();

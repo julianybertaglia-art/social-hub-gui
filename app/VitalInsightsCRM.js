@@ -21,15 +21,27 @@ function Metric({icon,label,value,source}){
  </article>;
 }
 
-function connectedReport(insights){
+function connectedReport(insights,store){
+ const shop=store?.status==='ready'?store.data:null;
+ const clarity=insights?.clarity?.status==='ready'?insights.clarity.data:null;
  const ga=insights?.ga4?.status==='ready'?insights.ga4.data:null;
  const meta=insights?.meta?.status==='ready'?insights.meta.data:null;
- if(!ga&&!meta)return null;
- if(![ga?.sessions,ga?.purchases,ga?.purchaseRevenue,meta?.spend,meta?.linkClicks,meta?.impressions].some(isNumber))return null;
+ if(!ga&&!meta&&!shop&&!clarity)return null;
+ if(![shop?.paidOrders,shop?.revenue,clarity?.sessions,ga?.sessions,ga?.purchases,ga?.purchaseRevenue,meta?.spend,meta?.linkClicks,meta?.impressions].some(isNumber))return null;
  const actions=[];
  let headline='Seus números já estão chegando';
  let summary='Veja os dados de cada fonte e confira os períodos antes de compará-los.';
- if(isNumber(ga?.sessions)&&isNumber(ga?.purchases)){
+ if(shop){
+  headline='Acompanhe as vendas reais da loja';
+  summary=`A Nuvemshop retornou ${number(shop.paidOrders)} pedidos pagos, criados no período de ${shop.start} a ${shop.end}. Esses pedidos não estão atribuídos a anúncios.`;
+  actions.push('Verifique se os pedidos pagos conferem com o painel da Nuvemshop e examine eventuais reembolsos.');
+  actions.push('Confira o frete e o checkout para diferentes quantidades e CEPs antes de ajustar campanhas.');
+ }else if(clarity){
+  headline='Analise a experiência dos visitantes';
+  summary=`O Clarity registrou ${number(clarity.sessions)} sessões nas últimas 72 horas. Isso não informa quantas pessoas compraram.`;
+  actions.push('Abra o Clarity e verifique os acessos pelo celular e possíveis dificuldades na página de produto ou no frete.');
+ }
+ if(!shop&&isNumber(ga?.sessions)&&isNumber(ga?.purchases)){
   summary=`O Analytics registrou ${number(ga.sessions)} visitas e ${number(ga.purchases)} compras no período dele. As compras do Analytics devem ser conferidas na loja.`;
   if(ga.sessions>0&&ga.purchases===0){
    headline='Confira a jornada de compra';
@@ -40,11 +52,11 @@ function connectedReport(insights){
  if(meta&&isNumber(meta.spend)&&meta.spend>0)actions.push('Antes de mudar o orçamento, confirme quais pedidos vieram dos anúncios.');
  if(ga)actions.push('Compare as compras registradas no Analytics com os pedidos pagos da Nuvemshop.');
  if(!actions.length)actions.push('Conecte as outras fontes para complementar o diagnóstico.');
- return {kind:'connected',ga4:ga,meta,headline,summary,actions:actions.slice(0,3)};
+ return {kind:'connected',store:shop,clarity,ga4:ga,meta,headline,summary,actions:actions.slice(0,3)};
 }
 
-function ConnectionPill({insights,loading,error}){
- const sources=[insights?.meta,insights?.ga4,insights?.clarity,insights?.gtm];
+function ConnectionPill({insights,store,loading,error}){
+ const sources=[store,insights?.meta,insights?.ga4,insights?.clarity,insights?.gtm];
  const ready=sources.filter(source=>source?.status==='ready').length;
  return <span className={css.connectionPill}><span aria-hidden="true" className={ready?css.dotReady:css.dotPending}/>
   {loading?'Verificando conexões':error?'Conexões indisponíveis':ready?`${ready} ${ready===1?'fonte conectada':'fontes conectadas'}`:'Sem conexões ativas'}
@@ -54,6 +66,7 @@ function ConnectionPill({insights,loading,error}){
 export default function VitalInsightsCRM({revision=0}){
  const [insights,setInsights]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [reload,setReload]=useState(0),[formVisible,setFormVisible]=useState(false);
+ const [store,setStore]=useState(null),[storeError,setStoreError]=useState('');
  const [fields,setFields]=useState(blank),[period,setPeriod]=useState('7'),[manual,setManual]=useState(null),[formError,setFormError]=useState('');
  const [ai,setAi]=useState(null),[aiError,setAiError]=useState(''),[aiBusy,setAiBusy]=useState(false);
  const aiRequest=useRef(0);
@@ -65,7 +78,14 @@ export default function VitalInsightsCRM({revision=0}){
    .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;controller.abort();};
  },[revision,reload]);
- const report=manual||connectedReport(insights);
+ useEffect(()=>{
+  let active=true;const controller=new AbortController();setStoreError('');
+  api('/api/crm/vital/store-summary',{signal:controller.signal})
+   .then(data=>{if(active)setStore(data);})
+   .catch(()=>{if(active){setStore(null);setStoreError('Não foi possível carregar as vendas da Nuvemshop.');}});
+  return()=>{active=false;controller.abort();};
+ },[revision,reload]);
+ const report=manual||connectedReport(insights,store);
  const resetAi=()=>{aiRequest.current+=1;setAiBusy(false);setAi(null);setAiError('');};
  function showForm(){setFormVisible(true);setFormError('');resetAi();}
  function showExample(){setManual({kind:'manual',period:'7',values:{...EXAMPLE_REPORT},example:true});setFormVisible(false);resetAi();}
@@ -83,7 +103,10 @@ export default function VitalInsightsCRM({revision=0}){
    {kind:'connected',ga4:report.ga4?{sessions:report.ga4.sessions,purchases:report.ga4.purchases,
     purchaseRevenue:report.ga4.purchaseRevenue,currency:report.ga4.currency}:null,
     meta:report.meta?{spend:report.meta.spend,linkClicks:report.meta.linkClicks,impressions:report.meta.impressions,
-     currency:report.meta.currency,range:report.meta.start&&report.meta.end?`${report.meta.start}/${report.meta.end}`:null}:null};
+     currency:report.meta.currency,range:report.meta.start&&report.meta.end?`${report.meta.start}/${report.meta.end}`:null}:null,
+    store:report.store?{orders:report.store.paidOrders,revenue:report.store.revenue,
+      start:report.store.start,end:report.store.end}:null,
+    clarity:report.clarity?{sessions:report.clarity.sessions,botSessions:report.clarity.botSessions}:null};
   try{const response=await api('/api/crm/vital/marketing-report',{method:'POST',body:JSON.stringify(input)});if(requestId===aiRequest.current)setAi(response.report);}
   catch(e){if(requestId===aiRequest.current)setAiError(e.message||'Não foi possível gerar a análise agora.');}
   finally{if(requestId===aiRequest.current)setAiBusy(false);}
@@ -93,7 +116,7 @@ export default function VitalInsightsCRM({revision=0}){
   <header className={css.hero}>
    <div className={css.heroCopy}><span className={css.kicker}>MARKETING SEM COMPLICAÇÃO</span>
     <h3>Entenda seus resultados</h3><p>Veja o que aconteceu e descubra por onde começar.</p>
-    <ConnectionPill insights={insights} loading={loading} error={error}/>
+    <ConnectionPill insights={insights} store={store} loading={loading} error={error}/>
    </div><div className={css.heroArt} aria-hidden="true"><svg viewBox="0 0 90 65" fill="none"><path d="M12 50L35 32L49 41L76 14"/><path d="M61 14H76V29"/></svg></div>
   </header>
 
@@ -135,6 +158,23 @@ export default function VitalInsightsCRM({revision=0}){
     <Metric icon="$" label="Gasto com anúncios" value={money(report.values.spend)} source="Investimento informado"/>
     <Metric icon="R$" label="Faturamento" value={money(report.values.revenue)} source="Pedidos pagos informados"/>
    </div>:<>
+    {report.store&&<><p className={css.sourceLabel}>NUVEMSHOP · ${report.store.start} A ${report.store.end}</p>
+     <div className={css.metrics}>
+      <Metric icon="✓" label="Pedidos pagos" value={number(report.store.paidOrders)} source="Nuvemshop · pedidos criados no período"/>
+      <Metric icon="R$" label="Valor dos pedidos pagos" value={money(report.store.revenue,'BRL')} source="Soma dos pedidos, não é lucro"/>
+      <Metric icon="◉" label="Ticket médio" value={money(report.store.averageTicket,'BRL')} source="Pedidos pagos"/>
+     </div>
+     {report.store.topProducts?.length>0&&<div className={css.actionsCard}>
+      <span className={css.sectionEyebrow}>PRODUTOS MAIS VENDIDOS · EM UNIDADES</span>
+      <ol>{report.store.topProducts.map((p,i)=><li key={i}><span>{i+1}</span><p>{p.name} · {number(p.quantity)} unidades</p></li>)}</ol>
+     </div>}
+    </>}
+    {report.clarity&&<><p className={css.sourceLabel}>MICROSOFT CLARITY · ÚLTIMAS 72 HORAS</p>
+     <div className={css.metrics}>
+      <Metric icon="◉" label="Sessões registradas" value={number(report.clarity.sessions)} source="Clarity, não são compradores"/>
+      <Metric icon="◌" label="Sessões de bots" value={number(report.clarity.botSessions)} source="Identificadas pelo Clarity"/>
+     </div>
+    </>}
     {report.ga4&&<><p className={css.sourceLabel}>GOOGLE ANALYTICS · ÚLTIMOS 30 DIAS COMPLETOS</p><div className={css.metrics}>
      <Metric icon="◉" label="Visitas ao site" value={number(report.ga4.sessions)} source="Sessões no GA4"/>
      <Metric icon="✓" label="Compras registradas" value={number(report.ga4.purchases)} source="Eventos registrados no GA4"/>
@@ -173,7 +213,12 @@ export default function VitalInsightsCRM({revision=0}){
    </div>
   </div>}
 
-  <details className={css.connections}><summary><span><strong>Conexões e detalhes</strong><small>Meta Ads, Analytics, Clarity e GTM</small></span><span aria-hidden="true">⌄</span></summary>
+  {store?.status!=='ready'&&<p className={css.metricNote} role="status">
+   {storeError||((store?.status==='incomplete')?'A Nuvemshop retornou mais pedidos do que o limite de consulta. Totais não exibidos para evitar números incompletos.':
+    store?.status==='not_configured'?'A consulta à Nuvemshop ainda não está configurada.':
+    store?.status==='unavailable'?'A consulta de vendas da Nuvemshop está temporariamente indisponível.':'')}
+  </p>}
+  <details className={css.connections}><summary><span><strong>Conexões e detalhes</strong><small>Nuvemshop, Clarity, Meta Ads, Analytics e GTM</small></span><span aria-hidden="true">⌄</span></summary>
    <VitalInsightsSourceDetails insights={insights} loading={loading} error={error} onReload={()=>setReload(v=>v+1)}/>
   </details>
  </section>;

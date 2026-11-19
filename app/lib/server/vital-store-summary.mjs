@@ -14,7 +14,7 @@ export function summarizeStoreOrders(orders,{period='Últimos 30 dias completos'
   let paidOrders=0,revenue=0,unknownTotals=0;
   const items=new Map();
   for(const order of orders){
-    const created=String(order?.completed_at||order?.created_at||'').slice(0,10);
+    const created=String(order?.created_at||'').slice(0,10);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(created)||created<start||created>end)continue;
     if(String(order?.payment_status||'')!=='paid'||String(order?.status||'')==='cancelled')continue;
     const total=finite(order?.total);

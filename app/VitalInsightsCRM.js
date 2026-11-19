@@ -216,7 +216,7 @@ export default function VitalInsightsCRM({revision=0}){
   {store?.status!=='ready'&&<p className={css.metricNote} role="status">
    {storeError||((store?.status==='incomplete')?'A Nuvemshop retornou mais pedidos do que o limite de consulta. Totais não exibidos para evitar números incompletos.':
     store?.status==='not_configured'?'A consulta à Nuvemshop ainda não está configurada.':
-    store?.status==='unavailable'?'A consulta de vendas da Nuvemshop está temporariamente indisponível.':'')}
+    store?.status==='unavailable'?({auth_invalid:'A credencial da Nuvemshop não foi aceita pela API. Verifique o token da loja na Vercel.',orders_permission:'A integração precisa de permissão para consultar pedidos na Nuvemshop.',store_not_found:'O identificador da loja não foi encontrado. Confira a configuração da loja na Vercel.',rate_limited:'A Nuvemshop limitou temporariamente as consultas. Tente atualizar depois.',response_format:'A Nuvemshop retornou um formato inesperado.',network_error:'Não foi possível estabelecer conexão com a Nuvemshop.',api_error:'A Nuvemshop respondeu com um erro. Consulte o diagnóstico da integração.'}[store?.issue]||'A consulta de vendas da Nuvemshop está temporariamente indisponível.'):'')}
   </p>}
   <details className={css.connections}><summary><span><strong>Conexões e detalhes</strong><small>Nuvemshop, Clarity, Meta Ads, Analytics e GTM</small></span><span aria-hidden="true">⌄</span></summary>
    <VitalInsightsSourceDetails insights={insights} loading={loading} error={error} onReload={()=>setReload(v=>v+1)}/>

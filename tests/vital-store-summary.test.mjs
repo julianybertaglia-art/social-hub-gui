@@ -34,6 +34,7 @@ test('read-only API sends bearer token, excludes today and returns safe aggregat
  assert.equal(data.data.paidOrders,1);
  assert.equal(data.data.revenue,50);
  assert.match(urls[0],/created_at_max=2026-11-18/);
+ assert.match(urls[0],/^https:\/\/api\.nuvemshop\.com\.br\/2025-03\/123456\/orders/);
  assert.ok(!JSON.stringify(data).includes('private-test-token'));
 });
 test('reports missing credentials and incomplete pagination without misleading totals',async()=>{
@@ -44,4 +45,14 @@ test('reports missing credentials and incomplete pagination without misleading t
  const data=await readVitalStoreSummary(env,async()=>{pages++;return {ok:true,json:async()=>Array.from({length:200},()=>({created_at:'2026-11-18',payment_status:'paid',total:'1'}))};},new Date('2026-11-19T10:00:00Z'));
  assert.equal(data.status,'incomplete');
  assert.equal(pages,5);
+});
+
+test('Nuvemshop denied token returns safe actionable error without sensitive data',async()=>{
+ const env={NUVEMSHOP_VITAL_STORE_ID:'123456',NUVEMSHOP_VITAL_ACCESS_TOKEN:'private-test-token'};
+ const original=console.error;console.error=()=>{};
+ try{
+  const result=await readVitalStoreSummary(env,async()=>({ok:false,status:401}),new Date('2026-11-19T10:00:00Z'));
+  assert.deepEqual(result,{status:'unavailable',issue:'auth_invalid'});
+  assert.ok(!JSON.stringify(result).includes('private-test-token'));
+ }finally{console.error=original;}
 });

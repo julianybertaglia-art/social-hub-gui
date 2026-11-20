@@ -2,6 +2,7 @@ import { getVitalCrmMember } from '../../../../lib/vital-crm-access.mjs';
 import { fail } from '../../../vital-connections/helpers.mjs';
 import {canReplyWithinWindow} from '../../../vital-whatsapp/conversations/inbox.mjs';
 import {readRows} from '../../../../lib/operations.mjs';
+import {isSiteLinkNoReturn} from '../../../../lib/vital-lead-intelligence.mjs';
 import {resolveVitalQueue,canAccessVitalQueue,crmConversationStatus,VITAL_QUEUE_ORDER,vitalTransferDestinations} from '../../../../lib/vital-crm-queues.mjs';
 
 export const runtime='nodejs';
@@ -76,12 +77,12 @@ async function readOne(ctx,phone){
     messages:messages.reverse().map(formatMessage),truncated:messages.length===150};
 }
 
-async function summary(ctx,page){
+async function summary(ctx,page,segment='all'){
   const {db,owner,connection,organization}=ctx;
   const q=fn=>fn.eq('owner_user_id',owner).eq('connection_id',connection.id);
   const [recent,flows,assignments,overrides,states]=await Promise.all([
     readRows(()=>q(db.from('workspace_meta_messages')
-      .select('contact_wa_id,direction,sent_at,id')
+      .select('contact_wa_id,direction,sent_at,id,body,raw_payload')
       .order('sent_at',{ascending:false}).order('id',{ascending:false})),3000),
     readRows(()=>q(db.from('vital_whatsapp_flow_sessions')
       .select('contact_wa_id,selection,last_interaction_at')
@@ -116,17 +117,19 @@ async function summary(ctx,page){
       status:crmConversationStatus({state:stateMap.get(phone),legacyClosed:a?.status==='closed',
         lastDirection:last?.direction,lastMessageAt:last?.sent_at}),
       updatedAt:last?.sent_at||manual?.updated_at||f?.last_interaction_at||a?.updated_at||null,
-      assignedTo:a?.assigned_to||null});
+      assignedTo:a?.assigned_to||null,siteLinkNoReturn:isSiteLinkNoReturn(last,queue)});
   }
   rows.sort((a,b)=>Date.parse(b.updatedAt||'')-Date.parse(a.updatedAt||''));
-  const counters={total:rows.length,pending:0,open:0,closed:0,unassigned:0,queues:{}};
+  const counters={total:rows.length,pending:0,open:0,closed:0,unassigned:0,link_no_return:0,queues:{}};
   for(const qCode of VITAL_QUEUE_ORDER)counters.queues[qCode]=0;
   for(const row of rows){
     counters[row.status]=(counters[row.status]||0)+1;
+    if(row.siteLinkNoReturn)counters.link_no_return+=1;
     if(row.queue)counters.queues[row.queue]=(counters.queues[row.queue]||0)+1;
     else counters.unassigned+=1;
   }
-  const sliced=rows.slice(page*30,page*30+30);
+  const visibleRows=segment==='link_no_return'?rows.filter(row=>row.siteLinkNoReturn):rows;
+  const sliced=visibleRows.slice(page*30,page*30+30);
   const enriched=await Promise.all(sliced.map(async row=>{
     // Only here, after filtering by the authenticated user's permitted
     // queues, do we read a message body or contact profile name.
@@ -141,7 +144,7 @@ async function summary(ctx,page){
     workspace:'vital-decor', role:ctx.access.role, counters,
     queues:ctx.queues.filter(q=>allowedQueue(ctx,q.queue_code)),
     transferDestinations:vitalTransferDestinations(ctx.queues),
-    conversations:enriched,page,hasMore:rows.length>(page+1)*30,
+    conversations:enriched,page,hasMore:visibleRows.length>(page+1)*30,
     sampled:(recent.data||[]).length>=3000||(flows.data||[]).length>=5000||(states.data||[]).length>=5000,
     readOnly:process.env.VITAL_CRM_WRITES_ENABLED!=='true',
     canReply:process.env.VITAL_CRM_REPLY_ENABLED==='true'||process.env.VITAL_CRM_WRITES_ENABLED==='true',
@@ -154,7 +157,9 @@ export async function GET(request){
     if(phone)return Response.json(await readOne(ctx,phone),{headers});
     const p=Number(url.searchParams.get('page')||0);
     if(!Number.isSafeInteger(p)||p<0||p>100)throw fail('Página inválida.',400);
-    return Response.json(await summary(ctx,p),{headers});
+    const segment=url.searchParams.get('segment')||'all';
+    if(!['all','link_no_return'].includes(segment))throw fail('Segmento inválido.',400);
+    return Response.json(await summary(ctx,p,segment),{headers});
   }catch(e){
     return Response.json({error:e.status?e.message:'Não foi possível carregar as conversas.'},
       {status:e.status||503,headers});

@@ -62,6 +62,13 @@ export function recommendationForLead({orders=[],checkouts=[],siteLinkNoReturn=f
   description:replyWindowOpen?'A pessoa recebeu o link, mas não respondeu. Não sabemos se visitou a loja.':'Não há janela de atendimento aberta. Recontato comercial exige consentimento e modelo de marketing aprovado.'};
  return {kind:'support',title:'Entender a necessidade',description:'Converse para descobrir o interesse. Não há sinal suficiente para estimar a intenção de compra.'};
 }
+export function timingForLead({orders=[],checkouts=[],siteLinkNoReturn=false,replyWindowOpen=false}={}){
+ if(orders.length)return 'Quando houver mudança confirmada no pedido. Nunca repetir o mesmo aviso.';
+ if(checkouts.length)return 'Após confirmar que não houve compra. Fluxos de recuperação costumam esperar 2–4 horas, mediante consentimento e modelo adequado.';
+ if(siteLinkNoReturn&&replyWindowOpen)return 'Enquanto a janela de 24h após a última mensagem do cliente estiver aberta, somente se houver motivo para prestar ajuda.';
+ if(siteLinkNoReturn)return 'Aguardar novo contato ou avaliar comunicação com consentimento e modelo de marketing aprovado.';
+ return 'Após a próxima interação real da pessoa.';
+}
 export function orderUpdateDraft(order){
  const name='Olá! 💜',number=order.number?' #'+order.number:'';
  if(order.paymentStatus==='paid'&&order.shippingStatus==='delivered')

@@ -144,6 +144,9 @@
 .resolution small{font-size:11px;color:var(--muted)}
 .resolution button{display:flex;align-items:center;gap:7px;border:1px solid #cbded5;border-radius:8px;padding:9px 12px;color:#216b50;background:#eff8f3;font-size:12px;font-weight:740;cursor:pointer}
 .resolution button:disabled{opacity:.5;cursor:default}
+.statusAction{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);font-size:12px;color:var(--muted)}
+.statusAction button{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--surface-soft);color:var(--text);font:inherit;font-weight:700;cursor:pointer}
+.statusAction button:disabled{opacity:.5;cursor:default}
 
 /* CRM legível: confortável em telas de notebook, mantendo visual compacto no mobile. */
 .embedded,.shell{background:var(--vital-page-bg,#f7f4f8);font-size:15px}

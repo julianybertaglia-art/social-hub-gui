@@ -8,7 +8,7 @@ const headers={'Cache-Control':'private, no-store',Vary:'Authorization'};
 const PHONE=/^\d{8,15}$/;
 
 export async function PATCH(request){
- try {  if(process.env.VITAL_CRM_WRITES_ENABLED!=='true')throw fail('Alteração de status em validação; nenhuma conversa foi modificada.',403);
+ try {  if(process.env.VITAL_CRM_WRITES_ENABLED!=='true'&&process.env.VITAL_CRM_STATUS_ENABLED!=='true')throw fail('Alteração de status em validação; nenhuma conversa foi modificada.',403);
 
   const url=new URL(request.url), origin=request.headers.get('origin');
   if(!origin||origin!==url.origin)throw fail('Origem inválida.',403);
@@ -19,6 +19,8 @@ export async function PATCH(request){
   if(!PHONE.test(phone)||!['resolved','open'].includes(input.status))
     throw fail('Conversa ou situação inválida.',400);
   const {db,userId,access,organization}=await getVitalCrmMember(request);
+  if(process.env.VITAL_CRM_WRITES_ENABLED!=='true'&&access.role!=='owner')
+    throw fail('Alteração de status liberada apenas para a administradora.',403);
   if(!['owner','agent'].includes(access.role))
     throw fail('Seu perfil não pode alterar o status de uma conversa.',403);
   const {data:connection,error:connError}=await db.from('workspace_meta_connections')
@@ -45,10 +47,12 @@ export async function PATCH(request){
   if(!lastMessage.data)throw fail('Conversa não encontrada.',404);
   const queue=resolveVitalQueue({override:manual.data?.queue_code,
     selection:flow.data?.selection,sector:legacy.data?.sector});
-  if(!queue || !VITAL_QUEUE_ORDER.includes(queue) ||
-    !canAccessVitalQueue(access.role,(grants.data||[]).map(q=>q.queue_code),queue))
+  if((!queue&&access.role!=='owner') || (queue&&(!VITAL_QUEUE_ORDER.includes(queue) ||
+    !canAccessVitalQueue(access.role,(grants.data||[]).map(q=>q.queue_code),queue))))
     throw fail('Esta conversa não pertence às suas filas.',403);
-  if(state.data?.status===input.status)
+  // A new inbound message may visually reopen a resolved thread without changing
+  // the stored row. Resolving it again must advance updated_at, not be a no-op.
+  if(state.data?.status===input.status&&input.status==='open')
     return Response.json({ok:true,unchanged:true,status:input.status},{headers});
   const {data:updated,error:statusError}=await db.rpc('crm_vital_set_status_atomic',{
     p_org:organization.id,p_conn:connection.id,p_owner:organization.ownerUserId,

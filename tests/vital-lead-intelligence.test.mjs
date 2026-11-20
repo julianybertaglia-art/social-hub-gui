@@ -58,3 +58,32 @@ test('source failure is reported as partial, never interpreted as zero purchase'
  assert.equal(result.source.orders.state,'unavailable');
  assert.notEqual(result.lead.label,'Não comprou');
 });
+test('tracking in an outbound conversation suggests a phone-less order without confirming or leaking it',async()=>{
+ const order={id:119,number:119,contact_phone:null,customer:{phone:null},shipping_tracking_number:'TESTE123456789BR',
+  created_at:'2026-11-18T12:00:00Z',total:'1000.00',products:[{name:'Grama',quantity:1}]};
+ const env={NUVEMSHOP_VITAL_STORE_ID:'123456',NUVEMSHOP_VITAL_ACCESS_TOKEN:'secret-test'};
+ const fetcher=async url=>({ok:true,json:async()=>url.includes('/orders')?[order]:[]});
+ const args={phone:'5511987654321',env,fetcher,messages:[{direction:'outbound',body:'Seu rastreio: TESTE123456789BR'}]};
+ const result=await readVitalLeadProfile(args);
+ assert.equal(result.orders.length,0);
+ assert.equal(result.possibleOrders.length,1);
+ assert.equal(result.possibleOrders[0].number,'119');
+ assert.equal(result.possibleOrders[0].total,undefined);
+ assert.equal(result.possibleOrders[0].products,undefined);
+ assert.equal(result.lead.id,'possible_order');
+ assert.equal((await readVitalLeadProfile({...args,messages:[{direction:'inbound',body:'TESTE123456789BR'}]})).possibleOrders.length,0);
+ assert.equal((await readVitalLeadProfile({...args,messages:[{direction:'outbound',body:'XTESTE123456789BR'}]})).possibleOrders.length,0);
+ const conflict=async url=>({ok:true,json:async()=>url.includes('/orders')?[{...order,contact_phone:'11999998888'}]:[]});
+ assert.equal((await readVitalLeadProfile({...args,fetcher:conflict})).possibleOrders.length,0);
+ const duplicated=async url=>({ok:true,json:async()=>url.includes('/orders')?[order,{...order,id:120}]:[]});
+ assert.equal((await readVitalLeadProfile({...args,fetcher:duplicated})).possibleOrders.length,0);
+});
+test('tracking does not suggest an order if the order scan was incomplete',async()=>{
+ const env={NUVEMSHOP_VITAL_STORE_ID:'123456',NUVEMSHOP_VITAL_ACCESS_TOKEN:'secret-test'};
+ const records=Array.from({length:200},(_,i)=>({id:i+1,shipping_tracking_number:i===0?'TESTE123456789BR':null}));
+ const fetcher=async url=>({ok:true,json:async()=>url.includes('/orders')?records:[]});
+ const result=await readVitalLeadProfile({phone:'5511987654321',env,fetcher,
+  messages:[{direction:'outbound',body:'TESTE123456789BR'}]});
+ assert.equal(result.source.orders.state,'incomplete');
+ assert.deepEqual(result.possibleOrders,[]);
+});

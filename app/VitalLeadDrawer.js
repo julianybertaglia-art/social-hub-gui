@@ -10,7 +10,7 @@ const date=value=>value?new Date(value).toLocaleDateString('pt-BR',{timeZone:'Am
 const payment={paid:'Pago',pending:'Aguardando pagamento',authorized:'Autorizado',refunded:'Reembolsado',voided:'Cancelado',partially_paid:'Parcialmente pago'};
 const shipping={shipped:'Enviado',delivered:'Entregue',packed:'Preparado',unpacked:'Aguardando preparação',fulfilled:'Atendido'};
 function statusLabel(value,map){return map[value]||'Não confirmado';}
-export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare,canPrepare}){
+export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare,canPrepare,ai,aiLoading,aiError,onAnalyze}){
  const p=profile||{},o=p.orders||[],c=p.checkouts||[];
  return <div className={css.backdrop} onClick={onClose}>
   <aside role="dialog" aria-modal="true" aria-label="Carteira do cliente" className={css.drawer}
@@ -40,6 +40,29 @@ export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare
          onClick={()=>onPrepare('Oi! Tudo bem? 💜 Se precisar de ajuda para escolher um produto da Vital Decor ou calcular a quantidade ideal para o seu espaço, é só me chamar por aqui. 😊')}>
          <Icon name="chat" size={15}/> Preparar mensagem de ajuda
         </button>}
+     </section>
+     <section className={css.card}>
+      <span className={css.kicker}>COPILOTO DE ATENDIMENTO</span>
+      <h3>Orientação por IA, com revisão humana</h3>
+      <p>Analisa as últimas mensagens recebidas e os estados da loja. Dados identificáveis são ocultados antes de enviar à integração Gemini.</p>
+      <button type="button" className={css.prepare} onClick={onAnalyze}
+        disabled={Boolean(loading||aiLoading||error)}>
+        <Icon name="sparkle" size={16}/> {aiLoading?'Analisando conversa…':'Analisar com IA'}
+      </button>
+      <small className={css.hint}>A análise é manual e pode consumir créditos da API Gemini já conectada. Nenhuma mensagem é enviada ao cliente.</small>
+      {aiError&&<p className={css.alert} role="alert">{aiError}</p>}
+      {ai&&<div className={css.aiResult}>
+        <div className={css.aiTags}><span>Intenção: {ai.intent}</span><span>Prioridade: {ai.priority}</span></div>
+        <h3>{ai.stage}</h3>
+        <p>{ai.summary}</p>
+        {ai.evidence&&<p><strong>Base da análise:</strong> {ai.evidence}</p>}
+        <p><strong>Próxima ação:</strong> {ai.nextAction}</p>
+        <p><strong>Momento:</strong> {ai.when==='agora_se_janela_aberta'?'Quando houver janela aberta':ai.when==='apos_resposta_do_cliente'?'Após a próxima resposta':ai.when==='apos_atualizacao_do_pedido'?'Após atualizar o pedido':'Revisar manualmente'}</p>
+        <small className={css.hint}>{ai.caution}</small>
+        {ai.draft&&<button type="button" className={css.prepare} disabled={!canPrepare} onClick={()=>onPrepare(ai.draft)}>
+          <Icon name="chat" size={15}/> Usar sugestão como rascunho
+        </button>}
+      </div>}
      </section>
      {p.state==='not_configured'&&<p className={css.alert}>
         A consulta de pedidos ainda não está configurada para este ambiente.

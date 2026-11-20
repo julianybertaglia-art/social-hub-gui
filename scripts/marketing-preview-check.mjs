@@ -1,15 +1,8 @@
-const key=process.env.GEMINI_API_KEY||'';
-console.log('DIAG key-present='+Boolean(key)+' quoted=' + /^["']/.test(key.trim()) + ' assignment='+/^GEMINI_API_KEY=/.test(key.trim())+' gateway-present='+Boolean(process.env.AI_GATEWAY_API_KEY));
-const checks=['gemini-3.6-flash','gemini-2.5-flash','gemini-2.5-flash-lite'].map(async model=>{
- const start=Date.now();
- try{
-  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{
-   method:'POST',headers:{'x-goog-api-key':key,'Content-Type':'application/json'},
-   body:JSON.stringify({contents:[{parts:[{text:'Responda apenas OK'}]}],generationConfig:{maxOutputTokens:50}}),
-   signal:AbortSignal.timeout(16000)});
-  const body=await r.json().catch(()=>({}));
-  const text=(body.candidates?.[0]?.content?.parts||[]).some(p=>!p.thought&&p.text);
-  console.log('DIAG model='+model+' status='+r.status+' elapsed='+ (Date.now()-start)+'ms text='+text+' errorCode='+(body.error?.status||'none'));
- } catch(e){ console.log('DIAG model='+model+' error='+e.name+' elapsed='+(Date.now()-start)+'ms'); }
-});
-await Promise.all(checks);
+import {createAiMarketingReport} from '../app/lib/server/vital-marketing-ai.mjs';
+const begin=Date.now();
+try{
+ const result=await createAiMarketingReport({kind:'manual',period:'30',metrics:{visits:100,orders:3,spend:500,revenue:1500}},{apiKey:process.env.GEMINI_API_KEY,
+  fetcher:(url,init)=>{const body=JSON.parse(init.body);body.generationConfig.thinkingConfig.thinkingLevel='minimal';body.generationConfig.maxOutputTokens=1100;
+   return fetch(url,{...init,body:JSON.stringify(body),signal:AbortSignal.timeout(55000)});}});
+ console.log('FULLDIAG success='+Boolean(result.summary&&result.actions.length)+' elapsed='+(Date.now()-begin)+'ms');
+}catch(e){console.log('FULLDIAG error='+e.name+' message='+String(e.message).slice(0,50)+' elapsed='+(Date.now()-begin)+'ms');}

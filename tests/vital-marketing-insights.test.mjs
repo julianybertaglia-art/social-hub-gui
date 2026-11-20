@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync} from 'node:crypto';
-import {readMeta,readGtm,readGa4,readVitalInsights,summarizeGa4Sources,summarizeGa4Events,summarizeMeta,summarizeClarity} from '../app/lib/server/vital-insights.mjs';
+import {readMeta,readWindsorMeta,readGtm,readGa4,readVitalInsights,summarizeGa4Sources,summarizeGa4Events,summarizeMeta,summarizeClarity} from '../app/lib/server/vital-insights.mjs';
 
 const json=body=>new Response(JSON.stringify(body),{status:200,headers:{'Content-Type':'application/json'}});
 const {privateKey}=generateKeyPairSync('rsa',{modulusLength:2048,privateKeyEncoding:{type:'pkcs8',format:'pem'},publicKeyEncoding:{type:'spki',format:'pem'}});
@@ -38,6 +38,43 @@ test('Meta handles incomplete data, invalid account IDs and upstream errors with
  const partial=await readMeta({VITAL_META_AD_ACCOUNT_ID:'12345678',VITAL_META_ADS_READ_TOKEN:'fake-token'},async url=>
   new URL(url).searchParams.get('level')==='campaign'?new Response('',{status:403}):json({data:[{spend:'4',account_currency:'BRL'}]}));
  assert.equal(partial.status,'ready');assert.equal(partial.data.spend,4);assert.equal(partial.data.campaigns,null);
+});
+test('Windsor reads one specified account and keeps totals independent of campaign truncation',async()=>{
+ const requests=[];const env={VITAL_META_PROVIDER:'windsor',VITAL_META_AD_ACCOUNT_ID:'act_12345678',WINDSOR_API_KEY:'fake-private-key'};
+ const result=await readMeta(env,async(url,options)=>{
+  requests.push({url,options});const params=new URL(url).searchParams;
+  if(!params.get('fields').includes('campaign_id'))return json({data:[{account_id:'12345678',account_currency:'BRL',spend:'123.45',impressions:400,link_clicks:'20'}]});
+  return json({data:Array.from({length:26},(_,i)=>({account_id:'act_12345678',campaign_id:String(i+1),campaign:`Campanha ${i+1}`,spend:'1.25',impressions:'10',link_clicks:'2',private_detail:'ignore'}))});
+ });
+ assert.equal(result.status,'ready');assert.equal(result.data.provider,'windsor');
+ assert.equal(result.data.currency,'BRL');assert.equal(result.data.spend,123.45);assert.equal(result.data.linkClicks,20);
+ assert.equal(result.data.campaigns.length,25);assert.equal(result.data.campaignsMore,true);
+ assert.equal(result.data.campaigns[0].name,'Campanha 1');
+ assert.ok(!JSON.stringify(result).includes('fake-private-key'));assert.ok(!JSON.stringify(result).includes('private_detail'));
+ assert.equal(requests.length,2);
+ for(const {url,options} of requests){const u=new URL(url);
+  assert.equal(u.origin,'https://connectors.windsor.ai');assert.equal(u.pathname,'/facebook');
+  assert.equal(u.searchParams.get('select_accounts'),'12345678');assert.equal(u.searchParams.get('date_preset'),'last_30d');
+  assert.equal(options.redirect,'error');assert.equal(options.cache,'no-store');}
+});
+test('Windsor rejects wrong accounts, ambiguous totals and provider errors without exposing secrets',async()=>{
+ const env={VITAL_META_AD_ACCOUNT_ID:'12345678',VITAL_WINDSOR_API_KEY:'fake-private-key'};
+ const unexpected=await readWindsorMeta(env,async()=>json({data:[{account_id:'87654321',spend:10}]}));
+ assert.deepEqual(unexpected,{status:'unavailable'});
+ const ambiguous=await readWindsorMeta(env,async()=>json({data:[{account_id:'12345678'},{account_id:'12345678'}]}));
+ assert.deepEqual(ambiguous,{status:'unavailable'});
+ const failed=await readWindsorMeta(env,async()=>new Response('fake-private-key',{status:403}));
+ assert.deepEqual(failed,{status:'unavailable'});
+ let calls=0;const invalid=await readWindsorMeta({...env,VITAL_META_AD_ACCOUNT_ID:'../../other'},()=>{calls++;});
+ assert.deepEqual(invalid,{status:'not_configured'});assert.equal(calls,0);
+});
+test('Windsor preserves account totals if campaign data is unavailable and leaves missing metrics unknown',async()=>{
+ const result=await readWindsorMeta({VITAL_META_AD_ACCOUNT_ID:'12345678',WINDSOR_API_KEY:'fake'},async url=>{
+  if(new URL(url).searchParams.get('fields').includes('campaign_id'))return new Response('',{status:503});
+  return json({data:[{account_id:'12345678',spend:'4',link_clicks:null}]});
+ });
+ assert.equal(result.status,'ready');assert.equal(result.data.spend,4);assert.equal(result.data.linkClicks,null);
+ assert.equal(result.data.impressions,null);assert.equal(result.data.currency,null);assert.equal(result.data.campaigns,null);
 });
 test('GA4 reads sessions by source and campaign with readonly scope, and keeps totals if breakdown fails',async()=>{
  const scopes=[];const requests=[];

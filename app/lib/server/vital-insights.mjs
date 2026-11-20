@@ -170,7 +170,66 @@ export function summarizeMeta(totalResponse,campaignResponse){
       spend:nonnegative(c.spend),impressions:nonnegative(c.impressions),linkClicks:nonnegative(c.inline_link_clicks)}))??null,
     campaignsMore:Boolean(campaignResponse?.paging?.next)};
 }
+
+// Windsor's API requires its key in the upstream query string. Keep this URL
+// server-side, reject redirects, and never return or log the URL/error body.
+function normalizeWindsorKey(raw){
+  let key=String(raw||'').trim();
+  if(key.startsWith('WINDSOR_API_KEY='))key=key.slice('WINDSOR_API_KEY='.length).trim();
+  key=key.replace(/^(['"])(.*)\1$/,'$2').trim();
+  if(key.includes('api_key=')){
+    try{key=new URL(key).searchParams.get('api_key')||'';}catch{return '';}
+  }
+  return key.trim();
+}
+function windsorRows(body){
+  if(!body||body.error||body.errors||body.status==='pending')return null;
+  for(const rows of [body,body.data,body.result,body.rows])if(Array.isArray(rows))return rows;
+  return null;
+}
+function sameWindsorAccount(row,id){
+  const raw=row?.account_id;
+  if(typeof raw==='number'&&!Number.isSafeInteger(raw))return false;
+  return (typeof raw==='string'||typeof raw==='number')&&String(raw).replace(/^act_/,'')===id;
+}
+export async function readWindsorMeta(env=process.env,fetcher=fetch){
+  const id=String(env.VITAL_META_AD_ACCOUNT_ID||'').replace(/^act_/,'');
+  const token=normalizeWindsorKey(env.VITAL_WINDSOR_API_KEY||env.WINDSOR_API_KEY);
+  if(!/^\d{4,30}$/.test(id)||!token)return {status:'not_configured'};
+  const request=async campaign=>{
+    const url=new URL('https://connectors.windsor.ai/facebook');
+    url.searchParams.set('api_key',token);
+    url.searchParams.set('select_accounts',id);
+    url.searchParams.set('date_preset','last_30d');
+    url.searchParams.set('fields',campaign?
+      'account_id,campaign_id,campaign,spend,impressions,link_clicks':
+      'account_id,account_currency,spend,impressions,link_clicks');
+    // A second account-total row is an ambiguous total, not something to add.
+    // The extra campaign row indicates truncation without exposing private URLs.
+    url.searchParams.set('_max_rows',campaign?'26':'2');
+    url.searchParams.set('_renderer','json');
+    const response=await fetcher(url.toString(),{headers:{Accept:'application/json'},
+      redirect:'error',signal:AbortSignal.timeout(25000),cache:'no-store'});
+    if(!response.ok)throw Error('windsor_unavailable');
+    const rows=windsorRows(await response.json());
+    if(!rows||rows.some(row=>!sameWindsorAccount(row,id)))throw Error('windsor_response');
+    if(!campaign&&rows.length!==1)throw Error('windsor_ambiguous_total');
+    return rows;
+  };
+  try{
+    const campaigns=request(true).catch(()=>null);
+    const totals=await request(false),row=totals[0];
+    const list=await campaigns;
+    return {status:'ready',data:{provider:'windsor',period:'Últimos 30 dias completos · Windsor',start:null,end:null,
+      currency:typeof row?.account_currency==='string'&&/^[A-Z]{3}$/.test(row.account_currency)?row.account_currency:null,
+      spend:nonnegative(row?.spend),impressions:nonnegative(row?.impressions),linkClicks:nonnegative(row?.link_clicks),
+      campaigns:list?.slice(0,25).map(c=>({id:short(c.campaign_id),name:short(c.campaign)||'Campanha sem nome',
+        spend:nonnegative(c.spend),impressions:nonnegative(c.impressions),linkClicks:nonnegative(c.link_clicks)}))??null,
+      campaignsMore:Boolean(list&&list.length>25)}};
+  }catch{return {status:'unavailable'};}
+}
 export async function readMeta(env=process.env,fetcher=fetch){
+  if(env.VITAL_META_PROVIDER==='windsor')return readWindsorMeta(env,fetcher);
   const id=String(env.VITAL_META_AD_ACCOUNT_ID||'').replace(/^act_/,'');
   const token=env.VITAL_META_ADS_READ_TOKEN;
   if(!/^\d{4,30}$/.test(id)||!token)return {status:'not_configured'};

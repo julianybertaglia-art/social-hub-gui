@@ -105,6 +105,7 @@ export default function VitalMarketingWorkbench({insights,store,revision=0,onAsk
    </section>
    <section className={css.panel}><div className={css.panelHead}><div><span>CONTEÚDO POR E-MAIL</span><h3>Prepare uma campanha</h3></div><span className={css.pending}>Envio não conectado</span></div>
     <p className={css.muted}>Monte um rascunho e abra no aplicativo de e-mail da sua preferência.</p>
+    <p className={css.foot}>A loja já tem o Nuvem Marketing instalado. <a href="https://www.nuvemshop.com.br/loja-aplicativos-nuvem/perfit" target="_blank" rel="noopener noreferrer">Ver aplicativo Nuvem Marketing ↗</a> para conferir o remetente e as automações. Ele ainda não está conectado ao Tide.</p>
     <label className={css.field}>Produto para a sugestão<select value={product} onChange={e=>setProduct(e.target.value)}><option value="">Escolha um produto</option>
      {products.map((p,i)=><option key={i} value={p.name}>{p.name}</option>)}</select></label>
     <button type="button" className={css.secondary} onClick={useTemplate}>Criar sugestão de texto</button>

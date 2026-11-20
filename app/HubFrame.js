@@ -47,7 +47,31 @@ export default function HubFrame({ children }) {
   const vital = useVitalConnectionStatus();
   const vitalConnected = vital.instagram === true && vital.whatsapp === true;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const isConversationArea = pathname.startsWith('/crm/vital') ||
+    pathname === '/whatsapp' || pathname === '/whatsapp/setores' ||
+    pathname.startsWith('/instagram/direct');
   const [area, setArea] = useState('studio');
+
+  useEffect(() => {
+    // Collapse only in the inbox; keep Social and other tools unchanged.
+    if (!isConversationArea) {
+      setSidebarCollapsed(false);
+      return;
+    }
+    try {
+      const saved = window.localStorage.getItem('tideplace:sidebar-collapsed');
+      setSidebarCollapsed(saved === null ? true : saved === 'true');
+    } catch {
+      setSidebarCollapsed(true);
+    }
+  }, [isConversationArea]);
+
+  function toggleSidebar() {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    try { window.localStorage.setItem('tideplace:sidebar-collapsed', String(next)); } catch {}
+  }
   useEffect(() => {
     if (pathname.startsWith('/crm') || pathname.startsWith('/whatsapp') || pathname.startsWith('/instagram/direct')) {
       setArea('crm');
@@ -87,8 +111,8 @@ export default function HubFrame({ children }) {
   if (!framed) return children;
 
   return (
-    <div className={`${styles.frame} ${workspace.id==='vital-decor'&&area==='crm'?styles.crmMode:''}`}>
-      <aside className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
+    <div className={`${styles.frame} ${workspace.id==='vital-decor'&&area==='crm'?styles.crmMode:''} ${isConversationArea&&sidebarCollapsed?styles.sidebarCollapsed:''}`}>
+      <aside id="tideplace-navigation" className={`${styles.sidebar} ${menuOpen ? styles.sidebarOpen : ''}`}>
         <Link href="/" className={styles.brand} onClick={() => setMenuOpen(false)}>
           <div className={styles.brandMark}><img src="/brand/tideplace-mark.svg" alt="" /></div>
           <div className={styles.brandCopy}>
@@ -155,7 +179,13 @@ export default function HubFrame({ children }) {
 
       <div className={styles.main}>
         <header className={styles.topbar}>
-          <button type="button" className={styles.menuButton} onClick={() => setMenuOpen(true)} aria-label="Abrir menu"><Icon name="menu" size={21} /></button>
+          <button type="button" className={styles.menuButton} onClick={() => setMenuOpen(true)} aria-label="Abrir menu" aria-expanded={menuOpen} aria-controls="tideplace-navigation"><Icon name="menu" size={21} /></button>
+          {isConversationArea && <button type="button" className={styles.desktopMenuButton} onClick={toggleSidebar}
+            aria-label={sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+            title={sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+            aria-expanded={!sidebarCollapsed} aria-controls="tideplace-navigation">
+            <Icon name="menu" size={21} />
+          </button>}
           <WorkspaceSwitcher />
           <NavigationSearch workspaceId={workspace.id} pathname={pathname} onSectionChange={changeSection} />
           <ThemeCustomizer />

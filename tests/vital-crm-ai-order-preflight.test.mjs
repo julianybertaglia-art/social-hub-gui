@@ -56,7 +56,7 @@ test('notify only verified statuses; no false shipping or prepaid notifications'
  assert.equal(notificationFromVerifiedOrder({event:'order/paid',order:{payment_status:'pending'}}).eligible,false);
  assert.equal(notificationFromVerifiedOrder({event:'order/paid',order:{payment_status:'paid',status:'open'}}).stage,'paid');
  assert.equal(notificationFromVerifiedOrder({event:'order/fulfilled',order:{payment_status:'paid',status:'open',shipping_status:'shipped'}}).eligible,false);
- assert.equal(notificationFromVerifiedOrder({event:'order/fulfilled',order:{payment_status:'paid',status:'open',shipping_status:'shipped',shipping_tracking_number:'ABC'}}).stage,'shipped');
+ assert.equal(notificationFromVerifiedOrder({event:'order/fulfilled',order:{payment_status:'paid',status:'open',shipping_status:'shipped',fulfillments:[{id:'a',status:'DISPATCHED',shipping:{type:'ship'},tracking_info:{code:'ABC'}}]}}).stage,'shipped');
  assert.equal(notificationFromVerifiedOrder({event:'order/cancelled',order:{status:'cancelled'}}).stage,'cancelled');
  const keyA=notificationIdempotencyKey({storeId:123,orderId:34,stage:'paid'});
  assert.equal(keyA,notificationIdempotencyKey({storeId:123,orderId:34,stage:'paid'}));

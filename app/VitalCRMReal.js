@@ -56,6 +56,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const [destination,setDestination]=useState(''),[draft,setDraft]=useState('');
  const [leadPanelOpen,setLeadPanelOpen]=useState(false);
  const [leadProfile,setLeadProfile]=useState(null),[leadLoading,setLeadLoading]=useState(false),[leadError,setLeadError]=useState('');
+ const [leadAi,setLeadAi]=useState(null),[leadAiLoading,setLeadAiLoading]=useState(false),[leadAiError,setLeadAiError]=useState('');
  const [splitWidth,setSplitWidth]=useState(DEFAULT_SPLIT_WIDTH);
  const [boardHeight,setBoardHeight]=useState(null);
  const splitBoard=useRef(null),splitDragging=useRef(false);
@@ -153,6 +154,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   if(!leadPanelOpen||!selected){setLeadProfile(null);setLeadLoading(false);setLeadError('');return;}
   let active=true;
   setLeadProfile(null);setLeadError('');setLeadLoading(true);
+  setLeadAi(null);setLeadAiError('');
   api('/api/crm/vital/lead-profile?contact='+encodeURIComponent(selected))
    .then(result=>{if(active)setLeadProfile(result);})
    .catch(e=>{if(active)setLeadError(e.message);})
@@ -165,6 +167,18 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   window.addEventListener('keydown',onEscape);
   return()=>window.removeEventListener('keydown',onEscape);
  },[leadPanelOpen]);
+ async function analyzeLead(){
+   if(!selected||leadAiLoading||leadLoading)return;
+   const contact=selected;
+   setLeadAi(null);setLeadAiError('');setLeadAiLoading(true);
+   try{
+     const response=await api('/api/crm/vital/lead-analysis',{method:'POST',body:JSON.stringify({contact})});
+     if(response.status==='not_configured')setLeadAiError('A integração Gemini ainda não está disponível neste ambiente.');
+     else if(response.status==='no_text')setLeadAiError(response.reason||'Sem mensagens para analisar.');
+     else setLeadAi(response.analysis||null);
+   }catch(e){setLeadAiError(e.message);}
+   finally{setLeadAiLoading(false);}
+ }
  const role=data?.role||'agent',manager=['owner','supervisor'].includes(role);
  const queues=data?.queues||[],counts=data?.counters||emptyCounts;
  const queueName=code=>(data?.transferDestinations||queues).find(q=>q.queue_code===code)?.display_name||(code===null?'Sem classificação':code);
@@ -456,6 +470,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   </>}
   {leadPanelOpen&&selected&&<VitalLeadDrawer
      profile={leadProfile} loading={leadLoading} error={leadError}
+     ai={leadAi} aiLoading={leadAiLoading} aiError={leadAiError} onAnalyze={analyzeLead}
      onClose={()=>setLeadPanelOpen(false)}
      canPrepare={Boolean(detail&&!replyBlockReason&&role==='owner'&&!busy)}
      onPrepare={text=>{setDraft(text);setLeadPanelOpen(false);}}/>}

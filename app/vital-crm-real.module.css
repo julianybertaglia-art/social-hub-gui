@@ -450,3 +450,51 @@
  .salesAssistant{gap:7px;padding:10px 12px}
 }
 @media(prefers-reduced-motion:reduce){.salesAssistant>summary::after{transition:none}}
+
+
+/* Atendimento 2026: compact operational controls, full-width conversation. */
+.inboxToolbar{display:flex;align-items:center;justify-content:space-between;gap:9px 16px;flex-wrap:wrap;margin:0 0 12px}
+.inboxToolbar .inboxSummary{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:0}
+.inboxToolbar .summaryPill{display:flex;flex-direction:row;align-items:center;gap:7px;min-height:37px;padding:7px 10px;border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:9px;box-shadow:none}
+.inboxToolbar .summaryPill strong{font-size:16px;line-height:1.2}
+.inboxToolbar .summaryPill span{font-size:12px;white-space:nowrap}
+.inboxToolbar .summaryPill[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 13%,var(--surface));outline:1px solid var(--accent)}
+.inboxToolbar .scopeTabs{margin:0;gap:6px;flex-wrap:wrap}
+.inboxToolbar .scopeTabs button{padding:8px 12px;font-size:12px}
+.inboxFocus .header{margin-bottom:9px;align-items:center}
+.inboxFocus .header h1{font-size:clamp(21px,2vw,27px);margin:2px 0}
+.inboxFocus .header p{display:none}
+.inboxFocus .tabs{margin-bottom:11px}
+.inboxFocus .board{height:var(--vital-board-height,max(520px,calc(100dvh - 285px)))}
+.inboxFocus .board .messages article{max-width:min(86%,650px);padding:11px 15px}
+.inboxFocus .board .messages article p{font-size:15px;line-height:1.52}
+.inboxFocus .board .contactText strong{font-size:14.5px}
+.inboxFocus .board .contactText small{font-size:11px}
+.inboxFocus .board .composeRow textarea{font-size:15px}
+.inboxFocus .board .reply small{flex:0 0 auto}
+.mobileBack{display:none}
+@media(max-width:700px){
+ .inboxFocus .header{flex-direction:row;align-items:center;gap:8px}
+ .inboxFocus .header h1{font-size:19px}
+ .inboxFocus .eyebrow{display:none}
+ .inboxToolbar{align-items:flex-start}
+ .inboxToolbar .inboxSummary{gap:5px}
+ .inboxToolbar .summaryPill{padding:6px 8px;min-height:35px}
+ .inboxToolbar .summaryPill span{font-size:11px;white-space:normal}
+ .inboxFocus .board{height:auto!important;grid-template-columns:1fr}
+ .board:not(.hasSelection) .thread{display:none}
+ .board:not(.hasSelection) .list{height:min(70dvh,640px);max-height:none}
+ .board:not(.hasSelection) .contacts{max-height:none}
+ .board.hasSelection .list{display:none}
+ .board.hasSelection .thread{height:auto!important;min-height:0!important;overflow:visible}
+ .board.hasSelection .messages{height:clamp(350px,61dvh,680px);min-height:350px;max-height:none}
+ .board.hasSelection .threadHeader{padding:10px 12px;gap:9px}
+ .board.hasSelection .threadHeader .mobileBack{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px}
+ .board.hasSelection .threadHeader .desktopClose{display:none}
+ .board.hasSelection .threadAvatar{width:35px;height:35px;flex-basis:35px}
+ .board.hasSelection .chatIdentity{gap:8px}
+ .inboxHasSelection .inboxToolbar,.inboxHasSelection .header,.inboxHasSelection .tabs{display:none}
+ .inboxHasSelection .boardFrame{padding-bottom:0}
+ .inboxHasSelection .board{border-radius:12px}
+}
+@media(prefers-reduced-motion:reduce){.inboxToolbar .summaryPill{transition:none}}

@@ -6,6 +6,7 @@ import {readVitalLeadProfile} from '../app/lib/server/vital-lead-profile.mjs';
 test('Vivi link without reply is identifiable only for retail and verified automation',()=>{
  const msg={direction:'outbound',body:'Veja https://vitaldecor.com.br',raw_payload:{source:'vivi_automation'}};
  assert.equal(isSiteLinkNoReturn(msg,'varejo_nv'),true);
+ assert.equal(isSiteLinkNoReturn(msg,null),true);
  assert.equal(isSiteLinkNoReturn(msg,'pos_nv'),false);
  assert.equal(isSiteLinkNoReturn({...msg,direction:'inbound'},'varejo_nv'),false);
  assert.equal(isSiteLinkNoReturn({...msg,raw_payload:{}},'varejo_nv'),false);

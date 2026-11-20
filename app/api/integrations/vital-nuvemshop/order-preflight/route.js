@@ -20,7 +20,7 @@ export async function POST(request){
   let payload;try{payload=JSON.parse(raw)}catch{return reply({error:'invalid_payload'},400)}
   const event=parseNuvemshopOrderEvent(payload,storeId);
   if(!event.valid)return reply({status:'ignored',reason:event.reason},200);
-  const order=await readNuvemshopOrder({storeId:event.storeId,orderId:event.orderId,token});
+  const order=await readNuvemshopOrder({storeId:event.storeId,orderId:event.orderId,token,includeFulfillments:true});
   const notice=notificationFromVerifiedOrder({event:event.event,order});
   const key=notice.eligible?notificationIdempotencyKey({storeId:event.storeId,orderId:event.orderId,stage:notice.stage}):null;
   // No phone, addresses, identifiers, tokens, or message bodies returned to webhook sender.

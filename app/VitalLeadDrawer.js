@@ -1,6 +1,6 @@
 'use client';
 
-import {orderUpdateDraft} from './lib/vital-lead-intelligence.mjs';
+import {orderUpdateDraft,orderTimeline} from './lib/vital-lead-intelligence.mjs';
 import Icon from './ui/Icon';
 import css from './vital-lead-drawer.module.css';
 
@@ -44,7 +44,7 @@ export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare
      <section className={css.card}>
       <span className={css.kicker}>COPILOTO DE ATENDIMENTO</span>
       <h3>Orientação por IA, com revisão humana</h3>
-      <p>Analisa as últimas mensagens recebidas e os estados da loja. Dados identificáveis são ocultados antes de enviar à integração Gemini.</p>
+      <p>Analisa as últimas mensagens recebidas e os estados da loja. Telefones, e-mails, documentos e links são ocultados antes de enviar à integração Gemini.</p>
       <button type="button" className={css.prepare} onClick={onAnalyze}
         disabled={Boolean(loading||aiLoading||error)}>
         <Icon name="sparkle" size={16}/> {aiLoading?'Analisando conversa…':'Analisar com IA'}
@@ -78,6 +78,11 @@ export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare
         {o.map(order=><div key={order.id} className={css.order}>
          <div className={css.orderTitle}><strong>Pedido #{order.number}</strong><span>{currency(order.total)}</span></div>
          <small>{date(order.at)} · {statusLabel(order.paymentStatus,payment)} · {statusLabel(order.shippingStatus,shipping)}</small>
+         <div className={css.orderSteps} aria-label="Etapas confirmadas do pedido">
+          {orderTimeline(order).map(step=><span key={step.id} className={step.done?css.stepDone:css.stepPending}>
+            {step.done?'✓':'○'} {step.label}
+          </span>)}
+         </div>
          {order.products.length>0&&<p>{order.products.map(x=>x.quantity+'× '+x.name).join(', ')}</p>}
          {order.trackingCode&&<small>Rastreio: {order.trackingCode}</small>}
          {order.trackingUrl&&<a href={order.trackingUrl} rel="noopener noreferrer" target="_blank">Acompanhar rastreio</a>}

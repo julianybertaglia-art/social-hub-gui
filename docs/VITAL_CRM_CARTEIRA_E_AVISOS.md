@@ -1,7 +1,7 @@
 # Vital Decor · Carteira de leads e avisos de pedido
 
 ## Escopo da primeira entrega
-- CRM mantém "Aguardando resposta", "Em andamento" e "Concluídas"; adiciona **Link enviado · sem retorno** como segmento sobreposto. Só conta quando a **última** mensagem da conversa é a resposta automática da Vivi, contém o link oficial da loja e está na fila de varejo. Não significa abertura de link nem compra.
+- CRM mantém "Aguardando resposta", "Em andamento" e "Concluídas"; adiciona **Link enviado · sem retorno** como segmento sobreposto. Só conta quando a **última** mensagem da conversa é a resposta automática da Vivi, contém o link oficial da loja e está na fila de varejo ou temporariamente sem classificação. Não significa abertura de link nem compra.
 - Ficha individual no atendimento: consulta **somente leitura** de pedidos da Nuvemshop dos últimos 365 dias e checkouts abandonados disponíveis dos últimos 30 dias; associa exclusivamente por telefone normalizado igual (não compara nomes nem endereço de entrega). Resultados incompletos ou indisponíveis são indicados.
 - Recomendações iniciais são **baseadas em regras transparentes**, e não análises de IA generativa. Elas priorizam pós-venda quando há pedido e nunca indicam recuperação se existe pedido pago.
 - Botão **Preparar atualização do pedido** copia um texto personalizado de status confirmado no campo de resposta. O usuário precisa revisar e enviar, e as mesmas restrições do chat valem: acesso, Argo e janela de 24h.

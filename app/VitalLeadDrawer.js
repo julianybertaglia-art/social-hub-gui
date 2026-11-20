@@ -35,6 +35,11 @@ export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare
        <p>{p.recommendation?.description||'Acompanhe o histórico antes de propor contato.'}</p>
        {p.timing&&<p><strong>Quando agir:</strong> {p.timing}</p>}
        <span className={css.hint}>Sugestão por regras. Nenhuma mensagem será enviada automaticamente.</span>
+       {p.state==='ready'&&p.lead?.id==='link'&&canPrepare&&
+        <button className={css.prepare} type="button"
+         onClick={()=>onPrepare('Oi! Tudo bem? 💜 Se precisar de ajuda para escolher um produto da Vital Decor ou calcular a quantidade ideal para o seu espaço, é só me chamar por aqui. 😊')}>
+         <Icon name="chat" size={15}/> Preparar mensagem de ajuda
+        </button>}
      </section>
      {p.state==='not_configured'&&<p className={css.alert}>
         A consulta de pedidos ainda não está configurada para este ambiente.

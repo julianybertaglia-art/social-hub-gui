@@ -12,7 +12,7 @@ export function samePhone(left,right){
 }
 export function isSiteLinkNoReturn(message,queue){
   const source=message?.raw_payload?.source;
-  return queue==='varejo_nv'&&message?.direction==='outbound'
+  return (queue==='varejo_nv'||queue===null)&&message?.direction==='outbound'
     &&source==='vivi_automation'&&SITE_URL.test(message?.body||'');
 }
 export const safeMoney=value=>{

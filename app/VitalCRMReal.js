@@ -134,11 +134,12 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const reload=useCallback(()=>setRevision(v=>v+1),[]);
  useEffect(()=>{
   let active=true;setLoading(true);setError('');
-  api('/api/crm/vital/live?page='+pageNumber).then(result=>{if(active)setData(result);})
+  api('/api/crm/vital/live?page='+pageNumber+(statusFilter==='link_no_return'?'&segment=link_no_return':''))
+    .then(result=>{if(active)setData(result);})
    .catch(e=>{if(active)setError(e.message);})
    .finally(()=>{if(active)setLoading(false);});
   return()=>{active=false};
- },[revision,pageNumber]);
+ },[revision,pageNumber,statusFilter==='link_no_return']);
  useEffect(()=>{
   if(!selected){setDetail(null);return;}
   let active=true;setOpening(true);setDetail(null);setDestination('');setDraft('');
@@ -308,12 +309,12 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   {data && page==='inbox' && <>
    <div className={css.inboxToolbar}>
    <div className={css.inboxSummary}>
-    {STATUS.map(item=><button key={item.code} className={css.summaryPill} aria-pressed={statusFilter===item.code} style={{'--accent':item.color}} onClick={()=>setStatusFilter(statusFilter===item.code?'all':item.code)}>
+    {STATUS.map(item=><button key={item.code} className={css.summaryPill} aria-pressed={statusFilter===item.code} style={{'--accent':item.color}} onClick={()=>{setStatusFilter(statusFilter===item.code?'all':item.code);setPageNumber(0);setSelected(null);}}>
      <strong>{counts[item.code]||0}</strong><span>{item.label}</span>
     </button>)}
     {role==='owner'&&<button type="button" className={css.summaryPill}
       aria-pressed={statusFilter==='link_no_return'} title="A Vivi enviou o link da loja e não houve nova resposta nesta conversa."
-      style={{'--accent':'#8252ac'}} onClick={()=>setStatusFilter(statusFilter==='link_no_return'?'all':'link_no_return')}>
+      style={{'--accent':'#8252ac'}} onClick={()=>{setStatusFilter(statusFilter==='link_no_return'?'all':'link_no_return');setPageNumber(0);setSelected(null);}}>
       <strong>{counts.link_no_return||0}</strong><span>Link enviado · sem retorno</span>
     </button>}
    </div>
@@ -333,7 +334,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
        {role==='owner'&&<option value="unassigned">Sem classificação</option>}
        {queues.filter(q=>view==='all'||role!=='owner'||MINE.includes(q.queue_code)).map(q=><option key={q.queue_code} value={q.queue_code}>{q.display_name}</option>)}
       </select></label>
-      <label><span>Status</span><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
+      <label><span>Status</span><select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setPageNumber(0);setSelected(null);}}>
        <option value="all">Todos os status</option>
        {STATUS.map(item=><option key={item.code} value={item.code}>{item.label}</option>)}
        {role==='owner'&&<option value="link_no_return">Link enviado · sem retorno</option>}

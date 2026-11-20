@@ -37,13 +37,14 @@ export default function VitalInsightsSourceDetails({insights,loading,error,onRel
   {!loading&&error&&<p role="alert" className={css.message}>{error}</p>}
   {!loading&&!error&&<>
    {insights?.enabled===false&&<p className={css.message}>O painel está preparado. As conexões ainda precisam ser configuradas e ativadas para mostrar dados reais.</p>}
-   <State name="Meta Ads · Campanhas" source={meta} period={meta?.data?.start&&meta?.data?.end?`${day(meta.data.start)} a ${day(meta.data.end)}`:meta?.data?.period}/>
+   <State name={meta?.data?.provider==='windsor'?'Meta Ads via Windsor · Campanhas':'Meta Ads · Campanhas'} source={meta} period={meta?.data?.start&&meta?.data?.end?`${day(meta.data.start)} a ${day(meta.data.end)}`:meta?.data?.period}/>
    {meta?.status==='ready'&&<>
     <div className={css.tiles}>
      <Tile label="Investimento" value={money(meta.data.spend,meta.data.currency)} help="Total da conta de anúncios no período"/>
      <Tile label="Impressões" value={n(meta.data.impressions)} help="Vezes que os anúncios apareceram"/>
      <Tile label="Cliques no link" value={n(meta.data.linkClicks)} help="Conforme Meta Ads; não são visitas confirmadas"/>
     </div>
+    {meta.data.provider==='windsor'&&<p className={css.message}>Dados fornecidos pela Windsor.ai; a atualização pode ter atraso.</p>}
     {meta.data.campaigns===null?<p className={css.message}>O detalhamento por campanha está indisponível no momento.</p>:
      meta.data.campaigns.length?<div className={css.tableWrap}><table className={css.table}>
       <caption>Campanhas com atividade no período{meta.data.campaignsMore?' · primeiras 25':''}</caption>

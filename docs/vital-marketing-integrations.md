@@ -21,6 +21,12 @@ A flag `VITAL_INSIGHTS_ENABLED` permanece desligada por padrão: o painel mostra
 2. Configurar `VITAL_META_AD_ACCOUNT_ID` como ID numérico (com ou sem prefixo `act_`) e `VITAL_META_ADS_READ_TOKEN` como segredo no servidor. O padrão de API é `v26.0`; `VITAL_META_GRAPH_VERSION` pode ajustar a versão após validação de compatibilidade.
 3. Com a flag habilitada apenas em um ambiente de validação seguro, comparar o período exibido, moeda, investimento e cliques com o Gerenciador de Anúncios na mesma conta e período. A conta pode conter campanhas além do site.
 
+#### Alternativa: Windsor.ai
+
+Quando a conexão direta não estiver disponível, a proprietária pode autorizar a conta oficial da Vital Decor no Windsor.ai. O conector pode solicitar permissões amplas na Meta; confira a tela de autorização e limite a conexão à conta desejada. No servidor, defina `VITAL_META_PROVIDER=windsor` e `VITAL_META_AD_ACCOUNT_ID` com o ID da conta, e configure `VITAL_WINDSOR_API_KEY` como Secret de produção. Se não existir uma chave dedicada, o servidor usa a `WINDSOR_API_KEY` já existente. O painel usa apenas consultas GET à API da Windsor e verifica se todas as linhas retornadas pertencem à conta configurada.
+
+A Windsor exige a chave na URL da chamada de servidor. Não registre URLs, erros ou respostas completas dessa chamada em logs, e bloqueie redirecionamentos. A chave nunca deve ir ao navegador ou ao repositório. O período usado é `last_30d`, sem o dia atual; os totais e a lista são consultas independentes. Dados ausentes não viram zero. A lista mostra no máximo 25 campanhas e informa se há mais. Compare os números e o período no Gerenciador de Anúncios antes de liberar; a fonte pode usar cache e ser atualizada com atraso. Sem a autorização, a chave correta e uma chamada real validada, esta alternativa não deve ser apresentada como conectada.
+
 ### GA4
 
 Siga `docs/vital-analytics-runbook.md`: habilitar a Google Analytics Data API, conceder acesso de leitura à conta de serviço na propriedade correta e guardar `VITAL_GA4_PROPERTY_ID`, `VITAL_GA4_SERVICE_EMAIL` e `VITAL_GA4_PRIVATE_KEY` exclusivamente no servidor. Verificar a moeda e os eventos de compra. Os dados do GA4 podem divergir dos pedidos realmente pagos e das métricas da Meta.

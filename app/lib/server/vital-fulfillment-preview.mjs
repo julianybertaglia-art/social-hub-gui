@@ -39,6 +39,7 @@ export function buildFulfillmentSummary(order){
  let stage=null;
  if(order?.status==='cancelled')stage='cancelled';
  else if(good&&allShip&&allDelivered)stage='delivered';
+ else if(good&&allPickup&&allDelivered)stage='pickup_collected';
  else if(good&&allPickupReady)stage='pickup_ready';
  else if(good&&allShipped)stage='shipped';
  else if(good&&shippingSent>0)stage='partially_shipped';
@@ -55,13 +56,14 @@ export function buildFulfillmentSummary(order){
   partially_shipped:'uma parte dos volumes foi enviada. Os demais ainda estão em andamento; você pode acompanhar cada remessa com nossa equipe.',
   shipped:'todos os volumes do pedido foram enviados. Caso queira acompanhar o rastreamento, fale com nossa equipe.',
   pickup_ready:'o pedido consta como pronto para retirada. Antes de vir, confirme os dados da retirada com nossa equipe.',
+  pickup_collected:'a retirada do pedido consta como concluída. Tudo certo com os produtos? Estamos à disposição.',
   delivered:'a entrega de todos os volumes consta como concluída na loja. Deu tudo certo com o recebimento?'
  };
  return {availability:'ready',shipments,completed:shippingSent,total:shipments.length,
   stage,notice:stage?{stage,title:({
    cancelled:'Pedido cancelado',paid:'Pagamento confirmado',preparing:'Preparação',
    packed:'Preparado, sem envio confirmado',partially_shipped:'Envio parcial',shipped:'Pedido enviado',
-   pickup_ready:'Pronto para retirada',delivered:'Entrega concluída'
+   pickup_ready:'Pronto para retirada',pickup_collected:'Retirada concluída',delivered:'Entrega concluída'
   })[stage],draft:prefix+drafts[stage]}:null};
 }
 export function eventNoticeFromOrder(event,order){

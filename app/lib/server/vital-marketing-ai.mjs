@@ -74,12 +74,21 @@ export async function createAiMarketingReport(input,{apiKey,model='gemini-3.6-fl
   if(!output.summary||!output.actions.length)throw Error('invalid_response');
   return output;
  };
- const response=await fetcher('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent',{
-  method:'POST',headers:{'x-goog-api-key':apiKey,'Content-Type':'application/json'},
-  body:JSON.stringify({system_instruction:{parts:[{text:system}]},contents:[{role:'user',parts:[{text:JSON.stringify(report)}]}],
-   generationConfig:{responseMimeType:'application/json',maxOutputTokens:1100,thinkingConfig:{thinkingLevel:'minimal'}}}),
-  cache:'no-store',signal:AbortSignal.timeout(45000)});
- if(!response.ok)throw Error('provider_failure');
+ const requestBody=JSON.stringify({system_instruction:{parts:[{text:system}]},contents:[{role:'user',parts:[{text:JSON.stringify(report)}]}],
+  generationConfig:{responseMimeType:'application/json',maxOutputTokens:1100,thinkingConfig:{thinkingLevel:'minimal'}}});
+ let response;
+ // One short retry for transient provider/network failures; never retry invalid credentials.
+ for(let attempt=0;attempt<2;attempt++){
+  try{
+   response=await fetcher('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent',{
+    method:'POST',headers:{'x-goog-api-key':apiKey,'Content-Type':'application/json'},body:requestBody,
+    cache:'no-store',signal:AbortSignal.timeout(attempt===0?18000:25000)});
+  }catch(error){if(attempt===0&&['TimeoutError','AbortError','TypeError'].includes(error?.name))continue;throw Error('provider_failure');}
+  if(response.ok)break;
+  if(attempt===0&&(response.status===429||response.status>=500))continue;
+  throw Error('provider_failure');
+ }
+ if(!response?.ok)throw Error('provider_failure');
  const payload=await response.json();
  const text=(payload?.candidates?.[0]?.content?.parts||[]).filter(part=>!part.thought&&typeof part.text==='string').map(part=>part.text).join('');
  return parse(text,'Google Gemini');

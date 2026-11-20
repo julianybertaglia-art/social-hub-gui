@@ -77,7 +77,7 @@ async function readOne(ctx,phone){
     messages:messages.reverse().map(formatMessage),truncated:messages.length===150};
 }
 
-async function summary(ctx,page){
+async function summary(ctx,page,segment='all'){
   const {db,owner,connection,organization}=ctx;
   const q=fn=>fn.eq('owner_user_id',owner).eq('connection_id',connection.id);
   const [recent,flows,assignments,overrides,states]=await Promise.all([
@@ -128,7 +128,8 @@ async function summary(ctx,page){
     if(row.queue)counters.queues[row.queue]=(counters.queues[row.queue]||0)+1;
     else counters.unassigned+=1;
   }
-  const sliced=rows.slice(page*30,page*30+30);
+  const visibleRows=segment==='link_no_return'?rows.filter(row=>row.siteLinkNoReturn):rows;
+  const sliced=visibleRows.slice(page*30,page*30+30);
   const enriched=await Promise.all(sliced.map(async row=>{
     // Only here, after filtering by the authenticated user's permitted
     // queues, do we read a message body or contact profile name.
@@ -143,7 +144,7 @@ async function summary(ctx,page){
     workspace:'vital-decor', role:ctx.access.role, counters,
     queues:ctx.queues.filter(q=>allowedQueue(ctx,q.queue_code)),
     transferDestinations:vitalTransferDestinations(ctx.queues),
-    conversations:enriched,page,hasMore:rows.length>(page+1)*30,
+    conversations:enriched,page,hasMore:visibleRows.length>(page+1)*30,
     sampled:(recent.data||[]).length>=3000||(flows.data||[]).length>=5000||(states.data||[]).length>=5000,
     readOnly:process.env.VITAL_CRM_WRITES_ENABLED!=='true',
     canReply:process.env.VITAL_CRM_REPLY_ENABLED==='true'||process.env.VITAL_CRM_WRITES_ENABLED==='true',
@@ -156,7 +157,9 @@ export async function GET(request){
     if(phone)return Response.json(await readOne(ctx,phone),{headers});
     const p=Number(url.searchParams.get('page')||0);
     if(!Number.isSafeInteger(p)||p<0||p>100)throw fail('Página inválida.',400);
-    return Response.json(await summary(ctx,p),{headers});
+    const segment=url.searchParams.get('segment')||'all';
+    if(!['all','link_no_return'].includes(segment))throw fail('Segmento inválido.',400);
+    return Response.json(await summary(ctx,p,segment),{headers});
   }catch(e){
     return Response.json({error:e.status?e.message:'Não foi possível carregar as conversas.'},
       {status:e.status||503,headers});

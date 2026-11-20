@@ -2,6 +2,7 @@ import { getVitalCrmMember } from '../../../../lib/vital-crm-access.mjs';
 import { fail } from '../../../vital-connections/helpers.mjs';
 import {canReplyWithinWindow} from '../../../vital-whatsapp/conversations/inbox.mjs';
 import {readRows} from '../../../../lib/operations.mjs';
+import {isSiteLinkNoReturn} from '../../../../lib/vital-lead-intelligence.mjs';
 import {resolveVitalQueue,canAccessVitalQueue,crmConversationStatus,VITAL_QUEUE_ORDER,vitalTransferDestinations} from '../../../../lib/vital-crm-queues.mjs';
 
 export const runtime='nodejs';
@@ -81,7 +82,7 @@ async function summary(ctx,page){
   const q=fn=>fn.eq('owner_user_id',owner).eq('connection_id',connection.id);
   const [recent,flows,assignments,overrides,states]=await Promise.all([
     readRows(()=>q(db.from('workspace_meta_messages')
-      .select('contact_wa_id,direction,sent_at,id')
+      .select('contact_wa_id,direction,sent_at,id,body,raw_payload')
       .order('sent_at',{ascending:false}).order('id',{ascending:false})),3000),
     readRows(()=>q(db.from('vital_whatsapp_flow_sessions')
       .select('contact_wa_id,selection,last_interaction_at')
@@ -116,13 +117,14 @@ async function summary(ctx,page){
       status:crmConversationStatus({state:stateMap.get(phone),legacyClosed:a?.status==='closed',
         lastDirection:last?.direction,lastMessageAt:last?.sent_at}),
       updatedAt:last?.sent_at||manual?.updated_at||f?.last_interaction_at||a?.updated_at||null,
-      assignedTo:a?.assigned_to||null});
+      assignedTo:a?.assigned_to||null,siteLinkNoReturn:isSiteLinkNoReturn(last,queue)});
   }
   rows.sort((a,b)=>Date.parse(b.updatedAt||'')-Date.parse(a.updatedAt||''));
-  const counters={total:rows.length,pending:0,open:0,closed:0,unassigned:0,queues:{}};
+  const counters={total:rows.length,pending:0,open:0,closed:0,unassigned:0,link_no_return:0,queues:{}};
   for(const qCode of VITAL_QUEUE_ORDER)counters.queues[qCode]=0;
   for(const row of rows){
     counters[row.status]=(counters[row.status]||0)+1;
+    if(row.siteLinkNoReturn)counters.link_no_return+=1;
     if(row.queue)counters.queues[row.queue]=(counters.queues[row.queue]||0)+1;
     else counters.unassigned+=1;
   }

@@ -1,4 +1,4 @@
-import {canonicalPhone,samePhone,mapLeadOrder,mapLeadCheckout,classifyLead,recommendationForLead} from '../vital-lead-intelligence.mjs';
+import {canonicalPhone,samePhone,mapLeadOrder,mapLeadCheckout,classifyLead,recommendationForLead,timingForLead} from '../vital-lead-intelligence.mjs';
 
 const STORE_URL='https://api.nuvemshop.com.br/2025-03/';
 const validStore=id=>/^\d{3,20}$/.test(String(id||''));
@@ -36,7 +36,7 @@ export async function readVitalLeadProfile({phone,siteLinkNoReturn=false,replyWi
  if(!canonicalPhone(phone))return {state:'invalid_phone'};
  const storeId=String(env.NUVEMSHOP_VITAL_STORE_ID||''),token=env.NUVEMSHOP_VITAL_ACCESS_TOKEN;
  if(!validStore(storeId)||!token)return {state:'not_configured',orders:[],checkouts:[],
-  lead:classifyLead({siteLinkNoReturn}),recommendation:recommendationForLead({siteLinkNoReturn,replyWindowOpen})};
+  lead:classifyLead({siteLinkNoReturn}),recommendation:recommendationForLead({siteLinkNoReturn,replyWindowOpen}),timing:timingForLead({siteLinkNoReturn,replyWindowOpen})};
  const [o,c]=await Promise.allSettled([
   getCollection({kind:'orders',storeId,token,phone,env,fetcher,now,days:365,limitPages:5}),
   getCollection({kind:'checkouts',storeId,token,phone,env,fetcher,now,days:30,limitPages:3})
@@ -44,13 +44,12 @@ export async function readVitalLeadProfile({phone,siteLinkNoReturn=false,replyWi
  const orders=o.status==='fulfilled'?o.value:{state:'unavailable',issue:'network_error',items:[],periodDays:365};
  const checkouts=c.status==='fulfilled'?c.value:{state:'unavailable',issue:'network_error',items:[],periodDays:30};
  const sourcesReady=orders.state==='ready'&&checkouts.state==='ready';
- // A checkout could represent an older failed attempt by an eventual buyer.
- const paidPhones=new Set(orders.items.filter(item=>item.paymentStatus==='paid').map(item=>item.id));
- const currentCheckouts=checkouts.items.filter(x=>!paidPhones.has(x.id));
+ const currentCheckouts=checkouts.items;
  return {state:sourcesReady?'ready':'partial',source:{orders:{state:orders.state,issue:orders.issue||null,periodDays:365},
    checkouts:{state:checkouts.state,issue:checkouts.issue||null,periodDays:30}},
    orders:orders.items.slice(0,20),checkouts:currentCheckouts.slice(0,10),
    lead:classifyLead({orders:orders.items,checkouts:currentCheckouts,siteLinkNoReturn,sourcesReady}),
    recommendation:recommendationForLead({orders:orders.items,checkouts:currentCheckouts,siteLinkNoReturn,replyWindowOpen,sourcesReady}),
+   timing:timingForLead({orders:orders.items,checkouts:currentCheckouts,siteLinkNoReturn,replyWindowOpen}),
    checkedAt:now.toISOString()};
 }

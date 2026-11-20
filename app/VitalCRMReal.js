@@ -58,6 +58,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const [leadProfile,setLeadProfile]=useState(null),[leadLoading,setLeadLoading]=useState(false),[leadError,setLeadError]=useState('');
  const [leadAi,setLeadAi]=useState(null),[leadAiLoading,setLeadAiLoading]=useState(false),[leadAiError,setLeadAiError]=useState('');
  const [shippingDetails,setShippingDetails]=useState({});
+ const [notificationReadiness,setNotificationReadiness]=useState(null),[readinessError,setReadinessError]=useState(''),[readinessLoading,setReadinessLoading]=useState(false);
  const [splitWidth,setSplitWidth]=useState(DEFAULT_SPLIT_WIDTH);
  const [boardHeight,setBoardHeight]=useState(null);
  const splitBoard=useRef(null),splitDragging=useRef(false);
@@ -168,6 +169,13 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   window.addEventListener('keydown',onEscape);
   return()=>window.removeEventListener('keydown',onEscape);
  },[leadPanelOpen]);
+ async function checkNotificationReadiness(){
+  if(readinessLoading)return;
+  setReadinessLoading(true);setReadinessError('');
+  try{setNotificationReadiness(await api('/api/crm/vital/notification-readiness'));}
+  catch(e){setReadinessError(e.message);}
+  finally{setReadinessLoading(false);}
+ }
  async function loadOrderShipping(orderId){
    if(!selected||!/^\\d{1,20}$/.test(String(orderId))||!leadPanelOpen)return;
    const contact=selected,key=String(orderId);
@@ -484,6 +492,8 @@ export default function VitalCRMReal({embedded=false,onLogout}){
      profile={leadProfile} loading={leadLoading} error={leadError}
      ai={leadAi} aiLoading={leadAiLoading} aiError={leadAiError} onAnalyze={analyzeLead}
      shippingDetails={shippingDetails} onInspectShipping={loadOrderShipping}
+     notificationReadiness={notificationReadiness} readinessLoading={readinessLoading}
+     readinessError={readinessError} onCheckReadiness={checkNotificationReadiness}
      onClose={()=>setLeadPanelOpen(false)}
      canPrepare={Boolean(detail&&!replyBlockReason&&role==='owner'&&!busy)}
      onPrepare={text=>{setDraft(text);setLeadPanelOpen(false);}}/>}

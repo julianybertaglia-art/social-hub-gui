@@ -106,6 +106,8 @@ export default function VitalInsightsCRM({revision=0}){
    {kind:'connected',ga4:report.ga4?{sessions:report.ga4.sessions,purchases:report.ga4.purchases,
     purchaseRevenue:report.ga4.purchaseRevenue,currency:report.ga4.currency,events:report.ga4.events?.slice(0,4),products:report.ga4.products?.slice(0,5)}:null,
     meta:report.meta?{spend:report.meta.spend,linkClicks:report.meta.linkClicks,impressions:report.meta.impressions,
+     landingViews:report.meta.landingViews,addToCart:report.meta.addToCart,checkouts:report.meta.checkouts,
+     purchases:report.meta.purchases,purchaseValue:report.meta.purchaseValue,
      currency:report.meta.currency,campaigns:report.meta.campaigns?.slice(0,5),range:report.meta.start&&report.meta.end?`${report.meta.start}/${report.meta.end}`:null}:null,
     store:report.store?{orders:report.store.paidOrders,revenue:report.store.revenue,
       start:report.store.start,end:report.store.end,topProducts:report.store.topProducts?.slice(0,5)}:null,
@@ -199,6 +201,8 @@ export default function VitalInsightsCRM({revision=0}){
      <Metric icon="$" label="Gasto com anúncios" value={money(report.meta.spend,report.meta.currency)} source="Meta Ads"/>
      <Metric icon="+" label="Cliques nos links" value={number(report.meta.linkClicks)} source="Não são visitas confirmadas"/>
      <Metric icon="◉" label="Impressões" value={number(report.meta.impressions)} source="Vezes que anúncios apareceram"/>
+     <Metric icon="✓" label="Compras atribuídas" value={number(report.meta.purchases)} source="Atribuição informada pela Meta"/>
+     <Metric icon="R$" label="Valor atribuído" value={money(report.meta.purchaseValue,report.meta.currency)} source="Meta · não é lucro nem vendas confirmadas"/>
     </div></>}
    </>}
    <p className={css.metricNote}>O traço (—) significa que o número não foi informado ou não está disponível.</p>
@@ -228,7 +232,7 @@ export default function VitalInsightsCRM({revision=0}){
     <li>Gasto: {money(report.values.spend)}</li><li>Faturamento informado: {money(report.values.revenue)}</li></ul>:<>
     {report.store&&<p>Nuvemshop · {report.store.start} a {report.store.end}: {number(report.store.paidOrders)} pedidos pagos · {money(report.store.revenue)} em pedidos.</p>}
     {report.ga4&&<p>GA4 · últimos 30 dias completos: {number(report.ga4.sessions)} sessões · {number(report.ga4.purchases)} compras registradas.</p>}
-    {report.meta&&<p>Meta Ads · {report.meta.period}: {money(report.meta.spend,report.meta.currency)} investidos · {number(report.meta.linkClicks)} cliques · {number(report.meta.impressions)} impressões.</p>}
+    {report.meta&&<p>Meta Ads · {report.meta.period}: {money(report.meta.spend,report.meta.currency)} investidos · {number(report.meta.linkClicks)} cliques · {number(report.meta.impressions)} impressões · {number(report.meta.purchases)} compras atribuídas pela Meta · {money(report.meta.purchaseValue,report.meta.currency)} em valor atribuído.</p>}
     {report.clarity&&<p>Clarity · últimas 72 horas: {number(report.clarity.sessions)} sessões.</p>}
     {report.meta?.campaigns?.length>0&&<><h2>Campanhas</h2><ul>{report.meta.campaigns.map((c,i)=><li key={i}>{c.name} · {money(c.spend,report.meta.currency)} · {number(c.linkClicks)} cliques</li>)}</ul></>}
     {report.store?.topProducts?.length>0&&<><h2>Produtos mais vendidos</h2><ul>{report.store.topProducts.map((p,i)=><li key={i}>{p.name} · {number(p.quantity)} unidades</li>)}</ul></>}

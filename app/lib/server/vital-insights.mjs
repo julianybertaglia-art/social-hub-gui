@@ -241,14 +241,15 @@ export async function readWindsorMeta(env=process.env,fetcher=fetch){
   const id=String(env.VITAL_META_AD_ACCOUNT_ID||'').replace(/^act_/,'');
   const token=normalizeWindsorKey(env.VITAL_WINDSOR_API_KEY||env.WINDSOR_API_KEY);
   if(!/^\d{4,30}$/.test(id)||!token)return {status:'not_configured'};
-  const request=async campaign=>{
+  const request=async (campaign,extended=true)=>{
     const url=new URL('https://connectors.windsor.ai/facebook');
     url.searchParams.set('api_key',token);
     url.searchParams.set('select_accounts',id);
     url.searchParams.set('date_preset','last_30d');
-    url.searchParams.set('fields',campaign?
-      'account_id,campaign_id,campaign,spend,impressions,link_clicks':
-      'account_id,account_currency,spend,impressions,link_clicks');
+    const base=campaign?'account_id,campaign_id,campaign,spend,impressions,link_clicks':
+      'account_id,account_currency,spend,impressions,link_clicks';
+    const conversions='actions_landing_page_view,actions_omni_add_to_cart,actions_omni_initiated_checkout,actions_omni_purchase,action_values_omni_purchase';
+    url.searchParams.set('fields',base+(extended?','+conversions:''));
     // A second account-total row is an ambiguous total, not something to add.
     // The extra campaign row indicates truncation without exposing private URLs.
     url.searchParams.set('_max_rows',campaign?'26':'2');
@@ -262,14 +263,21 @@ export async function readWindsorMeta(env=process.env,fetcher=fetch){
     return rows;
   };
   try{
-    const campaigns=request(true).catch(()=>null);
-    const totals=await request(false),row=totals[0];
+    // Some Windsor plans or accounts cannot return every conversion field.
+    // Preserve the basic report if the expanded query is rejected.
+    const read=campaign=>request(campaign).catch(()=>request(campaign,false));
+    const campaigns=read(true).catch(()=>null);
+    const totals=await read(false),row=totals[0];
     const list=await campaigns;
+    const conversions=r=>({landingViews:nonnegative(r?.actions_landing_page_view),
+      addToCart:nonnegative(r?.actions_omni_add_to_cart),checkouts:nonnegative(r?.actions_omni_initiated_checkout),
+      purchases:nonnegative(r?.actions_omni_purchase),purchaseValue:nonnegative(r?.action_values_omni_purchase)});
     return {status:'ready',data:{provider:'windsor',period:'Últimos 30 dias completos · Windsor',start:null,end:null,
       currency:typeof row?.account_currency==='string'&&/^[A-Z]{3}$/.test(row.account_currency)?row.account_currency:null,
       spend:nonnegative(row?.spend),impressions:nonnegative(row?.impressions),linkClicks:nonnegative(row?.link_clicks),
+      ...conversions(row),
       campaigns:list?.slice(0,25).map(c=>({id:short(c.campaign_id),name:short(c.campaign)||'Campanha sem nome',
-        spend:nonnegative(c.spend),impressions:nonnegative(c.impressions),linkClicks:nonnegative(c.link_clicks)}))??null,
+        spend:nonnegative(c.spend),impressions:nonnegative(c.impressions),linkClicks:nonnegative(c.link_clicks),...conversions(c)}))??null,
       campaignsMore:Boolean(list&&list.length>25)}};
   }catch{return {status:'unavailable'};}
 }

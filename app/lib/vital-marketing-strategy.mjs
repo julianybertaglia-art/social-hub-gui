@@ -80,8 +80,15 @@ export function marketingCsv(insights,store,priorities,ai,manual=null){
  const c=insights?.clarity?.status==='ready'?insights.clarity.data:null;
  const s=store?.status==='ready'?store.data:null;
  if(m){add('Meta Ads',m.period,'Investimento',m.spend,m.currency);add('Meta Ads',m.period,'Cliques no link',m.linkClicks);
+  add('Meta Ads',m.period,'Visualizações de destino atribuídas',m.landingViews);
+  add('Meta Ads',m.period,'Adições ao carrinho atribuídas',m.addToCart);
+  add('Meta Ads',m.period,'Checkouts atribuídos',m.checkouts);
+  add('Meta Ads',m.period,'Compras atribuídas',m.purchases,'Estimativa da Meta; não confirma pedidos pagos');
+  add('Meta Ads',m.period,'Valor de compras atribuído',m.purchaseValue,'Estimativa da Meta; não é lucro');
   add('Meta Ads',m.period,'Impressões',m.impressions);for(const x of m.campaigns||[]){
    add('Meta Ads',m.period,`Campanha: ${x.name}`,x.spend,'Investimento');add('Meta Ads',m.period,`Campanha: ${x.name}`,x.linkClicks,'Cliques no link');
+   add('Meta Ads',m.period,`Campanha: ${x.name}`,x.purchases,'Compras atribuídas pela Meta');
+   add('Meta Ads',m.period,`Campanha: ${x.name}`,x.purchaseValue,'Valor atribuído pela Meta');
    add('Meta Ads',m.period,`Campanha: ${x.name}`,x.impressions,'Impressões');}}
  if(g){add('GA4',g.period,'Sessões',g.sessions);add('GA4',g.period,'Compras registradas',g.purchases,'Eventos, não pedidos pagos');
   for(const x of g.events||[])add('GA4',g.period,eventNames[x.event]||x.event,x.count,'Eventos agregados');

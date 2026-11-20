@@ -43,11 +43,13 @@ test('Windsor reads one specified account and keeps totals independent of campai
  const requests=[];const env={VITAL_META_PROVIDER:'windsor',VITAL_META_AD_ACCOUNT_ID:'act_12345678',WINDSOR_API_KEY:'fake-private-key'};
  const result=await readMeta(env,async(url,options)=>{
   requests.push({url,options});const params=new URL(url).searchParams;
-  if(!params.get('fields').includes('campaign_id'))return json({data:[{account_id:'12345678',account_currency:'BRL',spend:'123.45',impressions:400,link_clicks:'20'}]});
-  return json({data:Array.from({length:26},(_,i)=>({account_id:'act_12345678',campaign_id:String(i+1),campaign:`Campanha ${i+1}`,spend:'1.25',impressions:'10',link_clicks:'2',private_detail:'ignore'}))});
+  if(!params.get('fields').includes('campaign_id'))return json({data:[{account_id:'12345678',account_currency:'BRL',spend:'123.45',impressions:400,link_clicks:'20',actions_omni_purchase:'3',action_values_omni_purchase:'200.50'}]});
+  return json({data:Array.from({length:26},(_,i)=>({account_id:'act_12345678',campaign_id:String(i+1),campaign:`Campanha ${i+1}`,spend:'1.25',impressions:'10',link_clicks:'2',actions_omni_purchase:'1',private_detail:'ignore'}))});
  });
  assert.equal(result.status,'ready');assert.equal(result.data.provider,'windsor');
  assert.equal(result.data.currency,'BRL');assert.equal(result.data.spend,123.45);assert.equal(result.data.linkClicks,20);
+ assert.equal(result.data.purchases,3);assert.equal(result.data.purchaseValue,200.50);assert.equal(result.data.landingViews,null);
+ assert.equal(result.data.campaigns[0].purchases,1);
  assert.equal(result.data.campaigns.length,25);assert.equal(result.data.campaignsMore,true);
  assert.equal(result.data.campaigns[0].name,'Campanha 1');
  assert.ok(!JSON.stringify(result).includes('fake-private-key'));assert.ok(!JSON.stringify(result).includes('private_detail'));
@@ -56,6 +58,17 @@ test('Windsor reads one specified account and keeps totals independent of campai
   assert.equal(u.origin,'https://connectors.windsor.ai');assert.equal(u.pathname,'/facebook');
   assert.equal(u.searchParams.get('select_accounts'),'12345678');assert.equal(u.searchParams.get('date_preset'),'last_30d');
   assert.equal(options.redirect,'error');assert.equal(options.cache,'no-store');}
+});
+test('Windsor keeps the basic report when attributed conversion fields are rejected',async()=>{
+ let requests=0;
+ const result=await readWindsorMeta({VITAL_META_AD_ACCOUNT_ID:'12345678',WINDSOR_API_KEY:'fake'},async url=>{
+  requests++;const fields=new URL(url).searchParams.get('fields');
+  if(fields.includes('actions_omni_purchase'))return new Response('',{status:400});
+  return json({data:[{account_id:'12345678',spend:'4',link_clicks:'2'}]});
+ });
+ assert.equal(result.status,'ready');assert.equal(result.data.spend,4);
+ assert.equal(result.data.purchases,null);assert.equal(result.data.purchaseValue,null);
+ assert.equal(requests,4);
 });
 test('Windsor rejects wrong accounts, ambiguous totals and provider errors without exposing secrets',async()=>{
  const env={VITAL_META_AD_ACCOUNT_ID:'12345678',VITAL_WINDSOR_API_KEY:'fake-private-key'};

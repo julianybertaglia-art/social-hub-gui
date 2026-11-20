@@ -67,10 +67,11 @@ export default function VitalMarketingWorkbench({insights,store,revision=0,onAsk
 
   <div className={css.grid}>
    <section className={css.panel}><div className={css.panelHead}><div><span>ANÚNCIOS</span><h3>Campanhas em detalhe</h3></div></div>
-    {meta?.campaigns?.length?<div className={css.tableWrap}><table><thead><tr><th>Campanha</th><th>Gasto</th><th>Cliques</th><th>CPC</th><th>CTR do link</th></tr></thead><tbody>
-     {meta.campaigns.map((c,i)=>{const ratios=campaignRatios(c);return <tr key={`${c.id||'campaign'}-${i}`}><td>{c.name}</td><td>{money(c.spend,meta.currency)}</td><td>{n(c.linkClicks)}</td><td>{money(ratios.cpc,meta.currency)}</td><td>{percent(ratios.ctr)}</td></tr>;})}
+    {meta?.campaigns?.length?<div className={css.tableWrap}><table><thead><tr><th>Campanha</th><th>Gasto</th><th>Cliques</th><th>CPC</th><th>CTR do link</th><th>Compras atribuídas</th><th>Valor atribuído</th></tr></thead><tbody>
+     {meta.campaigns.map((c,i)=>{const ratios=campaignRatios(c);return <tr key={`${c.id||'campaign'}-${i}`}><td>{c.name}</td><td>{money(c.spend,meta.currency)}</td><td>{n(c.linkClicks)}</td><td>{money(ratios.cpc,meta.currency)}</td><td>{percent(ratios.ctr)}</td><td>{n(c.purchases)}</td><td>{money(c.purchaseValue,meta.currency)}</td></tr>;})}
     </tbody></table></div>:<p className={css.muted}>{meta?'Nenhuma campanha retornada no período.':'Os dados de campanhas ainda não estão disponíveis.'}</p>}
-    <p className={css.foot}>CPC = gasto ÷ cliques no link; CTR = cliques no link ÷ impressões. Os totais não atribuem vendas aos anúncios.</p>
+    {meta&&<p className={css.foot}>A Meta informou {n(meta.landingViews)} visualizações de destino, {n(meta.addToCart)} adições ao carrinho e {n(meta.checkouts)} inícios de checkout atribuídos.</p>}
+    <p className={css.foot}>CPC = gasto ÷ cliques no link; CTR = cliques no link ÷ impressões. Compras e valores são atribuídos pela Meta, não lucro nem pedidos pagos confirmados. Esses eventos não acompanham necessariamente as mesmas pessoas.</p>
    </section>
    <section className={css.panel}><div className={css.panelHead}><div><span>SITE · GA4</span><h3>Portas de entrada</h3></div></div>
     {ga?.landingPages?.length?<div className={css.tableWrap}><table><thead><tr><th>Página de entrada</th><th>Sessões</th><th>Engajadas</th></tr></thead><tbody>

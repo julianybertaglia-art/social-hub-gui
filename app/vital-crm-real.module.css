@@ -498,3 +498,21 @@
  .inboxHasSelection .board{border-radius:12px}
 }
 @media(prefers-reduced-motion:reduce){.inboxToolbar .summaryPill{transition:none}}
+
+/* Carteira consultiva e novo segmento de leads, sem ocupar espaço do chat. */
+.leadFlag{display:inline-flex;align-self:flex-start;max-width:100%;padding:2px 7px;border-radius:6px;
+ font-style:normal;background:color-mix(in srgb,#8252ac 12%,var(--surface));color:var(--text);
+ font-size:10px;font-weight:700;line-height:1.4}
+.board .contact,.board .contactActive{position:relative}
+.board .contactText .leadFlag{display:inline-flex;margin-top:2px}
+.board .threadHeader .openLeadPanel{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+ flex:0 0 auto;white-space:nowrap;font-size:12px;font-weight:740;padding:8px 11px;border:1px solid var(--border);
+ border-radius:9px;color:var(--gold-dark);background:var(--surface-soft)}
+.board .threadHeader .openLeadPanel:hover{border-color:var(--gold)}
+@media(max-width:700px){
+ .board .threadHeader .openLeadPanel{padding:8px;min-height:39px;font-size:11px;white-space:normal;line-height:1.2}
+ .board .threadHeader .openLeadPanel svg{flex:0 0 17px}
+ .board .threadHeader .chatIdentity{flex:1;min-width:0}
+}
+@media(max-width:390px){.board .threadHeader .openLeadPanel{font-size:0;gap:0}
+ .board .threadHeader .openLeadPanel svg{width:20px;height:20px}}

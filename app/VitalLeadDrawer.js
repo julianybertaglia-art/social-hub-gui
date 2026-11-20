@@ -33,6 +33,7 @@ export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare
        <span className={css.kicker}>PRÓXIMA AÇÃO SUGERIDA</span>
        <h3>{p.recommendation?.title||'Entender a necessidade'}</h3>
        <p>{p.recommendation?.description||'Acompanhe o histórico antes de propor contato.'}</p>
+       {p.timing&&<p><strong>Quando agir:</strong> {p.timing}</p>}
        <span className={css.hint}>Sugestão por regras. Nenhuma mensagem será enviada automaticamente.</span>
      </section>
      {p.state==='not_configured'&&<p className={css.alert}>
@@ -62,7 +63,7 @@ export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare
        </section>
        <section className={css.card}>
         <div className={css.sectionHead}><h3>Checkouts abandonados</h3><span>{c.length} encontrado(s)</span></div>
-        <small className={css.hint}>Disponíveis na Nuvemshop por até 30 dias · não equivale a todo carrinho criado</small>
+        <small className={css.hint}>Disponíveis na Nuvemshop por até 30 dias. Confira se o checkout foi convertido em pedido antes de enviar lembretes.</small>
         {!c.length&&<p className={css.empty}>Nenhum checkout identificado no período disponível.</p>}
         {c.map(item=><div key={item.id} className={css.order}>
          <div className={css.orderTitle}><strong>Checkout {date(item.at)}</strong><span>{currency(item.total)}</span></div>

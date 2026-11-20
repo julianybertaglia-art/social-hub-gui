@@ -28,7 +28,9 @@ export function mapLeadOrder(order){
   id:String(order?.id||''),number:String(order?.number||order?.id||''),
   at:iso(order?.created_at),total:safeMoney(order?.total),
   paymentStatus:String(order?.payment_status||'unknown'),shippingStatus:String(order?.shipping_status||'unknown'),
-  status:String(order?.status||'unknown'),trackingCode:String(order?.shipping_tracking_number||'').slice(0,100),
+  status:String(order?.status||'unknown'),
+  shippingPickupType:['ship','pickup'].includes(order?.shipping_pickup_type)?order.shipping_pickup_type:null,
+  trackingCode:String(order?.shipping_tracking_number||'').slice(0,100),
   trackingUrl:typeof order?.shipping_tracking_url==='string'&&order.shipping_tracking_url.startsWith('https://')?order.shipping_tracking_url:null,
   products:productSummary(order?.products),
  };
@@ -53,7 +55,7 @@ export function recommendationForLead({orders=[],checkouts=[],siteLinkNoReturn=f
  const latestPaid=orders.find(o=>o.paymentStatus==='paid'&&o.status!=='cancelled');
  if(latestPaid?.shippingStatus==='delivered')
   return {kind:'service',title:'Pós-venda',description:'Entrega registrada no pedido mais recente. Priorize suporte e satisfação, sem ofertas automáticas.'};
- if(latestPaid?.shippingStatus==='shipped')
+ if(['shipped','fulfilled'].includes(latestPaid?.shippingStatus)&&latestPaid?.shippingPickupType!=='pickup')
   return {kind:'service',title:'Acompanhar entrega',description:'Pedido mais recente enviado. Confira o rastreio e confirme se há dúvidas.'};
  if(orders.some(o=>o.paymentStatus==='paid'))
   return {kind:'service',title:'Atualização de pedido',description:'Já comprou: priorize informações do pedido, não recuperação de carrinho.'};
@@ -73,8 +75,8 @@ export function timingForLead({orders=[],checkouts=[],siteLinkNoReturn=false,rep
 export function orderTimeline(order){
  if(!order)return [];
  const paid=order.paymentStatus==='paid'&&order.status!=='cancelled';
- const packed=['packed','shipped','delivered'].includes(order.shippingStatus);
- const shipped=['shipped','delivered'].includes(order.shippingStatus);
+ const packed=['packed','shipped','fulfilled','delivered'].includes(order.shippingStatus);
+ const shipped=['shipped','fulfilled','delivered'].includes(order.shippingStatus)&&order.shippingPickupType!=='pickup';
  const delivered=order.shippingStatus==='delivered';
  return [
   {id:'paid',label:'Pagamento',done:paid},
@@ -88,7 +90,7 @@ export function orderUpdateDraft(order){
  const name='Olá! 💜',number=order.number?' #'+order.number:'';
  if(order.paymentStatus==='paid'&&order.shippingStatus==='delivered')
   return name+' A entrega do seu pedido'+number+' consta como concluída na loja. Chegou tudo certinho? Estamos aqui se precisar.';
- if(order.paymentStatus==='paid'&&order.shippingStatus==='shipped')
+ if(order.paymentStatus==='paid'&&['shipped','fulfilled'].includes(order.shippingStatus)&&order.shippingPickupType!=='pickup'&&Boolean(order.trackingCode||order.trackingUrl))
   return name+' Seu pedido'+number+' foi enviado!'+(order.trackingCode?' Código de rastreio: '+order.trackingCode+'.':'')+' Se precisar de ajuda, estamos por aqui.';
  if(order.paymentStatus==='paid')
   return name+' O pagamento do pedido'+number+' está confirmado. Você pode acompanhar as próximas atualizações pelo nosso atendimento. 😊';

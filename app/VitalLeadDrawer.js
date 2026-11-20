@@ -8,9 +8,11 @@ const currency=value=>value===null||value===undefined?'Valor indisponível':
   new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(value);
 const date=value=>value?new Date(value).toLocaleDateString('pt-BR',{timeZone:'America/Sao_Paulo'}):'Data não informada';
 const payment={paid:'Pago',pending:'Aguardando pagamento',authorized:'Autorizado',refunded:'Reembolsado',voided:'Cancelado',partially_paid:'Parcialmente pago'};
-const shipping={shipped:'Enviado',delivered:'Entregue',packed:'Preparado',unpacked:'Aguardando preparação',fulfilled:'Atendido'};
+const shipping={shipped:'Enviado',fulfilled:'Enviado',delivered:'Entregue',packed:'Preparado',
+  partially_packed:'Preparação parcial',partially_fulfilled:'Envio parcial',
+  unpacked:'Aguardando preparação',unshipped:'Aguardando expedição'};
 function statusLabel(value,map){return map[value]||'Não confirmado';}
-export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare,canPrepare,ai,aiLoading,aiError,onAnalyze}){
+export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare,canPrepare,ai,aiLoading,aiError,onAnalyze,shippingDetails={},onInspectShipping}){
  const p=profile||{},o=p.orders||[],c=p.checkouts||[];
  return <div className={css.backdrop} onClick={onClose}>
   <aside role="dialog" aria-modal="true" aria-label="Carteira do cliente" className={css.drawer}
@@ -86,6 +88,42 @@ export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare
          {order.products.length>0&&<p>{order.products.map(x=>x.quantity+'× '+x.name).join(', ')}</p>}
          {order.trackingCode&&<small>Rastreio: {order.trackingCode}</small>}
          {order.trackingUrl&&<a href={order.trackingUrl} rel="noopener noreferrer" target="_blank">Acompanhar rastreio</a>}
+         <button type="button" className={css.shippingButton} onClick={()=>onInspectShipping?.(order.id)}
+            disabled={shippingDetails[order.id]?.state==='loading'}>
+           <Icon name="package" size={16}/>
+           {shippingDetails[order.id]?.state==='loading'?'Consultando expedição…':'Consultar remessas e avisos'}
+         </button>
+         {shippingDetails[order.id]?.state==='error'&&
+           <p role="alert" className={css.alert}>{shippingDetails[order.id].message}</p>}
+         {shippingDetails[order.id]?.state==='ready'&&(()=>{
+           const info=shippingDetails[order.id].data?.shipping;
+           return <div className={css.shippingPreview}>
+             <strong>Expedição conferida na Nuvemshop</strong>
+             {info?.availability!=='ready'?
+               <p>Os volumes ainda não foram disponibilizados de forma completa. Não podemos confirmar o envio.</p>:
+               <>
+                 <p>{info.shipments.length} remessa(s) · {info.completed} enviada(s)</p>
+                 {info.shipments.map((shipment,index)=><div key={shipment.id||index} className={css.shippingParcel}>
+                   <strong>Remessa {shipment.number} · {shipment.type==='pickup'?'Retirada':shipment.type==='ship'?'Entrega':'Modalidade não informada'}</strong>
+                   <span>{({UNPACKED:'Pendente',PENDING:'Pendente',IN_PREPARATION:'Em preparação',
+                     PACKED:'Embalado',DISPATCHED:'Despachado',DELIVERED:'Concluído',READY_FOR_PICKUP:'Pronto para retirada'})[shipment.status]||'Status não confirmado'}</span>
+                   {shipment.carrier&&<small>{shipment.carrier}</small>}
+                   {shipment.trackingCode&&<small>Código: {shipment.trackingCode}</small>}
+                   {shipment.trackingUrl&&<a href={shipment.trackingUrl} rel="noopener noreferrer" target="_blank">Acompanhar remessa</a>}
+                 </div>)}
+                 {info.notice&&<div className={css.shippingNotice}>
+                   <strong>{info.notice.title}</strong>
+                   <p>{info.notice.draft}</p>
+                   <button type="button" className={css.prepare} disabled={!canPrepare}
+                      onClick={()=>onPrepare(info.notice.draft)}>
+                      <Icon name="chat" size={15}/> Preparar aviso no WhatsApp
+                   </button>
+                 </div>}
+               </>}
+             <small className={css.hint}>Informações consultadas neste momento. Nenhum aviso foi enviado.</small>
+           </div>;
+         })()}
+
          {orderUpdateDraft(order)&&<button type="button" className={css.prepare} disabled={!canPrepare}
            onClick={()=>onPrepare(orderUpdateDraft(order))}>
            <Icon name="chat" size={15}/> Preparar atualização do pedido

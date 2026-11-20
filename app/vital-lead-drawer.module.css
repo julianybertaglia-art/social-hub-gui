@@ -23,3 +23,16 @@
 .alert{border:1px solid #e8c8a4;border-radius:9px;background:#fff7e8;color:#785726;padding:11px 12px;margin:10px 15px;font-size:12px}
 .foot{font-size:11px;line-height:1.6;color:var(--muted);margin:4px 2px 18px}
 @media(max-width:550px){.heading{padding:16px}.content{padding:12px}.card{padding:14px}}
+
+/* Read-only AI copilot: keep the rationale visible and let the owner approve drafts. */
+.aiResult{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.aiResult h3{font-size:14px;margin:8px 0}
+.aiResult p{margin:8px 0;font-size:12.5px;line-height:1.55;color:var(--text)}
+.aiTags{display:flex;flex-wrap:wrap;gap:6px}
+.aiTags span{padding:4px 8px;border:1px solid var(--border);border-radius:14px;
+ background:var(--surface-soft);font-size:10.5px;font-weight:700;color:var(--text)}
+
+.orderSteps{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}
+.orderSteps span{border:1px solid var(--border);border-radius:8px;padding:4px 7px;font-size:10px;line-height:1.25}
+.stepDone{background:color-mix(in srgb,#319477 12%,var(--surface));color:var(--text)}
+.stepPending{color:var(--muted);background:var(--surface)}

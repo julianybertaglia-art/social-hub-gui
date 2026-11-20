@@ -50,10 +50,11 @@ export function classifyLead({orders=[],checkouts=[],siteLinkNoReturn=false,sour
  return {id:'contato',label:sourcesReady?'Contato sem compra encontrada no período':'Contato em avaliação',confidence:sourcesReady?'janela consultada':'pendente'};
 }
 export function recommendationForLead({orders=[],checkouts=[],siteLinkNoReturn=false,replyWindowOpen=false,sourcesReady=false}={}){
- if(orders.some(o=>o.paymentStatus==='paid'&&o.shippingStatus==='shipped'))
-  return {kind:'service',title:'Acompanhar entrega',description:'Pedido enviado. Confira o rastreio e confirme se há alguma dúvida.'};
- if(orders.some(o=>o.paymentStatus==='paid'&&o.shippingStatus==='delivered'))
-  return {kind:'service',title:'Pós-venda',description:'Entrega registrada. Priorize suporte e satisfação, sem ofertas automáticas.'};
+ const latestPaid=orders.find(o=>o.paymentStatus==='paid'&&o.status!=='cancelled');
+ if(latestPaid?.shippingStatus==='delivered')
+  return {kind:'service',title:'Pós-venda',description:'Entrega registrada no pedido mais recente. Priorize suporte e satisfação, sem ofertas automáticas.'};
+ if(latestPaid?.shippingStatus==='shipped')
+  return {kind:'service',title:'Acompanhar entrega',description:'Pedido mais recente enviado. Confira o rastreio e confirme se há dúvidas.'};
  if(orders.some(o=>o.paymentStatus==='paid'))
   return {kind:'service',title:'Atualização de pedido',description:'Já comprou: priorize informações do pedido, não recuperação de carrinho.'};
  if(orders.length)return {kind:'service',title:'Acompanhar pagamento',description:'Há pedido registrado; confira seu status real antes de entrar em contato.'};
@@ -69,7 +70,21 @@ export function timingForLead({orders=[],checkouts=[],siteLinkNoReturn=false,rep
  if(siteLinkNoReturn)return 'Aguardar novo contato ou avaliar comunicação com consentimento e modelo de marketing aprovado.';
  return 'Após a próxima interação real da pessoa.';
 }
+export function orderTimeline(order){
+ if(!order)return [];
+ const paid=order.paymentStatus==='paid'&&order.status!=='cancelled';
+ const packed=['packed','shipped','delivered'].includes(order.shippingStatus);
+ const shipped=['shipped','delivered'].includes(order.shippingStatus);
+ const delivered=order.shippingStatus==='delivered';
+ return [
+  {id:'paid',label:'Pagamento',done:paid},
+  {id:'packed',label:'Preparação',done:paid&&packed},
+  {id:'shipped',label:'Enviado',done:paid&&shipped},
+  {id:'delivered',label:'Entregue',done:paid&&delivered},
+ ];
+}
 export function orderUpdateDraft(order){
+ if(!order||order.status==='cancelled'||['voided','refunded','partially_refunded'].includes(order.paymentStatus))return null;
  const name='Olá! 💜',number=order.number?' #'+order.number:'';
  if(order.paymentStatus==='paid'&&order.shippingStatus==='delivered')
   return name+' A entrega do seu pedido'+number+' consta como concluída na loja. Chegou tudo certinho? Estamos aqui se precisar.';

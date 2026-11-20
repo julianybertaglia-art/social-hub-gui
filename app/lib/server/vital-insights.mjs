@@ -44,6 +44,29 @@ export function summarizeGa4Events(report){
   }
   return SHOP_EVENTS.map(event=>({event,count:found.get(event)??null}));
 }
+function gaTable(report,dimension,metrics){
+  if(!Array.isArray(report?.dimensionHeaders)||!Array.isArray(report?.metricHeaders))return null;
+  const d=report.dimensionHeaders.findIndex(x=>x.name===dimension);
+  const indexes=metrics.map(name=>report.metricHeaders.findIndex(x=>x.name===name));
+  if(d<0||indexes.some(i=>i<0))return null;
+  return (Array.isArray(report.rows)?report.rows:[]).slice(0,10).map(row=>({
+    label:short(row.dimensionValues?.[d]?.value),
+    values:indexes.map(i=>nonnegative(row.metricValues?.[i]?.value))
+  }));
+}
+export function summarizeGa4Devices(report){
+  return gaTable(report,'deviceCategory',['sessions'])?.map(row=>({device:row.label||'Não identificado',sessions:row.values[0]}))??null;
+}
+export function summarizeGa4LandingPages(report){
+  return gaTable(report,'landingPage',['sessions','engagedSessions'])?.map(row=>({
+    // Do not expose query strings, e-mail addresses or very long identifiers.
+    path:row.label?.startsWith('/')&&!/[?#@]/.test(row.label)&&!/[a-z0-9_-]{40,}/i.test(row.label)?row.label:'Página não identificada',
+    sessions:row.values[0],engagedSessions:row.values[1]}))??null;
+}
+export function summarizeGa4Products(report){
+  return gaTable(report,'itemName',['itemsViewed','itemsAddedToCart','itemsPurchased'])?.map(row=>({
+    name:row.label||'Produto não identificado',views:row.values[0],cart:row.values[1],purchases:row.values[2]}))??null;
+}
 export function summarizeClarity(data) {
   const traffic=Array.isArray(data)?data.find(x=>x?.metricName==='Traffic'):null;
   const rows=Array.isArray(traffic?.information)?traffic.information:[];
@@ -51,11 +74,21 @@ export function summarizeClarity(data) {
   // Do not turn an absent or invalid field into a misleading zero.
   const sum=key=>rows.every(r=>nonnegative(r?.[key])!==null)
     ?rows.reduce((a,r)=>a+nonnegative(r[key]),0):null;
+  const metrics=[['DeadClickCount','Cliques sem resposta'],['RageClickCount','Cliques repetidos'],
+    ['QuickbackClick','Retornos rápidos'],['ScriptErrorCount','Erros de script'],['ExcessiveScroll','Rolagem excessiva']];
+  const friction=metrics.map(([key,label])=>{
+    const values=data.find(x=>x?.metricName===key)?.information;
+    if(!Array.isArray(values)||!values.length)return {key,label,percentage:null,sessions:null};
+    const rows=values.map(row=>({sessions:nonnegative(row?.sessionsCount),percentage:nonnegative(row?.sessionsWithMetricPercentage)}));
+    if(rows.some(row=>row.sessions===null||row.percentage===null||row.percentage>100))return {key,label,percentage:null,sessions:null};
+    const sessions=rows.reduce((n,row)=>n+row.sessions,0);
+    return {key,label,sessions,percentage:sessions?rows.reduce((n,row)=>n+row.sessions*row.percentage,0)/sessions:null};
+  });
   return {period:'Últimas 72 horas (UTC)',sessions:sum('totalSessionCount'),
     botSessions:sum('totalBotSessionCount'),
     devices:rows.filter(r=>r?.Device && nonnegative(r.totalSessionCount)!==null)
        .map(r=>({device:String(r.Device).slice(0,50),sessions:nonnegative(r.totalSessionCount)}))
-       .sort((a,b)=>b.sessions-a.sessions).slice(0,5)};
+       .sort((a,b)=>b.sessions-a.sessions).slice(0,5),friction};
 }
 
 // Accept the private_key PEM field from Google service-account JSON, an escaped
@@ -136,7 +169,18 @@ export async function readGa4(env=process.env,fetcher=fetch){
     const events=gaReport({property,token,fetcher,body:{dateRanges,dimensions:[{name:'eventName'}],
       metrics:[{name:'eventCount'}],dimensionFilter:{filter:{fieldName:'eventName',
         inListFilter:{values:SHOP_EVENTS}}},limit:'4'}}).then(summarizeGa4Events).catch(()=>null);
-    return {status:'ready',data:{...summarizeGa4(await totals),sources:await sources,events:await events}};
+    const devices=gaReport({property,token,fetcher,body:{dateRanges,dimensions:[{name:'deviceCategory'}],
+      metrics:[{name:'sessions'}],orderBys:[{metric:{metricName:'sessions'},desc:true}],limit:'10'}})
+      .then(summarizeGa4Devices).catch(()=>null);
+    const landingPages=gaReport({property,token,fetcher,body:{dateRanges,dimensions:[{name:'landingPage'}],
+      metrics:[{name:'sessions'},{name:'engagedSessions'}],orderBys:[{metric:{metricName:'sessions'},desc:true}],limit:'10'}})
+      .then(summarizeGa4LandingPages).catch(()=>null);
+    const products=gaReport({property,token,fetcher,body:{dateRanges,dimensions:[{name:'itemName'}],
+      metrics:[{name:'itemsViewed'},{name:'itemsAddedToCart'},{name:'itemsPurchased'}],
+      orderBys:[{metric:{metricName:'itemsViewed'},desc:true}],limit:'10'}})
+      .then(summarizeGa4Products).catch(()=>null);
+    return {status:'ready',data:{...summarizeGa4(await totals),sources:await sources,events:await events,
+      devices:await devices,landingPages:await landingPages,products:await products}};
   }catch(error){const issue=googleKeyIssue(error);console.error('[vital-insights] GA4 read failed',issue||error?.name||'UnknownError');return {status:'unavailable',...(issue?{issue}:{})};}
 }
 

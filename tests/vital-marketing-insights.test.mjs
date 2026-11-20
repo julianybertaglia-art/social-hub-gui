@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync} from 'node:crypto';
-import {readMeta,readWindsorMeta,readGtm,readGa4,readVitalInsights,summarizeGa4Sources,summarizeGa4Events,summarizeMeta,summarizeClarity} from '../app/lib/server/vital-insights.mjs';
+import {readMeta,readWindsorMeta,readGtm,readGa4,readVitalInsights,summarizeGa4Sources,summarizeGa4Events,summarizeGa4Devices,summarizeGa4LandingPages,summarizeGa4Products,summarizeMeta,summarizeClarity} from '../app/lib/server/vital-insights.mjs';
 
 const json=body=>new Response(JSON.stringify(body),{status:200,headers:{'Content-Type':'application/json'}});
 const {privateKey}=generateKeyPairSync('rsa',{modulusLength:2048,privateKeyEncoding:{type:'pkcs8',format:'pem'},publicKeyEncoding:{type:'spki',format:'pem'}});
@@ -107,7 +107,7 @@ test('GA4 reads sessions by source and campaign with readonly scope, and keeps t
  assert.equal(result.data.currency,'BRL');assert.deepEqual(result.data.sources,[{source:'facebook / paid',campaign:'primavera',sessions:15}]);
  assert.deepEqual(result.data.events,[{event:'view_item',count:25},{event:'add_to_cart',count:3},
    {event:'begin_checkout',count:null},{event:'purchase',count:null}]);
- assert.deepEqual(scopes,['https://www.googleapis.com/auth/analytics.readonly']);assert.equal(requests.length,3);
+ assert.deepEqual(scopes,['https://www.googleapis.com/auth/analytics.readonly']);assert.equal(requests.length,6);
  assert.equal(summarizeGa4Sources({rows:[]}),null);
  const partial=await readGa4({...googleEnv,VITAL_GA4_PROPERTY_ID:'123456'},async(url,options)=>{
   if(url.includes('oauth2.googleapis.com'))return json({access_token:'fake'});
@@ -134,4 +134,21 @@ test('GTM requests only published-version metadata and does not return tag conte
 test('Clarity missing values remain unavailable instead of becoming zero',()=>{
  const data=summarizeClarity([{metricName:'Traffic',information:[{Device:'Mobile',totalSessionCount:'10'}]}]);
  assert.equal(data.sessions,10);assert.equal(data.botSessions,null);
+});
+test('GA4 breakdowns follow named headers and keep unavailable data distinct from zero',()=>{
+ const report=(dimension,metrics,values,label)=>({dimensionHeaders:[{name:dimension}],metricHeaders:metrics.map(name=>({name})),
+  rows:[{dimensionValues:[{value:label}],metricValues:values.map(value=>({value}))}]});
+ assert.deepEqual(summarizeGa4Devices(report('deviceCategory',['sessions'],['12'],'mobile')),[{device:'mobile',sessions:12}]);
+ assert.deepEqual(summarizeGa4LandingPages(report('landingPage',['engagedSessions','sessions'],['3','10'],'/produto')),
+  [{path:'/produto',sessions:10,engagedSessions:3}]);
+ assert.equal(summarizeGa4LandingPages(report('landingPage',['sessions','engagedSessions'],['1','1'],'/cliente?email=x'))[0].path,'Página não identificada');
+ assert.deepEqual(summarizeGa4Products(report('itemName',['itemsPurchased','itemsViewed','itemsAddedToCart'],['0','20','2'],'Grama')),
+  [{name:'Grama',views:20,cart:2,purchases:0}]);
+ assert.equal(summarizeGa4Products({rows:[]}),null);
+});
+test('Clarity friction percentages are weighted by reported sessions, not summed as clicks',()=>{
+ const data=summarizeClarity([{metricName:'Traffic',information:[{Device:'Mobile',totalSessionCount:'100',totalBotSessionCount:'0'}]},
+  {metricName:'DeadClickCount',information:[{sessionsCount:'80',sessionsWithMetricPercentage:10},{sessionsCount:'20',sessionsWithMetricPercentage:50}]}]);
+ const dead=data.friction.find(x=>x.key==='DeadClickCount');assert.equal(dead.sessions,100);assert.equal(dead.percentage,18);
+ assert.equal(data.friction.find(x=>x.key==='RageClickCount').percentage,null);
 });

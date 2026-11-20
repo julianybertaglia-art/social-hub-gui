@@ -12,7 +12,7 @@ const shipping={shipped:'Enviado',fulfilled:'Enviado',delivered:'Entregue',packe
   partially_packed:'Preparação parcial',partially_fulfilled:'Envio parcial',
   unpacked:'Aguardando preparação',unshipped:'Aguardando expedição'};
 function statusLabel(value,map){return map[value]||'Não confirmado';}
-export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare,canPrepare,ai,aiLoading,aiError,onAnalyze,shippingDetails={},onInspectShipping}){
+export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare,canPrepare,ai,aiLoading,aiError,onAnalyze,shippingDetails={},onInspectShipping,notificationReadiness,readinessLoading,readinessError,onCheckReadiness}){
  const p=profile||{},o=p.orders||[],c=p.checkouts||[];
  return <div className={css.backdrop} onClick={onClose}>
   <aside role="dialog" aria-modal="true" aria-label="Carteira do cliente" className={css.drawer}
@@ -143,6 +143,22 @@ export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare
         </div>)}
        </section>
      </>}
+     <section className={css.card}>
+       <span className={css.kicker}>AVISOS AUTOMÁTICOS</span>
+       <h3>Status da preparação</h3>
+       <p>Os avisos por WhatsApp continuam desligados até serem validados os dados da loja, as regras da Meta e o controle contra duplicações.</p>
+       <button type="button" className={css.prepare} onClick={onCheckReadiness} disabled={readinessLoading}>
+         <Icon name="shield" size={16}/> {readinessLoading?'Verificando integração…':'Conferir pré-requisitos'}
+       </button>
+       {readinessError&&<p className={css.alert} role="alert">{readinessError}</p>}
+       {notificationReadiness&&<div className={css.readinessList}>
+         {notificationReadiness.checks?.map(check=><div key={check.id} className={css.readinessRow}>
+           <span>{check.label}</span>
+           <strong>{check.ready?'Pronto':'Pendente'}</strong>
+         </div>)}
+         <small className={css.hint}>Nenhuma mensagem automática será enviada nesta etapa.</small>
+       </div>}
+     </section>
      <p className={css.foot}>O histórico de mensagens continua no chat. Pedidos e checkouts são consultados em tempo real e relacionados somente pelo telefone confirmado. Antes de qualquer campanha, valide consentimento e preferências de contato.</p>
    </div>}
   </aside>

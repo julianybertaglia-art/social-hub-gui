@@ -4,6 +4,7 @@ import Icon from './ui/Icon';
 import {api} from './operations/useOperations';
 import css from './vital-crm-real.module.css';
 import ThemeCustomizer from './ThemeCustomizer';
+import VitalLeadDrawer from './VitalLeadDrawer';
 import {getViviSalesCategory,getViviSalesLink,VIVI_SALES_CATEGORIES} from './lib/vivi-sales.mjs';
 
 const OWNER={
@@ -39,7 +40,7 @@ function Donut({title,subtitle,segments,total,compact=false}){
    </div>
  </div>;
 }
-const emptyCounts={total:0,pending:0,open:0,closed:0,unassigned:0,queues:{}};
+const emptyCounts={total:0,pending:0,open:0,closed:0,link_no_return:0,unassigned:0,queues:{}};
 const SPLIT_WIDTH_KEY='tideplace:crm-vital:split-width';
 const DEFAULT_SPLIT_WIDTH=30;
 const BOARD_HEIGHT_KEY='tideplace:crm-vital:board-height';
@@ -53,6 +54,8 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const [revision,setRevision]=useState(0),[pageNumber,setPageNumber]=useState(0);
  const [queueFilter,setQueueFilter]=useState('all'),[statusFilter,setStatusFilter]=useState('all'),[search,setSearch]=useState('');
  const [destination,setDestination]=useState(''),[draft,setDraft]=useState('');
+ const [leadPanelOpen,setLeadPanelOpen]=useState(false);
+ const [leadProfile,setLeadProfile]=useState(null),[leadLoading,setLeadLoading]=useState(false),[leadError,setLeadError]=useState('');
  const [splitWidth,setSplitWidth]=useState(DEFAULT_SPLIT_WIDTH);
  const [boardHeight,setBoardHeight]=useState(null);
  const splitBoard=useRef(null),splitDragging=useRef(false);
@@ -145,6 +148,22 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    .finally(()=>{if(active)setOpening(false)});
   return()=>{active=false};
  },[selected,revision]);
+ useEffect(()=>{
+  if(!leadPanelOpen||!selected){setLeadProfile(null);setLeadLoading(false);setLeadError('');return;}
+  let active=true;
+  setLeadProfile(null);setLeadError('');setLeadLoading(true);
+  api('/api/crm/vital/lead-profile?contact='+encodeURIComponent(selected))
+   .then(result=>{if(active)setLeadProfile(result);})
+   .catch(e=>{if(active)setLeadError(e.message);})
+   .finally(()=>{if(active)setLeadLoading(false);});
+  return()=>{active=false};
+ },[leadPanelOpen,selected]);
+ useEffect(()=>{
+  if(!leadPanelOpen)return;
+  const onEscape=e=>{if(e.key==='Escape')setLeadPanelOpen(false)};
+  window.addEventListener('keydown',onEscape);
+  return()=>window.removeEventListener('keydown',onEscape);
+ },[leadPanelOpen]);
  const role=data?.role||'agent',manager=['owner','supervisor'].includes(role);
  const queues=data?.queues||[],counts=data?.counters||emptyCounts;
  const queueName=code=>(data?.transferDestinations||queues).find(q=>q.queue_code===code)?.display_name||(code===null?'Sem classificação':code);
@@ -153,7 +172,8 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const effective=source.filter(c=>{
   if(view==='mine'&&role==='owner'&&!MINE.includes(c.queue))return false;
   if(queueFilter!=='all' && (queueFilter==='unassigned'?c.queue!==null:c.queue!==queueFilter))return false;
-  if(statusFilter!=='all'&&c.status!==statusFilter)return false;
+  if(statusFilter==='link_no_return'&&!c.siteLinkNoReturn)return false;
+  if(statusFilter!=='all'&&statusFilter!=='link_no_return'&&c.status!==statusFilter)return false;
   const term=search.trim().toLowerCase();
   return !term||[c.name,c.phone,c.preview,queueName(c.queue)].join(' ').toLowerCase().includes(term);
  });
@@ -291,6 +311,11 @@ export default function VitalCRMReal({embedded=false,onLogout}){
     {STATUS.map(item=><button key={item.code} className={css.summaryPill} aria-pressed={statusFilter===item.code} style={{'--accent':item.color}} onClick={()=>setStatusFilter(statusFilter===item.code?'all':item.code)}>
      <strong>{counts[item.code]||0}</strong><span>{item.label}</span>
     </button>)}
+    {role==='owner'&&<button type="button" className={css.summaryPill}
+      aria-pressed={statusFilter==='link_no_return'} title="A Vivi enviou o link da loja e não houve nova resposta nesta conversa."
+      style={{'--accent':'#8252ac'}} onClick={()=>setStatusFilter(statusFilter==='link_no_return'?'all':'link_no_return')}>
+      <strong>{counts.link_no_return||0}</strong><span>Link enviado · sem retorno</span>
+    </button>}
    </div>
    {role==='owner'&&<div className={css.scopeTabs}>
     <button className={view==='all'?css.active:''} onClick={()=>{setView('all');setQueueFilter('all');}}>Todas as filas</button>
@@ -311,6 +336,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
       <label><span>Status</span><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
        <option value="all">Todos os status</option>
        {STATUS.map(item=><option key={item.code} value={item.code}>{item.label}</option>)}
+       {role==='owner'&&<option value="link_no_return">Link enviado · sem retorno</option>}
       </select></label>
      </div>
      <div className={css.contacts}>
@@ -318,7 +344,8 @@ export default function VitalCRMReal({embedded=false,onLogout}){
        <span className={css.avatar}>{(c.name||'?')[0]?.toUpperCase()}</span>
        <span className={css.contactText}><strong>{c.name||c.phone}</strong>
         <small><i style={{background:queueColor(c.queue)}}/>{queueName(c.queue)} · {date(c.updatedAt)}</small>
-        <span>{c.preview||'Sem mensagem'}</span></span>
+        <span>{c.preview||'Sem mensagem'}</span>
+        {c.siteLinkNoReturn&&<em className={css.leadFlag}>Link enviado · sem retorno</em>}</span>
        <Icon name="chevronRight" size={17}/>
       </button>)}
       {!effective.length&&<p className={css.noContacts}>Nenhum atendimento nesta seleção.</p>}
@@ -347,6 +374,10 @@ export default function VitalCRMReal({embedded=false,onLogout}){
         <div><h2>{detail?.contact?.name||'Conversa'}</h2>
          <p>{detail?.contact?.phone||''} · {queueName(detail?.contact?.queue)}</p></div>
        </div>
+       {detail&&role==='owner'&&<button type="button" className={css.openLeadPanel}
+         aria-label="Ver carteira do cliente" onClick={()=>setLeadPanelOpen(true)}>
+         <Icon name="users" size={17}/> Carteira do cliente
+       </button>}
        <button type="button" className={css.desktopClose} aria-label="Fechar conversa" title="Fechar conversa" onClick={()=>setSelected(null)}><Icon name="close" size={18}/></button>
       </div>
       {opening&&<p className={css.loading}>Carregando mensagens…</p>}
@@ -422,6 +453,11 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    </div>
    </div>
   </>}
+  {leadPanelOpen&&selected&&<VitalLeadDrawer
+     profile={leadProfile} loading={leadLoading} error={leadError}
+     onClose={()=>setLeadPanelOpen(false)}
+     canPrepare={Boolean(detail&&!replyBlockReason&&role==='owner'&&!busy)}
+     onPrepare={text=>{setDraft(text);setLeadPanelOpen(false);}}/>}
  </>;
  if(embedded)return <main className={`${css.embedded} ${page==='inbox'?css.inboxFocus:''} ${page==='inbox'&&selected?css.inboxHasSelection:''}`}>{main}</main>;
  return <div className={css.shell}>

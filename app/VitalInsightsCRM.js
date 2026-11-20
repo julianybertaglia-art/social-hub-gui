@@ -2,7 +2,9 @@
 import {useEffect,useRef,useState} from 'react';
 import {api} from './operations/useOperations';
 import {parseManualReport,manualDiagnosis,EXAMPLE_REPORT} from './lib/vital-marketing-report.mjs';
+import {marketingPriorities,marketingCsv} from './lib/vital-marketing-strategy.mjs';
 import VitalInsightsSourceDetails from './VitalInsightsSourceDetails';
+import VitalMarketingWorkbench from './VitalMarketingWorkbench';
 import css from './vital-insights-crm.module.css';
 
 const number=value=>typeof value==='number'&&Number.isFinite(value)?new Intl.NumberFormat('pt-BR').format(value):'—';
@@ -86,6 +88,7 @@ export default function VitalInsightsCRM({revision=0}){
   return()=>{active=false;controller.abort();};
  },[revision,reload]);
  const report=manual||connectedReport(insights,store);
+ const priorities=marketingPriorities(insights,store);
  const resetAi=()=>{aiRequest.current+=1;setAiBusy(false);setAi(null);setAiError('');};
  function showForm(){setFormVisible(true);setFormError('');resetAi();}
  function showExample(){setManual({kind:'manual',period:'7',values:{...EXAMPLE_REPORT},example:true});setFormVisible(false);resetAi();}
@@ -101,15 +104,24 @@ export default function VitalInsightsCRM({revision=0}){
   setAiBusy(true);setAiError('');setAi(null);
   const input=report.kind==='manual'?{kind:'manual',period:report.period,metrics:report.values,example:report.example}:
    {kind:'connected',ga4:report.ga4?{sessions:report.ga4.sessions,purchases:report.ga4.purchases,
-    purchaseRevenue:report.ga4.purchaseRevenue,currency:report.ga4.currency}:null,
+    purchaseRevenue:report.ga4.purchaseRevenue,currency:report.ga4.currency,events:report.ga4.events?.slice(0,4),products:report.ga4.products?.slice(0,5)}:null,
     meta:report.meta?{spend:report.meta.spend,linkClicks:report.meta.linkClicks,impressions:report.meta.impressions,
-     currency:report.meta.currency,range:report.meta.start&&report.meta.end?`${report.meta.start}/${report.meta.end}`:null}:null,
+     landingViews:report.meta.landingViews,addToCart:report.meta.addToCart,checkouts:report.meta.checkouts,
+     purchases:report.meta.purchases,purchaseValue:report.meta.purchaseValue,
+     currency:report.meta.currency,campaigns:report.meta.campaigns?.slice(0,5),range:report.meta.start&&report.meta.end?`${report.meta.start}/${report.meta.end}`:null}:null,
     store:report.store?{orders:report.store.paidOrders,revenue:report.store.revenue,
-      start:report.store.start,end:report.store.end}:null,
-    clarity:report.clarity?{sessions:report.clarity.sessions,botSessions:report.clarity.botSessions}:null};
+      start:report.store.start,end:report.store.end,topProducts:report.store.topProducts?.slice(0,5)}:null,
+    clarity:report.clarity?{sessions:report.clarity.sessions,botSessions:report.clarity.botSessions,friction:report.clarity.friction?.slice(0,5)}:null};
   try{const response=await api('/api/crm/vital/marketing-report',{method:'POST',body:JSON.stringify(input)});if(requestId===aiRequest.current)setAi(response.report);}
   catch(e){if(requestId===aiRequest.current)setAiError(e.message||'Não foi possível gerar a análise agora.');}
   finally{if(requestId===aiRequest.current)setAiBusy(false);}
+ }
+ function downloadReport(){
+  if(!report)return;
+  const csv=marketingCsv(insights,store,priorities,ai,report.kind==='manual'?report:null);
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  const link=document.createElement('a');link.href=url;link.download=report.example?'tide-marketing-exemplo.csv':'tide-marketing-vital.csv';
+  document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
  }
  const diagnosis=report?.kind==='manual'?manualDiagnosis(report.values):report;
  return <section className={css.dashboard} aria-label="Resultados de marketing da Vital Decor">
@@ -123,8 +135,13 @@ export default function VitalInsightsCRM({revision=0}){
   <div className={css.toolbar}>
    <button type="button" className={css.primaryButton} onClick={showForm}>＋ &nbsp; Criar meu resumo</button>
    <button type="button" className={css.secondaryButton} onClick={showExample}>Ver exemplo</button>
+   <button type="button" className={css.secondaryButton} disabled={!report} onClick={downloadReport}>Baixar relatório CSV</button>
+   <button type="button" className={css.secondaryButton} disabled={!report} onClick={()=>window.print()}>Imprimir / salvar PDF</button>
    {manual&&<button type="button" className={css.textButton} onClick={showConnections}>Voltar para dados conectados</button>}
   </div>
+
+  <VitalMarketingWorkbench insights={insights} store={store} revision={revision+reload}
+   onAskAi={askAi} ai={ai} aiBusy={aiBusy} aiError={aiError} report={report}/>
 
   {formVisible&&<form onSubmit={submit} className={css.formCard}>
    <div className={css.sectionHeading}><div><span className={css.sectionEyebrow}>SEUS NÚMEROS</span><h4>Vamos montar seu resumo</h4>
@@ -184,6 +201,8 @@ export default function VitalInsightsCRM({revision=0}){
      <Metric icon="$" label="Gasto com anúncios" value={money(report.meta.spend,report.meta.currency)} source="Meta Ads"/>
      <Metric icon="+" label="Cliques nos links" value={number(report.meta.linkClicks)} source="Não são visitas confirmadas"/>
      <Metric icon="◉" label="Impressões" value={number(report.meta.impressions)} source="Vezes que anúncios apareceram"/>
+     <Metric icon="✓" label="Compras atribuídas" value={number(report.meta.purchases)} source="Atribuição informada pela Meta"/>
+     <Metric icon="R$" label="Valor atribuído" value={money(report.meta.purchaseValue,report.meta.currency)} source="Meta · não é lucro nem vendas confirmadas"/>
     </div></>}
    </>}
    <p className={css.metricNote}>O traço (—) significa que o número não foi informado ou não está disponível.</p>
@@ -196,21 +215,6 @@ export default function VitalInsightsCRM({revision=0}){
     <ol>{diagnosis.actions.map((action,index)=><li key={action}><span>{String(index+1).padStart(2,'0')}</span><p>{action}</p></li>)}</ol>
     <p className={css.metricNote}>Essas orientações são automáticas e não alteram suas campanhas.</p>
    </div>
-   <div className={css.aiCard}>
-    <div className={css.aiTitle}><span className={css.aiIcon} aria-hidden="true">✦</span><div><span className={css.sectionEyebrow}>UMA LEITURA A MAIS</span><h4>Quer uma análise com IA?</h4></div></div>
-    <p>Peça um diagnóstico em linguagem simples e sugestões para investigar seus resultados.</p>
-    <button type="button" className={css.primaryButton} disabled={aiBusy} onClick={askAi}>{aiBusy?'Analisando…':report.example?'Analisar exemplo com IA':'Gerar análise com IA'}</button>
-    <small>Ao pedir a análise, os números acima e o período, incluindo gastos e faturamento, são enviados ao Google Gemini. Não enviamos dados de clientes.</small>
-    {aiError&&<p className={css.formError} role="alert">{aiError}</p>}
-    {ai&&<div className={css.aiResult}><span className={css.sectionEyebrow}>ANÁLISE DA IA</span>
-     <h5>O que os dados mostram</h5><p>{ai.summary}</p>
-     {ai.attention&&<><h5>Vale investigar</h5><p>{ai.attention}</p></>}
-     <h5>O que fazer</h5><ul>{ai.actions.map((action,index)=><li key={index}>{action}</li>)}</ul>
-     {ai.limit&&<p className={css.aiLimit}>{ai.limit}</p>}
-     {ai.provider&&<p className={css.aiLimit}>Análise gerada por {ai.provider}.</p>}
-     <p className={css.aiLimit}>Sugestões de IA podem conter erros. Confira os dados antes de tomar decisões.</p>
-    </div>}
-   </div>
   </div>}
 
   {store?.status!=='ready'&&<p className={css.metricNote} role="status">
@@ -221,5 +225,24 @@ export default function VitalInsightsCRM({revision=0}){
   <details className={css.connections}><summary><span><strong>Conexões e detalhes</strong><small>Nuvemshop, Clarity, Meta Ads, Analytics e GTM</small></span><span aria-hidden="true">⌄</span></summary>
    <VitalInsightsSourceDetails insights={insights} loading={loading} error={error} onReload={()=>setReload(v=>v+1)}/>
   </details>
+  {report&&<div className={css.printDoc} aria-hidden="true">
+   <h1>Relatório de marketing · Vital Decor</h1>
+   <p>{report.kind==='manual'?`Últimos ${report.period} dias · ${report.example?'exemplo fictício':'dados informados manualmente'}`:'Fontes conectadas · períodos indicados em cada fonte'}</p>
+   {report.kind==='manual'?<ul><li>Visitas: {number(report.values.visits)}</li><li>Pedidos: {number(report.values.orders)}</li>
+    <li>Gasto: {money(report.values.spend)}</li><li>Faturamento informado: {money(report.values.revenue)}</li></ul>:<>
+    {report.store&&<p>Nuvemshop · {report.store.start} a {report.store.end}: {number(report.store.paidOrders)} pedidos pagos · {money(report.store.revenue)} em pedidos.</p>}
+    {report.ga4&&<p>GA4 · últimos 30 dias completos: {number(report.ga4.sessions)} sessões · {number(report.ga4.purchases)} compras registradas.</p>}
+    {report.meta&&<p>Meta Ads · {report.meta.period}: {money(report.meta.spend,report.meta.currency)} investidos · {number(report.meta.linkClicks)} cliques · {number(report.meta.impressions)} impressões · {number(report.meta.purchases)} compras atribuídas pela Meta · {money(report.meta.purchaseValue,report.meta.currency)} em valor atribuído.</p>}
+    {report.clarity&&<p>Clarity · últimas 72 horas: {number(report.clarity.sessions)} sessões.</p>}
+    {report.meta?.campaigns?.length>0&&<><h2>Campanhas</h2><ul>{report.meta.campaigns.map((c,i)=><li key={i}>{c.name} · {money(c.spend,report.meta.currency)} · {number(c.linkClicks)} cliques</li>)}</ul></>}
+    {report.store?.topProducts?.length>0&&<><h2>Produtos mais vendidos</h2><ul>{report.store.topProducts.map((p,i)=><li key={i}>{p.name} · {number(p.quantity)} unidades</li>)}</ul></>}
+    {report.ga4?.landingPages?.length>0&&<><h2>Páginas de entrada · GA4</h2><ul>{report.ga4.landingPages.slice(0,5).map((p,i)=><li key={i}>{p.path} · {number(p.sessions)} sessões</li>)}</ul></>}
+    {report.ga4?.products?.length>0&&<><h2>Interesse por produto · GA4</h2><ul>{report.ga4.products.slice(0,5).map((p,i)=><li key={i}>{p.name} · {number(p.views)} unidades visualizadas · {number(p.cart)} no carrinho</li>)}</ul></>}
+    {report.clarity?.friction?.some(x=>x.percentage!==null)&&<><h2>Sinais de interação · Clarity</h2><ul>{report.clarity.friction.filter(x=>x.percentage!==null).map(x=><li key={x.key}>{x.label} · {number(x.percentage)}% das {number(x.sessions)} sessões consideradas</li>)}</ul></>}
+    <h2>O que investigar</h2>{priorities.map(p=><div key={p.kind}><h3>{p.title}</h3><p>{p.evidence} {p.action}</p><small>{p.note}</small></div>)}
+   </>}
+   {ai&&<><h2>Análise com IA</h2><p>{ai.summary}</p><p>{ai.attention}</p><ul>{ai.actions.map((x,i)=><li key={i}>{x}</li>)}</ul><small>{ai.limit}</small></>}
+   <p>Os períodos e critérios de atribuição das fontes podem ser diferentes. Pedidos gerais não são atribuídos automaticamente aos anúncios.</p>
+  </div>}
  </section>;
 }

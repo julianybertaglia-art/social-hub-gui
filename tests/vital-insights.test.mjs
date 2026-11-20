@@ -65,7 +65,7 @@ test('GA4 service account signs a valid RSA JWT with exactly three segments',asy
   assert.equal(result.data.sessions,12);
   assert.equal(result.data.purchases,2);
   assert.equal(oauthCalls,1);
-  assert.equal(reportCalls,3);
+  assert.equal(reportCalls,6);
 });
 
 

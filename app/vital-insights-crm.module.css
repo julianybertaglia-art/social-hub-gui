@@ -97,6 +97,15 @@
 .connections summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px;cursor:pointer;list-style:none;color:#523548;font-size:13px}
 .connections summary::-webkit-details-marker{display:none}.connections summary>span:first-child{display:flex;flex-direction:column;gap:4px}
 .connections summary small{color:#8a7b84;font-size:11px;font-weight:400}.connections .insights{border-top:1px solid #f0e5eb}
+.printDoc{display:none}
+.secondaryButton:disabled{opacity:.5;cursor:not-allowed}
+@media print{
+ :global(body *){visibility:hidden!important}
+ .printDoc,.printDoc *{visibility:visible!important}
+ .printDoc{display:block!important;position:absolute;left:0;top:0;width:100%;padding:12mm;color:#111;background:white;font:12pt/1.45 Arial,sans-serif}
+ .printDoc h1{font-size:19pt;margin:0 0 6mm}.printDoc h2{font-size:14pt;margin:6mm 0 2mm}.printDoc h3{font-size:12pt;margin:4mm 0 1mm}
+ .printDoc p{margin:2mm 0}.printDoc div,.printDoc li{break-inside:avoid}.printDoc small{color:#444}
+}
 @media(max-width:600px){
  .dashboard{padding:14px}.hero{min-height:171px;padding:22px 20px;border-radius:15px}.hero h3{max-width:260px;font-size:25px}.hero p{max-width:230px;font-size:13px}
  .heroArt{right:-112px;top:-32px;opacity:.7}.toolbar{gap:8px}.toolbar .primaryButton,.toolbar .secondaryButton{flex:1}.toolbar .textButton{flex-basis:100%;text-align:left;padding-left:2px}

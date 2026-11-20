@@ -44,6 +44,29 @@ export function summarizeGa4Events(report){
   }
   return SHOP_EVENTS.map(event=>({event,count:found.get(event)??null}));
 }
+function gaTable(report,dimension,metrics){
+  if(!Array.isArray(report?.dimensionHeaders)||!Array.isArray(report?.metricHeaders))return null;
+  const d=report.dimensionHeaders.findIndex(x=>x.name===dimension);
+  const indexes=metrics.map(name=>report.metricHeaders.findIndex(x=>x.name===name));
+  if(d<0||indexes.some(i=>i<0))return null;
+  return (Array.isArray(report.rows)?report.rows:[]).slice(0,10).map(row=>({
+    label:short(row.dimensionValues?.[d]?.value),
+    values:indexes.map(i=>nonnegative(row.metricValues?.[i]?.value))
+  }));
+}
+export function summarizeGa4Devices(report){
+  return gaTable(report,'deviceCategory',['sessions'])?.map(row=>({device:row.label||'Não identificado',sessions:row.values[0]}))??null;
+}
+export function summarizeGa4LandingPages(report){
+  return gaTable(report,'landingPage',['sessions','engagedSessions'])?.map(row=>({
+    // Do not expose query strings, e-mail addresses or very long identifiers.
+    path:row.label?.startsWith('/')&&!/[?#@]/.test(row.label)&&!/[a-z0-9_-]{40,}/i.test(row.label)?row.label:'Página não identificada',
+    sessions:row.values[0],engagedSessions:row.values[1]}))??null;
+}
+export function summarizeGa4Products(report){
+  return gaTable(report,'itemName',['itemsViewed','itemsAddedToCart','itemsPurchased'])?.map(row=>({
+    name:row.label||'Produto não identificado',views:row.values[0],cart:row.values[1],purchases:row.values[2]}))??null;
+}
 export function summarizeClarity(data) {
   const traffic=Array.isArray(data)?data.find(x=>x?.metricName==='Traffic'):null;
   const rows=Array.isArray(traffic?.information)?traffic.information:[];
@@ -51,11 +74,21 @@ export function summarizeClarity(data) {
   // Do not turn an absent or invalid field into a misleading zero.
   const sum=key=>rows.every(r=>nonnegative(r?.[key])!==null)
     ?rows.reduce((a,r)=>a+nonnegative(r[key]),0):null;
+  const metrics=[['DeadClickCount','Cliques sem resposta'],['RageClickCount','Cliques repetidos'],
+    ['QuickbackClick','Retornos rápidos'],['ScriptErrorCount','Erros de script'],['ExcessiveScroll','Rolagem excessiva']];
+  const friction=metrics.map(([key,label])=>{
+    const values=data.find(x=>x?.metricName===key)?.information;
+    if(!Array.isArray(values)||!values.length)return {key,label,percentage:null,sessions:null};
+    const rows=values.map(row=>({sessions:nonnegative(row?.sessionsCount),percentage:nonnegative(row?.sessionsWithMetricPercentage)}));
+    if(rows.some(row=>row.sessions===null||row.percentage===null||row.percentage>100))return {key,label,percentage:null,sessions:null};
+    const sessions=rows.reduce((n,row)=>n+row.sessions,0);
+    return {key,label,sessions,percentage:sessions?rows.reduce((n,row)=>n+row.sessions*row.percentage,0)/sessions:null};
+  });
   return {period:'Últimas 72 horas (UTC)',sessions:sum('totalSessionCount'),
     botSessions:sum('totalBotSessionCount'),
     devices:rows.filter(r=>r?.Device && nonnegative(r.totalSessionCount)!==null)
        .map(r=>({device:String(r.Device).slice(0,50),sessions:nonnegative(r.totalSessionCount)}))
-       .sort((a,b)=>b.sessions-a.sessions).slice(0,5)};
+       .sort((a,b)=>b.sessions-a.sessions).slice(0,5),friction};
 }
 
 // Accept the private_key PEM field from Google service-account JSON, an escaped
@@ -136,7 +169,18 @@ export async function readGa4(env=process.env,fetcher=fetch){
     const events=gaReport({property,token,fetcher,body:{dateRanges,dimensions:[{name:'eventName'}],
       metrics:[{name:'eventCount'}],dimensionFilter:{filter:{fieldName:'eventName',
         inListFilter:{values:SHOP_EVENTS}}},limit:'4'}}).then(summarizeGa4Events).catch(()=>null);
-    return {status:'ready',data:{...summarizeGa4(await totals),sources:await sources,events:await events}};
+    const devices=gaReport({property,token,fetcher,body:{dateRanges,dimensions:[{name:'deviceCategory'}],
+      metrics:[{name:'sessions'}],orderBys:[{metric:{metricName:'sessions'},desc:true}],limit:'10'}})
+      .then(summarizeGa4Devices).catch(()=>null);
+    const landingPages=gaReport({property,token,fetcher,body:{dateRanges,dimensions:[{name:'landingPage'}],
+      metrics:[{name:'sessions'},{name:'engagedSessions'}],orderBys:[{metric:{metricName:'sessions'},desc:true}],limit:'10'}})
+      .then(summarizeGa4LandingPages).catch(()=>null);
+    const products=gaReport({property,token,fetcher,body:{dateRanges,dimensions:[{name:'itemName'}],
+      metrics:[{name:'itemsViewed'},{name:'itemsAddedToCart'},{name:'itemsPurchased'}],
+      orderBys:[{metric:{metricName:'itemsViewed'},desc:true}],limit:'10'}})
+      .then(summarizeGa4Products).catch(()=>null);
+    return {status:'ready',data:{...summarizeGa4(await totals),sources:await sources,events:await events,
+      devices:await devices,landingPages:await landingPages,products:await products}};
   }catch(error){const issue=googleKeyIssue(error);console.error('[vital-insights] GA4 read failed',issue||error?.name||'UnknownError');return {status:'unavailable',...(issue?{issue}:{})};}
 }
 
@@ -197,14 +241,15 @@ export async function readWindsorMeta(env=process.env,fetcher=fetch){
   const id=String(env.VITAL_META_AD_ACCOUNT_ID||'').replace(/^act_/,'');
   const token=normalizeWindsorKey(env.VITAL_WINDSOR_API_KEY||env.WINDSOR_API_KEY);
   if(!/^\d{4,30}$/.test(id)||!token)return {status:'not_configured'};
-  const request=async campaign=>{
+  const request=async (campaign,extended=true)=>{
     const url=new URL('https://connectors.windsor.ai/facebook');
     url.searchParams.set('api_key',token);
     url.searchParams.set('select_accounts',id);
     url.searchParams.set('date_preset','last_30d');
-    url.searchParams.set('fields',campaign?
-      'account_id,campaign_id,campaign,spend,impressions,link_clicks':
-      'account_id,account_currency,spend,impressions,link_clicks');
+    const base=campaign?'account_id,campaign_id,campaign,spend,impressions,link_clicks':
+      'account_id,account_currency,spend,impressions,link_clicks';
+    const conversions='actions_landing_page_view,actions_omni_add_to_cart,actions_omni_initiated_checkout,actions_omni_purchase,action_values_omni_purchase';
+    url.searchParams.set('fields',base+(extended?','+conversions:''));
     // A second account-total row is an ambiguous total, not something to add.
     // The extra campaign row indicates truncation without exposing private URLs.
     url.searchParams.set('_max_rows',campaign?'26':'2');
@@ -218,14 +263,21 @@ export async function readWindsorMeta(env=process.env,fetcher=fetch){
     return rows;
   };
   try{
-    const campaigns=request(true).catch(()=>null);
-    const totals=await request(false),row=totals[0];
+    // Some Windsor plans or accounts cannot return every conversion field.
+    // Preserve the basic report if the expanded query is rejected.
+    const read=campaign=>request(campaign).catch(()=>request(campaign,false));
+    const campaigns=read(true).catch(()=>null);
+    const totals=await read(false),row=totals[0];
     const list=await campaigns;
+    const conversions=r=>({landingViews:nonnegative(r?.actions_landing_page_view),
+      addToCart:nonnegative(r?.actions_omni_add_to_cart),checkouts:nonnegative(r?.actions_omni_initiated_checkout),
+      purchases:nonnegative(r?.actions_omni_purchase),purchaseValue:nonnegative(r?.action_values_omni_purchase)});
     return {status:'ready',data:{provider:'windsor',period:'Últimos 30 dias completos · Windsor',start:null,end:null,
       currency:typeof row?.account_currency==='string'&&/^[A-Z]{3}$/.test(row.account_currency)?row.account_currency:null,
       spend:nonnegative(row?.spend),impressions:nonnegative(row?.impressions),linkClicks:nonnegative(row?.link_clicks),
+      ...conversions(row),
       campaigns:list?.slice(0,25).map(c=>({id:short(c.campaign_id),name:short(c.campaign)||'Campanha sem nome',
-        spend:nonnegative(c.spend),impressions:nonnegative(c.impressions),linkClicks:nonnegative(c.link_clicks)}))??null,
+        spend:nonnegative(c.spend),impressions:nonnegative(c.impressions),linkClicks:nonnegative(c.link_clicks),...conversions(c)}))??null,
       campaignsMore:Boolean(list&&list.length>25)}};
   }catch{return {status:'unavailable'};}
 }

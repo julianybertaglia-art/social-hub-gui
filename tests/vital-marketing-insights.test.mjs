@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateKeyPairSync} from 'node:crypto';
-import {readMeta,readWindsorMeta,readGtm,readGa4,readVitalInsights,summarizeGa4Sources,summarizeGa4Events,summarizeMeta,summarizeClarity} from '../app/lib/server/vital-insights.mjs';
+import {readMeta,readWindsorMeta,readGtm,readGa4,readVitalInsights,summarizeGa4Sources,summarizeGa4Events,summarizeGa4Devices,summarizeGa4LandingPages,summarizeGa4Products,summarizeMeta,summarizeClarity} from '../app/lib/server/vital-insights.mjs';
 
 const json=body=>new Response(JSON.stringify(body),{status:200,headers:{'Content-Type':'application/json'}});
 const {privateKey}=generateKeyPairSync('rsa',{modulusLength:2048,privateKeyEncoding:{type:'pkcs8',format:'pem'},publicKeyEncoding:{type:'spki',format:'pem'}});
@@ -43,11 +43,13 @@ test('Windsor reads one specified account and keeps totals independent of campai
  const requests=[];const env={VITAL_META_PROVIDER:'windsor',VITAL_META_AD_ACCOUNT_ID:'act_12345678',WINDSOR_API_KEY:'fake-private-key'};
  const result=await readMeta(env,async(url,options)=>{
   requests.push({url,options});const params=new URL(url).searchParams;
-  if(!params.get('fields').includes('campaign_id'))return json({data:[{account_id:'12345678',account_currency:'BRL',spend:'123.45',impressions:400,link_clicks:'20'}]});
-  return json({data:Array.from({length:26},(_,i)=>({account_id:'act_12345678',campaign_id:String(i+1),campaign:`Campanha ${i+1}`,spend:'1.25',impressions:'10',link_clicks:'2',private_detail:'ignore'}))});
+  if(!params.get('fields').includes('campaign_id'))return json({data:[{account_id:'12345678',account_currency:'BRL',spend:'123.45',impressions:400,link_clicks:'20',actions_omni_purchase:'3',action_values_omni_purchase:'200.50'}]});
+  return json({data:Array.from({length:26},(_,i)=>({account_id:'act_12345678',campaign_id:String(i+1),campaign:`Campanha ${i+1}`,spend:'1.25',impressions:'10',link_clicks:'2',actions_omni_purchase:'1',private_detail:'ignore'}))});
  });
  assert.equal(result.status,'ready');assert.equal(result.data.provider,'windsor');
  assert.equal(result.data.currency,'BRL');assert.equal(result.data.spend,123.45);assert.equal(result.data.linkClicks,20);
+ assert.equal(result.data.purchases,3);assert.equal(result.data.purchaseValue,200.50);assert.equal(result.data.landingViews,null);
+ assert.equal(result.data.campaigns[0].purchases,1);
  assert.equal(result.data.campaigns.length,25);assert.equal(result.data.campaignsMore,true);
  assert.equal(result.data.campaigns[0].name,'Campanha 1');
  assert.ok(!JSON.stringify(result).includes('fake-private-key'));assert.ok(!JSON.stringify(result).includes('private_detail'));
@@ -56,6 +58,17 @@ test('Windsor reads one specified account and keeps totals independent of campai
   assert.equal(u.origin,'https://connectors.windsor.ai');assert.equal(u.pathname,'/facebook');
   assert.equal(u.searchParams.get('select_accounts'),'12345678');assert.equal(u.searchParams.get('date_preset'),'last_30d');
   assert.equal(options.redirect,'error');assert.equal(options.cache,'no-store');}
+});
+test('Windsor keeps the basic report when attributed conversion fields are rejected',async()=>{
+ let requests=0;
+ const result=await readWindsorMeta({VITAL_META_AD_ACCOUNT_ID:'12345678',WINDSOR_API_KEY:'fake'},async url=>{
+  requests++;const fields=new URL(url).searchParams.get('fields');
+  if(fields.includes('actions_omni_purchase'))return new Response('',{status:400});
+  return json({data:[{account_id:'12345678',spend:'4',link_clicks:'2'}]});
+ });
+ assert.equal(result.status,'ready');assert.equal(result.data.spend,4);
+ assert.equal(result.data.purchases,null);assert.equal(result.data.purchaseValue,null);
+ assert.equal(requests,4);
 });
 test('Windsor rejects wrong accounts, ambiguous totals and provider errors without exposing secrets',async()=>{
  const env={VITAL_META_AD_ACCOUNT_ID:'12345678',VITAL_WINDSOR_API_KEY:'fake-private-key'};
@@ -107,7 +120,7 @@ test('GA4 reads sessions by source and campaign with readonly scope, and keeps t
  assert.equal(result.data.currency,'BRL');assert.deepEqual(result.data.sources,[{source:'facebook / paid',campaign:'primavera',sessions:15}]);
  assert.deepEqual(result.data.events,[{event:'view_item',count:25},{event:'add_to_cart',count:3},
    {event:'begin_checkout',count:null},{event:'purchase',count:null}]);
- assert.deepEqual(scopes,['https://www.googleapis.com/auth/analytics.readonly']);assert.equal(requests.length,3);
+ assert.deepEqual(scopes,['https://www.googleapis.com/auth/analytics.readonly']);assert.equal(requests.length,6);
  assert.equal(summarizeGa4Sources({rows:[]}),null);
  const partial=await readGa4({...googleEnv,VITAL_GA4_PROPERTY_ID:'123456'},async(url,options)=>{
   if(url.includes('oauth2.googleapis.com'))return json({access_token:'fake'});
@@ -134,4 +147,21 @@ test('GTM requests only published-version metadata and does not return tag conte
 test('Clarity missing values remain unavailable instead of becoming zero',()=>{
  const data=summarizeClarity([{metricName:'Traffic',information:[{Device:'Mobile',totalSessionCount:'10'}]}]);
  assert.equal(data.sessions,10);assert.equal(data.botSessions,null);
+});
+test('GA4 breakdowns follow named headers and keep unavailable data distinct from zero',()=>{
+ const report=(dimension,metrics,values,label)=>({dimensionHeaders:[{name:dimension}],metricHeaders:metrics.map(name=>({name})),
+  rows:[{dimensionValues:[{value:label}],metricValues:values.map(value=>({value}))}]});
+ assert.deepEqual(summarizeGa4Devices(report('deviceCategory',['sessions'],['12'],'mobile')),[{device:'mobile',sessions:12}]);
+ assert.deepEqual(summarizeGa4LandingPages(report('landingPage',['engagedSessions','sessions'],['3','10'],'/produto')),
+  [{path:'/produto',sessions:10,engagedSessions:3}]);
+ assert.equal(summarizeGa4LandingPages(report('landingPage',['sessions','engagedSessions'],['1','1'],'/cliente?email=x'))[0].path,'Página não identificada');
+ assert.deepEqual(summarizeGa4Products(report('itemName',['itemsPurchased','itemsViewed','itemsAddedToCart'],['0','20','2'],'Grama')),
+  [{name:'Grama',views:20,cart:2,purchases:0}]);
+ assert.equal(summarizeGa4Products({rows:[]}),null);
+});
+test('Clarity friction percentages are weighted by reported sessions, not summed as clicks',()=>{
+ const data=summarizeClarity([{metricName:'Traffic',information:[{Device:'Mobile',totalSessionCount:'100',totalBotSessionCount:'0'}]},
+  {metricName:'DeadClickCount',information:[{sessionsCount:'80',sessionsWithMetricPercentage:10},{sessionsCount:'20',sessionsWithMetricPercentage:50}]}]);
+ const dead=data.friction.find(x=>x.key==='DeadClickCount');assert.equal(dead.sessions,100);assert.equal(dead.percentage,18);
+ assert.equal(data.friction.find(x=>x.key==='RageClickCount').percentage,null);
 });

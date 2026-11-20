@@ -58,6 +58,14 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const splitBoard=useRef(null),splitDragging=useRef(false);
  const boardFrame=useRef(null),heightDragging=useRef(false),messagesRef=useRef(null);
  useEffect(()=>{
+   // A marketing shortcut only chooses a conversation; the API still checks access.
+   try{
+     const contact=window.sessionStorage.getItem('tideplace:marketing:contact');
+     window.sessionStorage.removeItem('tideplace:marketing:contact');
+     if(/^\d{8,15}$/.test(contact||'')){setSelected(contact);setPage('inbox');}
+   }catch{}
+ },[]);
+ useEffect(()=>{
    try {
      const saved=Number(window.localStorage.getItem(SPLIT_WIDTH_KEY));
      if(Number.isFinite(saved)&&saved>=25&&saved<=70)setSplitWidth(clampSplitWidth(saved));

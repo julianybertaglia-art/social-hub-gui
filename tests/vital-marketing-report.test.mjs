@@ -51,3 +51,15 @@ test('AI request is opt-in, bounded, rejects bad output and omits unapproved fie
  await assert.rejects(createAiMarketingReport(input,{apiKey:'mock',fetcher:async()=>new Response('{}')}),/invalid_response/);
  await assert.rejects(createAiMarketingReport(input,{apiKey:'mock',fetcher:async()=>new Response('',{status:500})}),/provider_failure/);
 });
+test('AI retries a temporary provider failure once but never retries bad credentials',async()=>{
+ const input={kind:'manual',period:'7',metrics:{visits:20,orders:0,spend:null,revenue:null}};
+ let calls=0;
+ const result=await createAiMarketingReport(input,{apiKey:'mock',fetcher:async()=>{
+  calls++;if(calls===1)return new Response('',{status:503});
+  return new Response(JSON.stringify({candidates:[{content:{parts:[{text:JSON.stringify({resumo:'OK',acoes:['Verificar.']})}]}}]}));
+ }});
+ assert.equal(calls,2);assert.equal(result.summary,'OK');
+ calls=0;
+ await assert.rejects(createAiMarketingReport(input,{apiKey:'mock',fetcher:async()=>{calls++;return new Response('',{status:403});}}),/provider_failure/);
+ assert.equal(calls,1);
+});

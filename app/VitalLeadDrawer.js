@@ -90,7 +90,7 @@ export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare
          {order.trackingUrl&&<a href={order.trackingUrl} rel="noopener noreferrer" target="_blank">Acompanhar rastreio</a>}
          <button type="button" className={css.shippingButton} onClick={()=>onInspectShipping?.(order.id)}
             disabled={shippingDetails[order.id]?.state==='loading'}>
-           <Icon name="package" size={16}/>
+           <Icon name="layers" size={16}/>
            {shippingDetails[order.id]?.state==='loading'?'Consultando expedição…':'Consultar remessas e avisos'}
          </button>
          {shippingDetails[order.id]?.state==='error'&&

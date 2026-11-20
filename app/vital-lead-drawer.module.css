@@ -36,3 +36,25 @@
 .orderSteps span{border:1px solid var(--border);border-radius:8px;padding:4px 7px;font-size:10px;line-height:1.25}
 .stepDone{background:color-mix(in srgb,#319477 12%,var(--surface));color:var(--text)}
 .stepPending{color:var(--muted);background:var(--surface)}
+
+.shippingButton{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;min-height:36px;
+ margin:9px 0;border:1px solid var(--border);border-radius:9px;background:var(--surface);
+ color:var(--text);font-weight:700;font-size:12px;cursor:pointer}
+.shippingButton:disabled{opacity:.65;cursor:wait}
+.shippingButton:hover:not(:disabled){border-color:var(--gold)}
+.shippingPreview{background:var(--surface);padding:13px;border:1px solid var(--border);border-radius:10px}
+.shippingPreview>strong{font-size:12px}
+.shippingPreview p{font-size:12px;line-height:1.55;margin:6px 0}
+.shippingParcel{display:flex;flex-direction:column;gap:4px;padding:10px 0;border-top:1px solid var(--border)}
+.shippingParcel strong{font-size:12px}
+.shippingParcel span,.shippingParcel small{font-size:11px;color:var(--muted)}
+.shippingParcel a{font-size:11px;text-decoration:underline}
+.shippingNotice{margin-top:10px;padding:10px;border-radius:9px;background:var(--surface-soft);border:1px solid var(--border)}
+.shippingNotice strong{font-size:12px}
+.shippingNotice p{color:var(--text)}
+
+.readinessList{margin-top:12px;padding:9px 11px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.readinessRow{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--border);padding:9px 0}
+.readinessRow:last-of-type{border-bottom:0}
+.readinessRow span{font-size:12px;color:var(--text)}
+.readinessRow strong{white-space:nowrap;font-size:11px;color:var(--muted)}

@@ -57,6 +57,8 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  const [leadPanelOpen,setLeadPanelOpen]=useState(false);
  const [leadProfile,setLeadProfile]=useState(null),[leadLoading,setLeadLoading]=useState(false),[leadError,setLeadError]=useState('');
  const [leadAi,setLeadAi]=useState(null),[leadAiLoading,setLeadAiLoading]=useState(false),[leadAiError,setLeadAiError]=useState('');
+ const [shippingDetails,setShippingDetails]=useState({});
+ const [notificationReadiness,setNotificationReadiness]=useState(null),[readinessError,setReadinessError]=useState(''),[readinessLoading,setReadinessLoading]=useState(false);
  const [splitWidth,setSplitWidth]=useState(DEFAULT_SPLIT_WIDTH);
  const [boardHeight,setBoardHeight]=useState(null);
  const splitBoard=useRef(null),splitDragging=useRef(false);
@@ -153,7 +155,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
  useEffect(()=>{
   if(!leadPanelOpen||!selected){setLeadProfile(null);setLeadLoading(false);setLeadError('');return;}
   let active=true;
-  setLeadProfile(null);setLeadError('');setLeadLoading(true);
+  setLeadProfile(null);setLeadError('');setLeadLoading(true);setShippingDetails({});
   setLeadAi(null);setLeadAiError('');
   api('/api/crm/vital/lead-profile?contact='+encodeURIComponent(selected))
    .then(result=>{if(active)setLeadProfile(result);})
@@ -167,6 +169,24 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   window.addEventListener('keydown',onEscape);
   return()=>window.removeEventListener('keydown',onEscape);
  },[leadPanelOpen]);
+ async function checkNotificationReadiness(){
+  if(readinessLoading)return;
+  setReadinessLoading(true);setReadinessError('');
+  try{setNotificationReadiness(await api('/api/crm/vital/notification-readiness'));}
+  catch(e){setReadinessError(e.message);}
+  finally{setReadinessLoading(false);}
+ }
+ async function loadOrderShipping(orderId){
+   if(!selected||!/^\\d{1,20}$/.test(String(orderId))||!leadPanelOpen)return;
+   const contact=selected,key=String(orderId);
+   setShippingDetails(prev=>({...prev,[key]:{state:'loading'}}));
+   try{
+     const result=await api('/api/crm/vital/order-shipping?contact='+encodeURIComponent(contact)+'&order='+encodeURIComponent(key));
+     setShippingDetails(prev=>({...prev,[key]:{state:'ready',data:result}}));
+   }catch(e){
+     setShippingDetails(prev=>({...prev,[key]:{state:'error',message:e.message}}));
+   }
+ }
  async function analyzeLead(){
    if(!selected||leadAiLoading||leadLoading)return;
    const contact=selected;
@@ -471,6 +491,9 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   {leadPanelOpen&&selected&&<VitalLeadDrawer
      profile={leadProfile} loading={leadLoading} error={leadError}
      ai={leadAi} aiLoading={leadAiLoading} aiError={leadAiError} onAnalyze={analyzeLead}
+     shippingDetails={shippingDetails} onInspectShipping={loadOrderShipping}
+     notificationReadiness={notificationReadiness} readinessLoading={readinessLoading}
+     readinessError={readinessError} onCheckReadiness={checkNotificationReadiness}
      onClose={()=>setLeadPanelOpen(false)}
      canPrepare={Boolean(detail&&!replyBlockReason&&role==='owner'&&!busy)}
      onPrepare={text=>{setDraft(text);setLeadPanelOpen(false);}}/>}

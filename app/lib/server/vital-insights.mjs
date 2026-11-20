@@ -174,13 +174,14 @@ export function summarizeMeta(totalResponse,campaignResponse){
 // Windsor's API requires its key in the upstream query string. Keep this URL
 // server-side, reject redirects, and never return or log the URL/error body.
 function normalizeWindsorKey(raw){
-  let key=String(raw||'').trim();
+  let key=String(raw||'').trim().replace(/^['"]|['"]$/g,'');
   if(key.startsWith('WINDSOR_API_KEY='))key=key.slice('WINDSOR_API_KEY='.length).trim();
-  key=key.replace(/^(['"])(.*)\1$/,'$2').trim();
   if(key.includes('api_key=')){
-    try{key=new URL(key).searchParams.get('api_key')||'';}catch{return '';}
+    try{key=new URL(key).searchParams.get('api_key')||key;}
+    catch{const match=key.match(/[?&]api_key=([^&\s]+)/);if(match?.[1])key=match[1];}
   }
-  return key.trim();
+  try{key=decodeURIComponent(key);}catch{/* Keep an already-decoded key. */}
+  return key.split('&')[0].split(/\s/)[0].trim();
 }
 function windsorRows(body){
   if(!body||body.error||body.errors||body.status==='pending')return null;

@@ -68,6 +68,16 @@ test('Windsor rejects wrong accounts, ambiguous totals and provider errors witho
  let calls=0;const invalid=await readWindsorMeta({...env,VITAL_META_AD_ACCOUNT_ID:'../../other'},()=>{calls++;});
  assert.deepEqual(invalid,{status:'not_configured'});assert.equal(calls,0);
 });
+test('Windsor accepts the same saved key formats as the existing Instagram integration',async()=>{
+ for(const raw of ["'WINDSOR_API_KEY=fake-private-key'",'https://connectors.windsor.ai/all?api_key=fake-private-key&fields=date',
+  'fake-private-key&fields=date','fake%2Dprivate%2Dkey']){
+  const result=await readWindsorMeta({VITAL_META_AD_ACCOUNT_ID:'12345678',WINDSOR_API_KEY:raw},async url=>{
+   assert.equal(new URL(url).searchParams.get('api_key'),'fake-private-key');
+   return json({data:[{account_id:'12345678'}]});
+  });
+  assert.equal(result.status,'ready');
+ }
+});
 test('Windsor preserves account totals if campaign data is unavailable and leaves missing metrics unknown',async()=>{
  const result=await readWindsorMeta({VITAL_META_AD_ACCOUNT_ID:'12345678',WINDSOR_API_KEY:'fake'},async url=>{
   if(new URL(url).searchParams.get('fields').includes('campaign_id'))return new Response('',{status:503});

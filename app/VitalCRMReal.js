@@ -290,7 +290,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   {error&&<div className={css.alert} role="alert">{error}</div>}
   {notice&&<div className={css.notice} role="status">{notice}</div>}
   {data?.readOnly&&!data?.canReply&&<p className={css.smallNotice} role="status"><strong>CRM conectado, somente leitura:</strong> os dados e as mensagens são reais. As respostas serão habilitadas após os testes de segurança com a Meta e o Argo.</p>}
-  {data?.readOnly&&data?.canReply&&<p className={css.smallNotice} role="status"><strong>Respostas disponíveis para a administradora:</strong> apenas na janela de 24 horas e em conversas não atribuídas ao Argo. Transferências e encerramentos continuam desativados.</p>}
+  {data?.readOnly&&data?.canReply&&<p className={css.smallNotice} role="status"><strong>Respostas disponíveis para a administradora:</strong> apenas na janela de 24 horas e em conversas não atribuídas ao Argo. {data?.canSetStatus?'Você pode concluir atendimentos.':'Encerramentos continuam desativados.'} Transferências ainda não estão disponíveis.</p>}
   {data?.sampled&&<p className={css.smallNotice}>Os indicadores consideram as conversas sincronizadas dentro do limite atual de consulta.</p>}
   {loading&&!data?<div className={css.loading}>Consultando conversas e permissões da Vital…</div>:null}
   {data && page==='dashboard' && <div className={css.dashboardLayout}>
@@ -415,6 +415,14 @@ export default function VitalCRMReal({embedded=false,onLogout}){
        </button>}
        <button type="button" className={css.desktopClose} aria-label="Fechar conversa" title="Fechar conversa" onClick={()=>setSelected(null)}><Icon name="close" size={18}/></button>
       </div>
+      {detail&&data?.canSetStatus&&role==='owner'&&
+       <div className={css.statusAction}>
+        <span>Situação: {statusName(detail.contact.status)}</span>
+        <button type="button" disabled={busy} onClick={()=>setResolution(detail.contact.status==='closed'?'open':'resolved')}>
+         <Icon name={detail.contact.status==='closed'?'refresh':'check'} size={15}/>
+         {detail.contact.status==='closed'?'Reabrir atendimento':'Concluir atendimento'}
+        </button>
+       </div>}
       {opening&&<p className={css.loading}>Carregando mensagens…</p>}
       {detail&&<div ref={messagesRef} className={css.messages} aria-label="Histórico de mensagens">
        {detail.messages.map(m=><article key={m.id} className={m.direction==='outbound'?css.sent:css.received}>
@@ -427,11 +435,6 @@ export default function VitalCRMReal({embedded=false,onLogout}){
         <summary><Icon name="info" size={15}/> Informações do atendimento <span>{statusName(detail.contact.status)}</span></summary>
         <div className={css.resolution}>
          <div><strong>Situação do atendimento</strong><small>{statusName(detail.contact.status)}</small></div>
-         {!data?.readOnly&&role!=='supervisor'&&detail.contact.queue&&
-          <button type="button" disabled={busy} onClick={()=>setResolution(detail.contact.status==='closed'?'open':'resolved')}>
-           <Icon name={detail.contact.status==='closed'?'refresh':'check'} size={15}/>
-           {detail.contact.status==='closed'?'Reabrir atendimento':'Marcar como resolvido'}
-          </button>}
         </div>
         {!data?.readOnly&&<div className={css.transfer}>
          <div><strong><Icon name="flow" size={15} inline/> Encaminhar conversa</strong><p>Escolha a fila que dará continuidade ao atendimento.</p></div>
@@ -444,7 +447,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
          </div>
          <span>A transferência do Tide CRM não altera a atribuição do Argo.</span>
         </div>}
-        {data?.readOnly&&<p className={css.restrictedInfo}>Transferências e encerramentos ainda estão desativados nesta etapa do CRM.</p>}
+        {data?.readOnly&&<p className={css.restrictedInfo}>{data?.canSetStatus?'Transferências ainda não estão disponíveis.':'Transferências e encerramentos ainda estão desativados nesta etapa do CRM.'}</p>}
        </details>
        {detail.contact.queue==='varejo_nv'&&<details className={css.salesAssistant} aria-label="Apoio de vendas da Vivi">
         <summary className={css.salesAssistantHeading}>

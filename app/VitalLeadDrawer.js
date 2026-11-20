@@ -13,7 +13,7 @@ const shipping={shipped:'Enviado',fulfilled:'Enviado',delivered:'Entregue',packe
   unpacked:'Aguardando preparação',unshipped:'Aguardando expedição'};
 function statusLabel(value,map){return map[value]||'Não confirmado';}
 export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare,canPrepare,ai,aiLoading,aiError,onAnalyze,shippingDetails={},onInspectShipping,notificationReadiness,readinessLoading,readinessError,onCheckReadiness}){
- const p=profile||{},o=p.orders||[],c=p.checkouts||[];
+ const p=profile||{},o=p.orders||[],possible=p.possibleOrders||[],c=p.checkouts||[];
  return <div className={css.backdrop} onClick={onClose}>
   <aside role="dialog" aria-modal="true" aria-label="Carteira do cliente" className={css.drawer}
     onClick={event=>event.stopPropagation()}>
@@ -74,9 +74,14 @@ export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare
       </p>}
      {(p.state==='ready'||p.state==='partial')&&<>
        <section className={css.card}>
-        <div className={css.sectionHead}><h3>Pedidos da loja</h3><span>{o.length} encontrado(s)</span></div>
+        <div className={css.sectionHead}><h3>Pedidos da loja</h3><span>{o.length} pelo telefone</span></div>
         <small className={css.hint}>Busca por telefone exato · últimos 365 dias {p.source?.orders?.state!=='ready'?'· resultado parcial':''}</small>
-        {!o.length&&<p className={css.empty}>Nenhum pedido localizado no período pesquisado. Isso não comprova ausência de compras anteriores.</p>}
+        {!o.length&&<p className={css.empty}>Nenhum pedido identificado pelo telefone. A pessoa pode ter comprado sem informar esse número.</p>}
+        {possible.map(order=><div key={order.id} className={css.order}>
+         <div className={css.orderTitle}><strong>Possível pedido #{order.number}</strong><span>Conferir</span></div>
+         <p>O código de rastreio {order.trackingCode} foi informado nesta conversa e aparece neste pedido sem telefone cadastrado. Confirme se pertence à pessoa antes de usar os dados.</p>
+         <small>Data do pedido: {date(order.at)}</small>
+        </div>)}
         {o.map(order=><div key={order.id} className={css.order}>
          <div className={css.orderTitle}><strong>Pedido #{order.number}</strong><span>{currency(order.total)}</span></div>
          <small>{date(order.at)} · {statusLabel(order.paymentStatus,payment)} · {statusLabel(order.shippingStatus,shipping)}</small>
@@ -159,7 +164,7 @@ export default function VitalLeadDrawer({profile,loading,error,onClose,onPrepare
          <small className={css.hint}>Nenhuma mensagem automática será enviada nesta etapa.</small>
        </div>}
      </section>
-     <p className={css.foot}>O histórico de mensagens continua no chat. Pedidos e checkouts são consultados em tempo real e relacionados somente pelo telefone confirmado. Antes de qualquer campanha, valide consentimento e preferências de contato.</p>
+     <p className={css.foot}>O histórico de mensagens continua no chat. Pedidos e checkouts são consultados em tempo real; possíveis pedidos por código de rastreio precisam de conferência.</p>
    </div>}
   </aside>
  </div>;

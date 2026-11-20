@@ -147,6 +147,7 @@ async function summary(ctx,page,segment='all'){
     conversations:enriched,page,hasMore:visibleRows.length>(page+1)*30,
     sampled:(recent.data||[]).length>=3000||(flows.data||[]).length>=5000||(states.data||[]).length>=5000,
     readOnly:process.env.VITAL_CRM_WRITES_ENABLED!=='true',
+    canSetStatus:process.env.VITAL_CRM_STATUS_ENABLED==='true'||process.env.VITAL_CRM_WRITES_ENABLED==='true',
     canReply:process.env.VITAL_CRM_REPLY_ENABLED==='true'||process.env.VITAL_CRM_WRITES_ENABLED==='true',
   };
 }

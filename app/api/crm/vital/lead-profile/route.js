@@ -41,7 +41,7 @@ export async function GET(request){
    selection:flow.data?.selection,sector:assignment.data?.sector});
   const linkNoReturn=isSiteLinkNoReturn(messages[0],queue);
   const lastInbound=messages.find(x=>x.direction==='inbound');
-  const profile=await readVitalLeadProfile({phone:contact,siteLinkNoReturn:linkNoReturn,
+  const profile=await readVitalLeadProfile({phone:contact,messages,siteLinkNoReturn:linkNoReturn,
    replyWindowOpen:canReplyWithinWindow(lastInbound?.sent_at||lastInbound?.created_at)});
   return Response.json(profile,{headers});
  }catch(e){

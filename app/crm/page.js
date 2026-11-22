@@ -45,9 +45,15 @@ function Board({ workspace }) {
   const { data, loading, error: loadError } = useResource('/api/operations?workspace=' + workspace.id + '&days=' + days, revision);
   const allContacts = data?.contacts || [];
   const contacts = crmFilter(allContacts, workspace.id, { search, lane, sort });
-  const subjectCounts = {all:contacts.length};
-  for(const topic of topicsFor(workspace.id)) subjectCounts[topic.id]=contacts.filter(contact=>resolvedTopic(workspace.id,contact,subjectStore.assignments)===topic.id).length;
-  const subjectContacts = subject==='all' ? contacts : contacts.filter(contact=>resolvedTopic(workspace.id,contact,subjectStore.assignments)===subject);
+  const campaignContacts = gui ? contacts.filter(contact => {
+    const tags = Array.isArray(contact.tags) ? contact.tags : [];
+    return (tags.includes('BF26 | Curso - Em revisao') || tags.includes('BF26 | Iniciante - Em revisao'))
+      && !tags.includes('BF26 | Aluno - NAO ENVIAR');
+  }) : [];
+  const currentContacts = gui && view === 'training' ? campaignContacts : contacts;
+  const subjectCounts = {all:currentContacts.length};
+  for(const topic of topicsFor(workspace.id)) subjectCounts[topic.id]=currentContacts.filter(contact=>resolvedTopic(workspace.id,contact,subjectStore.assignments)===topic.id).length;
+  const subjectContacts = subject==='all' ? currentContacts : currentContacts.filter(contact=>resolvedTopic(workspace.id,contact,subjectStore.assignments)===subject);
   const visibleContacts = subjectContacts.slice(0, pageSize);
   const columns = crmLanes(workspace.id, allContacts);
   const selected = allContacts.find(c => crmContactKey(workspace.id, c) === selectedId) || selectedContact;
@@ -112,6 +118,7 @@ function Board({ workspace }) {
             <div className={s.crmTabs} role="tablist" aria-label="Visualizações do CRM">
               <button role="tab" aria-selected={view === 'contacts'} className={view === 'contacts' ? s.crmTabActive : ''} onClick={() => setView('contacts')}><Icon name="list" size={17}/> Lista de contatos</button>
               <button role="tab" aria-selected={view === 'pipeline'} className={view === 'pipeline' ? s.crmTabActive : ''} onClick={() => setView('pipeline')}><Icon name="funnel" size={17}/> {gui ? 'Pipeline de vendas' : 'Setores'}</button>
+              {gui && <button role="tab" aria-selected={view === 'training'} className={view === 'training' ? s.crmTabActive : ''} onClick={() => { setView('training'); setSubject('all'); setPageSize(25); }}><Icon name="list" size={17}/> Black Friday · Treinamento ({campaignContacts.length})</button>}
             </div>
 
             <div className={s.crmFilterPanel}>
@@ -139,6 +146,7 @@ function Board({ workspace }) {
 
             <div className={s.crmSubjectFilter}><span className={s.crmSectionEyebrow}>FILTRAR POR ASSUNTO</span><TopicFilter workspace={workspace.id} value={subject} onChange={next=>{setSubject(next);setPageSize(25);}} counts={subjectCounts}/></div>
             {subjectStore.error && <p role="alert" className={s.notice}>{subjectStore.error}</p>}
+            {gui && view === 'training' && <p className={s.notice}>Pré-seleção para revisão, não é uma lista autorizada para disparo. Alunos identificados pelo cadastro foram excluídos. Confira eventuais compras com outro número e permissão de marketing antes do envio.</p>}
 
             {(error || loadError) && <div role="alert" className={s.notice}>
               <strong>Não foi possível carregar os contatos desta versão.</strong>
@@ -149,8 +157,8 @@ function Board({ workspace }) {
 
             <div className={s.crmResultHeading}>
               <div>
-                <h2>{view === 'contacts' ? 'Todos os contatos' : (gui ? 'Etapas da negociação' : 'Distribuição por setor')}</h2>
-                <p className={s.muted}>{view === 'contacts' ? 'Selecione um contato para abrir sua ficha e o histórico de atividades.' : gui ? 'Organize as oportunidades conforme o avanço comercial.' : 'A organização por setor não altera as etapas de venda.'}</p>
+                <h2>{view === 'training' ? 'Black Friday · Interessados no treinamento' : view === 'contacts' ? 'Todos os contatos' : (gui ? 'Etapas da negociação' : 'Distribuição por setor')}</h2>
+                <p className={s.muted}>{view === 'training' ? 'Interessados em curso e iniciantes, sem os alunos identificados; verifique antes de enviar mensagens.' : view === 'contacts' ? 'Selecione um contato para abrir sua ficha e o histórico de atividades.' : gui ? 'Organize as oportunidades conforme o avanço comercial.' : 'A organização por setor não altera as etapas de venda.'}</p>
               </div>
               <span>{subjectContacts.length} {subjectContacts.length === 1 ? 'registro' : 'registros'}</span>
             </div>
@@ -164,7 +172,7 @@ function Board({ workspace }) {
                     <p>Os dados reais não estão disponíveis nesta prévia. Você pode testar a navegação com um exemplo.</p>
                     <Link href="/crm/exemplo" className={s.button}>Abrir demonstração</Link>
                   </div>
-                : view === 'contacts'
+                : (view === 'contacts' || view === 'training')
                   ? <div className={s.crmContactList}>
                       {visibleContacts.map(contact => {
                         const name = contact.profile_name || contact.phone || 'Contato sem nome';
@@ -174,7 +182,7 @@ function Board({ workspace }) {
                           <span className={s.crmContactIdentity}>
                             <strong>{name}</strong>
                             <small>{contact.phone || 'Telefone não informado'}</small>
-                            {!!contact.tags?.length && <span className={s.crmContactTags}>{contact.tags.slice(0,2).join(' · ')}</span>}
+                            {!!contact.tags?.length && <span className={s.crmContactTags}>{view === 'training' ? (contact.tags.includes('BF26 | Curso - Em revisao') ? 'Interesse no curso · Revisar' : 'Quer começar a vender · Revisar') : contact.tags.slice(0,2).join(' · ')}</span>}
                           </span>
                           <span className={s.crmContactMeta}>
                             <TopicBadge workspace={workspace.id} topic={resolvedTopic(workspace.id,contact,subjectStore.assignments)}/>

@@ -7,7 +7,7 @@ export const dynamic='force-dynamic';
 export const maxDuration=60;
 const headers={'Cache-Control':'private, no-store',Vary:'Authorization'};
 const FOLDERS=['spontaneous','automation','personal'];
-const CATEGORIES=['unclassified','beginners','sellers','partnership'];
+const CATEGORIES=['unclassified','beginners','training_review','sellers','partnership'];
 function failure(error) {
   const status=error?.status||503;
   return Response.json({error:status===503?'Não foi possível consultar o Direct agora.':error.message},{status,headers});

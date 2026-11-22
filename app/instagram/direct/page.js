@@ -9,6 +9,7 @@ import {resolvedTopic,topicsFor} from '../../lib/conversation-topics.mjs';
 const CATEGORIES=[
   {value:'unclassified',label:'A classificar',symbol:'◌'},
   {value:'beginners',label:'Iniciantes',symbol:'✳'},
+  {value:'training_review',label:'Treinamento · Black Friday (revisar)',symbol:'◆'},
   {value:'sellers',label:'Vendedores',symbol:'▣'},
   {value:'partnership',label:'Convites de parceria',symbol:'◇'}
 ];

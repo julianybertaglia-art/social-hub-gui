@@ -5,6 +5,7 @@ import {api} from './operations/useOperations';
 import css from './vital-crm-real.module.css';
 import ThemeCustomizer from './ThemeCustomizer';
 import VitalLeadDrawer from './VitalLeadDrawer';
+import VitalRecoveryCenter from './VitalRecoveryCenter';
 import {getViviSalesCategory,getViviSalesLink,VIVI_SALES_CATEGORIES} from './lib/vivi-sales.mjs';
 
 const OWNER={
@@ -274,8 +275,8 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   <header className={css.header}>
    <div>
     <span className={css.eyebrow}>TIDEPLACE / VITAL DECOR / CRM</span>
-    <h1>{page==='dashboard'?'Visão geral da operação':'Central de atendimento'}</h1>
-    <p>{manager?'Distribuição, acompanhamento e transferências das conversas reais.':'Atendimentos das filas sob sua responsabilidade.'}</p>
+    <h1>{page==='dashboard'?'Visão geral da operação':page==='recovery'?'Recuperação de vendas':'Central de atendimento'}</h1>
+    <p>{page==='recovery'?'Pedidos e checkouts acompanhados diretamente na Nuvemshop.':manager?'Distribuição, acompanhamento e transferências das conversas reais.':'Atendimentos das filas sob sua responsabilidade.'}</p>
    </div>
    <div className={css.topActions}>
     <span className={css.liveIndicator}><i/> DADOS REAIS</span>
@@ -286,6 +287,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   <nav className={css.tabs} aria-label="Navegação do CRM">
    <button className={page==='dashboard'?css.active:''} onClick={()=>setPage('dashboard')}><Icon name="chart" size={17}/> Dashboard</button>
    <button className={page==='inbox'?css.active:''} onClick={()=>setPage('inbox')}><Icon name="inbox" size={17}/> Atendimentos</button>
+   {role==='owner'&&<button className={page==='recovery'?css.active:''} onClick={()=>setPage('recovery')}><Icon name="refresh" size={17}/> Recuperação de vendas</button>}
   </nav>
   {error&&<div className={css.alert} role="alert">{error}</div>}
   {notice&&<div className={css.notice} role="status">{notice}</div>}
@@ -293,6 +295,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
   {data?.readOnly&&data?.canReply&&<p className={css.smallNotice} role="status"><strong>Respostas disponíveis para a administradora:</strong> apenas na janela de 24 horas e em conversas não atribuídas ao Argo. {data?.canSetStatus?'Você pode concluir atendimentos.':'Encerramentos continuam desativados.'} Transferências ainda não estão disponíveis.</p>}
   {data?.sampled&&<p className={css.smallNotice}>Os indicadores consideram as conversas sincronizadas dentro do limite atual de consulta.</p>}
   {loading&&!data?<div className={css.loading}>Consultando conversas e permissões da Vital…</div>:null}
+  {page==='recovery' && role==='owner' && <VitalRecoveryCenter />}
   {data && page==='dashboard' && <div className={css.dashboardLayout}>
    <div className={css.dashboardPrimary}>
     <div className={css.cards}>
@@ -508,6 +511,7 @@ export default function VitalCRMReal({embedded=false,onLogout}){
    <div className={css.sidebarLabel}>CENTRAL DE ATENDIMENTO</div>
    <button className={page==='dashboard'?css.sidebarActive:css.sidebarButton} onClick={()=>setPage('dashboard')}><Icon name="chart" size={17}/> Dashboard</button>
    <button className={page==='inbox'?css.sidebarActive:css.sidebarButton} onClick={()=>setPage('inbox')}><Icon name="inbox" size={17}/> Atendimentos</button>
+   {role==='owner'&&<button className={page==='recovery'?css.sidebarActive:css.sidebarButton} onClick={()=>setPage('recovery')}><Icon name="refresh" size={17}/> Recuperação de vendas</button>}
    <div className={css.sidebarBottom}><span>Acesso individual · Vital Decor</span>
     {onLogout&&<button onClick={onLogout} type="button"><Icon name="logout" size={16}/> Sair</button>}
    </div>

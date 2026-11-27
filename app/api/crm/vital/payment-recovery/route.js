@@ -104,18 +104,21 @@ function classifyCheckouts(checkouts, orders) {
 }
 
 export async function GET(request) {
+  let stage = 'crm_access';
   try {
     const { access, organization } = await getVitalCrmMember(request);
     if (access.role !== 'owner') {
       return Response.json({ error: 'Acesso restrito à administradora.' }, { status: 403, headers: responseHeaders });
     }
 
+    stage = 'store_configuration';
     const store = process.env.NUVEMSHOP_VITAL_STORE_ID;
     const token = process.env.NUVEMSHOP_VITAL_ACCESS_TOKEN;
     if (!/^\d{3,20}$/.test(store || '') || !token) {
       return Response.json({ error: 'A consulta da loja ainda não está configurada.' }, { status: 503, headers: responseHeaders });
     }
 
+    stage = 'nuvemshop_orders';
     const now = Date.now();
     const since = new Date(now - WINDOW_MS).toISOString();
     const until = new Date(now).toISOString();
@@ -130,6 +133,7 @@ export async function GET(request) {
         .catch(() => ({ rows: [], incomplete: false, unavailable: true })),
     ]);
 
+    stage = 'recovery_history';
     const { data: historyRows, error: historyError } = await access.db
       .from('crm_vital_payment_recovery')
       .select('entity_type,entity_id,stage,state,created_at,updated_at')
@@ -147,6 +151,7 @@ export async function GET(request) {
       }
     }
 
+    stage = 'build_recovery_list';
     const rows = [];
     for (const order of orderResult.rows) {
       const kind = orderKind(order);
@@ -175,6 +180,7 @@ export async function GET(request) {
         detail: process.env.VITAL_RECOVERY_SCHEDULER_ENABLED === 'true' ? 'Verificação periódica configurada.' : 'O agendador ainda não foi ativado.' },
     ];
 
+    stage = 'build_response';
     return Response.json({
       mode: 'monitoring',
       sendingEnabled: process.env.VITAL_PAYMENT_RECOVERY_ENABLED === 'true' && emailReady &&
@@ -200,7 +206,7 @@ export async function GET(request) {
       : error?.name === 'SyntaxError' ? 'invalid_json'
       : Number.isInteger(error?.status) ? 'http_' + String(error.status)
       : 'unclassified';
-    console.error('[vital-recovery] payment-recovery read failed', { code: upstreamCode });
+    console.error('[vital-recovery] payment-recovery read failed', { stage, code: upstreamCode });
     const safeCause = String(error?.cause?.code || '');
     const errorCode = ['orders_unavailable', 'orders_invalid'].includes(String(error?.message || ''))
       ? String(error.message)
@@ -213,8 +219,8 @@ export async function GET(request) {
     const upstreamUnavailable = ['orders_unavailable', 'orders_invalid'].includes(errorCode) ||
       ['timeout', 'aborted'].includes(errorCode) || /^[A-Z0-9_]+$/.test(errorCode);
     const message = upstreamUnavailable
-      ? 'A consulta de pedidos da Nuvemshop falhou. Código seguro: ' + errorCode + '.'
-      : 'Não foi possível carregar a recuperação de vendas. Código seguro: ' + errorCode + '.';
+      ? 'A consulta de pedidos da Nuvemshop falhou. Código seguro: ' + stage + '_' + errorCode + '.'
+      : 'Não foi possível carregar a recuperação de vendas. Código seguro: ' + stage + '_' + errorCode + '.';
     return Response.json({ error: message }, { status: 503, headers: responseHeaders });
   }
 }

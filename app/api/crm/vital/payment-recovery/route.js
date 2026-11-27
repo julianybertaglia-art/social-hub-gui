@@ -106,7 +106,7 @@ function classifyCheckouts(checkouts, orders) {
 export async function GET(request) {
   let stage = 'crm_access';
   try {
-    const { access, organization } = await getVitalCrmMember(request);
+    const { db, access, organization } = await getVitalCrmMember(request);
     if (access.role !== 'owner') {
       return Response.json({ error: 'Acesso restrito à administradora.' }, { status: 403, headers: responseHeaders });
     }
@@ -134,7 +134,7 @@ export async function GET(request) {
     ]);
 
     stage = 'recovery_history';
-    const { data: historyRows, error: historyError } = await access.db
+    const { data: historyRows, error: historyError } = await db
       .from('crm_vital_payment_recovery')
       .select('entity_type,entity_id,stage,state,created_at,updated_at')
       .eq('organization_id', organization.id).eq('store_id', store)
@@ -207,20 +207,9 @@ export async function GET(request) {
       : Number.isInteger(error?.status) ? 'http_' + String(error.status)
       : 'unclassified';
     console.error('[vital-recovery] payment-recovery read failed', { stage, code: upstreamCode });
-    const safeCause = String(error?.cause?.code || '');
-    const errorCode = ['orders_unavailable', 'orders_invalid'].includes(String(error?.message || ''))
-      ? String(error.message)
-      : error?.name === 'TimeoutError' ? 'timeout'
-      : error?.name === 'AbortError' ? 'aborted'
-      : /^[A-Z0-9_]{1,40}$/.test(safeCause) ? safeCause
-      : error?.name === 'SyntaxError' ? 'invalid_json'
-      : error?.name === 'TypeError' ? 'network_type_error'
-      : 'unknown_error';
-    const upstreamUnavailable = ['orders_unavailable', 'orders_invalid'].includes(errorCode) ||
-      ['timeout', 'aborted'].includes(errorCode) || /^[A-Z0-9_]+$/.test(errorCode);
-    const message = upstreamUnavailable
-      ? 'A consulta de pedidos da Nuvemshop falhou. Código seguro: ' + stage + '_' + errorCode + '.'
-      : 'Não foi possível carregar a recuperação de vendas. Código seguro: ' + stage + '_' + errorCode + '.';
+    const message = stage === 'nuvemshop_orders'
+      ? 'A Nuvemshop não respondeu à consulta agora. Tente atualizar em instantes.'
+      : 'Não foi possível carregar a recuperação de vendas.';
     return Response.json({ error: message }, { status: 503, headers: responseHeaders });
   }
 }

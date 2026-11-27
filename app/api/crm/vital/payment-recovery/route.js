@@ -192,7 +192,16 @@ export async function GET(request) {
     if (error.status) {
       return Response.json({ error: error.message }, { status: error.status, headers: responseHeaders });
     }
-    const upstreamUnavailable = error?.message === 'orders_unavailable' ||
+    const upstreamCode = ['orders_unavailable', 'orders_invalid'].includes(String(error?.message || ''))
+      ? String(error.message)
+      : error?.name === 'TimeoutError' ? 'timeout'
+      : error?.name === 'AbortError' ? 'aborted'
+      : /^[A-Z0-9_]{1,40}$/.test(String(error?.cause?.code || '')) ? String(error.cause.code)
+      : error?.name === 'SyntaxError' ? 'invalid_json'
+      : Number.isInteger(error?.status) ? 'http_' + String(error.status)
+      : 'unclassified';
+    console.error('[vital-recovery] payment-recovery read failed', { code: upstreamCode });
+    const upstreamUnavailable = ['orders_unavailable', 'orders_invalid'].includes(String(error?.message || '')) ||
       error?.name === 'TimeoutError' || error?.name === 'AbortError';
     return Response.json({
       error: upstreamUnavailable

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   CALLBACK_COOKIE, CALLBACK_URL, UNIFIED_APP_ID, UNIFIED_CONFIG_ID,
   VITAL_INSTAGRAM_ID, VITAL_BUSINESS_ID, safeAuthError,
-  unifiedLoginUrl, selectVitalInstagram,
+  unifiedLoginUrl, selectVitalInstagram, isVerifiedVitalProfile,
 } from '../app/api/vital-connections/instagram/unified/lib.mjs';
 
 const state = '11111111-2222-4333-8444-555555555555';
@@ -36,6 +36,19 @@ test('Unified Login cannot authorize Gui or an unrelated account', () => {
   assert.equal(selectVitalInstagram({ data: [
     { id: VITAL_INSTAGRAM_ID, username: 'another_account' },
   ] }), null);
+});
+
+test('A blank Unified Login asset list cannot silently authorize a different account', () => {
+  const correct = { id: VITAL_INSTAGRAM_ID, username: 'vitaldecor_' };
+  assert.equal(isVerifiedVitalProfile(correct), true);
+  assert.equal(isVerifiedVitalProfile({ ...correct, username: 'gui_nonato' }), false);
+  assert.equal(isVerifiedVitalProfile({ ...correct, id: '17841401155694295' }), false);
+  assert.equal(isVerifiedVitalProfile({ id: VITAL_INSTAGRAM_ID }), false);
+  const callback = file('../app/api/vital-connections/instagram/unified/callback/route.js');
+  assert.match(callback, /if \(listed\.length > 0 && !assigned\)/);
+  assert.match(callback, /if \(!isVerifiedVitalProfile\(profile\)\)/);
+  assert.ok(callback.indexOf('if (!isVerifiedVitalProfile(profile))') < callback.indexOf('await subscribeInstagram(token)'));
+  assert.match(callback, /String\(identity\?\.client_business_id \|\| ''\) !== VITAL_BUSINESS_ID/);
 });
 
 test('Only known error codes appear in the browser redirect', () => {

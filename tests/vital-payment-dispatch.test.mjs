@@ -1,15 +1,68 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {dispatchRecoveryEmail} from '../app/lib/server/vital-payment-dispatch.mjs';
-const now=()=>Date.parse('2026-11-26T23:00:00Z');
-const order={id:'123',number:130,status:'open',payment_status:'pending',completed_at:'2026-11-26T22:00:00Z',contact_email:'test@example.com'};
-function fixture({duplicate=false,paid=false,fail=false}={}){
- let reads=0,sends=0,state;
- const db={from:()=>({insert:async()=>({error:duplicate?{code:'23505'}:null}),update:p=>({match:()=>({eq:()=>({select:()=>({single:async()=>{state=p.state;return {data:{state}}}})})})})};
- return {args:{db,organizationId:'org',storeId:'123',orderId:'123',now,enabled:true,readOrder:async()=>({...order,payment_status:paid&&++reads>1?'paid':'pending'}),sendEmail:async()=>{sends++;if(fail)throw Error();return {id:'receipt'}}},get sends(){return sends},get state(){return state}};
+import { dispatchRecoveryEmail } from '../app/lib/server/vital-payment-dispatch.mjs';
+
+const now = () => Date.parse('2026-11-26T23:00:00Z');
+const order = {
+  id: '123', number: 130, status: 'open', payment_status: 'pending',
+  created_at: '2026-11-26T22:00:00Z', contact_email: 'test@example.com',
+};
+function fixture({ duplicate = false, paid = false, fail = false } = {}) {
+  let reads = 0;
+  let sends = 0;
+  let state = '';
+  const db = {
+    from: () => ({
+      insert: async () => ({ error: duplicate ? { code: '23505' } : null }),
+      update: patch => ({
+        match: () => ({
+          eq: () => ({
+            select: () => ({
+              single: async () => { state = patch.state; return { data: { state } }; },
+            }),
+          }),
+        }),
+      }),
+    }),
+  };
+  return {
+    args: {
+      db, organizationId: 'org', storeId: '123', entityType: 'order',
+      entityId: '123', stage: 'payment_email_30m', now, enabled: true,
+      readEntity: async () => ({ ...order, payment_status: paid && ++reads > 1 ? 'paid' : 'pending' }),
+      isEligible: entity => entity.payment_status === 'pending',
+      getEmail: entity => entity.contact_email,
+      buildMessage: () => ({ subject: 'subject', text: 'text', html: '<p>text</p>' }),
+      sendEmail: async () => { sends++; if (fail) throw new Error('provider unavailable'); return { id: 'receipt' }; },
+    },
+    get sends() { return sends; },
+    get state() { return state; },
+  };
 }
-test('disabled never sends',async()=>{const f=fixture();assert.equal((await dispatchRecoveryEmail({...f.args,enabled:false})).state,'disabled');assert.equal(f.sends,0)});
-test('duplicate never sends',async()=>{const f=fixture({duplicate:true});assert.equal((await dispatchRecoveryEmail(f.args)).state,'duplicate');assert.equal(f.sends,0)});
-test('paid between checks is skipped',async()=>{const f=fixture({paid:true});assert.equal((await dispatchRecoveryEmail(f.args)).state,'skipped');assert.equal(f.sends,0)});
-test('provider acceptance recorded',async()=>{const f=fixture();assert.equal((await dispatchRecoveryEmail(f.args)).state,'sent');assert.equal(f.sends,1)});
-test('ambiguous response is not retried',async()=>{const f=fixture({fail:true});assert.equal((await dispatchRecoveryEmail(f.args)).state,'uncertain');assert.equal(f.sends,1)});
+test('disabled dispatch never sends', async () => {
+  const sample = fixture();
+  assert.equal((await dispatchRecoveryEmail({ ...sample.args, enabled: false })).state, 'disabled');
+  assert.equal(sample.sends, 0);
+});
+test('duplicate claim never sends twice', async () => {
+  const sample = fixture({ duplicate: true });
+  assert.equal((await dispatchRecoveryEmail(sample.args)).state, 'duplicate');
+  assert.equal(sample.sends, 0);
+});
+test('payment confirmed between reads is skipped', async () => {
+  const sample = fixture({ paid: true });
+  assert.equal((await dispatchRecoveryEmail(sample.args)).state, 'skipped');
+  assert.equal(sample.sends, 0);
+});
+test('provider confirmation is recorded', async () => {
+  const sample = fixture();
+  assert.equal((await dispatchRecoveryEmail(sample.args)).state, 'sent');
+  assert.equal(sample.sends, 1);
+  assert.equal(sample.state, 'sent');
+});
+test('ambiguous provider failure is not retried automatically', async () => {
+  const sample = fixture({ fail: true });
+  assert.equal((await dispatchRecoveryEmail(sample.args)).state, 'uncertain');
+  assert.equal(sample.sends, 1);
+  assert.equal(sample.state, 'uncertain');
+});

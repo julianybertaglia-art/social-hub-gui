@@ -201,12 +201,20 @@ export async function GET(request) {
       : Number.isInteger(error?.status) ? 'http_' + String(error.status)
       : 'unclassified';
     console.error('[vital-recovery] payment-recovery read failed', { code: upstreamCode });
-    const upstreamUnavailable = ['orders_unavailable', 'orders_invalid'].includes(String(error?.message || '')) ||
-      error?.name === 'TimeoutError' || error?.name === 'AbortError';
-    return Response.json({
-      error: upstreamUnavailable
-        ? 'A consulta de pedidos da Nuvemshop falhou. Tente atualizar em instantes.'
-        : 'Não foi possível carregar a recuperação de vendas.',
-    }, { status: 503, headers: responseHeaders });
+    const safeCause = String(error?.cause?.code || '');
+    const errorCode = ['orders_unavailable', 'orders_invalid'].includes(String(error?.message || ''))
+      ? String(error.message)
+      : error?.name === 'TimeoutError' ? 'timeout'
+      : error?.name === 'AbortError' ? 'aborted'
+      : /^[A-Z0-9_]{1,40}$/.test(safeCause) ? safeCause
+      : error?.name === 'SyntaxError' ? 'invalid_json'
+      : error?.name === 'TypeError' ? 'network_type_error'
+      : 'unknown_error';
+    const upstreamUnavailable = ['orders_unavailable', 'orders_invalid'].includes(errorCode) ||
+      ['timeout', 'aborted'].includes(errorCode) || /^[A-Z0-9_]+$/.test(errorCode);
+    const message = upstreamUnavailable
+      ? 'A consulta de pedidos da Nuvemshop falhou. Código seguro: ' + errorCode + '.'
+      : 'Não foi possível carregar a recuperação de vendas. Código seguro: ' + errorCode + '.';
+    return Response.json({ error: message }, { status: 503, headers: responseHeaders });
   }
 }

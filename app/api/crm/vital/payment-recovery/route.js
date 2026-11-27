@@ -3,7 +3,7 @@ import { recoveryUrl } from '../../../../lib/server/vital-payment-recovery.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 30;
+export const maxDuration = 60;
 const responseHeaders = { 'Cache-Control': 'private, no-store', Vary: 'Authorization' };
 const WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 const PAGE_LIMIT = 5;
@@ -71,7 +71,7 @@ async function fetchPages(resource, store, headers, since, until) {
       page: String(page),
     });
     const response = await fetch('https://api.nuvemshop.com.br/2025-03/' + store + '/' + resource + '?' + query, {
-      headers, cache: 'no-store', signal: AbortSignal.timeout(5000),
+      headers, cache: 'no-store', signal: AbortSignal.timeout(12000),
     });
     if (!response.ok) throw new Error(resource + '_unavailable');
     const data = await response.json();
@@ -189,7 +189,15 @@ export async function GET(request) {
       updatedAt: new Date(now).toISOString(),
     }, { headers: responseHeaders });
   } catch (error) {
-    return Response.json({ error: error.status ? error.message : 'Não foi possível carregar a recuperação de vendas.' },
-      { status: error.status || 503, headers: responseHeaders });
+    if (error.status) {
+      return Response.json({ error: error.message }, { status: error.status, headers: responseHeaders });
+    }
+    const upstreamUnavailable = error?.message === 'orders_unavailable' ||
+      error?.name === 'TimeoutError' || error?.name === 'AbortError';
+    return Response.json({
+      error: upstreamUnavailable
+        ? 'A consulta de pedidos da Nuvemshop falhou. Tente atualizar em instantes.'
+        : 'Não foi possível carregar a recuperação de vendas.',
+    }, { status: 503, headers: responseHeaders });
   }
 }
